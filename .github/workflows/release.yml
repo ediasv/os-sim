@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          TS_ENDPOINT: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}      # e.g. https://eus.codesigning.azure.net
+          TS_ENDPOINT: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }} # e.g. https://eus.codesigning.azure.net
           TS_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
           TS_PROFILE: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
         run: |
