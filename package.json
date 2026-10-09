@@ -1,7 +1,7 @@
 {
   "name": "os-sim",
   "productName": "os-sim",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "My Electron application description",
   "keywords": [],
