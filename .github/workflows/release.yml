@@ -1,12 +1,12 @@
+# Save as .github/workflows/release.yml
 name: Release
 
 on:
   push:
     tags:
-      - 'v*'            # e.g. git tag v1.2.0 && git push origin v1.2.0
-  workflow_dispatch:    # lets you run it manually from the Actions tab
+      - 'v*'
+  workflow_dispatch:
 
-# GITHUB_TOKEN needs write access to contents to create releases and upload assets
 permissions:
   contents: write
 
@@ -19,24 +19,80 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      # Only needed if your Linux makers include deb/rpm
       - name: Install Linux packaging deps
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm fakeroot dpkg
 
-      - name: Install dependencies
-        run: npm ci
+      # ---------- macOS: import Developer ID certificate ----------
+      - name: Import macOS signing certificate
+        if: runner.os == 'macOS' && env.MAC_CERT_P12_BASE64 != ''
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MAC_CERT_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          security find-identity -p codesigning -v
+
+      # ---------- Windows: Azure Trusted Signing setup ----------
+      - name: Set up Azure Trusted Signing
+        if: runner.os == 'Windows' && env.AZURE_TENANT_ID != ''
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TS_ENDPOINT: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}      # e.g. https://eus.codesigning.azure.net
+          TS_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+          TS_PROFILE: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+        run: |
+          $dir = "C:\ts"
+          nuget install Microsoft.Trusted.Signing.Client -OutputDirectory $dir -ExcludeVersion
+          $dlib = "$dir\Microsoft.Trusted.Signing.Client\bin\x64\Azure.CodeSigning.Dlib.dll"
+
+          @{ Endpoint = $env:TS_ENDPOINT; CodeSigningAccountName = $env:TS_ACCOUNT; CertificateProfileName = $env:TS_PROFILE } |
+            ConvertTo-Json | Set-Content "$dir\metadata.json"
+
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+
+          # Paths must not contain spaces (windows-sign limitation), so copy signtool too
+          Copy-Item $signtool.FullName "$dir\signtool.exe"
+
+          "AZURE_CODE_SIGNING_DLIB=$dlib"        >> $env:GITHUB_ENV
+          "AZURE_METADATA_JSON=$dir\metadata.json" >> $env:GITHUB_ENV
+          "SIGNTOOL_PATH=$dir\signtool.exe"        >> $env:GITHUB_ENV
+
+      - run: npm ci
 
       - name: Publish
-        run: npm run publish   # "publish": "electron-forge publish" in package.json
+        run: npm run publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS notarization
+          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Azure Trusted Signing (read by Azure.CodeSigning.Dlib)
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Clean up keychain
+        if: always() && runner.os == 'macOS'
+        run: security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
