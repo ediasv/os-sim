@@ -6,6 +6,6 @@ const { view, step } = useSimulation();
 
 <template>
   <h1>os-sim</h1>
-  <p>Tick: {{ view.tick }}</p>
+  <p>Tick: {{ view.clock }}</p>
   <button type="button" @click="step">Step</button>
 </template>

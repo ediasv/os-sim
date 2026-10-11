@@ -1,19 +1,15 @@
-/**
- * Simulator rules live here, free of Vue, Electron and Node.
- * The UI never holds a Simulator directly; it reads snapshots.
- */
 export interface SimulationSnapshot {
-  readonly tick: number;
+  readonly clock: number;
 }
 
 export class Simulator {
-  #tick = 0;
+  private clock: number = 0;
 
   step(): void {
-    this.#tick += 1;
+    this.clock += 1;
   }
 
   snapshot(): SimulationSnapshot {
-    return { tick: this.#tick };
+    return { clock: this.clock };
   }
 }
