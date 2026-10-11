@@ -26,7 +26,7 @@ src/
 Import rules, enforced by `npm run lint` and `npm run typecheck`:
 
 - `core/` imports nothing from Vue, Electron, Node or the other folders.
-- `renderer/` may import `core/`, but never `electron`, Node APIs, `main/` or `preload/`.
+- `renderer/` may import `core/`, but never `electron`, Node built-ins (`fs`, `os`, `node:*`, …), `main/` or `preload/`.
 - `main/` and `preload/` never import `renderer/`.
 
 The UI never holds simulator objects. `useSimulation` keeps a `Simulator` privately and publishes immutable snapshots through a `shallowRef`.
