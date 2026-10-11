@@ -18,7 +18,7 @@
     "release": "electron-forge release",
     "lint": "oxlint && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt --write",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p src/core/tsconfig.json",
     "publish": "electron-forge publish"
   },
   "devDependencies": {

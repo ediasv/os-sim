@@ -2,5 +2,74 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "categories": {
     "correctness": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              { "name": "vue", "message": "core must not depend on Vue" },
+              {
+                "name": "electron",
+                "message": "core must not depend on Electron"
+              },
+              { "name": "fs", "message": "core must not use Node APIs" },
+              { "name": "path", "message": "core must not use Node APIs" }
+            ],
+            "patterns": [
+              { "group": ["node:*"], "message": "core must not use Node APIs" },
+              {
+                "group": ["**/main/**", "**/preload/**", "**/renderer/**"],
+                "message": "core must not import other layers"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/renderer/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "electron",
+                "message": "renderer has no Electron access; expose it through preload"
+              },
+              { "name": "fs", "message": "renderer has no Node access" },
+              { "name": "path", "message": "renderer has no Node access" }
+            ],
+            "patterns": [
+              { "group": ["node:*"], "message": "renderer has no Node access" },
+              {
+                "group": ["**/main/**", "**/preload/**"],
+                "message": "renderer must not import main or preload"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/main/**", "src/preload/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/renderer/**"],
+                "message": "main/preload must not import renderer code"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
