@@ -39,12 +39,6 @@ npm run lint && npm run typecheck
   The squash merge makes the PR title the single commit message on `main`, so the title is what ends up in the history and in the release notes.
 - Merge with **Squash and merge** only, then delete the branch.
 
-Recommended repository settings (_Settings → General → Pull Requests_):
-
-- Allow squash merging only, and turn off merge commits and rebase merging.
-- Set the default squash commit message to **Pull request title**.
-- Turn on **Automatically delete head branches**.
-
 ### Things to avoid
 
 - Don't bump the version or create tags in feature PRs. Releasing is a separate step (see below).
