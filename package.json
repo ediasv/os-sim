@@ -18,7 +18,7 @@
     "release": "electron-forge release",
     "lint": "oxlint && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt --write",
-    "typecheck": "tsc --noEmit && node scripts/vue-tsc.mjs --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "publish": "electron-forge publish"
   },
   "devDependencies": {
@@ -37,8 +37,7 @@
     "electron": "44.7.0",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
-    "typescript": "^7.0.2",
-    "typescript-6": "npm:typescript@^6.0.3",
+    "typescript": "^6.0.3",
     "vite": "^8.3.4",
     "vue-tsc": "^3.3.12"
   },
