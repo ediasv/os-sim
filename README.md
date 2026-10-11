@@ -7,10 +7,31 @@ An operating-system simulator desktop app built with Electron, Vue 3 and TypeScr
 ```sh
 npm install
 npm start          # run the app with hot reload
+npm test           # vitest unit tests (core + composables)
 npm run lint       # oxlint + oxfmt check (npm run lint:fix to auto-fix)
-npm run typecheck  # vue-tsc over .ts and .vue files
+npm run typecheck  # vue-tsc over .ts and .vue files, plus a core-only check
 npm run package    # build an unpacked app into out/
 ```
+
+## Project layout
+
+```
+src/
+  main/       Electron main process (Node): windows, menus, file access
+  preload/    bridge that exposes a small API from main to the renderer
+  renderer/   Vue app: components/, composables/
+  core/       simulator rules in plain TypeScript
+```
+
+Import rules, enforced by `npm run lint` and `npm run typecheck`:
+
+- `core/` imports nothing from Vue, Electron, Node or the other folders.
+- `renderer/` may import `core/`, but never `electron`, Node APIs, `main/` or `preload/`.
+- `main/` and `preload/` never import `renderer/`.
+
+The UI never holds simulator objects. `useSimulation` keeps a `Simulator` privately and publishes immutable snapshots through a `shallowRef`.
+
+When main and the renderer first need to share types (for example, the config file API), put them in `src/shared/`.
 
 ## Contributing
 
