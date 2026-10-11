@@ -2,5 +2,281 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "categories": {
     "correctness": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "vue",
+                "message": "core must not depend on Vue"
+              },
+              {
+                "name": "electron",
+                "message": "core must not depend on Electron"
+              },
+              {
+                "name": "child_process",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "cluster",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "crypto",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "dgram",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "dns",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "fs",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "http",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "http2",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "https",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "module",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "net",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "os",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "path",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "process",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "readline",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "tls",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "vm",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "worker_threads",
+                "message": "core must not use Node APIs"
+              },
+              {
+                "name": "zlib",
+                "message": "core must not use Node APIs"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "node:*",
+                  "child_process/**",
+                  "cluster/**",
+                  "crypto/**",
+                  "dgram/**",
+                  "dns/**",
+                  "fs/**",
+                  "http/**",
+                  "http2/**",
+                  "https/**",
+                  "module/**",
+                  "net/**",
+                  "os/**",
+                  "path/**",
+                  "process/**",
+                  "readline/**",
+                  "tls/**",
+                  "vm/**",
+                  "worker_threads/**",
+                  "zlib/**"
+                ],
+                "message": "core must not use Node APIs"
+              },
+              {
+                "group": ["vue/**", "@vue/**", "electron/**"],
+                "message": "core must not depend on Vue or Electron"
+              },
+              {
+                "group": ["**/main/**", "**/preload/**", "**/renderer/**"],
+                "message": "core must not import other layers"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/renderer/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "electron",
+                "message": "renderer has no Electron access; expose it through preload"
+              },
+              {
+                "name": "child_process",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "cluster",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "crypto",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "dgram",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "dns",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "fs",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "http",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "http2",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "https",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "module",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "net",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "os",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "path",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "process",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "readline",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "tls",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "vm",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "worker_threads",
+                "message": "renderer has no Node access"
+              },
+              {
+                "name": "zlib",
+                "message": "renderer has no Node access"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "node:*",
+                  "child_process/**",
+                  "cluster/**",
+                  "crypto/**",
+                  "dgram/**",
+                  "dns/**",
+                  "fs/**",
+                  "http/**",
+                  "http2/**",
+                  "https/**",
+                  "module/**",
+                  "net/**",
+                  "os/**",
+                  "path/**",
+                  "process/**",
+                  "readline/**",
+                  "tls/**",
+                  "vm/**",
+                  "worker_threads/**",
+                  "zlib/**"
+                ],
+                "message": "renderer has no Node access"
+              },
+              {
+                "group": ["electron/**"],
+                "message": "renderer has no Electron access; expose it through preload"
+              },
+              {
+                "group": ["**/main/**", "**/preload/**"],
+                "message": "renderer must not import main or preload"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/main/**", "src/preload/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/renderer/**"],
+                "message": "main/preload must not import renderer code"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
