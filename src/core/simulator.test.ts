@@ -8,15 +8,15 @@ describe("Simulator", () => {
 
   it("advances one tick per step", () => {
     const sim = new Simulator();
-    sim.step();
-    sim.step();
+    sim.tick();
+    sim.tick();
     expect(sim.snapshot().clock).toBe(2);
   });
 
   it("snapshot is a copy that later steps do not change", () => {
     const sim = new Simulator();
     const before = sim.snapshot();
-    sim.step();
+    sim.tick();
     expect(before.clock).toBe(0);
     expect(sim.snapshot()).not.toBe(before);
   });
