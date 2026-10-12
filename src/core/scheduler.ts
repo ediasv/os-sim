@@ -1,4 +1,4 @@
-export type AlgorithmID = "RR" | "EDF";
+export type AlgorithmID = 'RR' | 'EDF';
 
 export type Scheduler = (tasks: any, cpus: any) => {};
 

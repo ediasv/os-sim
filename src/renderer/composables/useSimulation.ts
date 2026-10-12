@@ -1,5 +1,5 @@
-import { shallowRef, type ShallowRef } from "vue";
-import { Simulator, type SimulationSnapshot } from "../../core/simulator";
+import { shallowRef, type ShallowRef } from 'vue';
+import { Simulator, type SimulationSnapshot } from '../../core/simulator';
 
 /**
  * Bridges the plain core Simulator into Vue. Vue only tracks `view`
@@ -10,11 +10,10 @@ export function useSimulation(): {
   tick: () => void;
 } {
   const sim = new Simulator();
-  const view = shallowRef(sim.snapshot());
+  const view = shallowRef(sim.getLatestSnapshot());
 
   function tick(): void {
-    sim.tick();
-    view.value = sim.snapshot();
+    view.value = sim.getLatestSnapshot();
   }
 
   return { view, tick };

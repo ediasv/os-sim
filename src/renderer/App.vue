@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useSimulation } from './composables/useSimulation';
 
-const { view,  tick } = useSimulation();
+const { view, tick } = useSimulation();
 </script>
 
 <template>

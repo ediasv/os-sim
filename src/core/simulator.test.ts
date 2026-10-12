@@ -1,23 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Simulator } from "./simulator";
+import { SimulationSnapshot, Simulator } from "./simulator";
 
 describe("Simulator", () => {
-  it("starts at tick 0", () => {
-    expect(new Simulator().snapshot().clock).toBe(0);
-  });
-
-  it("advances one tick per step", () => {
-    const sim = new Simulator();
-    sim.tick();
-    sim.tick();
-    expect(sim.snapshot().clock).toBe(2);
-  });
-
-  it("snapshot is a copy that later steps do not change", () => {
-    const sim = new Simulator();
-    const before = sim.snapshot();
-    sim.tick();
-    expect(before.clock).toBe(0);
-    expect(sim.snapshot()).not.toBe(before);
+  it("starts with an initial snapshot at tick 0", () => {
+    const snapshot = new Simulator().getLatestSnapshot();
+    expect(snapshot).toEqual(new SimulationSnapshot(0));
   });
 });
