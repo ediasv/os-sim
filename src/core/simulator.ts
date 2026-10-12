@@ -32,7 +32,7 @@ export class Simulator {
         }
 
         this.clock++;
-        this.scheduler?.execute(this.tasks, this.cpus);
+        this.scheduler?.execute(this.tasks);
 
         this.recordSnapshot();
     }
