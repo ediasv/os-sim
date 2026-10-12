@@ -16,6 +16,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "release": "electron-forge release",
+    "format": "oxfmt --write",
     "lint": "oxlint && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt --write",
     "typecheck": "vue-tsc --noEmit && tsc --noEmit -p src/core/tsconfig.json",
