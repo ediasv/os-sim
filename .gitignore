@@ -146,3 +146,7 @@ vite.config.ts.timestamp-*
 out/
 
 .DS_Store
+
+# Personal agent skills
+.agents/skills/grill-me/
+skills-lock.json
