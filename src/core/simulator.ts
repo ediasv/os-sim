@@ -5,7 +5,7 @@ export interface SimulationSnapshot {
 export class Simulator {
   private clock: number = 0;
 
-  step(): void {
+  tick(): void {
     this.clock += 1;
   }
 
