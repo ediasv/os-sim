@@ -1,15 +1,26 @@
+import { CpuManager } from "./cpu";
+import { Task } from "./task";
+
 export interface SimulationSnapshot {
   readonly clock: number;
 }
 
 export class Simulator {
-  private clock: number = 0;
+  private clock: number;
+  private cpuManager: CpuManager;
+  private tasks: Task[];
 
-  tick(): void {
+  constructor() {
+    this.clock = 0;
+    this.cpuManager = new CpuManager();
+    this.tasks = [];
+  }
+
+  public tick(): void {
     this.clock += 1;
   }
 
-  snapshot(): SimulationSnapshot {
+  public snapshot(): SimulationSnapshot {
     return { clock: this.clock };
   }
 }
