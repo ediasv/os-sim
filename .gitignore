@@ -148,5 +148,5 @@ out/
 .DS_Store
 
 # Personal agent skills
-.agents/skills/grill-me/
+.agents/skills/
 skills-lock.json
