@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { shallowRef, type App } from 'vue';
 
 /** Latest uncaught error, as display text. `null` when nothing to show. */
 export const currentError = shallowRef<string | null>(null);
@@ -35,4 +35,17 @@ export function reportError(err: unknown): void {
 
 export function dismissError(): void {
   currentError.value = null;
+}
+
+export function installErrorHandlers(
+  app: Pick<App, 'config'>,
+  target: Pick<Window, 'addEventListener'>,
+): void {
+  app.config.errorHandler = (err) => reportError(err);
+  target.addEventListener('unhandledrejection', (event) =>
+    reportError(event.reason),
+  );
+  target.addEventListener('error', (event) =>
+    reportError(event.error ?? event.message),
+  );
 }

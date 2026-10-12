@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createApp } from 'vue';
 import {
   currentError,
   describeError,
   dismissError,
+  installErrorHandlers,
   reportError,
 } from './errors';
 
@@ -69,5 +71,47 @@ describe('reportError / dismissError', () => {
     const err = new Error('boom');
     reportError(err);
     expect(console.error).toHaveBeenCalledWith(err);
+  });
+});
+
+describe('installErrorHandlers', () => {
+  function setup() {
+    const app = createApp({});
+    const listeners = new Map<string, (event: never) => void>();
+    const target = {
+      addEventListener: (type: string, listener: (event: never) => void) => {
+        listeners.set(type, listener);
+      },
+    } as Pick<Window, 'addEventListener'>;
+    installErrorHandlers(app, target);
+    return { app, listeners };
+  }
+
+  it('routes Vue component errors to the banner', () => {
+    const { app } = setup();
+    app.config.errorHandler!(new Error('setup failed'), null, 'setup function');
+    expect(currentError.value).toBe('setup failed');
+  });
+
+  it('routes unhandled promise rejections to the banner', () => {
+    const { listeners } = setup();
+    const onRejection = listeners.get('unhandledrejection')!;
+    onRejection({ reason: new Error('async boom') } as never);
+    expect(currentError.value).toBe('async boom');
+  });
+
+  it('handles a non-Error rejection reason', () => {
+    const { listeners } = setup();
+    listeners.get('unhandledrejection')!({ reason: 42 } as never);
+    expect(currentError.value).toBe('42');
+  });
+
+  it('routes uncaught errors outside Vue to the banner', () => {
+    const { listeners } = setup();
+    listeners.get('error')!({
+      error: new Error('timer boom'),
+      message: 'Uncaught Error: timer boom',
+    } as never);
+    expect(currentError.value).toBe('timer boom');
   });
 });
