@@ -8,7 +8,7 @@ describe("useSimulation", () => {
   });
 
   it("replaces the snapshot on each step", () => {
-    const { view, step } = useSimulation();
+    const { view, tick: step } = useSimulation();
     const first = view.value;
     step();
     expect(view.value.clock).toBe(1);

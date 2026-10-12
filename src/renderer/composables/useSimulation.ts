@@ -7,15 +7,15 @@ import { Simulator, type SimulationSnapshot } from "../../core/simulator";
  */
 export function useSimulation(): {
   view: ShallowRef<SimulationSnapshot>;
-  step: () => void;
+  tick: () => void;
 } {
   const sim = new Simulator();
   const view = shallowRef(sim.snapshot());
 
-  function step(): void {
+  function tick(): void {
     sim.tick();
     view.value = sim.snapshot();
   }
 
-  return { view, step };
+  return { view, tick };
 }
