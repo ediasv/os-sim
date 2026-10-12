@@ -13,6 +13,7 @@ export function useSimulation(): {
   const view = shallowRef(sim.getLatestSnapshot());
 
   function tick(): void {
+    sim.tick();
     view.value = sim.getLatestSnapshot();
   }
 

@@ -1,11 +1,4 @@
-export class Cpu {
-  private static cpuCount: number = 0;
-  public readonly id: number;
-
-  constructor() {
-    this.id = Cpu.cpuCount++;
-  }
-}
+import { Cpu } from "./simulator";
 
 export class CpuManager {
   private cpus: Cpu[];
@@ -14,12 +7,10 @@ export class CpuManager {
     this.cpus = [];
   }
 
-  public addCpu() {
-    this.cpus.push(new Cpu());
-  }
-
-  public removeCpu() {
-    // TODO: consider what will happen to the task executing in this CPU
-    this.cpus.pop();
+  public setCpuAmount(cpuAmount: number) {
+    if (this.cpus.length == cpuAmount) {
+      return;
+    }
+    // TODO
   }
 }
