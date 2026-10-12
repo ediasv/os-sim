@@ -6,16 +6,16 @@ import { Simulator, type SimulationSnapshot } from '../../core/simulator';
  * being replaced, so it never wraps simulator internals in proxies.
  */
 export function useSimulation(): {
-  view: ShallowRef<SimulationSnapshot>;
-  tick: () => void;
+    view: ShallowRef<SimulationSnapshot>;
+    tick: () => void;
 } {
-  const sim = new Simulator();
-  const view = shallowRef(sim.getLatestSnapshot());
+    const sim = new Simulator();
+    const view = shallowRef(sim.getLatestSnapshot());
 
-  function tick(): void {
-    sim.tick();
-    view.value = sim.getLatestSnapshot();
-  }
+    function tick(): void {
+        sim.tick();
+        view.value = sim.getLatestSnapshot();
+    }
 
-  return { view, tick };
+    return { view, tick };
 }
