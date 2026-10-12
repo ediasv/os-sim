@@ -5,14 +5,15 @@ export const currentError = shallowRef<string | null>(null);
 
 export function describeError(err: unknown): string {
   if (err instanceof Error) {
-    return err.message || err.name;
+    return err.message || err.name || 'Unknown error';
   }
   if (typeof err === 'string') {
     return err || 'Unknown error';
   }
   if (err !== null && typeof err === 'object') {
     try {
-      return JSON.stringify(err);
+      // toJSON() can make stringify return undefined despite its type.
+      return JSON.stringify(err) ?? 'Unknown error';
     } catch {
       return 'Unknown error';
     }

@@ -39,6 +39,15 @@ describe('describeError', () => {
     expect(describeError(null)).toBe('Unknown error');
   });
 
+  it('never returns undefined when toJSON returns undefined', () => {
+    expect(describeError({ toJSON: () => undefined })).toBe('Unknown error');
+  });
+
+  it('never returns an empty string for an Error with no message or name', () => {
+    const err = Object.assign(new Error(''), { name: '' });
+    expect(describeError(err)).toBe('Unknown error');
+  });
+
   it('does not throw on circular objects', () => {
     const a: Record<string, unknown> = {};
     a.self = a;
@@ -57,6 +66,11 @@ describe('reportError / dismissError', () => {
     reportError(new Error('second'));
     expect(currentError.value).toBe('first');
     expect(console.error).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not hide the banner for an unprintable error', () => {
+    reportError({ toJSON: () => undefined });
+    expect(currentError.value).toBe('Unknown error');
   });
 
   it('clears on dismiss and shows again on the next error', () => {
