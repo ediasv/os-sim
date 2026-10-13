@@ -1,5 +1,6 @@
 {
-  "singleQuote": true,
-  "printWidth": 80,
-  "sortPackageJson": false
+    "singleQuote": true,
+    "printWidth": 80,
+    "sortPackageJson": false,
+    "tabWidth": 4
 }

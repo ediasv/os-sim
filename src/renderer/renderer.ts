@@ -6,7 +6,10 @@
  */
 
 import { createApp } from 'vue';
-import App from './App.vue';
+import Root from './Root.vue';
+import { installErrorHandlers } from './errors';
 import './index.css';
 
-createApp(App).mount('#app');
+const app = createApp(Root);
+installErrorHandlers(app, window);
+app.mount('#app');
