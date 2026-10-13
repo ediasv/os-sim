@@ -2,6 +2,26 @@
 
 An operating-system simulator desktop app built with Electron, Vue 3 and TypeScript.
 
+## Specification and implementation plan
+
+The current implementation is a tick-counter scaffold, not the completed
+simulator. Scope: Project A only, core logic and tests before the visual interface.
+
+Read the shared project context in this order:
+
+1. [Specification and acceptance criteria](docs/specification.md)
+2. [Architecture and technical decisions](docs/architecture.md)
+3. [Delivery plan and current work](docs/plan.md)
+
+Reference documents:
+
+- [Assignment, version 0.6](docs/references/objetivo-do-trabalho.pdf)
+- [Real-time scheduling](docs/references/como-funciona-escalonamento-em-tempo-real.pdf)
+
+[Repository agent guidelines](AGENTS.md) explain how to maintain this context.
+Requirements belong in the specification, decisions in the architecture, and
+implementation status only in the plan. Proposed decisions are not delivered code.
+
 ## Development
 
 ```sh
