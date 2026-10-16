@@ -45,13 +45,23 @@ Nao altera codigo de execucao do simulador.
 Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 - #9 Definir TCBs, jobs, CPUs, configuracao, eventos e snapshots.
-- #10 Definir contrato somente de leitura para politica injetada.
+  Entregue no PR #46 (branch `feat/domain-model`, DEC-12); a issue fecha no
+  merge (`closes #9`). Evidencia em "Trabalho atual".
+- #10 Definir contrato somente de leitura para politica injetada. O placeholder
+  `scheduler.ts` foi removido na #9; o contrato parte do zero.
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
+  Pendencia herdada da #9 (DEC-12): CPU sem job aparece com `running: null` e
+  `offSince: null`, contradizendo a documentacao de `offSince`; definir a
+  representacao de CPU ociosa antes do primeiro despacho. Testes do motor devem
+  exigir `findInconsistencies` vazio apos cada passo.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
+  Pendencia herdada da #9 (DEC-12): fechar com a #13 quando uma CPU sem
+  trabalho passa a desligada (por exemplo desde o tick 0) e registrar `cpu-off`
+  coerente com `offSince`; manter `deadlineMissed` e `deadline-miss` em par.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Verificar compatibilidade do contador/adaptador Vue durante a evolucao.
 
@@ -72,7 +82,10 @@ Requisitos: REQ-04, REQ-05.
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
+  Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
+  eventos de suspensao/retomada; definir esses eventos junto com a matriz.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
+  Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
@@ -95,6 +108,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 - #36 Controles de configuracao, execucao e navegacao pelo historico.
 - #37 Inspecao de TCBs/jobs/CPUs e edicao com erros claros.
 - #38 Gantt, IDs ordenados, cores, suspensao, CPUs, marcadores e legenda.
+  Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
+  trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 
@@ -110,15 +125,35 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0 e #11 concluidas; nenhuma implementacao funcional em andamento.
-- #11: Q-01 e parte de Q-03 do modelo resolvidas com o usuario em 2026-10-16
-  (DEC-09 ativacoes/termino, DEC-10 padroes/limites, DEC-11 passo/snapshot).
-  Verificacao: links locais e IDs cruzados conferidos; sem alteracao de codigo,
-  testes nao executados.
-- Proximo objetivo: E1, #9 tipos do dominio e #10 contrato de politica.
-- Escopo do proximo incremento: dominio e testes; sem parser, UI nova ou RM/EDF.
-- Proximo passo: ler REQ-01/02/03/07/08 e DEC-01 a DEC-06 e DEC-09 a DEC-11;
-  modelar TCB, job, CPU, configuracao e snapshot com testes focados.
+- Estado: E0 e #11 concluidas; #9 entregue no PR #46 (branch
+  `feat/domain-model`), aguardando merge.
+- #9 objetivo: modelo de dominio do nucleo (TCB, job, CPU, configuracao,
+  eventos, snapshot), validacao DEC-10 e copia independente de snapshot.
+- #9 escopo acordado em 2026-10-16: tipos + `validateConfig` com mensagens em
+  portugues; remover placeholders `task.ts` e `scheduler.ts` (contrato de
+  politica sera criado na #10); cor `RRGGBB` sem `#`; `strict` no tsconfig.
+  Fora: ativacoes (#12), despacho (#13), quantum (#14), prazos/CPU desligada
+  (#15), PRNG (#20), historico (#23), parser (E4), UI.
+- Feito: `strict` no `tsconfig.json`; `src/core/domain.ts`, `config.ts`,
+  `snapshot.ts`; `Simulator` publica snapshot completo congelado;
+  `task.ts`/`scheduler.ts` removidos; DEC-12 registrada. Revisao do PR
+  acrescentou `consistency.ts` (`findInconsistencies`: execucao em
+  `Job.state`/`CpuState.running` e perda de prazo em
+  `deadlineMissed`/eventos) e registrou pendencias de CPU ociosa (#13/#15) e
+  eventos de suspensao/retomada (#25/#26/#38).
+- Verificacao (2026-10-16): `npm test` 78/78 (novos `config.test.ts`,
+  `snapshot.test.ts`, `simulator.test.ts`, `consistency.test.ts`);
+  `npm run typecheck` ok; `npm run lint` ok, sem avisos e com formato valido
+  (o PR corrigiu a falha de formato preexistente em `AGENTS.md` e
+  `docs/specification.md`). App nao executado (`npm start`);
+  `App.vue`/`useSimulation` so conferidos por typecheck.
+- Linha de base antes da #9: `npm test` 17/17; `npm run typecheck` ok;
+  `npm run lint` ja falhava por formato (oxfmt) em `AGENTS.md`, `docs/plan.md`
+  e `docs/specification.md` e aviso de import nao usado em `scheduler.ts`.
+- Proximo passo: merge do PR #46; conferir se a #9 foi para `Done` no Project
+  (status atual `In Progress`) e mover manualmente se o fechamento nao o fizer.
+  Depois #10 (contrato de politica) e #12 (ativacoes e snapshot 0 conforme
+  DEC-11).
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas.
 - Bloqueios: nenhum.
 

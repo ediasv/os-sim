@@ -152,7 +152,9 @@ Fonte: gerais 5 e 6; A.5.
   inclusive atrasados).
 - Q-02: definir matriz de edicao: progresso, duracao, periodo, ingresso, prazo,
   estado, inclusao/remocao de tarefas e efeito sobre jobs ja ativados. Nao
-  reescrever retroativamente fatos anteriores a edicao.
+  reescrever retroativamente fatos anteriores a edicao. Incluir os eventos de
+  suspensao e retomada que o Gantt (REQ-09) precisa para exibir trechos
+  suspensos; o modelo atual ainda nao os tem (DEC-12).
 - Q-03: valores padrao, zero, campos ausentes, IDs e limites numericos resolvidos
   em 2026-10-16 por DEC-10. Resta para E4 somente o formato dos diagnosticos do
   parser (linha, campo e texto de cada erro).

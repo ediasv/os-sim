@@ -1,0 +1,165 @@
+import { describe, expect, it } from 'vitest';
+import { findInconsistencies } from './consistency';
+import {
+    DEFAULT_CONFIG,
+    type Job,
+    type SimulationState,
+    type TaskDefinition,
+} from './domain';
+import { createInitialState, takeSnapshot } from './snapshot';
+
+const definition: TaskDefinition = {
+    id: 1,
+    color: 'F0E0D0',
+    arrival: 0,
+    duration: 2,
+    period: 5,
+    deadline: 5,
+    rawEvents: '',
+};
+
+function job(overrides: Partial<Job> = {}): Job {
+    return {
+        taskId: 1,
+        index: 0,
+        activation: 0,
+        absoluteDeadline: 5,
+        executed: 0,
+        state: 'ready',
+        completedAt: null,
+        deadlineMissed: false,
+        ...overrides,
+    };
+}
+
+/** Two CPUs and one task holding the given jobs; nothing assigned yet. */
+function stateWith(...jobs: Job[]): SimulationState {
+    const state = createInitialState({
+        ...DEFAULT_CONFIG,
+        cpuCount: 2,
+        tasks: [definition],
+    });
+    state.tasks[0].jobs.push(...jobs);
+    return state;
+}
+
+describe('findInconsistencies: running state', () => {
+    it('accepts a running job owned by exactly one CPU', () => {
+        const state = stateWith(job({ state: 'running' }));
+        state.cpus[0].running = { taskId: 1, index: 0 };
+
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+
+    it('reports a running job that no CPU owns', () => {
+        const state = stateWith(job({ state: 'running' }));
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+
+    it.each(['ready', 'suspended', 'completed'] as const)(
+        'reports a CPU running a job whose state is %s',
+        (jobState) => {
+            const state = stateWith(job({ state: jobState }));
+            state.cpus[0].running = { taskId: 1, index: 0 };
+
+            expect(findInconsistencies(state)).toHaveLength(1);
+        },
+    );
+
+    it('reports a job owned by two CPUs in the same tick', () => {
+        const state = stateWith(job({ state: 'running' }));
+        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[1].running = { taskId: 1, index: 0 };
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+
+    it('reports a CPU running a job that does not exist', () => {
+        const state = stateWith();
+        state.cpus[0].running = { taskId: 1, index: 0 };
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+});
+
+describe('findInconsistencies: missed deadlines', () => {
+    it('accepts a missed deadline recorded once as an event', () => {
+        const state = stateWith(job({ deadlineMissed: true }));
+        state.events.push({
+            kind: 'deadline-miss',
+            time: 5,
+            job: { taskId: 1, index: 0 },
+        });
+
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+
+    it('reports a missed deadline without its event', () => {
+        const state = stateWith(job({ deadlineMissed: true }));
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+
+    it('reports a deadline-miss event for a job not marked as missed', () => {
+        const state = stateWith(job());
+        state.events.push({
+            kind: 'deadline-miss',
+            time: 5,
+            job: { taskId: 1, index: 0 },
+        });
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+
+    it('reports a missed deadline recorded more than once (DEC-04)', () => {
+        const state = stateWith(job({ deadlineMissed: true }));
+        for (const time of [5, 6]) {
+            state.events.push({
+                kind: 'deadline-miss',
+                time,
+                job: { taskId: 1, index: 0 },
+            });
+        }
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+
+    it('reports a deadline-miss event for a job that does not exist', () => {
+        const state = stateWith();
+        state.events.push({
+            kind: 'deadline-miss',
+            time: 5,
+            job: { taskId: 1, index: 0 },
+        });
+
+        expect(findInconsistencies(state)).toHaveLength(1);
+    });
+});
+
+describe('findInconsistencies: inputs', () => {
+    it('accepts the initial state and frozen snapshots', () => {
+        const state = stateWith(
+            job({ state: 'running', deadlineMissed: true }),
+            job({ index: 1, activation: 5, absoluteDeadline: 10 }),
+        );
+        state.cpus[1].running = { taskId: 1, index: 0 };
+        state.events.push({
+            kind: 'deadline-miss',
+            time: 5,
+            job: { taskId: 1, index: 0 },
+        });
+
+        expect(findInconsistencies(stateWith())).toEqual([]);
+        expect(findInconsistencies(takeSnapshot(state))).toEqual([]);
+    });
+
+    it('collects every inconsistency instead of stopping at the first', () => {
+        const state = stateWith(
+            job({ state: 'running' }),
+            job({ index: 1, deadlineMissed: true }),
+        );
+
+        expect(findInconsistencies(state)).toHaveLength(2);
+    });
+});
