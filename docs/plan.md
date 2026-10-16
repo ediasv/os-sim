@@ -45,18 +45,21 @@ Nao altera codigo de execucao do simulador.
 Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 - #9 Definir TCBs, jobs, CPUs, configuracao, eventos e snapshots.
-  Entregue no PR #46 (branch `feat/domain-model`, DEC-12); a issue fecha no
-  merge (`closes #9`). Evidencia em "Trabalho atual".
-- #10 Definir contrato somente de leitura para politica injetada. O placeholder
-  `scheduler.ts` foi removido na #9; o contrato parte do zero.
+  Concluida no PR #46 (DEC-12): `npm test` 78/78, lint e typecheck ok.
+- #10 Definir contrato somente de leitura para politica injetada. Em revisao no
+  PR #48 (DEC-13); evidencia em "Trabalho atual".
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
+  DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
+  aqui; `buildPolicyView` nao a verifica.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Pendencia herdada da #9 (DEC-12): CPU sem job aparece com `running: null` e
   `offSince: null`, contradizendo a documentacao de `offSince`; definir a
   representacao de CPU ociosa antes do primeiro despacho. Testes do motor devem
-  exigir `findInconsistencies` vazio apos cada passo.
+  exigir `findInconsistencies` vazio apos cada passo. Guardar em
+  `CpuState.running` somente `selectedRefs(decision)`, depois de
+  `checkDecision` vazio (DEC-13).
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   Pendencia herdada da #9 (DEC-12): fechar com a #13 quando uma CPU sem
@@ -125,36 +128,31 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0 e #11 concluidas; #9 entregue no PR #46 (branch
-  `feat/domain-model`), aguardando merge.
-- #9 objetivo: modelo de dominio do nucleo (TCB, job, CPU, configuracao,
-  eventos, snapshot), validacao DEC-10 e copia independente de snapshot.
-- #9 escopo acordado em 2026-10-16: tipos + `validateConfig` com mensagens em
-  portugues; remover placeholders `task.ts` e `scheduler.ts` (contrato de
-  politica sera criado na #10); cor `RRGGBB` sem `#`; `strict` no tsconfig.
-  Fora: ativacoes (#12), despacho (#13), quantum (#14), prazos/CPU desligada
-  (#15), PRNG (#20), historico (#23), parser (E4), UI.
-- Feito: `strict` no `tsconfig.json`; `src/core/domain.ts`, `config.ts`,
-  `snapshot.ts`; `Simulator` publica snapshot completo congelado;
-  `task.ts`/`scheduler.ts` removidos; DEC-12 registrada. Revisao do PR
-  acrescentou `consistency.ts` (`findInconsistencies`: execucao em
-  `Job.state`/`CpuState.running` e perda de prazo em
-  `deadlineMissed`/eventos) e registrou pendencias de CPU ociosa (#13/#15) e
-  eventos de suspensao/retomada (#25/#26/#38).
-- Verificacao (2026-10-16): `npm test` 78/78 (novos `config.test.ts`,
-  `snapshot.test.ts`, `simulator.test.ts`, `consistency.test.ts`);
-  `npm run typecheck` ok; `npm run lint` ok, sem avisos e com formato valido
-  (o PR corrigiu a falha de formato preexistente em `AGENTS.md` e
-  `docs/specification.md`). App nao executado (`npm start`);
-  `App.vue`/`useSimulation` so conferidos por typecheck.
-- Linha de base antes da #9: `npm test` 17/17; `npm run typecheck` ok;
-  `npm run lint` ja falhava por formato (oxfmt) em `AGENTS.md`, `docs/plan.md`
-  e `docs/specification.md` e aviso de import nao usado em `scheduler.ts`.
-- Proximo passo: merge do PR #46; conferir se a #9 foi para `Done` no Project
-  (status atual `In Progress`) e mover manualmente se o fechamento nao o fizer.
-  Depois #10 (contrato de politica) e #12 (ativacoes e snapshot 0 conforme
-  DEC-11).
-- Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas.
+- Estado: E0, #9 (PR #46) e #11 concluidas. #10 em revisao no PR #48 (branch
+  `feat/policy-contract`), `In Progress` no Project.
+- #10 objetivo: contrato somente de leitura entre motor e politica injetada
+  (DEC-01), base para o motor com politica de teste (#13) e RM/EDF (#19).
+- #10 escopo acordado em 2026-10-16: decisao como conjunto de
+  min(CPUs, candidatas) jobs; visao como copia congelada; sorteio adiado para
+  a #20. Fora: elegibilidade (#12), despacho e uso pelo motor (#13), quantum
+  (#14), RM/EDF (#19), desempates e sorteio (#18/#20).
+- Feito: `src/core/policy.ts` com `PolicyCandidate`, `PolicyView`,
+  `PolicyDecision`, `SchedulingPolicy`, `buildPolicyView` e `checkDecision`;
+  `freezeCopy` e `key` extraidas para `src/core/helpers/`; DEC-13 registrada.
+  Revisao do PR #48: `selectedRefs` (o motor guarda copias `{taskId, index}`
+  da decisao); DEC-13 explicita que a elegibilidade (DEC-02) cabe somente a
+  #12; dois testes novos de `checkDecision` (menos candidatas que CPUs e
+  varios problemas na mesma decisao).
+- Verificacao (2026-10-16): `npm test` 99/99 (21 em `policy.test.ts`, 4 deles
+  da revisao do PR #48; linha de base 78/78 antes da #10 e 95/95 antes da
+  revisao); `npm run lint` ok; `npm run typecheck` ok, inclusive o tsconfig
+  exclusivo do nucleo. App nao executado (`npm start`): o motor ainda nao usa
+  o contrato.
+- Proximo passo: merge do PR #48; conferir #10 em `Done` no Project apos o
+  merge. Depois #12 (ativacoes e snapshot 0 conforme DEC-11), que produz a
+  lista de elegiveis consumida por `buildPolicyView`.
+- Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas;
+  quantum vencido e `previousCpu` (DEC-13) para #14/#18.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega

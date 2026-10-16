@@ -8,6 +8,7 @@ import type {
     SimulationState,
     SystemConfig,
 } from './domain';
+import { freezeCopy } from './helpers/freezeCopy';
 
 /**
  * State before any activation: one TCB without jobs per task and CPUs 1..n
@@ -33,23 +34,4 @@ export function createInitialState(config: SystemConfig): SimulationState {
 /** Deep, frozen copy of the live state. */
 export function takeSnapshot(state: SimulationState): SimulationSnapshot {
     return freezeCopy(state);
-}
-
-/**
- * Recursive copy for the plain data of the domain (objects, arrays and
- * primitives). Written by hand because the core targets ES2023 without DOM or
- * Node typings, where `structuredClone` is not declared.
- */
-function freezeCopy<T>(value: T): T {
-    if (value === null || typeof value !== 'object') {
-        return value;
-    }
-    if (Array.isArray(value)) {
-        return Object.freeze(value.map(freezeCopy)) as T;
-    }
-    const copy: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(value)) {
-        copy[key] = freezeCopy(field);
-    }
-    return Object.freeze(copy) as T;
 }

@@ -5,7 +5,8 @@
  * keep each pair in sync; its tests (#13, #15) assert that this list is empty
  * after every step.
  */
-import type { DeepReadonly, Job, JobRef, SimulationState } from './domain';
+import type { DeepReadonly, Job, SimulationState } from './domain';
+import { key } from './helpers/key';
 
 /** Describes every pair that disagrees; an empty list means the state is consistent. */
 export function findInconsistencies(
@@ -73,8 +74,4 @@ export function findInconsistencies(
     }
 
     return issues;
-}
-
-function key(job: DeepReadonly<JobRef>): string {
-    return `${job.taskId}.${job.index}`;
 }

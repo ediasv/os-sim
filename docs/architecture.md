@@ -12,6 +12,8 @@ afirma que os modulos planejados ja existem.
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12).
+- [Politica](../src/core/policy.ts): contrato da politica injetada, visao
+  congelada e conferencia da decisao (DEC-13); ainda sem RM/EDF nem uso pelo motor.
 - [Simulator](../src/core/simulator.ts): relogio sobre a configuracao padrao e
   snapshots completos; ainda sem ativacoes, despacho ou politica.
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
@@ -224,6 +226,50 @@ anterior. Data inicial dos registros: 2026-10-12.
       Gantt (E5: #38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
+
+### DEC-13: Contrato da politica injetada
+
+- Estado: aceita em 2026-10-16. Requisitos: REQ-02, REQ-07. Detalha DEC-01;
+  escopo acordado com o usuario na #10.
+- Decisao: `SchedulingPolicy.select(view)` recebe uma `PolicyView` e devolve uma
+  `PolicyDecision`. A visao tem `clock`, `cpuCount` e as candidatas; cada
+  candidata traz o job, a definicao da tarefa e `previousCpu` (CPU que o possuia
+  quando a visao foi montada, para o primeiro desempate de A.4.3).
+  `buildPolicyView` copia somente os jobs elegiveis indicados pelo motor e
+  congela a copia inteira; rejeita job inexistente, concluido, suspenso ou
+  repetido.
+- Decisao: `selected` e um conjunto sem ordem de exatamente
+  min(`cpuCount`, candidatas) jobs; atribuir CPUs cabe ao despacho (DEC-07).
+  O motor executa `checkDecision` e trata qualquer problema (job fora das
+  candidatas, repetido ou quantidade errada) como erro da politica. Com a
+  lista vazia, o motor guarda somente `selectedRefs(decision)`, copias
+  `{taskId, index}`, nunca os objetos devolvidos pela politica: campos extras
+  (por exemplo o job congelado da visao) vazariam para `CpuState.running` e um
+  objeto compartilhado deixaria a politica alterar o estado depois (REQ-07,
+  invariante "Politicas nao modificam estado").
+- Detalhes:
+    - Ordem das candidatas nao carrega prioridade; politica que dependa dela
+      esconderia desempate por ID (REQ-07).
+    - Elegibilidade (DEC-02) e responsabilidade exclusiva do motor na #12, nao
+      da politica nem de `buildPolicyView`. As rejeicoes de `buildPolicyView`
+      (job inexistente, concluido, suspenso ou repetido) nao cobrem a regra do
+      job mais antigo incompleto: dois jobs da mesma tarefa passam pela visao e
+      por `checkDecision`. Os testes da #12 devem garantir essa regra.
+    - O motor monta a visao antes de liberar as CPUs. Se job com quantum vencido
+      conta como "executava antes da selecao" fica para #14/#18.
+    - Sorteio do empate residual entra no contrato com a #20, em nova decisao
+      que estende visao e decisao; esta decisao nao reserva campos para ele.
+    - Q-04 e Q-07 continuam abertas: a visao expoe job e definicao para que
+      #18/#19 escolham os campos sem mudar o contrato.
+- Justificativa: conjunto selecionado basta ao despacho e so exige sorteio
+  quando o empate cruza o corte; copia congelada garante, tambem em tempo de
+  execucao, o invariante "Politicas nao modificam estado".
+- Consequencia: custo de copiar as candidatas a cada selecao, pequeno frente
+  ao snapshot completo por passo. `freezeCopy` (em `helpers/`) e
+  reutilizada.
+- Alternativas descartadas: ordenacao completa das candidatas (forca sorteios
+  sem efeito alem do corte) e visao apenas tipada sobre o estado vivo (um cast
+  permitiria mutar o motor).
 
 ## Fluxo proposto de um passo
 
