@@ -21,7 +21,8 @@
         "lint:fix": "oxlint --fix && oxfmt --write",
         "typecheck": "vue-tsc --noEmit && tsc --noEmit -p src/core/tsconfig.json",
         "publish": "electron-forge publish",
-        "test": "vitest run"
+        "test": "vitest run",
+        "prepare": "git config core.hooksPath .githooks || exit 0"
     },
     "devDependencies": {
         "@electron-forge/cli": "^8.0.1",

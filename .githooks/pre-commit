@@ -1,0 +1,47 @@
+#!/bin/sh
+# Runs before every commit: formats the staged files, then aborts the commit
+# if `npm run lint` or `npm run typecheck` fail.
+#
+# Enabled by `npm install` (the `prepare` script points core.hooksPath here).
+# Skip it once with `git commit --no-verify`.
+#
+# Lint and typecheck see the working tree, not only the staged content, so
+# unstaged edits can make them pass or fail on their own.
+set -eu
+
+# Collect staged files (added, copied, modified, renamed). A file that also
+# has unstaged changes is left alone: formatting and re-adding it would stage
+# edits the user chose not to commit.
+set --
+partial=''
+while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    if git diff --quiet -- "$file"; then
+        set -- "$@" "$file"
+    else
+        partial="$partial
+  $file"
+    fi
+done <<EOF
+$(git diff --cached --name-only --diff-filter=ACMR)
+EOF
+
+if [ "$#" -gt 0 ]; then
+    # oxfmt skips files it cannot format (images, PDFs, LICENSE...).
+    npm run --silent format -- --no-error-on-unmatched-pattern "$@"
+    git add -- "$@"
+fi
+
+if [ -n "$partial" ]; then
+    echo "pre-commit: not auto-formatted because they also have unstaged changes:$partial"
+fi
+
+if ! npm run --silent lint; then
+    echo 'pre-commit: lint failed, commit aborted (run `npm run lint:fix` or fix by hand).' >&2
+    exit 1
+fi
+
+if ! npm run --silent typecheck; then
+    echo 'pre-commit: typecheck failed, commit aborted.' >&2
+    exit 1
+fi
