@@ -150,3 +150,6 @@ out/
 # Personal agent skills
 .agents/skills/
 skills-lock.json
+
+.vscode
+.superpowers
