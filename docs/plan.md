@@ -135,7 +135,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (#14), RM/EDF (#19), desempates e sorteio (#18/#20).
 - Feito: `src/core/policy.ts` com `PolicyCandidate`, `PolicyView`,
   `PolicyDecision`, `SchedulingPolicy`, `buildPolicyView` e `checkDecision`;
-  `freezeCopy` exportada de `snapshot.ts`; DEC-13 registrada.
+  `freezeCopy` e `key` extraidas para `src/core/helpers/`; DEC-13 registrada.
 - Verificacao (2026-10-16): `npm test` 95/95 (17 novos em `policy.test.ts`,
   linha de base 78/78); `npm run lint` ok; `npm run typecheck` ok, inclusive o
   tsconfig exclusivo do nucleo. App nao executado (`npm start`): o motor ainda

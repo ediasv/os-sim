@@ -256,7 +256,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   quando o empate cruza o corte; copia congelada garante, tambem em tempo de
   execucao, o invariante "Politicas nao modificam estado".
 - Consequencia: custo de copiar as candidatas a cada selecao, pequeno frente
-  ao snapshot completo por passo. `freezeCopy` de `snapshot.ts` e reutilizada.
+  ao snapshot completo por passo. `freezeCopy` (em `helpers/`) e
+  reutilizada.
 - Alternativas descartadas: ordenacao completa das candidatas (forca sorteios
   sem efeito alem do corte) e visao apenas tipada sobre o estado vivo (um cast
   permitiria mutar o motor).
