@@ -45,7 +45,9 @@ Nao altera codigo de execucao do simulador.
 Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 - #9 Definir TCBs, jobs, CPUs, configuracao, eventos e snapshots.
-- #10 Definir contrato somente de leitura para politica injetada.
+  Implementada na branch `feat/domain-model` (DEC-12), aguardando commit/PR.
+- #10 Definir contrato somente de leitura para politica injetada. O placeholder
+  `scheduler.ts` foi removido na #9; o contrato parte do zero.
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
@@ -110,15 +112,27 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0 e #11 concluidas; nenhuma implementacao funcional em andamento.
-- #11: Q-01 e parte de Q-03 do modelo resolvidas com o usuario em 2026-10-16
-  (DEC-09 ativacoes/termino, DEC-10 padroes/limites, DEC-11 passo/snapshot).
-  Verificacao: links locais e IDs cruzados conferidos; sem alteracao de codigo,
-  testes nao executados.
-- Proximo objetivo: E1, #9 tipos do dominio e #10 contrato de politica.
-- Escopo do proximo incremento: dominio e testes; sem parser, UI nova ou RM/EDF.
-- Proximo passo: ler REQ-01/02/03/07/08 e DEC-01 a DEC-06 e DEC-09 a DEC-11;
-  modelar TCB, job, CPU, configuracao e snapshot com testes focados.
+- Estado: E0 e #11 concluidas; #9 em andamento (branch `feat/domain-model`).
+- #9 objetivo: modelo de dominio do nucleo (TCB, job, CPU, configuracao,
+  eventos, snapshot), validacao DEC-10 e copia independente de snapshot.
+- #9 escopo acordado em 2026-10-16: tipos + `validateConfig` com mensagens em
+  portugues; remover placeholders `task.ts` e `scheduler.ts` (contrato de
+  politica sera criado na #10); cor `RRGGBB` sem `#`; `strict` no tsconfig.
+  Fora: ativacoes (#12), despacho (#13), quantum (#14), prazos/CPU desligada
+  (#15), PRNG (#20), historico (#23), parser (E4), UI.
+- Feito: `strict` no `tsconfig.json`; `src/core/domain.ts`, `config.ts`,
+  `snapshot.ts`; `Simulator` publica snapshot completo congelado;
+  `task.ts`/`scheduler.ts` removidos; DEC-12 registrada.
+- Verificacao (2026-10-16): `npm test` 64/64 (novos `config.test.ts`,
+  `snapshot.test.ts`, `simulator.test.ts`); `npm run typecheck` ok;
+  `npm run lint` sem avisos do oxlint, falhando apenas no formato preexistente
+  de `AGENTS.md` e `docs/specification.md`. App nao executado (`npm start`);
+  `App.vue`/`useSimulation` so conferidos por typecheck.
+- Linha de base antes da #9: `npm test` 17/17; `npm run typecheck` ok;
+  `npm run lint` ja falhava por formato (oxfmt) em `AGENTS.md`, `docs/plan.md`
+  e `docs/specification.md` e aviso de import nao usado em `scheduler.ts`.
+- Proximo passo: commit/PR com `Closes #9` quando solicitado; depois #10
+  (contrato de politica) e #12 (ativacoes e snapshot 0 conforme DEC-11).
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas.
 - Bloqueios: nenhum.
 

@@ -6,7 +6,12 @@ afirma que os modulos planejados ja existem.
 
 ## Base existente
 
-- [Simulator](../src/core/simulator.ts): apenas relogio e copia do snapshot.
+- [Dominio](../src/core/domain.ts): tipos de configuracao, TCB, job, CPU,
+  intervalos, eventos e snapshot (DEC-12).
+- [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10.
+- [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
+- [Simulator](../src/core/simulator.ts): relogio sobre a configuracao padrao e
+  snapshots completos; ainda sem ativacoes, despacho ou politica.
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada e publica snapshots via `shallowRef`.
 - [Processo principal](../src/main/main.ts): janela Electron.
@@ -168,6 +173,39 @@ anterior. Data inicial dos registros: 2026-10-12.
   e restaurar k basta para reexecutar a partir dele.
 - Consequencia: avancar de k para k+1 executa [k, k+1) e processa a fronteira
   k+1. Nao existe snapshot de configuracao "antes de t=0".
+
+### DEC-12: Modelo de dominio em dados simples
+
+- Estado: aceita em 2026-10-16. Requisitos: REQ-01, REQ-02, REQ-03, REQ-05,
+  REQ-06, REQ-08. Escopo acordado com o usuario na #9.
+- Decisao: o dominio e feito de registros sem comportamento (`TaskDefinition`,
+  `SystemConfig`, `TaskControlBlock`, `Job`, `CpuState`, `ExecutionSlice`,
+  `SimulationEvent`, `SimulationState`). O motor muta somente seu estado
+  privado; snapshots sao copias profundas congeladas (`DeepReadonly`).
+- Detalhes:
+    - Elegibilidade (DEC-02) e termino da tarefa (DEC-09) sao derivados, nao
+      armazenados: `JobState` tem apenas `ready`, `running`, `suspended` e
+      `completed`; `jobs.length` conta as ativacoes geradas.
+    - Eventos sao fatos com instante exato, uniao discriminada por `kind`
+      (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
+      termino de tarefa, CPU desligada/religada); execucao fica em intervalos
+      [start, end) por CPU.
+    - CPUs numeradas de 1 a `cpuCount`; cor em `RRGGBB` sem `#`, como no exemplo
+      do enunciado (A.3.3), normalizada para maiusculas e comparada sem caixa.
+    - `validateConfig` reune todos os problemas (campo, indice da tarefa e
+      mensagem em portugues com o nome do campo no arquivo) e devolve copia
+      normalizada congelada; nao muta a entrada. Lista de tarefas vazia e valida
+      no nucleo; exigir ao menos uma tarefa e regra do arquivo (E4).
+    - Estado do gerador pseudoaleatorio entra no snapshot com #20/#23, sem campo
+      provisorio antes disso.
+- Justificativa: dados simples tornam copia, congelamento e restauracao
+  (DEC-06) triviais e impedem a UI de segurar objetos vivos.
+- Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
+  conflito com DEC-10) e `scheduler.ts` foram removidos; o contrato de politica
+  e criado na #10. Copia integral por passo custa O(tamanho do estado); rever
+  na #23 se o historico ficar grande.
+- Alternativa descartada: classes com estado privado por tarefa, que exigiriam
+  clonagem especifica e expor metodos aos consumidores de snapshots.
 
 ## Fluxo proposto de um passo
 
