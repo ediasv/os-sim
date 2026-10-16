@@ -9,6 +9,7 @@ import {
 import {
     buildPolicyView,
     checkDecision,
+    selectedRefs,
     type PolicyView,
     type SchedulingPolicy,
 } from './policy';
@@ -221,6 +222,49 @@ describe('checkDecision', () => {
 
         expect(issues).toHaveLength(1);
         expect(issues[0]).toMatch(/expected 2.*got 1/);
+    });
+
+    it('reports too few jobs selected when candidates are fewer than CPUs (REQ-02)', () => {
+        const issues = checkDecision(viewOf(1), { selected: [] });
+
+        expect(issues).toHaveLength(1);
+        expect(issues[0]).toMatch(/expected 1.*got 0/);
+    });
+
+    it('reports every problem of one decision together', () => {
+        const issues = checkDecision(viewOf(3), {
+            selected: [ref(1), ref(1), ref(4)],
+        });
+
+        expect(issues).toHaveLength(3);
+        expect(issues[0]).toMatch(/1\.0 is selected more than once/);
+        expect(issues[1]).toMatch(/4\.0 is not a candidate/);
+        expect(issues[2]).toMatch(/expected 2, got 3/);
+    });
+});
+
+describe('selectedRefs', () => {
+    it('keeps only taskId and index when the policy returns whole jobs', () => {
+        const view = viewOf(2);
+        const refs = selectedRefs({
+            selected: view.candidates.map((c) => c.job),
+        });
+
+        expect(refs).toEqual([ref(1), ref(2)]);
+        expect(refs.map((r) => Object.keys(r))).toEqual([
+            ['taskId', 'index'],
+            ['taskId', 'index'],
+        ]);
+    });
+
+    it('does not share objects the policy still holds', () => {
+        const mine = { taskId: 1, index: 0 };
+        const refs = selectedRefs({ selected: [mine] });
+
+        mine.index = 1;
+
+        expect(refs[0]).not.toBe(mine);
+        expect(refs).toEqual([ref(1)]);
     });
 });
 
