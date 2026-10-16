@@ -78,6 +78,7 @@ npm run lint && npm run typecheck
 
 - Give the PR a [Conventional Commits](https://www.conventionalcommits.org) title, such as `feat: add round-robin scheduler` or `fix: correct page fault count`.
   The squash merge makes the PR title the single commit message on `main`, so the title is what ends up in the history and in the release notes.
+- The **CI** workflow (`.github/workflows/ci.yml`) runs `npm test` on every PR. The PR cannot be merged until its `test` check passes.
 - Merge with **Squash and merge** only, then delete the branch.
 
 ### Things to avoid
