@@ -10,6 +10,8 @@ afirma que os modulos planejados ja existem.
   intervalos, eventos e snapshot (DEC-12).
 - [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10.
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
+- [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
+  fatos registrados em dobro no dominio (DEC-12).
 - [Simulator](../src/core/simulator.ts): relogio sobre a configuracao padrao e
   snapshots completos; ainda sem ativacoes, despacho ou politica.
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
@@ -204,6 +206,22 @@ anterior. Data inicial dos registros: 2026-10-12.
   conflito com DEC-10) e `scheduler.ts` foram removidos; o contrato de politica
   e criado na #10. Copia integral por passo custa O(tamanho do estado); rever
   na #23 se o historico ficar grande.
+- Fatos em dobro: execucao fica em `Job.state = running` e em
+  `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
+  `deadline-miss`. `findInconsistencies` exige que cada par concorde (um job em
+  no maximo uma CPU, uma unica perda registrada por job); testes do motor
+  (#13, #15) devem verificar lista vazia apos cada passo.
+- Pendencias conhecidas do modelo, registradas no plano:
+    - CPU ociosa: `offSince` e documentado como `null` enquanto a CPU executa
+      um job, mas o estado inicial (e o snapshot 0 atual do `Simulator`) tem
+      CPUs com `running: null` e `offSince: null`, nem ligadas nem desligadas.
+      Definir na #13 (despacho) e na #15 (CPU desligada) a representacao de
+      CPU sem trabalho, por exemplo desligada desde o tick 0 (REQ-02, DEC-05).
+    - Suspensao: `JobState` tem `suspended`, mas nao ha eventos de suspensao e
+      retomada; a partir dos eventos e intervalos registrados nao se
+      reconstroem os trechos suspensos que o Gantt exige (REQ-09). Definir
+      esses eventos com a matriz de edicao (Q-02, E3: #25/#26) e consumi-los no
+      Gantt (E5: #38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
 

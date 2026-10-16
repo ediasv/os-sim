@@ -99,7 +99,11 @@ export interface CpuState {
     running: JobRef | null;
     /** Ticks already used of the current slice (DEC-03). */
     sliceElapsed: number;
-    /** Tick at which the CPU was switched off, or null while it runs a job (DEC-05). */
+    /**
+     * Tick at which the CPU was switched off, or null while it runs a job (DEC-05).
+     * Open: the initial state has CPUs with neither a job nor `offSince`; #13/#15
+     * define how an idle CPU is represented (DEC-12).
+     */
     offSince: number | null;
 }
 
