@@ -1,24 +1,24 @@
-import { Scheduler } from './scheduler';
-import { Task } from './task';
-
-export interface SimulationSnapshot {
-    clock: number;
-}
-
-export interface Cpu {
-    id: number;
-}
+import {
+    DEFAULT_CONFIG,
+    type SimulationSnapshot,
+    type SimulationState,
+} from './domain';
+import { createInitialState, takeSnapshot } from './snapshot';
 
 export interface ExecutionGuardResult {
     ready: boolean;
     reason?: string;
 }
 
+/**
+ * Owns the live simulation state and publishes immutable snapshots of it.
+ * For now it only advances the clock over the default configuration; loading
+ * a configuration waits for activations (#12), so snapshot 0 is never shown
+ * without the tasks that arrive at tick 0 (DEC-11).
+ */
 export class Simulator {
-    private clock: number = 0;
-    private cpus: Cpu[] = [];
-    private tasks: Task[] = [];
-    private scheduler: Scheduler | null = null;
+    private readonly state: SimulationState =
+        createInitialState(DEFAULT_CONFIG);
     private snapshotHistory: SimulationSnapshot[] = [];
 
     constructor() {
@@ -31,8 +31,7 @@ export class Simulator {
             throw new Error(guardResult.reason);
         }
 
-        this.clock++;
-        this.scheduler?.execute(this.tasks);
+        this.state.clock++;
 
         this.recordSnapshot();
     }
@@ -48,11 +47,7 @@ export class Simulator {
     }
 
     private recordSnapshot(): void {
-        const newSnapshot = {
-            clock: this.clock,
-        };
-
-        this.snapshotHistory.push(newSnapshot);
+        this.snapshotHistory.push(takeSnapshot(this.state));
     }
 
     private executionGuard(): ExecutionGuardResult {

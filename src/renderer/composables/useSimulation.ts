@@ -1,5 +1,6 @@
 import { shallowRef, type ShallowRef } from 'vue';
-import { Simulator, type SimulationSnapshot } from '../../core/simulator';
+import type { SimulationSnapshot } from '../../core/domain';
+import { Simulator } from '../../core/simulator';
 
 /**
  * Bridges the plain core Simulator into Vue. Vue only tracks `view`
