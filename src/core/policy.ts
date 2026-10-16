@@ -44,7 +44,8 @@ export interface PolicyDecision {
     /**
      * Jobs that run during [clock, clock+1): exactly min(cpuCount, candidates),
      * so no CPU stays off while eligible work waits (REQ-02). Unordered: which
-     * CPU each job gets belongs to dispatch (DEC-07).
+     * CPU each job gets belongs to dispatch (DEC-07). Any `JobRef` will do,
+     * such as a candidate's `job`: the engine keeps only `selectedRefs` copies.
      */
     readonly selected: readonly JobRef[];
 }
@@ -85,6 +86,17 @@ export function checkDecision(
         );
     }
     return issues;
+}
+
+/**
+ * Plain `{ taskId, index }` copies of the selected jobs, which the engine
+ * stores in `CpuState.running`; call only once `checkDecision` reports no
+ * issues. Copying drops extra fields (a frozen job from the view would leak
+ * into snapshots) and keeps the engine from holding an object the policy
+ * could still change later (DEC-01, DEC-13).
+ */
+export function selectedRefs(decision: PolicyDecision): JobRef[] {
+    return decision.selected.map(({ taskId, index }) => ({ taskId, index }));
 }
 
 /**
