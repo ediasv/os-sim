@@ -1,0 +1,132 @@
+/**
+ * Contract between the engine and an injected scheduling policy (DEC-01,
+ * DEC-13). The policy reads a frozen view of the eligible jobs and returns
+ * which of them run; the engine checks that answer and does every mutation,
+ * so swapping RM for EDF never touches the simulation loop (REQ-07).
+ */
+import type {
+    DeepReadonly,
+    Job,
+    JobRef,
+    SimulationState,
+    TaskDefinition,
+} from './domain';
+import { freezeCopy } from './helpers/freezeCopy';
+import { key } from './helpers/key';
+
+/** One eligible job offered to the policy, with what RM, EDF and the tie-breaks read (A.4.3). */
+export interface PolicyCandidate {
+    readonly job: DeepReadonly<Job>;
+    readonly task: TaskDefinition;
+    /**
+     * CPU that owned the job when the view was built, or null; feeds the first
+     * tie-break ("who was running before the selection", DEC-03). The engine
+     * builds the view before releasing CPUs. Whether a job whose quantum just
+     * expired still counts as running before is decided in #14/#18.
+     */
+    readonly previousCpu: number | null;
+}
+
+/** Everything a policy may read when choosing; a deep-frozen copy, never live state. */
+export interface PolicyView {
+    readonly clock: number;
+    readonly cpuCount: number;
+    /**
+     * Jobs allowed to run now (eligibility per DEC-02, computed by the engine).
+     * The order carries no priority; a policy must not rely on it, or it would
+     * hide a tie-break by ID (REQ-07).
+     */
+    readonly candidates: readonly PolicyCandidate[];
+}
+
+/** What the policy chose for the tick starting at `view.clock`. */
+export interface PolicyDecision {
+    /**
+     * Jobs that run during [clock, clock+1): exactly min(cpuCount, candidates),
+     * so no CPU stays off while eligible work waits (REQ-02). Unordered: which
+     * CPU each job gets belongs to dispatch (DEC-07).
+     */
+    readonly selected: readonly JobRef[];
+}
+
+/**
+ * A scheduling algorithm (RM, EDF, or a test policy). It only reads the view
+ * and never mutates anything (DEC-01); draws for residual ties join the
+ * contract with #20.
+ */
+export interface SchedulingPolicy {
+    select(view: PolicyView): PolicyDecision;
+}
+
+/**
+ * Lists every way a decision breaks the contract; an empty list means the
+ * engine may dispatch it. The engine treats any issue as a policy bug.
+ */
+export function checkDecision(
+    view: PolicyView,
+    decision: PolicyDecision,
+): string[] {
+    const issues: string[] = [];
+    const candidates = new Set(view.candidates.map((c) => key(c.job)));
+    const seen = new Set<string>();
+    for (const ref of decision.selected) {
+        const id = key(ref);
+        if (!candidates.has(id)) {
+            issues.push(`Selected job ${id} is not a candidate.`);
+        } else if (seen.has(id)) {
+            issues.push(`Job ${id} is selected more than once.`);
+        }
+        seen.add(id);
+    }
+    const expected = Math.min(view.cpuCount, view.candidates.length);
+    if (decision.selected.length !== expected) {
+        issues.push(
+            `Policy selected the wrong number of jobs: expected ${expected}, got ${decision.selected.length}.`,
+        );
+    }
+    return issues;
+}
+
+/**
+ * Copies the eligible jobs out of the live state into a frozen view. Throws
+ * when the engine offers a job that does not exist, has completed, is
+ * suspended or appears twice, since a policy could only make a wrong choice
+ * from it.
+ */
+export function buildPolicyView(
+    state: DeepReadonly<SimulationState>,
+    eligible: readonly JobRef[],
+): PolicyView {
+    const seen = new Set<string>();
+    const candidates = eligible.map((ref): PolicyCandidate => {
+        const id = key(ref);
+        const tcb = state.tasks.find((t) => t.definition.id === ref.taskId);
+        const job = tcb?.jobs[ref.index];
+        if (tcb === undefined || job === undefined) {
+            throw new Error(`Eligible job ${id} does not exist.`);
+        }
+        if (job.state === 'completed') {
+            throw new Error(`Eligible job ${id} has already completed.`);
+        }
+        if (job.state === 'suspended') {
+            throw new Error(`Eligible job ${id} is suspended.`);
+        }
+        if (seen.has(id)) {
+            throw new Error(`Eligible job ${id} is listed twice.`);
+        }
+        seen.add(id);
+        const owner = state.cpus.find(
+            (cpu) => cpu.running !== null && key(cpu.running) === id,
+        );
+        return {
+            job,
+            task: tcb.definition,
+            previousCpu: owner?.id ?? null,
+        };
+    });
+    return freezeCopy({
+        clock: state.clock,
+        cpuCount: state.config.cpuCount,
+        candidates,
+    });
+}
