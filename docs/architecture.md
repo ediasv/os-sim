@@ -241,11 +241,20 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: `selected` e um conjunto sem ordem de exatamente
   min(`cpuCount`, candidatas) jobs; atribuir CPUs cabe ao despacho (DEC-07).
   O motor executa `checkDecision` e trata qualquer problema (job fora das
-  candidatas, repetido ou quantidade errada) como erro da politica.
+  candidatas, repetido ou quantidade errada) como erro da politica. Com a
+  lista vazia, o motor guarda somente `selectedRefs(decision)`, copias
+  `{taskId, index}`, nunca os objetos devolvidos pela politica: campos extras
+  (por exemplo o job congelado da visao) vazariam para `CpuState.running` e um
+  objeto compartilhado deixaria a politica alterar o estado depois (REQ-07,
+  invariante "Politicas nao modificam estado").
 - Detalhes:
     - Ordem das candidatas nao carrega prioridade; politica que dependa dela
       esconderia desempate por ID (REQ-07).
-    - Elegibilidade (DEC-02) e calculada pelo motor (#12), nao pela politica.
+    - Elegibilidade (DEC-02) e responsabilidade exclusiva do motor na #12, nao
+      da politica nem de `buildPolicyView`. As rejeicoes de `buildPolicyView`
+      (job inexistente, concluido, suspenso ou repetido) nao cobrem a regra do
+      job mais antigo incompleto: dois jobs da mesma tarefa passam pela visao e
+      por `checkDecision`. Os testes da #12 devem garantir essa regra.
     - O motor monta a visao antes de liberar as CPUs. Se job com quantum vencido
       conta como "executava antes da selecao" fica para #14/#18.
     - Sorteio do empate residual entra no contrato com a #20, em nova decisao

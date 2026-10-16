@@ -46,17 +46,20 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 - #9 Definir TCBs, jobs, CPUs, configuracao, eventos e snapshots.
   Concluida no PR #46 (DEC-12): `npm test` 78/78, lint e typecheck ok.
-- #10 Definir contrato somente de leitura para politica injetada. Implementada
-  na branch `feat/policy-contract` (DEC-13), aguardando PR; evidencia em
-  "Trabalho atual".
+- #10 Definir contrato somente de leitura para politica injetada. Em revisao no
+  PR #48 (DEC-13); evidencia em "Trabalho atual".
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
+  DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
+  aqui; `buildPolicyView` nao a verifica.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Pendencia herdada da #9 (DEC-12): CPU sem job aparece com `running: null` e
   `offSince: null`, contradizendo a documentacao de `offSince`; definir a
   representacao de CPU ociosa antes do primeiro despacho. Testes do motor devem
-  exigir `findInconsistencies` vazio apos cada passo.
+  exigir `findInconsistencies` vazio apos cada passo. Guardar em
+  `CpuState.running` somente `selectedRefs(decision)`, depois de
+  `checkDecision` vazio (DEC-13).
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   Pendencia herdada da #9 (DEC-12): fechar com a #13 quando uma CPU sem
@@ -125,8 +128,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46) e #11 concluidas. #10 implementada na branch
-  `feat/policy-contract`, `In Progress` no Project, aguardando PR.
+- Estado: E0, #9 (PR #46) e #11 concluidas. #10 em revisao no PR #48 (branch
+  `feat/policy-contract`), `In Progress` no Project.
 - #10 objetivo: contrato somente de leitura entre motor e politica injetada
   (DEC-01), base para o motor com politica de teste (#13) e RM/EDF (#19).
 - #10 escopo acordado em 2026-10-16: decisao como conjunto de
@@ -136,11 +139,16 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - Feito: `src/core/policy.ts` com `PolicyCandidate`, `PolicyView`,
   `PolicyDecision`, `SchedulingPolicy`, `buildPolicyView` e `checkDecision`;
   `freezeCopy` e `key` extraidas para `src/core/helpers/`; DEC-13 registrada.
-- Verificacao (2026-10-16): `npm test` 95/95 (17 novos em `policy.test.ts`,
-  linha de base 78/78); `npm run lint` ok; `npm run typecheck` ok, inclusive o
-  tsconfig exclusivo do nucleo. App nao executado (`npm start`): o motor ainda
-  nao usa o contrato.
-- Proximo passo: PR com `Closes #10`; conferir #10 em `Done` no Project apos o
+  Revisao do PR #48: `selectedRefs` (o motor guarda copias `{taskId, index}`
+  da decisao); DEC-13 explicita que a elegibilidade (DEC-02) cabe somente a
+  #12; dois testes novos de `checkDecision` (menos candidatas que CPUs e
+  varios problemas na mesma decisao).
+- Verificacao (2026-10-16): `npm test` 99/99 (21 em `policy.test.ts`, 4 deles
+  da revisao do PR #48; linha de base 78/78 antes da #10 e 95/95 antes da
+  revisao); `npm run lint` ok; `npm run typecheck` ok, inclusive o tsconfig
+  exclusivo do nucleo. App nao executado (`npm start`): o motor ainda nao usa
+  o contrato.
+- Proximo passo: merge do PR #48; conferir #10 em `Done` no Project apos o
   merge. Depois #12 (ativacoes e snapshot 0 conforme DEC-11), que produz a
   lista de elegiveis consumida por `buildPolicyView`.
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas;
