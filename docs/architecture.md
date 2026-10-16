@@ -17,17 +17,17 @@ afirma que os modulos planejados ja existem.
 Os nomes abaixo indicam responsabilidades; criar arquivos somente conforme a
 entrega precisar, sem gerar toda a estrutura antecipadamente.
 
-| Modulo | Responsabilidade | Dependencias permitidas |
-| --- | --- | --- |
-| Dominio | TCBs, jobs, CPUs, configuracao, estados e eventos | TypeScript puro |
-| Motor | Ativacoes, ticks, execucao, quantum e prazos | Dominio, contrato de politica |
-| Politicas | Prioridade RM/EDF e selecao com desempates | Visao somente de leitura do dominio |
-| Despacho | Elegibilidade, preempcao e atribuicao de CPUs | Dominio, resultado da politica |
-| Historico | Snapshots, cursor, restauracao e ramificacao por edicao | Estado completo do motor |
-| Configuracao | Parser texto e validacao semantica | Dominio |
-| Adaptador Vue | Comandos e publicacao de snapshots | Vue e core |
-| Visualizacao | Gantt, inspecao, edicao e imagem exportavel | Snapshots e eventos |
-| Arquivos | Dialogos, leitura e gravacao autorizadas | Electron main, preload e tipos shared |
+| Modulo        | Responsabilidade                                        | Dependencias permitidas               |
+| ------------- | ------------------------------------------------------- | ------------------------------------- |
+| Dominio       | TCBs, jobs, CPUs, configuracao, estados e eventos       | TypeScript puro                       |
+| Motor         | Ativacoes, ticks, execucao, quantum e prazos            | Dominio, contrato de politica         |
+| Politicas     | Prioridade RM/EDF e selecao com desempates              | Visao somente de leitura do dominio   |
+| Despacho      | Elegibilidade, preempcao e atribuicao de CPUs           | Dominio, resultado da politica        |
+| Historico     | Snapshots, cursor, restauracao e ramificacao por edicao | Estado completo do motor              |
+| Configuracao  | Parser texto e validacao semantica                      | Dominio                               |
+| Adaptador Vue | Comandos e publicacao de snapshots                      | Vue e core                            |
+| Visualizacao  | Gantt, inspecao, edicao e imagem exportavel             | Snapshots e eventos                   |
+| Arquivos      | Dialogos, leitura e gravacao autorizadas                | Electron main, preload e tipos shared |
 
 Regras existentes permanecem: `core/` nao importa Vue, Electron, Node ou outras
 camadas; renderer nao importa Node/main/preload; main/preload nao importam
@@ -121,6 +121,54 @@ anterior. Data inicial dos registros: 2026-10-12.
   limites de dimensao de canvas para imagens rasterizadas.
 - Consequencia: tela pode usar zoom/rolagem; exportacao nao depende do viewport.
 
+### DEC-09: Ativacoes finitas e termino de tarefas
+
+- Estado: aceita em 2026-10-16. Requisitos: REQ-03, REQ-08. Resolve Q-01.
+- Decisao: tarefa periodica (periodo > 0) gera no maximo dez jobs, ativados em
+  ingresso + k * periodo para k de 0 a 9; nao existe 11a ativacao. Tarefa
+  aperiodica (periodo zero ou ausente) gera um unico job, ativado no ingresso.
+  Todo job executa ate completar a duracao, mesmo apos perder o prazo; a perda
+  e registrada e informada ao usuario. A tarefa termina quando seu ultimo job
+  (10o ou unico) conclui.
+- Justificativa: enunciado define periodo zero como tarefa "ativada apenas uma
+  vez no momento da sua criacao"; interpretacao de "executar dez vezes" como
+  dez jobs drenados foi decidida pelo usuario.
+- Substitui: regra anterior de REQ-03 que ignorava aperiodicas com aviso.
+- Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
+  de ativacao. Prioridade RM para periodo zero fica em Q-07.
+
+### DEC-10: Valores padrao e limites da configuracao
+
+- Estado: aceita em 2026-10-16. Requisitos: REQ-02, REQ-05, REQ-06. Resolve a
+  parte de Q-03 que afeta o modelo.
+- Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
+- Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
+  maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
+  relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
+  perda de prazo registrada, nao erro de configuracao.
+- Campos ausentes: somente periodo pode faltar e equivale a zero; demais campos
+  obrigatorios ausentes sao erro. Lista de eventos e opcional, armazenada e
+  nunca executada no Projeto A.
+- Limites numericos: rejeitar valores e tempos derivados (por exemplo
+  ingresso + 9 * periodo + prazo) fora da faixa de inteiros exatos, com mensagem
+  descritiva.
+- Validacao: o nucleo valida a configuracao inteira antes de aplica-la, sem
+  aplicacao parcial; o parser (E4) apenas acrescenta linha e campo ao erro.
+- Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
+
+### DEC-11: Passo de um tick e snapshot inicial
+
+- Estado: aceita em 2026-10-16. Requisitos: REQ-01, REQ-04, REQ-08.
+- Decisao: um passo avanca o relogio em exatamente um tick. Snapshot k
+  representa o instante k apos processar a fronteira (conclusoes, perdas de
+  prazo e fatias vencidas, conforme DEC-04; ativacoes devidas em k; selecao e
+  despacho) e mostra quem executa em [k, k+1). Snapshot 0 ja mostra tarefas
+  com ingresso 0 ativadas e atribuidas as CPUs.
+- Justificativa: todo snapshot tem o mesmo significado, inclusive o inicial,
+  e restaurar k basta para reexecutar a partir dele.
+- Consequencia: avancar de k para k+1 executa [k, k+1) e processa a fronteira
+  k+1. Nao existe snapshot de configuracao "antes de t=0".
+
 ## Fluxo proposto de um passo
 
 1. No instante t, registrar ativacoes devidas e atualizar elegibilidade.
@@ -129,7 +177,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 4. Em t+1, contabilizar conclusoes, detectar perdas de prazo e fatias vencidas.
 5. Publicar snapshot completo; ativacoes de t+1 entram antes do proximo despacho.
 
-Fixar em testes a convencao exata do snapshot inicial e das fronteiras antes de
-expor a API. Historico deve guardar tambem resultados de edicoes no mesmo tick.
-Questao de dez jobs e matriz de edicao permanecem na especificacao, nao sao
-resolvidas implicitamente por este fluxo.
+Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
+DEC-09. Fixar ambos em testes antes de expor a API. Historico deve guardar
+tambem resultados de edicoes no mesmo tick. Matriz de edicao (Q-02) permanece
+na especificacao e nao e resolvida implicitamente por este fluxo.

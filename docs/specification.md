@@ -3,8 +3,8 @@
 ## Escopo e fontes
 
 Implementar um simulador preemptivo de tempo compartilhado com tarefas
-periodicas, multiplas CPUs, RM e EDF. Comecar pelo nucleo e testes; construir a
-interface depois. Projeto B, DM, mutex, E/S e comunicacao nao fazem parte desta
+periodicas e aperiodicas de ativacao unica, multiplas CPUs, RM e EDF. Comecar
+pelo nucleo e testes; construir a interface depois. Projeto B, DM, mutex, E/S e comunicacao nao fazem parte desta
 entrega.
 
 - [Enunciado v0.6](references/objetivo-do-trabalho.pdf): fonte normativa dos requisitos.
@@ -45,11 +45,13 @@ Fonte: A.1.3, A.1.4, A.4.4.
 
 - Um TCB por tarefa concentra suas caracteristicas e registros de ativacoes.
 - Cada ativacao e um job separado, com identidade, progresso e prazo proprios.
-- Somente tarefas periodicas executam em A; aperiódicas devem ser ignoradas com
-  aviso claro, nao silenciosamente.
-- Tarefa periodica termina apos executar dez vezes; interpretacao exata em Q-01.
+- Tarefa periodica gera no maximo dez jobs; tarefa aperiodica (periodo zero ou
+  ausente) gera um unico job no ingresso. Ver DEC-09.
+- Todo job executa ate completar a duracao, mesmo com prazo perdido; a tarefa
+  termina quando seu ultimo job conclui.
 - Aceitacao: ativar conforme ingresso e periodo, mantendo jobs anteriores intactos
-  quando novas ativacoes chegarem. Ver DEC-02 para elegibilidade sequencial.
+  quando novas ativacoes chegarem; nao gerar 11a ativacao periodica nem segunda
+  ativacao aperiodica. Ver DEC-02 para elegibilidade sequencial.
 
 ### REQ-04: Modos de execucao e historico
 
@@ -66,7 +68,8 @@ Fonte: gerais 4; A.1.5 a A.1.5.3.
 
 Fonte: gerais 4; A.3.1, A.3.2, A.3.4.
 
-- Oferecer valores padrao substituiveis pelo arquivo e pela interface.
+- Oferecer valores padrao substituiveis pelo arquivo e pela interface; valores e
+  limites validos em DEC-10.
 - Permitir configurar sistema e editar caracteristicas/estado de qualquer tarefa
   durante a simulacao, respeitando validacao semantica.
 - Rejeitar alteracoes invalidas com motivo claro, sem aplicacao parcial.
@@ -87,7 +90,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 - Strings sem distincao entre maiusculas/minusculas; aceitar `;` final opcional.
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
   conteudo interno do campo de eventos indiscriminadamente.
-- Periodo negativo e erro; periodo zero indica tarefa aperiódica.
+- Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica.
+  Faixas dos demais campos e campos opcionais em DEC-10.
 - Carregar arquivo de qualquer nome/caminho escolhido pelo usuario.
 - Preservar lista de eventos sem executa-la no Projeto A (A.3.3.5).
 - Aceitacao: variantes validas produzem configuracao equivalente; erros indicam
@@ -144,14 +148,14 @@ Fonte: gerais 5 e 6; A.5.
 
 ## Questoes abertas antes das entregas afetadas
 
-- Q-01: confirmar com o professor se dez execucoes significa gerar dez jobs e
-  drenar todos, inclusive atrasados. Proposta: nao gerar o 11o job.
+- Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
+  inclusive atrasados).
 - Q-02: definir matriz de edicao: progresso, duracao, periodo, ingresso, prazo,
   estado, inclusao/remocao de tarefas e efeito sobre jobs ja ativados. Nao
   reescrever retroativamente fatos anteriores a edicao.
-- Q-03: fixar valores padrao e regras para zero, campos ausentes, IDs e limites
-  numericos representaveis. Sobrecarga temporal nao e erro sintatico: nao exigir
-  duracao <= periodo ou duracao <= prazo, nem prazo = periodo.
+- Q-03: valores padrao, zero, campos ausentes, IDs e limites numericos resolvidos
+  em 2026-10-16 por DEC-10. Resta para E4 somente o formato dos diagnosticos do
+  parser (linha, campo e texto de cada erro).
 - Q-04: definir como os desempates usam prazo/ingresso do job versus parametros
   da tarefa. Proposta: prazo absoluto, instante da ativacao e duracao requerida
   daquele job; explicitar o mapeamento antes de implementar politicas.
@@ -160,6 +164,8 @@ Fonte: gerais 5 e 6; A.5.
 - Q-06: definir deteccao de falta de progresso e cancelamento no modo completo
   quando edicoes deixam jobs suspensos indefinidamente. Nao impor termino falso
   nem ignorar futuras ativacoes quando todas as CPUs estiverem desligadas.
+- Q-07: definir prioridade RM de tarefas aperiodicas (periodo zero), pois RM
+  ordena por menor periodo. Resolver antes de implementar RM (E2).
 
 ## Invariantes do nucleo
 

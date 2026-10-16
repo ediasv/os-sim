@@ -13,9 +13,10 @@
 
 - Preservar limites de importacao do README e estado privado do simulador.
 - Trabalhar em incrementos pequenos, com teste focado antes de ampliar a entrega.
-- Atualizar plano ao iniciar, concluir, bloquear ou pausar trabalho, deixando
-  objetivo, escopo, verificacao realizada e proximo passo claros.
-- Marcar entregue somente com evidencia; registrar verificacoes nao executadas.
+- Atualizar plano e status da issue no GitHub Project ao iniciar, concluir,
+  bloquear ou pausar trabalho, deixando objetivo, escopo, verificacao realizada
+  e proximo passo claros. Novos itens de trabalho viram issues no Project.
+- Fechar issue somente com evidencia; registrar verificacoes nao executadas.
 - Registrar mudancas de contrato/comportamento com DEC-ID e justificativa na
   arquitetura; vincular ao REQ-ID. Atualizar criterios se acordados com o usuario.
 - Nao duplicar TODOs por agente nem copiar regras do dominio nestas instrucoes.
