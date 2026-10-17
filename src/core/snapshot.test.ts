@@ -53,12 +53,12 @@ describe('createInitialState', () => {
         expect(state.events).toEqual([]);
     });
 
-    it('creates CPUs numbered from 1, idle and with an empty slice', () => {
+    it('creates CPUs numbered from 1, off since tick zero and with an empty slice', () => {
         const state = createInitialState(twoCpus);
 
         expect(state.cpus).toEqual([
-            { id: 1, running: null, sliceElapsed: 0, offSince: null },
-            { id: 2, running: null, sliceElapsed: 0, offSince: null },
+            { id: 1, running: null, sliceElapsed: 0, offSince: 0 },
+            { id: 2, running: null, sliceElapsed: 0, offSince: 0 },
         ]);
     });
 });

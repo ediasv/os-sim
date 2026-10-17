@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
+import type { PolicyView, SchedulingPolicy } from './policy';
 import { Simulator } from './simulator';
 
 const periodicTask: TaskDefinition = {
@@ -14,6 +16,14 @@ const periodicTask: TaskDefinition = {
     period: 3,
     deadline: 2,
     rawEvents: '',
+};
+
+const firstAvailable: SchedulingPolicy = {
+    select: (view) => ({
+        selected: view.candidates
+            .slice(0, view.cpuCount)
+            .map(({ job }) => ({ taskId: job.taskId, index: job.index })),
+    }),
 };
 
 describe('Simulator', () => {
@@ -45,10 +55,13 @@ describe('Simulator', () => {
     });
 
     it('activates jobs at their arrival and period boundaries with individual deadlines', () => {
-        const sim = new Simulator({
-            ...DEFAULT_CONFIG,
-            tasks: [periodicTask],
-        });
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [periodicTask],
+            },
+            firstAvailable,
+        );
 
         expect(sim.getLatestSnapshot().tasks[0].jobs).toEqual([]);
         sim.tick();
@@ -69,7 +82,11 @@ describe('Simulator', () => {
             activation: 4,
             absoluteDeadline: 6,
         });
-        expect(sim.getLatestSnapshot().events).toEqual([
+        expect(
+            sim
+                .getLatestSnapshot()
+                .events.filter((event) => event.kind === 'activation'),
+        ).toEqual([
             { kind: 'activation', time: 1, job: { taskId: 1, index: 0 } },
             { kind: 'activation', time: 4, job: { taskId: 1, index: 1 } },
         ]);
@@ -89,7 +106,7 @@ describe('Simulator', () => {
                 },
             ],
         };
-        const sim = new Simulator(config);
+        const sim = new Simulator(config, firstAvailable);
 
         expect(sim.getLatestSnapshot().tasks.map((tcb) => tcb.jobs)).toEqual([
             [expect.objectContaining({ activation: 0, index: 0 })],
@@ -107,13 +124,123 @@ describe('Simulator', () => {
     });
 
     it('makes only the oldest incomplete job of each task eligible', () => {
-        const sim = new Simulator({
-            ...DEFAULT_CONFIG,
-            tasks: [{ ...periodicTask, arrival: 0, period: 1 }],
-        });
-        sim.tick();
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [{ ...periodicTask, arrival: 0, period: 1 }],
+            },
+            firstAvailable,
+        );
         sim.tick();
 
         expect(sim.getEligibleJobs()).toEqual([{ taskId: 1, index: 0 }]);
+    });
+
+    it('dispatches the policy-selected set globally across CPUs', () => {
+        const policy: SchedulingPolicy = {
+            select: (view) => ({
+                selected: view.candidates
+                    .slice()
+                    .reverse()
+                    .slice(0, view.cpuCount)
+                    .map(({ job }) => ({
+                        taskId: job.taskId,
+                        index: job.index,
+                    })),
+            }),
+        };
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                tasks: [
+                    { ...periodicTask, id: 1, arrival: 0 },
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                    },
+                ],
+            },
+            policy,
+        );
+
+        expect(sim.getLatestSnapshot().cpus.map((cpu) => cpu.running)).toEqual([
+            { taskId: 2, index: 0 },
+            { taskId: 1, index: 0 },
+        ]);
+        expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+    });
+
+    it('executes one tick, completes on the deadline boundary, and powers idle CPUs off', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [
+                    {
+                        ...periodicTask,
+                        arrival: 2,
+                        duration: 1,
+                        period: 0,
+                        deadline: 1,
+                    },
+                ],
+            },
+            firstAvailable,
+        );
+        const assertConsistent = () =>
+            expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+
+        expect(sim.getLatestSnapshot().cpus[0].offSince).toBe(0);
+        assertConsistent();
+        sim.tick();
+        assertConsistent();
+        sim.tick();
+        expect(sim.getLatestSnapshot().cpus[0]).toMatchObject({
+            running: { taskId: 1, index: 0 },
+            offSince: null,
+        });
+        assertConsistent();
+        sim.tick();
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.clock).toBe(3);
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            executed: 1,
+            state: 'completed',
+            completedAt: 3,
+            deadlineMissed: false,
+        });
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 2, end: 3 },
+        ]);
+        expect(snapshot.cpus[0]).toMatchObject({
+            running: null,
+            offSince: 3,
+        });
+        expect(snapshot.events).toContainEqual({
+            kind: 'completion',
+            time: 3,
+            job: { taskId: 1, index: 0 },
+        });
+        assertConsistent();
+    });
+
+    it('rejects a policy decision that does not fill available CPUs', () => {
+        const policy: SchedulingPolicy = {
+            select: (_view: PolicyView) => ({ selected: [] }),
+        };
+
+        expect(
+            () =>
+                new Simulator(
+                    {
+                        ...DEFAULT_CONFIG,
+                        tasks: [{ ...periodicTask, arrival: 0 }],
+                    },
+                    policy,
+                ),
+        ).toThrow(/wrong number of jobs/);
     });
 });
