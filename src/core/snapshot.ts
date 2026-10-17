@@ -11,9 +11,9 @@ import type {
 import { freezeCopy } from './helpers/freezeCopy';
 
 /**
- * State before any activation: one TCB without jobs per task and CPUs 1..n
- * logically off since tick 0. The engine activates and dispatches tick-zero
- * jobs before publishing snapshot 0 (DEC-11).
+ * State before any activation or dispatch: one TCB without jobs per task and
+ * undecided CPUs. Dispatch sets `offSince` to tick zero for idle CPUs before
+ * publishing snapshot 0 (DEC-11).
  */
 export function createInitialState(config: SystemConfig): SimulationState {
     return {
@@ -24,7 +24,7 @@ export function createInitialState(config: SystemConfig): SimulationState {
             id: i + 1,
             running: null,
             sliceElapsed: 0,
-            offSince: 0,
+            offSince: null,
         })),
         executions: [],
         events: [],

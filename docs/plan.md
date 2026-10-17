@@ -59,8 +59,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 - [x] #13 Implementar despacho global e execucao por tick com politica de teste.
       O motor injeta uma politica, valida a decisao, despacha globalmente, executa
       cada tick, registra conclusoes/perdas de prazo e desliga CPUs sem trabalho.
-      CPUs ociosas iniciam com `offSince: 0`; `findInconsistencies` deve ser vazio
-      apos cada despacho. Politica e dependencia obrigatoria do construtor; a UI
+      CPUs iniciam com `offSince: null`; o despacho inicial define `0` e registra
+      `cpu-off` quando ociosa. `findInconsistencies` deve ser vazio apos cada
+      despacho. Politica e dependencia obrigatoria do construtor; a UI
       so instancia o motor ao iniciar com politica e configuracao. Evidencia
       (2026-10-17): `npm test` 112/112,
       `npm run lint` e `npm run typecheck` aprovados; RM/EDF seguem para E2.

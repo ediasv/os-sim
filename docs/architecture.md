@@ -221,10 +221,11 @@ anterior. Data inicial dos registros: 2026-10-12.
   no maximo uma CPU, uma unica perda registrada por job); testes do motor
   (#13, #15) devem verificar lista vazia apos cada passo.
 - Pendencias conhecidas do modelo, registradas no plano:
-    - CPU ociosa (resolvida na #13): CPUs sem trabalho iniciam desligadas desde
-      o tick 0 (`offSince: 0`); despacho registra religamento/desligamento e
-      `findInconsistencies` e aplicado apos cada despacho. Testes conferem a
-      consistencia em cada snapshot inspecionado (REQ-02, DEC-05).
+    - CPU ociosa (resolvida na #13): o estado pre-dispatch usa `offSince: null`;
+      o primeiro despacho marca CPUs sem trabalho desligadas desde o tick 0
+      (`offSince: 0`) e registra `cpu-off`. Despachos seguintes registram
+      religamento/desligamento; `findInconsistencies` e aplicado apos cada
+      despacho (REQ-02, DEC-05).
     - Suspensao: `JobState` tem `suspended`, mas nao ha eventos de suspensao e
       retomada; a partir dos eventos e intervalos registrados nao se
       reconstroem os trechos suspensos que o Gantt exige (REQ-09). Definir

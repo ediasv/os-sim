@@ -280,6 +280,11 @@ describe('Simulator', () => {
             expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
 
         expect(sim.getLatestSnapshot().cpus[0].offSince).toBe(0);
+        expect(sim.getLatestSnapshot().events).toContainEqual({
+            kind: 'cpu-off',
+            time: 0,
+            cpuId: 1,
+        });
         assertConsistent();
         sim.tick();
         assertConsistent();
@@ -325,6 +330,16 @@ describe('Simulator', () => {
             time: 5,
             cpuId: 1,
         });
+        expect(
+            sim
+                .getLatestSnapshot()
+                .events.filter(
+                    (event) => event.kind === 'cpu-off' && event.cpuId === 1,
+                ),
+        ).toEqual([
+            { kind: 'cpu-off', time: 0, cpuId: 1 },
+            { kind: 'cpu-off', time: 3, cpuId: 1 },
+        ]);
         assertConsistent();
         sim.tick();
         expect(sim.getLatestSnapshot().executions).toEqual([

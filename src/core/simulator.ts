@@ -251,7 +251,7 @@ export class Simulator {
                 key(cpu.running) === key(nextRef);
 
             if (nextRef === null) {
-                if (cpu.offSince === null) {
+                if (cpu.running !== null || cpu.offSince === null) {
                     cpu.offSince = this.state.clock;
                     cpu.sliceElapsed = 0;
                     this.state.events.push({
