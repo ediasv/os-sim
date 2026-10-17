@@ -415,4 +415,14 @@ describe('Simulator', () => {
                 ),
         ).toThrow(/scheduling policy with a select method is required/);
     });
+
+    it('requires a policy for any configured tasks, including future arrivals', () => {
+        expect(
+            () =>
+                new Simulator({
+                    ...DEFAULT_CONFIG,
+                    tasks: [{ ...periodicTask, arrival: 5 }],
+                }),
+        ).toThrow(/policy is required when tasks are configured/);
+    });
 });

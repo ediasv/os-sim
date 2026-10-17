@@ -61,8 +61,8 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
       cada tick, registra conclusoes/perdas de prazo e desliga CPUs sem trabalho.
       CPUs iniciam com `offSince: null`; o despacho inicial define `0` e registra
       `cpu-off` quando ociosa. `findInconsistencies` deve ser vazio apos cada
-      despacho. Politica e dependencia obrigatoria do construtor; a UI
-      so instancia o motor ao iniciar com politica e configuracao. Evidencia
+      despacho. A politica e obrigatoria quando ha tarefas configuradas;
+      configuracao vazia pode usar a politica sem trabalho. Evidencia
       (2026-10-17): `npm test` 112/112,
       `npm run lint` e `npm run typecheck` aprovados; RM/EDF seguem para E2.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.

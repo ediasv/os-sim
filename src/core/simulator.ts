@@ -1,4 +1,5 @@
 import {
+    DEFAULT_CONFIG,
     maxJobs,
     type Job,
     type JobRef,
@@ -18,6 +19,10 @@ import {
 import { createInitialState, takeSnapshot } from './snapshot';
 import { key } from './helpers/key';
 
+const NO_WORK_POLICY: SchedulingPolicy = {
+    select: () => ({ selected: [] }),
+};
+
 export interface ExecutionGuardResult {
     ready: boolean;
     reason?: string;
@@ -33,10 +38,13 @@ export class Simulator {
     private readonly policy: SchedulingPolicy;
     private snapshotHistory: SimulationSnapshot[] = [];
 
-    constructor(config: SystemConfig, policy: SchedulingPolicy) {
-        const validatedConfig = this.validateDependencies(config, policy);
-        this.state = createInitialState(validatedConfig);
-        this.policy = policy;
+    constructor(
+        config: SystemConfig = DEFAULT_CONFIG,
+        policy?: SchedulingPolicy,
+    ) {
+        const validated = this.validateDependencies(config, policy);
+        this.state = createInitialState(validated.config);
+        this.policy = validated.policy;
         this.activateDueJobs();
         this.dispatch();
         this.recordSnapshot();
@@ -305,13 +313,21 @@ export class Simulator {
     /** Validates all required inputs before creating any live simulator state. */
     private validateDependencies(
         config: SystemConfig,
-        policy: SchedulingPolicy,
-    ): SystemConfig {
+        policy: SchedulingPolicy | undefined,
+    ): { config: SystemConfig; policy: SchedulingPolicy } {
         const result = validateConfig(config);
         if (!result.ok) {
             throw new Error(
                 result.issues.map((issue) => issue.message).join('\n'),
             );
+        }
+        if (policy === undefined) {
+            if (result.config.tasks.length > 0) {
+                throw new TypeError(
+                    'A scheduling policy is required when tasks are configured.',
+                );
+            }
+            return { config: result.config, policy: NO_WORK_POLICY };
         }
         if (
             policy === null ||
@@ -322,7 +338,7 @@ export class Simulator {
                 'A scheduling policy with a select method is required.',
             );
         }
-        return result.config;
+        return { config: result.config, policy };
     }
 
     /**
