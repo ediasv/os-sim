@@ -99,7 +99,7 @@ export interface CpuState {
     running: JobRef | null;
     /** Ticks already used of the current slice (DEC-03). */
     sliceElapsed: number;
-    /** Tick at which the CPU was switched off, or null while it is on (DEC-05). */
+    /** Tick at which the CPU was switched off; null while it is on, and before the first dispatch (DEC-05, DEC-11). */
     offSince: number | null;
 }
 
