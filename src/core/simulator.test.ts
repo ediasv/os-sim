@@ -173,6 +173,81 @@ describe('Simulator', () => {
         expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
     });
 
+    it('preempts and resumes a job without losing its execution progress', () => {
+        const policy: SchedulingPolicy = {
+            select: (view) => ({
+                selected: [
+                    {
+                        taskId: view.clock === 1 || view.clock >= 3 ? 2 : 1,
+                        index: 0,
+                    },
+                ],
+            }),
+        };
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [
+                    { ...periodicTask, arrival: 0, period: 0 },
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        period: 0,
+                    },
+                ],
+            },
+            policy,
+        );
+
+        sim.tick();
+        expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+        expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toMatchObject({
+            executed: 1,
+            state: 'ready',
+        });
+        sim.tick();
+        expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+        expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toMatchObject({
+            executed: 1,
+            state: 'running',
+        });
+        sim.tick();
+        expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            executed: 2,
+            state: 'completed',
+            completedAt: 3,
+        });
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 1 },
+            { cpuId: 1, job: { taskId: 2, index: 0 }, start: 1, end: 2 },
+            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 2, end: 3 },
+        ]);
+        expect(
+            snapshot.events.filter((event) => event.kind === 'preemption'),
+        ).toEqual([
+            {
+                kind: 'preemption',
+                time: 1,
+                cpuId: 1,
+                preempted: { taskId: 1, index: 0 },
+                by: { taskId: 2, index: 0 },
+            },
+            {
+                kind: 'preemption',
+                time: 2,
+                cpuId: 1,
+                preempted: { taskId: 2, index: 0 },
+                by: { taskId: 1, index: 0 },
+            },
+        ]);
+        expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+
     it('executes one tick, completes on the deadline boundary, and powers idle CPUs off', () => {
         const sim = new Simulator(
             {
@@ -181,6 +256,15 @@ describe('Simulator', () => {
                     {
                         ...periodicTask,
                         arrival: 2,
+                        duration: 1,
+                        period: 0,
+                        deadline: 1,
+                    },
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 5,
                         duration: 1,
                         period: 0,
                         deadline: 1,
@@ -225,6 +309,66 @@ describe('Simulator', () => {
             job: { taskId: 1, index: 0 },
         });
         assertConsistent();
+
+        sim.tick();
+        assertConsistent();
+        sim.tick();
+        expect(sim.getLatestSnapshot().cpus[0]).toMatchObject({
+            running: { taskId: 2, index: 0 },
+            offSince: null,
+        });
+        expect(sim.getLatestSnapshot().events).toContainEqual({
+            kind: 'cpu-on',
+            time: 5,
+            cpuId: 1,
+        });
+        assertConsistent();
+        sim.tick();
+        expect(sim.getLatestSnapshot().executions).toEqual([
+            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 2, end: 3 },
+            { cpuId: 1, job: { taskId: 2, index: 0 }, start: 5, end: 6 },
+        ]);
+        assertConsistent();
+    });
+
+    it('records a missed deadline once and continues executing the job', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [
+                    {
+                        ...periodicTask,
+                        arrival: 0,
+                        duration: 3,
+                        period: 0,
+                        deadline: 1,
+                    },
+                ],
+            },
+            firstAvailable,
+        );
+
+        for (let tick = 0; tick < 3; tick++) {
+            sim.tick();
+            expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+        }
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            executed: 3,
+            state: 'completed',
+            completedAt: 3,
+            deadlineMissed: true,
+        });
+        expect(
+            snapshot.events.filter((event) => event.kind === 'deadline-miss'),
+        ).toEqual([
+            {
+                kind: 'deadline-miss',
+                time: 1,
+                job: { taskId: 1, index: 0 },
+            },
+        ]);
     });
 
     it('rejects a policy decision that does not fill available CPUs', () => {
@@ -242,5 +386,15 @@ describe('Simulator', () => {
                     policy,
                 ),
         ).toThrow(/wrong number of jobs/);
+    });
+
+    it('requires an injected policy when tasks are configured', () => {
+        expect(
+            () =>
+                new Simulator({
+                    ...DEFAULT_CONFIG,
+                    tasks: [{ ...periodicTask, arrival: 5 }],
+                }),
+        ).toThrow(/policy is required/);
     });
 });

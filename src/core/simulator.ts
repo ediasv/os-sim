@@ -26,9 +26,8 @@ export interface ExecutionGuardResult {
 
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
- * Activations are processed at each boundary; dispatch and execution are
- * are selected globally by an injected policy; quantum handling belongs to
- * the next engine increment (#14).
+ * Activations are processed at each boundary, eligible jobs are selected
+ * globally by an injected policy, and quantum handling belongs to #14.
  */
 export class Simulator {
     private readonly state: SimulationState;
@@ -43,6 +42,11 @@ export class Simulator {
         if (!result.ok) {
             throw new Error(
                 result.issues.map((issue) => issue.message).join('\n'),
+            );
+        }
+        if (policy === undefined && result.config.tasks.length > 0) {
+            throw new Error(
+                'A scheduling policy is required when the configuration has tasks.',
             );
         }
         this.state = createInitialState(result.config);
@@ -189,11 +193,6 @@ export class Simulator {
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);
         const view = buildPolicyView(this.state, eligible);
-        if (this.policy === undefined && eligible.length > 0) {
-            throw new Error(
-                'A scheduling policy is required to dispatch eligible jobs.',
-            );
-        }
         const decision = this.policy?.select(view) ?? { selected: [] };
         const issues = checkDecision(view, decision);
         if (issues.length > 0) {
@@ -263,6 +262,22 @@ export class Simulator {
                 }
                 cpu.running = null;
                 continue;
+            }
+
+            if (!sameJob && cpu.running !== null) {
+                const preempted = this.findJob(cpu.running);
+                if (preempted?.state === 'ready') {
+                    this.state.events.push({
+                        kind: 'preemption',
+                        time: this.state.clock,
+                        cpuId: cpu.id,
+                        preempted: {
+                            taskId: preempted.taskId,
+                            index: preempted.index,
+                        },
+                        by: { taskId: nextRef.taskId, index: nextRef.index },
+                    });
+                }
             }
 
             if (cpu.offSince !== null) {
