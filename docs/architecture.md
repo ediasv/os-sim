@@ -19,7 +19,8 @@ afirma que os modulos planejados ja existem.
   congelada e conferencia da decisao (DEC-13); RM/EDF continuam para E2.
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo e faz
-  despacho global pela politica injetada antes de publicar snapshots completos.
+  despacho global pela politica injetada antes de publicar snapshots completos
+  (DEC-07, DEC-14).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada e publica snapshots via `shallowRef`.
 - [Processo principal](../src/main/main.ts): janela Electron.
@@ -117,12 +118,16 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-07: Reavaliacao preemptiva e estabilidade de CPU
 
-- Estado: proposta. Requisitos: REQ-02, REQ-07.
-- Decisao proposta: consultar politica a cada tick; preservar CPU de jobs que
+- Estado: aceita em 2026-10-17 (acordado com o usuario na revisao do PR #50).
+  Requisitos: REQ-02, REQ-07.
+- Decisao: consultar politica a cada tick; preservar CPU de jobs que
   continuam selecionados e preencher vagas com os demais selecionados.
 - Justificativa: detectar preempcao antes do quantum sem migracoes desnecessarias.
 - Consequencia: distinguir selecao global de atribuicao por CPU; nao tornar
-  permanencia na CPU um criterio superior a prioridade da politica.
+  permanencia na CPU um criterio superior a prioridade da politica. Implementada
+  em `Simulator.dispatch` (#13): jobs que continuam selecionados mantem a CPU;
+  os demais selecionados ocupam as CPUs livres na ordem da selecao e, depois,
+  por ID de CPU.
 
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
@@ -215,8 +220,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
   `deadline-miss`. `findInconsistencies` exige que cada par concorde (um job em
-  no maximo uma CPU, uma unica perda registrada por job); testes do motor
-  (#13, #15) devem verificar lista vazia apos cada passo.
+  no maximo uma CPU, uma unica perda registrada por job) e rejeita
+  `executed > duration` (DEC-14); testes do motor
+  (#13 ja verifica; #15 deve verificar) lista vazia apos cada passo.
 - Pendencias conhecidas do modelo, registradas no plano:
     - CPU ociosa (resolvida na #13): o estado pre-dispatch usa `offSince: null`;
       o primeiro despacho marca CPUs sem trabalho desligadas desde o tick 0
@@ -275,13 +281,44 @@ anterior. Data inicial dos registros: 2026-10-12.
   sem efeito alem do corte) e visao apenas tipada sobre o estado vivo (um cast
   permitiria mutar o motor).
 
-## Fluxo proposto de um passo
+### DEC-14: Construcao e passo transacionais do Simulator
 
-1. No instante t, registrar ativacoes devidas e atualizar elegibilidade.
-2. Selecionar jobs e despachar nas CPUs, considerando contexto anterior.
-3. Executar um tick em cada CPU ocupada e registrar intervalos [t, t+1).
-4. Em t+1, contabilizar conclusoes, detectar perdas de prazo e fatias vencidas.
-5. Publicar snapshot completo; ativacoes de t+1 entram antes do proximo despacho.
+- Estado: aceita em 2026-10-17. Requisitos: REQ-01, REQ-04, REQ-07. Complementa
+  DEC-13 e DEC-07; escopo acordado com o usuario na revisao do PR #50.
+- Decisao:
+    1. O construtor exige politica com `select` sempre que a configuracao tem
+       tarefas, inclusive com ativacoes futuras. Sem tarefas usa a politica
+       interna que nao seleciona nada, de modo que `new Simulator()` com
+       `DEFAULT_CONFIG` funciona (adaptador Vue).
+    2. A decisao deve ser um objeto com a lista `selected`. O motor le
+       `selected` uma vez, copia as referencias (`selectedRefs`) e confere essa
+       copia; o despacho usa somente a copia (complementa DEC-13). Entradas que
+       nao sejam objetos sao rejeitadas, e apos `checkDecision` o motor guarda a
+       referencia do proprio candidato (`{taskId, index}` numericos), nunca a
+       tipada pela politica.
+    3. `tick()` trabalha sobre uma copia do estado e a confirma somente depois
+       que despacho e `findInconsistencies` passam. Em qualquer erro, estado vivo
+       e historico ficam inalterados e o erro e propagado.
+- Justificativa: um passo aplicado pela metade reexecutava jobs concluidos
+  (`executed > duration`) e corrompia o historico (REQ-04).
+- Consequencia:
+    - Uma copia extra O(estado) por tick, da mesma ordem do snapshot; rever na
+      #23 junto com DEC-12.
+    - `findInconsistencies` tambem rejeita `executed > duration`.
+    - `deepCopy` compartilha subarvores congeladas (a configuracao) em vez de
+      copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
+- Alternativa descartada: bloquear o simulador apos um erro, o que perde um
+  estado valido que poderia continuar.
+
+## Fluxo de um passo
+
+1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
+2. Avancar o relogio para t+1.
+3. Contabilizar conclusoes antes das perdas de prazo (DEC-04); fatias vencidas
+   entram com a #14.
+4. Registrar as ativacoes devidas em t+1.
+5. Selecionar pela politica e despachar (DEC-07, DEC-13).
+6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
 
 Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
 DEC-09. Fixar ambos em testes antes de expor a API. Historico deve guardar
