@@ -34,22 +34,8 @@ export class Simulator {
     private snapshotHistory: SimulationSnapshot[] = [];
 
     constructor(config: SystemConfig, policy: SchedulingPolicy) {
-        const result = validateConfig(config);
-        if (!result.ok) {
-            throw new Error(
-                result.issues.map((issue) => issue.message).join('\n'),
-            );
-        }
-        if (
-            policy === null ||
-            typeof policy !== 'object' ||
-            typeof policy.select !== 'function'
-        ) {
-            throw new TypeError(
-                'A scheduling policy with a select method is required.',
-            );
-        }
-        this.state = createInitialState(result.config);
+        const validatedConfig = this.validateDependencies(config, policy);
+        this.state = createInitialState(validatedConfig);
         this.policy = policy;
         this.activateDueJobs();
         this.dispatch();
@@ -314,6 +300,29 @@ export class Simulator {
 
     private executionGuard(): ExecutionGuardResult {
         return { ready: true };
+    }
+
+    /** Validates all required inputs before creating any live simulator state. */
+    private validateDependencies(
+        config: SystemConfig,
+        policy: SchedulingPolicy,
+    ): SystemConfig {
+        const result = validateConfig(config);
+        if (!result.ok) {
+            throw new Error(
+                result.issues.map((issue) => issue.message).join('\n'),
+            );
+        }
+        if (
+            policy === null ||
+            typeof policy !== 'object' ||
+            typeof policy.select !== 'function'
+        ) {
+            throw new TypeError(
+                'A scheduling policy with a select method is required.',
+            );
+        }
+        return result.config;
     }
 
     /**
