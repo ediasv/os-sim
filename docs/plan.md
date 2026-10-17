@@ -84,7 +84,13 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
   primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
   `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
-  registra so a conclusao.
+  registra so a conclusao. Implementada em `Simulator.expireSlices`, entre
+  conclusoes/perdas de prazo e ativacoes. Testes novos: exemplo de DEC-18,
+  troca no vencimento com `preemption` e migracao com quantum inteiro em 2
+  CPUs, retomada apos preempcao no meio da fatia, quantum 1 sem dividir o
+  intervalo, perda de prazo e vencimento na mesma fronteira e rollback de
+  politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
+  `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
   perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
@@ -172,8 +178,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
 - #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
-  usuario em 2026-10-17; so documentacao ate aqui, testes nao executados.
-- Proximo passo: desenho e implementacao do quantum na #14.
+  usuario em 2026-10-17; quantum implementado e verificado (evidencia na E1),
+  em revisao no PR da #14.
+- Proximo passo: revisar e fazer merge do PR da #14; a issue fecha no merge.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
