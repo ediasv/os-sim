@@ -8,6 +8,8 @@ Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
 - Itens das entregas E1-E6 sao issues (`#N`) no Project, com campos `Status`
   e `Fase`. Issue fechada ou `Done` exige evidencia de verificacao registrada.
+  O corpo da issue segue o [template](../.github/ISSUE_TEMPLATE/item-de-trabalho.md);
+  este plano guarda estado e evidencias, nao repete a descricao.
 - Base existente e E0 mantem `[x]` como historico: entregue com evidencia.
 - Trabalho parcial continua desmarcado e aparece em "Trabalho atual".
 - Registrar bloqueios explicitamente; nao marcar uma fase inteira por ter
@@ -86,7 +88,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
   fechamento da verificacao de intervalos e dos criterios especificos dessa issue.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
-- #17 Verificar compatibilidade do contador/adaptador Vue durante a evolucao.
+- #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 
 ### E2: Politicas obrigatorias
 
@@ -96,13 +98,16 @@ Requisito: REQ-07.
   em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
   (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
   (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
-  primeiro desempate). Fecha com o PR destas mudancas documentais.
+  primeiro desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
+  resolvidas na especificacao. Evidencia (2026-10-17, sobre `02d9875`): links
+  locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
+  `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
   (DEC-16, DEC-18).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
-- #22 Nao apresentar limites teoricos uniprocessador como garantia multiprocessador.
+- #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
 
 ### E3: Controle, historico e edicao
 
@@ -123,10 +128,10 @@ Requisitos: REQ-04, REQ-05.
 Requisitos: REQ-05, REQ-06.
 
 - #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10).
-- #30 Parser com linhas vazias, espacos, caixa e terminador opcional.
+- #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
-- #33 Dialogo de arquivo via main/preload, com API pequena e tipos compartilhados.
+- #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
 ### E5: Interface e Gantt
@@ -134,9 +139,9 @@ Requisitos: REQ-05, REQ-06.
 Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 
 - #35 Resolver Q-05 e avaliar DEC-08 antes da implementacao visual.
-- #36 Controles de configuracao, execucao e navegacao pelo historico.
-- #37 Inspecao de TCBs/jobs/CPUs e edicao com erros claros.
-- #38 Gantt, IDs ordenados, cores, suspensao, CPUs, marcadores e legenda.
+- #36 Implementar controles de configuracao, execucao e navegacao no historico.
+- #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
+- #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
   Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
   trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
@@ -154,19 +159,17 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50) e
-  #51 (PR #52) concluidos; evidencias registradas acima. #18 em andamento
-  (In Progress no Project).
-- #18 objetivo: registrar as decisoes que RM/EDF e desempates exigem, sem
-  mudar codigo de execucao. Feito: DEC-16, DEC-17 e DEC-18 na arquitetura;
-  Q-04 e Q-07 resolvidas na especificacao; comentario de `previousCpu` em
-  `policy.ts` aponta para DEC-18.
-- Verificacao (2026-10-17, sobre `02d9875`): links locais e IDs cruzados
-  conferidos; `npm test` 139/139, `npm run lint` e `npm run typecheck`
-  aprovados (so mudou um comentario em `policy.ts`). Aplicativo Electron nao
-  executado.
-- Proximo passo: commit/PR com `Closes #18`; depois quantum e contexto na #14
-  (DEC-18).
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
+  #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
+- #55 (descricoes das issues): corpos das issues abertas de #14 a #45
+  reescritos no template, revisados pelo usuario fase a fase; titulos vagos
+  ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
+  repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
+  aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
+  deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
+  executados. O template so aparece no GitHub depois do merge em `main` (nao
+  verificado).
+- Proximo passo: quantum e contexto na #14 (DEC-18).
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
