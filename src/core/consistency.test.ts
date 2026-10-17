@@ -137,6 +137,24 @@ describe('findInconsistencies: missed deadlines', () => {
     });
 });
 
+describe('findInconsistencies: execution budget', () => {
+    it('reports a job that executed more ticks than its duration', () => {
+        const state = stateWith(job({ executed: 3 }));
+
+        expect(findInconsistencies(state)).toContain(
+            'Job 1.0 executed 3 ticks, more than its duration of 2.',
+        );
+    });
+
+    it('accepts a job that executed exactly its duration', () => {
+        const state = stateWith(
+            job({ executed: 2, state: 'completed', completedAt: 2 }),
+        );
+
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+});
+
 describe('findInconsistencies: inputs', () => {
     it('accepts the initial state and frozen snapshots', () => {
         const state = stateWith(
