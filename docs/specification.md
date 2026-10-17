@@ -95,7 +95,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 - Carregar arquivo de qualquer nome/caminho escolhido pelo usuario.
 - Preservar lista de eventos sem executa-la no Projeto A (A.3.3.5).
 - Aceitacao: variantes validas produzem configuracao equivalente; erros indicam
-  linha/campo/motivo, e falhas de acesso explicam o problema ao usuario.
+  linha/campo/valor/motivo conforme DEC-19, e falhas de acesso explicam o
+  problema ao usuario sem serem confundidas com erros de conteudo.
 
 ### REQ-07: Politicas e desempates
 
@@ -158,9 +159,9 @@ Fonte: gerais 5 e 6; A.5.
   reescrever retroativamente fatos anteriores a edicao. Incluir os eventos de
   suspensao e retomada que o Gantt (REQ-09) precisa para exibir trechos
   suspensos; o modelo atual ainda nao os tem (DEC-12).
-- Q-03: valores padrao, zero, campos ausentes, IDs e limites numericos resolvidos
-  em 2026-10-16 por DEC-10. Resta para E4 somente o formato dos diagnosticos do
-  parser (linha, campo e texto de cada erro).
+- Q-03: resolvida em 2026-10-17 por DEC-19. DEC-10 fixou valores padrao, zero,
+  campos ausentes, IDs e limites numericos; DEC-19 define diagnosticos do parser,
+  numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
 - Q-04: resolvida em 2026-10-17 por DEC-16: prazo absoluto e instante da
   ativacao do job; duracao da tarefa, como em A.4.3 (nao o trabalho restante).
 - Q-05: confirmar apresentacao final com tarefas ordenadas e CPUs identificadas;

@@ -128,6 +128,11 @@ Requisitos: REQ-04, REQ-05.
 Requisitos: REQ-05, REQ-06.
 
 - #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10).
+- DEC-19 aceita em 2026-10-17: diagnosticos usam linhas do arquivo original,
+  acumulam erros recuperaveis e distinguem falhas de acesso. Evidencia deste PR:
+  decisao e exemplos registrados em [architecture.md](architecture.md#dec-19-diagnosticos-do-parser-de-configuracao);
+  Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
+  Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
@@ -161,6 +166,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
   #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
+- #29: decisao DEC-19 aceita e documentada no PR #57; aguarda integracao para
+  fechar a issue. A implementacao/testes do parser permanecem nas #30, #31 e #34.
 - #55 (descricoes das issues): corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
@@ -169,7 +176,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
-- Proximo passo: quantum e contexto na #14 (DEC-18).
+- Proximo passo: revisar/integrar o PR #57; depois implementar parser e
+  diagnosticos conforme DEC-19 nas #30, #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
