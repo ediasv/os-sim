@@ -50,7 +50,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   PR #48 (DEC-13); evidencia em "Trabalho atual".
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
-- #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
+- [x] #12 Implementar ativacoes e elegibilidade sequencial por tarefa (PR #49 merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
   aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
@@ -130,8 +130,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11, implementacao de #12 (PR #49)
-  e #13 implementados; #12 e #13 aguardam revisao/merge.
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49) e #13
+  implementados; evidencias registradas acima.
 - #13 objetivo: implementar despacho global e execucao por tick com politica
   injetada, sem acoplar o motor a RM/EDF.
 - Feito: selecao validada por politica, atribuicao global, execucao e intervalos
