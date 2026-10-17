@@ -85,7 +85,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   progresso ou prazo. Nova fatia renova quantum, inclusive se escolher o mesmo
   job. Interrupcao e retomada tambem iniciam nova fatia.
 - Consequencia: preservar quem executava imediatamente antes da selecao para
-  desempate, exceto o job cuja fatia acabou de vencer (DEC-18). Continuidade
+  desempate, inclusive o job cuja fatia acabou de vencer (DEC-18). Continuidade
   sem interrupcao preserva consumo da fatia.
 - Registrar vencimento mesmo sem troca de tarefa; nao registrar troca ficticia.
 - Justificativa: interpretacao acordada do quantum junto a politicas preemptivas.
@@ -270,8 +270,8 @@ anterior. Data inicial dos registros: 2026-10-12.
       job mais antigo incompleto: dois jobs da mesma tarefa passam pela visao e
       por `checkDecision`. Os testes da #12 devem garantir essa regra.
     - O motor monta a visao antes de liberar as CPUs. Job com quantum vencido
-      nao conta como "executava antes da selecao" (DEC-18); como a visao
-      expressa isso fica para a #14.
+      continua contando como "executava antes da selecao": `previousCpu` traz
+      a CPU que ele ocupava (DEC-18).
     - Sorteio do empate residual entra no contrato com a #20, em nova decisao
       que estende visao e decisao; esta decisao nao reserva campos para ele.
     - Q-04 e Q-07 decididas na #18 (DEC-16, DEC-17) sem mudar o contrato: os
@@ -380,44 +380,49 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-18: Quantum vencido e primeiro desempate
 
-- Estado: aceita em 2026-10-17 (decidida pelo usuario na #18). Requisitos:
-  REQ-07, REQ-01. Detalha DEC-03 e DEC-13.
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #18); revista pelo
+  usuario em 2026-10-17 na #14. Requisitos: REQ-07, REQ-01. Detalha DEC-03 e
+  DEC-13.
 - Decisao: o criterio (1) de A.4.3 vale para o job que executava antes da
-  selecao e ainda tem fatia. O job cuja fatia vence na fronteira volta a fila
-  sem essa vantagem e disputa a partir do criterio (2); se for escolhido de
-  novo, inicia nova fatia (DEC-03). Depois da selecao, a permanencia na CPU
-  segue DEC-07, inclusive para esse job.
-- Justificativa: A.3.3 define quantum como o tempo maximo que uma tarefa pode
-  executar, em sistema de tempo compartilhado, e A.4.3 (1) existe para evitar
-  troca de contexto. Como a politica e consultada a cada tick (DEC-07), job de
-  prioridade maior ja preempta sem esperar o quantum; o quantum so muda a
-  escala num empate de prioridade, e isso exige retirar o criterio (1) do job
-  vencido.
+  selecao, inclusive quando a fatia dele vence na fronteira. Num empate de
+  prioridade, o job vencido continua na CPU e inicia nova fatia (DEC-03); outro
+  job so assume a CPU com prioridade maior. Depois da selecao, a permanencia na
+  CPU segue DEC-07.
+- Justificativa: A.4.3 (1) favorece quem ja executava para evitar troca de
+  contexto, e o usuario decidiu na #14 que isso vale tambem no fim da fatia.
 - Exemplo (teste para #16/#21): RM, 1 CPU, quantum 2, mesmo periodo; J ativado
   em 0 com duracao 4 e prazo absoluto 10; K ativado em 1 com duracao 2 e prazo
-  absoluto 9. Em 1, J continua pelo criterio (1). Em 2, a fatia de J vence e
-  K vence pelo prazo: J [0, 2), K [2, 4), J [4, 6).
+  absoluto 9. Em 1, J continua pelo criterio (1). Em 2, a fatia de J vence,
+  registra `quantum-expired` e J continua pelo criterio (1) com nova fatia. Em
+  4, J conclui na mesma fronteira em que a fatia venceria e registra so a
+  conclusao: J [0, 4), K [4, 6).
 - Consequencia:
-    - Nao e round-robin: o empatado so assume a CPU se vencer os criterios (2)
-      a (5); caso contrario o job vencido segue executando.
-    - Na #14 o motor identifica as fatias vencidas na fronteira antes de montar
-      a visao. Proposta: `previousCpu` nulo para esse job, sem mudar a forma do
-      contrato (DEC-13); o despacho le as CPUs do estado, nao `previousCpu`.
-    - `quantum-expired` e registrado sempre (DEC-03). Se a troca causada pelo
-      vencimento tambem gera `preemption` fica para a #14.
+    - Visao da politica sem mudanca (DEC-13): `previousCpu` do job vencido traz
+      a CPU que ele ocupava, porque o motor monta a visao antes de liberar as
+      CPUs.
+    - Como a politica e consultada a cada tick (DEC-07), job de prioridade maior
+      ja preempta sem esperar o quantum, e no empate o job vencido fica pelo
+      criterio (1). Com politicas por prioridade (RM, EDF), o vencimento renova
+      a fatia e registra o evento, sem mudar a escala.
+    - Eventos (decididos pelo usuario na #14): `quantum-expired` e registrado
+      em todo vencimento (DEC-03); se outro job assume a CPU nessa fronteira,
+      registra-se tambem `preemption` do job vencido. Job que conclui na
+      fronteira em que a fatia venceria registra so a conclusao, pois DEC-03
+      devolve a selecao apenas job incompleto.
 - Alternativas descartadas:
-    - Job vencido manter o criterio (1): venceria todo empate e o quantum nunca
-      mudaria a escala.
-    - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); a
-      selecao no vencimento seria igual a de qualquer tick, anulando o quantum,
-      e empates totais seriam sorteados a cada tick.
+    - Job vencido perder o criterio (1) e disputar a partir do (2) (versao
+      aceita na #18): faria o quantum alternar jobs empatados; revista pelo
+      usuario na #14 para manter o criterio (1) e evitar a troca de contexto.
+    - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); empates
+      totais seriam sorteados a cada tick.
 
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
 2. Avancar o relogio para t+1.
-3. Contabilizar conclusoes antes das perdas de prazo (DEC-04); fatias vencidas
-   entram com a #14 e retiram o primeiro desempate do job (DEC-18).
+3. Contabilizar conclusoes antes das perdas de prazo (DEC-04) e das fatias
+   vencidas (#14); job que conclui nao registra vencimento, e o job vencido
+   mantem o primeiro desempate (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
 5. Selecionar pela politica e despachar (DEC-07, DEC-13).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).

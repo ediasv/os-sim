@@ -81,8 +81,10 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
-  Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
-  visao expressa isso e se a troca por vencimento tambem gera `preemption`.
+  DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
+  primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
+  `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
+  registra so a conclusao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
   perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
@@ -98,7 +100,7 @@ Requisito: REQ-07.
   em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
   (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
   (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
-  primeiro desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
+  primeiro desempate; revista na #14: o job vencido mantem o desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
   resolvidas na especificacao. Evidencia (2026-10-17, sobre `02d9875`): links
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
@@ -169,7 +171,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
-- Proximo passo: quantum e contexto na #14 (DEC-18).
+- #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
+  usuario em 2026-10-17; so documentacao ate aqui, testes nao executados.
+- Proximo passo: desenho e implementacao do quantum na #14.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 

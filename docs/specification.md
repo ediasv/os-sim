@@ -110,7 +110,7 @@ Fonte: A.4 a A.4.3.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar.
 - Quantum limita uma fatia; vencimento devolve job incompleto a fila e reavalia,
   podendo selecionar o mesmo job. DEC-03 registra a interpretacao adotada; o job
-  com fatia vencida perde o primeiro desempate (DEC-18).
+  com fatia vencida mantem o primeiro desempate (DEC-18).
 - Aceitacao: politica de teste valida o motor independentemente de RM/EDF; testes
   separados conferem prioridades, preempcoes e cada nivel de desempate.
 
