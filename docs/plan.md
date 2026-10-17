@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-16. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-17. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -46,28 +46,32 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 - #9 Definir TCBs, jobs, CPUs, configuracao, eventos e snapshots.
   Concluida no PR #46 (DEC-12): `npm test` 78/78, lint e typecheck ok.
-- #10 Definir contrato somente de leitura para politica injetada. Em revisao no
-  PR #48 (DEC-13); evidencia em "Trabalho atual".
+- #10 Definir contrato somente de leitura para politica injetada.
+  Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
+  Concluida no PR #49 (merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
   aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 103/103, `npm run lint` e `npm run typecheck` aprovados.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
-  Pendencia herdada da #9 (DEC-12): CPU sem job aparece com `running: null` e
-  `offSince: null`, contradizendo a documentacao de `offSince`; definir a
-  representacao de CPU ociosa antes do primeiro despacho. Testes do motor devem
-  exigir `findInconsistencies` vazio apos cada passo. Guardar em
-  `CpuState.running` somente `selectedRefs(decision)`, depois de
-  `checkDecision` vazio (DEC-13).
+  Em revisao no PR #50 (DEC-07 aceita, DEC-14). O motor injeta uma politica,
+  valida a decisao, despacha globalmente, executa cada tick, registra
+  conclusoes/perdas de prazo e desliga CPUs sem trabalho. CPUs iniciam com
+  `offSince: null`; o despacho inicial define `0` e registra `cpu-off` quando
+  ociosa. O passo e transacional: erro de politica ou inconsistencia preserva
+  estado e historico (DEC-14). A politica e obrigatoria quando ha tarefas
+  configuradas; configuracao vazia usa a politica sem trabalho. Evidencia
+  (2026-10-17): `npm test` 132/132, `npm run lint` e `npm run typecheck`
+  aprovados; RM/EDF seguem para E2.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  Pendencia herdada da #9 (DEC-12): fechar com a #13 quando uma CPU sem
-  trabalho passa a desligada (por exemplo desde o tick 0) e registrar `cpu-off`
-  coerente com `offSince`; manter `deadlineMissed` e `deadline-miss` em par.
+  A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
+  perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
+  fechamento da verificacao de intervalos e dos criterios especificos dessa issue.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Verificar compatibilidade do contador/adaptador Vue durante a evolucao.
 
@@ -75,7 +79,8 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 
 Requisito: REQ-07.
 
-- #18 Resolver Q-04/Q-07 e avaliar DEC-07 antes de definir selecao multiprocessador.
+- #18 Resolver Q-04/Q-07 antes de definir selecao multiprocessador; DEC-07 aceita
+  em 2026-10-17.
 - #19 Implementar RM e EDF separados do motor.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs.
@@ -131,19 +136,18 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11 e implementacao de #12 (PR #49)
-  concluidos; #12 aguarda revisao/merge.
-- #12 objetivo: implementar ativacoes conforme DEC-09/11 e elegibilidade
-  sequencial conforme DEC-02, entregando refs elegiveis ao contrato de politica.
-- Feito: `Simulator` aceita configuracao validada, ativa jobs nos limites de tick
-  e registra eventos; `findEligibleJobs` oferece somente o job incompleto mais
-  antigo por tarefa e mantem bloqueio se ele estiver suspenso.
-- Verificacao (2026-10-17): `npm test` 103/103; `npm run lint` ok;
-  `npm run typecheck` ok, incluindo o tsconfig exclusivo do nucleo. App nao
-  executado (`npm start`): despacho e execucao ainda pertencem a #13-15.
-- Proximo passo: revisar/mergear o PR #49 e implementar despacho global e
-  execucao por tick com politica de teste (#13).
-- Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas;
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11 e #12 (PR #49) concluidos; #13
+  implementada e em revisao no PR #50; evidencias registradas acima.
+- #13 objetivo: implementar despacho global e execucao por tick com politica
+  injetada, sem acoplar o motor a RM/EDF.
+- Feito: selecao validada por politica, atribuicao global, execucao e intervalos
+  por CPU, conclusao/prazo, transicoes de CPU ociosa e snapshots consistentes;
+  passo transacional (DEC-14) e testes com varias CPUs.
+- Verificacao (2026-10-17): `npm test` 132/132, `npm run lint` e
+  `npm run typecheck` aprovados. Aplicativo Electron nao executado; RM/EDF ainda
+  nao existem e politicas sao exercitadas pelos testes.
+- Proximo passo: resolver Q-04/Q-07 e quantum/contexto na #14/#18.
+- Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-08 ainda proposta;
   quantum vencido e `previousCpu` (DEC-13) para #14/#18.
 - Bloqueios: nenhum.
 

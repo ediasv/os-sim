@@ -3,7 +3,8 @@
  * marked both in `Job.state` and in `CpuState.running`, and a missed deadline
  * both in `Job.deadlineMissed` and as a `deadline-miss` event. The engine must
  * keep each pair in sync; its tests (#13, #15) assert that this list is empty
- * after every step.
+ * after every step. It also checks that no job ran past its duration, which
+ * would have caught a half-applied step re-executing completed jobs.
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
 import { key } from './helpers/key';
@@ -17,6 +18,11 @@ export function findInconsistencies(
     for (const tcb of state.tasks) {
         for (const job of tcb.jobs) {
             jobs.set(key(job), job);
+            if (job.executed > tcb.definition.duration) {
+                issues.push(
+                    `Job ${key(job)} executed ${job.executed} ticks, more than its duration of ${tcb.definition.duration}.`,
+                );
+            }
         }
     }
 
