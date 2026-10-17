@@ -60,9 +60,10 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
       O motor injeta uma politica, valida a decisao, despacha globalmente, executa
       cada tick, registra conclusoes/perdas de prazo e desliga CPUs sem trabalho.
       CPUs ociosas iniciam com `offSince: 0`; `findInconsistencies` deve ser vazio
-      apos cada despacho. Evidencia (2026-10-17): `npm test` 111/111,
+      apos cada despacho. Politica e dependencia obrigatoria do construtor; a UI
+      so instancia o motor ao iniciar com politica e configuracao. Evidencia
+      (2026-10-17): `npm test` 112/112,
       `npm run lint` e `npm run typecheck` aprovados; RM/EDF seguem para E2.
-      A API do `Simulator` exige politica; a UI so cria a instancia ao iniciar.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
