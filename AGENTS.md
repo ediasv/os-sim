@@ -16,6 +16,9 @@
 - Atualizar plano e status da issue no GitHub Project ao iniciar, concluir,
   bloquear ou pausar trabalho, deixando objetivo, escopo, verificacao realizada
   e proximo passo claros. Novos itens de trabalho viram issues no Project.
+- Issues seguem o [template](.github/ISSUE_TEMPLATE/item-de-trabalho.md): o
+  que e por que, criterios verificaveis, fora do escopo e dependencias; o como
+  fica com quem implementa.
 - Fechar issue somente com evidencia; registrar verificacoes nao executadas.
 - Registrar mudancas de contrato/comportamento com DEC-ID e justificativa na
   arquitetura; vincular ao REQ-ID. Atualizar criterios se acordados com o usuario.
