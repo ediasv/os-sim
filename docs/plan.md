@@ -52,7 +52,10 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
-  aqui; `buildPolicyView` nao a verifica.
+  aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
+  configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
+  individual e elegibilidade de um job incompleto por tarefa. Evidencia:
+  `npm test` 103/103, `npm run lint` e `npm run typecheck` aprovados.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Pendencia herdada da #9 (DEC-12): CPU sem job aparece com `running: null` e
   `offSince: null`, contradizendo a documentacao de `offSince`; definir a
@@ -128,29 +131,18 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46) e #11 concluidas. #10 em revisao no PR #48 (branch
-  `feat/policy-contract`), `In Progress` no Project.
-- #10 objetivo: contrato somente de leitura entre motor e politica injetada
-  (DEC-01), base para o motor com politica de teste (#13) e RM/EDF (#19).
-- #10 escopo acordado em 2026-10-16: decisao como conjunto de
-  min(CPUs, candidatas) jobs; visao como copia congelada; sorteio adiado para
-  a #20. Fora: elegibilidade (#12), despacho e uso pelo motor (#13), quantum
-  (#14), RM/EDF (#19), desempates e sorteio (#18/#20).
-- Feito: `src/core/policy.ts` com `PolicyCandidate`, `PolicyView`,
-  `PolicyDecision`, `SchedulingPolicy`, `buildPolicyView` e `checkDecision`;
-  `freezeCopy` e `key` extraidas para `src/core/helpers/`; DEC-13 registrada.
-  Revisao do PR #48: `selectedRefs` (o motor guarda copias `{taskId, index}`
-  da decisao); DEC-13 explicita que a elegibilidade (DEC-02) cabe somente a
-  #12; dois testes novos de `checkDecision` (menos candidatas que CPUs e
-  varios problemas na mesma decisao).
-- Verificacao (2026-10-16): `npm test` 99/99 (21 em `policy.test.ts`, 4 deles
-  da revisao do PR #48; linha de base 78/78 antes da #10 e 95/95 antes da
-  revisao); `npm run lint` ok; `npm run typecheck` ok, inclusive o tsconfig
-  exclusivo do nucleo. App nao executado (`npm start`): o motor ainda nao usa
-  o contrato.
-- Proximo passo: merge do PR #48; conferir #10 em `Done` no Project apos o
-  merge. Depois #12 (ativacoes e snapshot 0 conforme DEC-11), que produz a
-  lista de elegiveis consumida por `buildPolicyView`.
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11 e implementacao de #12 (PR #49)
+  concluidos; #12 aguarda revisao/merge.
+- #12 objetivo: implementar ativacoes conforme DEC-09/11 e elegibilidade
+  sequencial conforme DEC-02, entregando refs elegiveis ao contrato de politica.
+- Feito: `Simulator` aceita configuracao validada, ativa jobs nos limites de tick
+  e registra eventos; `findEligibleJobs` oferece somente o job incompleto mais
+  antigo por tarefa e mantem bloqueio se ele estiver suspenso.
+- Verificacao (2026-10-17): `npm test` 103/103; `npm run lint` ok;
+  `npm run typecheck` ok, incluindo o tsconfig exclusivo do nucleo. App nao
+  executado (`npm start`): despacho e execucao ainda pertencem a #13-15.
+- Proximo passo: revisar/mergear o PR #49 e implementar despacho global e
+  execucao por tick com politica de teste (#13).
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-07/08 ainda propostas;
   quantum vencido e `previousCpu` (DEC-13) para #14/#18.
 - Bloqueios: nenhum.

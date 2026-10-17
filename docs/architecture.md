@@ -12,10 +12,14 @@ afirma que os modulos planejados ja existem.
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12).
+- [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
+  antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
+  (DEC-02).
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
   congelada e conferencia da decisao (DEC-13); ainda sem RM/EDF nem uso pelo motor.
-- [Simulator](../src/core/simulator.ts): relogio sobre a configuracao padrao e
-  snapshots completos; ainda sem ativacoes, despacho ou politica.
+- [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
+  nos limites de tick (incluindo snapshot 0) e publica snapshots completos; ainda
+  sem despacho, execucao ou uso de politica.
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada e publica snapshots via `shallowRef`.
 - [Processo principal](../src/main/main.ts): janela Electron.
