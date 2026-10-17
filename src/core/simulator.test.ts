@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ConfigValidationError } from './config';
 import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
@@ -67,14 +68,59 @@ describe('Simulator', () => {
         ).toThrow(/select method is required/);
     });
 
-    it('rejects an invalid configuration with the validator messages', () => {
+    it('rejects an invalid configuration with a ConfigValidationError listing every issue (DEC-15)', () => {
+        let caught: unknown;
+        try {
+            new Simulator(
+                {
+                    ...DEFAULT_CONFIG,
+                    cpuCount: 0,
+                    tasks: [{ ...periodicTask, duration: 0 }],
+                },
+                firstAvailable,
+            );
+        } catch (error) {
+            caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(ConfigValidationError);
+        expect(caught).toBeInstanceOf(Error);
+        const error = caught as ConfigValidationError;
+        expect(error.name).toBe('ConfigValidationError');
+        expect(error.issues.map((i) => [i.field, i.taskIndex])).toEqual([
+            ['cpuCount', undefined],
+            ['duration', 0],
+        ]);
+        expect(error.message).toBe(
+            error.issues.map((i) => i.message).join('\n'),
+        );
+        expect(error.message).toMatch(/qtde_cpus/);
+        expect(Object.isFrozen(error.issues)).toBe(true);
+        expect(Object.isFrozen(error.issues[0])).toBe(true);
+    });
+
+    it('reports an invalid configuration before a missing policy (DEC-15)', () => {
         expect(
             () =>
-                new Simulator(
-                    { ...DEFAULT_CONFIG, cpuCount: 0 },
-                    firstAvailable,
-                ),
-        ).toThrow(/qtde_cpus/);
+                new Simulator({
+                    ...DEFAULT_CONFIG,
+                    cpuCount: 0,
+                    tasks: [periodicTask],
+                }),
+        ).toThrow(ConfigValidationError);
+    });
+
+    it('publishes the normalized configuration in snapshot 0 (DEC-10)', () => {
+        const snapshot = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [{ ...periodicTask, color: 'f0e0d0' }],
+            },
+            firstAvailable,
+        ).getLatestSnapshot();
+
+        expect(snapshot.config.tasks[0].color).toBe('F0E0D0');
+        expect(snapshot.tasks[0].definition.color).toBe('F0E0D0');
     });
 
     it('advances the clock by exactly one tick per step (DEC-11)', () => {
@@ -120,12 +166,25 @@ describe('Simulator', () => {
         sim.tick();
         expectConsistent(sim);
         expect(sim.getLatestSnapshot().tasks[0].jobs).toHaveLength(1);
+        const firstJob = sim.getLatestSnapshot().tasks[0].jobs[0];
         sim.tick();
         expectConsistent(sim);
         expect(sim.getLatestSnapshot().tasks[0].jobs[1]).toMatchObject({
             index: 1,
             activation: 4,
             absoluteDeadline: 6,
+        });
+        // REQ-03: a new activation leaves earlier jobs intact.
+        expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toEqual(firstJob);
+        expect(firstJob).toEqual({
+            taskId: 1,
+            index: 0,
+            activation: 1,
+            absoluteDeadline: 3,
+            executed: 2,
+            state: 'completed',
+            completedAt: 3,
+            deadlineMissed: false,
         });
         expect(
             sim
@@ -162,24 +221,137 @@ describe('Simulator', () => {
             expectConsistent(sim);
         }
         const snapshot = sim.getLatestSnapshot();
-        expect(snapshot.tasks[0].jobs).toHaveLength(10);
+        const activations = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27];
+        expect(snapshot.tasks[0].jobs.map((job) => job.activation)).toEqual(
+            activations,
+        );
+        expect(
+            snapshot.tasks[0].jobs.map((job) => job.absoluteDeadline),
+        ).toEqual(activations.map((time) => time + 2));
         expect(snapshot.tasks[1].jobs).toHaveLength(1);
         expect(
+            snapshot.events.flatMap((event) =>
+                event.kind === 'activation'
+                    ? [[event.job.taskId, event.time]]
+                    : [],
+            ),
+        ).toEqual([
+            [1, 0],
+            [2, 0],
+            ...activations.slice(1).map((time) => [1, time]),
+        ]);
+    });
+
+    it('activates an aperiodic task with a later arrival exactly once (DEC-09)', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [{ ...periodicTask, arrival: 3, period: 0 }],
+            },
+            firstAvailable,
+        );
+        const jobCounts = [sim.getLatestSnapshot().tasks[0].jobs.length];
+        for (let tick = 0; tick < 10; tick++) {
+            sim.tick();
+            expectConsistent(sim);
+            jobCounts.push(sim.getLatestSnapshot().tasks[0].jobs.length);
+        }
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(jobCounts).toEqual([0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]);
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            activation: 3,
+            absoluteDeadline: 5,
+        });
+        expect(
             snapshot.events.filter((event) => event.kind === 'activation'),
-        ).toHaveLength(11);
+        ).toEqual([
+            { kind: 'activation', time: 3, job: { taskId: 1, index: 0 } },
+        ]);
+    });
+
+    it('starts each activated job untouched and records its activation in snapshot 0 (DEC-11)', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [
+                    { ...periodicTask, arrival: 0 },
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        period: 0,
+                    },
+                ],
+            },
+            { select: () => ({ selected: [{ taskId: 1, index: 0 }] }) },
+        );
+        const snapshot = sim.getLatestSnapshot();
+        const untouched = {
+            index: 0,
+            activation: 0,
+            absoluteDeadline: 2,
+            executed: 0,
+            completedAt: null,
+            deadlineMissed: false,
+        };
+
+        // Snapshot 0 already dispatches (DEC-11): task 1 runs, task 2 waits.
+        expect(snapshot.tasks[0].jobs).toEqual([
+            { ...untouched, taskId: 1, state: 'running' },
+        ]);
+        expect(snapshot.tasks[1].jobs).toEqual([
+            { ...untouched, taskId: 2, state: 'ready' },
+        ]);
+        expect(
+            snapshot.events.filter((event) => event.kind === 'activation'),
+        ).toEqual([
+            { kind: 'activation', time: 0, job: { taskId: 1, index: 0 } },
+            { kind: 'activation', time: 0, job: { taskId: 2, index: 0 } },
+        ]);
+        expectConsistent(sim);
     });
 
     it('makes only the oldest incomplete job of each task eligible', () => {
         const sim = new Simulator(
             {
                 ...DEFAULT_CONFIG,
-                tasks: [{ ...periodicTask, arrival: 0, period: 1 }],
+                tasks: [
+                    { ...periodicTask, arrival: 0, period: 1 },
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        period: 0,
+                        duration: 3,
+                        deadline: 5,
+                    },
+                ],
             },
             firstAvailable,
         );
         sim.tick();
+        expectConsistent(sim);
 
-        expect(sim.getEligibleJobs()).toEqual([{ taskId: 1, index: 0 }]);
+        expect(sim.getEligibleJobs()).toEqual([
+            { taskId: 1, index: 0 },
+            { taskId: 2, index: 0 },
+        ]);
+        // DEC-02: a ready job is not eligible while an older one is incomplete.
+        expect(sim.getLatestSnapshot().tasks[0].jobs[1].state).toBe('ready');
+        // REQ-03: the new activation keeps the unfinished older job's progress.
+        expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toEqual({
+            taskId: 1,
+            index: 0,
+            activation: 0,
+            absoluteDeadline: 2,
+            executed: 1,
+            state: 'running',
+            completedAt: null,
+            deadlineMissed: false,
+        });
     });
 
     it('dispatches the policy-selected set globally across CPUs', () => {

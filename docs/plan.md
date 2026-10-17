@@ -56,9 +56,10 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
-  `npm test` 103/103, `npm run lint` e `npm run typecheck` aprovados.
+  `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
+  aprovados. Lacunas da revisao seguem na #51.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
-  Em revisao no PR #50 (DEC-07 aceita, DEC-14). O motor injeta uma politica,
+  Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
   valida a decisao, despacha globalmente, executa cada tick, registra
   conclusoes/perdas de prazo e desliga CPUs sem trabalho. CPUs iniciam com
   `offSince: null`; o despacho inicial define `0` e registra `cpu-off` quando
@@ -67,6 +68,16 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuradas; configuracao vazia usa a politica sem trabalho. Evidencia
   (2026-10-17): `npm test` 132/132, `npm run lint` e `npm run typecheck`
   aprovados; RM/EDF seguem para E2.
+- #51 Ajustes pos-revisao do PR #49: contrato do Simulator, testes e plano.
+  Implementada, aguardando commit/PR. O construtor rejeita configuracao
+  invalida com `ConfigValidationError`, que guarda `field`/`taskIndex` de cada
+  problema; `getEligibleJobs()` segue publico e somente leitura (DEC-15).
+  Testes novos: configuracao normalizada no snapshot 0, configuracao conferida
+  antes da politica, instantes exatos das dez ativacoes, jobs anteriores
+  intactos, aperiodica com ingresso tardio, campos e eventos de ativacao no
+  snapshot 0 e casos de elegibilidade (sem jobs, todos concluidos, mais antigo
+  `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
+  139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
@@ -136,17 +147,19 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11 e #12 (PR #49) concluidos; #13
-  implementada e em revisao no PR #50; evidencias registradas acima.
-- #13 objetivo: implementar despacho global e execucao por tick com politica
-  injetada, sem acoplar o motor a RM/EDF.
-- Feito: selecao validada por politica, atribuicao global, execucao e intervalos
-  por CPU, conclusao/prazo, transicoes de CPU ociosa e snapshots consistentes;
-  passo transacional (DEC-14) e testes com varias CPUs.
-- Verificacao (2026-10-17): `npm test` 132/132, `npm run lint` e
-  `npm run typecheck` aprovados. Aplicativo Electron nao executado; RM/EDF ainda
-  nao existem e politicas sao exercitadas pelos testes.
-- Proximo passo: resolver Q-04/Q-07 e quantum/contexto na #14/#18.
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49) e #13 (PR #50)
+  concluidos; #51 implementada e aguardando commit/PR; evidencias registradas
+  acima.
+- #51 objetivo: fechar as pendencias da revisao do PR #49.
+- Feito: erro tipado de configuracao no construtor do `Simulator` e DEC-15
+  (inclui `getEligibleJobs()` publico); teste da configuracao normalizada;
+  testes de ativacao (REQ-03, DEC-09, DEC-11) e de elegibilidade (DEC-02);
+  evidencias deste plano corrigidas.
+- Verificacao (2026-10-17): `npm test` 139/139, `npm run lint` e
+  `npm run typecheck` aprovados. Testes de caracterizacao conferidos por
+  mutacao temporaria do motor. Aplicativo Electron nao executado.
+- Proximo passo: commit/PR da #51 com `Closes #51`; depois resolver Q-04/Q-07
+  e quantum/contexto na #14/#18.
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-08 ainda proposta;
   quantum vencido e `previousCpu` (DEC-13) para #14/#18.
 - Bloqueios: nenhum.

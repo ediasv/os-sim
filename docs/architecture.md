@@ -8,7 +8,8 @@ afirma que os modulos planejados ja existem.
 
 - [Dominio](../src/core/domain.ts): tipos de configuracao, TCB, job, CPU,
   intervalos, eventos e snapshot (DEC-12).
-- [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10.
+- [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10
+  e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12).
@@ -20,7 +21,8 @@ afirma que os modulos planejados ja existem.
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo e faz
   despacho global pela politica injetada antes de publicar snapshots completos
-  (DEC-07, DEC-14).
+  (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
+  expoe os jobs elegiveis somente para leitura (DEC-15).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada e publica snapshots via `shallowRef`.
 - [Processo principal](../src/main/main.ts): janela Electron.
@@ -171,7 +173,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   ingresso + 9 * periodo + prazo) fora da faixa de inteiros exatos, com mensagem
   descritiva.
 - Validacao: o nucleo valida a configuracao inteira antes de aplica-la, sem
-  aplicacao parcial; o parser (E4) apenas acrescenta linha e campo ao erro.
+  aplicacao parcial; o parser (E4) apenas acrescenta linha e campo ao erro,
+  a partir dos problemas carregados pelo erro do construtor (DEC-15).
 - Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
 
 ### DEC-11: Passo de um tick e snapshot inicial
@@ -309,6 +312,29 @@ anterior. Data inicial dos registros: 2026-10-12.
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
 - Alternativa descartada: bloquear o simulador apos um erro, o que perde um
   estado valido que poderia continuar.
+
+### DEC-15: Rejeicao de configuracao e consultas do Simulator
+
+- Estado: aceita em 2026-10-17. Requisitos: REQ-05, REQ-02. Detalha DEC-10;
+  escopo acordado com o usuario na #51.
+- Decisao:
+    1. `new Simulator(config, policy)` valida com `validateConfig` antes de
+       criar estado. Se a configuracao for invalida, lanca
+       `ConfigValidationError` (subclasse de `Error`) com `issues` congelado
+       (`field`, `taskIndex`, `message`) e `message` igual as mensagens unidas
+       por quebra de linha. Nenhuma instancia nem estado parcial existe. A
+       configuracao e conferida antes da politica (DEC-14), entao uma
+       configuracao invalida sem politica gera esse erro, nao o da politica.
+    2. `getEligibleJobs()` e uma consulta publica somente de leitura: devolve
+       as refs congeladas de `findEligibleJobs` (DEC-02) e nao expoe estado
+       vivo. Serve a inspecao da E5 e a testes de DEC-02 que nao dependem da
+       politica.
+- Justificativa: o parser da E4 associa `taskIndex` a linha sem validar duas
+  vezes (DEC-10); `message` mantem o texto que a interface ja exibe.
+- Alternativas descartadas: `Error` simples com validacao previa pelo chamador
+  (duplica a validacao no parser) e construtor que recebe somente uma
+  configuracao ja validada (muda a assinatura e o adaptador Vue e contraria a
+  DEC-10, que manda o nucleo validar antes de aplicar).
 
 ## Fluxo de um passo
 

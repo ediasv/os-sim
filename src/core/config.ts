@@ -9,6 +9,7 @@ import {
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
+import { freezeCopy } from './helpers/freezeCopy';
 
 /** Configuration field an issue refers to, in the core's vocabulary. */
 export type ConfigField =
@@ -28,6 +29,21 @@ export interface ConfigIssue {
 export type ConfigResult =
     | { readonly ok: true; readonly config: SystemConfig }
     | { readonly ok: false; readonly issues: readonly ConfigIssue[] };
+
+/**
+ * Rejection of a whole configuration (DEC-15). Keeps every issue with its
+ * field and task index, so the file parser (E4) can point at a line without
+ * validating again; `message` joins the issue messages for plain display.
+ */
+export class ConfigValidationError extends Error {
+    readonly issues: readonly ConfigIssue[];
+
+    constructor(issues: readonly ConfigIssue[]) {
+        super(issues.map((issue) => issue.message).join('\n'));
+        this.name = 'ConfigValidationError';
+        this.issues = freezeCopy(issues);
+    }
+}
 
 const ALGORITHMS: readonly AlgorithmId[] = ['RM', 'EDF'];
 
