@@ -412,6 +412,47 @@ anterior. Data inicial dos registros: 2026-10-12.
       selecao no vencimento seria igual a de qualquer tick, anulando o quantum,
       e empates totais seriam sorteados a cada tick.
 
+### DEC-19: Diagnosticos do parser de configuracao
+
+- Estado: aceita em 2026-10-17 pelo usuario. Requisitos: REQ-06. Resolve Q-03;
+  detalha DEC-10, DEC-12 e DEC-15.
+- Decisao:
+    1. Diagnosticos de conteudo identificam linha original (base 1), campo,
+       valor recebido e motivo. Valor ausente e indicado como tal. Para linha
+       com quantidade incorreta de campos, indicar a estrutura da linha, a
+       quantidade esperada e recebida; para campo faltante, identificar o campo
+       esperado. Arquivo sem cabecalho aponta a linha 1 e o cabecalho/campo
+       ausente; arquivo sem tarefa aponta a linha seguinte ao fim do arquivo e
+       a tarefa ausente.
+    2. Linhas em branco sao ignoradas na interpretacao, mas contam na
+       numeracao, que sempre corresponde ao arquivo original.
+    3. Conferir o arquivo inteiro e reunir todos os erros de sintaxe que
+       possam ser recuperados, em vez de parar no primeiro. Quando houver
+       estrutura suficiente para montar uma configuracao sem inventar valores,
+       incluir tambem todos os problemas retornados pelo nucleo; nao repetir
+       suas regras semanticas. Os erros do nucleo recebem linha, campo e valor
+       original pelo indice da tarefa (DEC-10, DEC-15). Em mensagens que
+       referenciam tarefa anterior por ordem, mostrar a linha original dessa
+       tarefa.
+    4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
+       conteudo: informar caminho e motivo do sistema quando disponiveis, sem
+       linha nem campo.
+- Exemplos:
+    - Sintaxe: `Linha 4, campo duracao, valor "x": esperado um numero.`
+    - Regra do nucleo: `Linha 6, campo id, valor 2: ja usado na linha 3.`
+    - Falha de acesso: `Nao foi possivel abrir o arquivo "<caminho>":
+      permissao negada.`
+- Justificativa: linhas originais permitem localizar erros mesmo quando o
+  parser ignora linhas em branco; acumular problemas reduz ciclos de correcao.
+  Falhas de acesso nao pertencem ao conteudo e nao podem ser localizadas por
+  linha/campo.
+- Consequencia: sintaxe recuperavel e validacao semantica aparecem juntas
+  quando a configuracao parcial pode ser formada sem valores inventados. Se a
+  estrutura invalida impedir essa formacao, reportar os erros de sintaxe sem
+  produzir diagnosticos semanticos artificiais. O parser preserva o texto
+  recebido para os diagnosticos e associa tarefas analisadas as linhas
+  originais.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
