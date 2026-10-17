@@ -85,7 +85,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   progresso ou prazo. Nova fatia renova quantum, inclusive se escolher o mesmo
   job. Interrupcao e retomada tambem iniciam nova fatia.
 - Consequencia: preservar quem executava imediatamente antes da selecao para
-  desempate. Continuidade sem interrupcao preserva consumo da fatia.
+  desempate, exceto o job cuja fatia acabou de vencer (DEC-18). Continuidade
+  sem interrupcao preserva consumo da fatia.
 - Registrar vencimento mesmo sem troca de tarefa; nao registrar troca ficticia.
 - Justificativa: interpretacao acordada do quantum junto a politicas preemptivas.
 
@@ -155,7 +156,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   dez jobs drenados foi decidida pelo usuario.
 - Substitui: regra anterior de REQ-03 que ignorava aperiodicas com aviso.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
-  de ativacao. Prioridade RM para periodo zero fica em Q-07.
+  de ativacao. Prioridade RM para periodo zero definida por DEC-17.
 
 ### DEC-10: Valores padrao e limites da configuracao
 
@@ -268,12 +269,14 @@ anterior. Data inicial dos registros: 2026-10-12.
       (job inexistente, concluido, suspenso ou repetido) nao cobrem a regra do
       job mais antigo incompleto: dois jobs da mesma tarefa passam pela visao e
       por `checkDecision`. Os testes da #12 devem garantir essa regra.
-    - O motor monta a visao antes de liberar as CPUs. Se job com quantum vencido
-      conta como "executava antes da selecao" fica para #14/#18.
+    - O motor monta a visao antes de liberar as CPUs. Job com quantum vencido
+      nao conta como "executava antes da selecao" (DEC-18); como a visao
+      expressa isso fica para a #14.
     - Sorteio do empate residual entra no contrato com a #20, em nova decisao
       que estende visao e decisao; esta decisao nao reserva campos para ele.
-    - Q-04 e Q-07 continuam abertas: a visao expoe job e definicao para que
-      #18/#19 escolham os campos sem mudar o contrato.
+    - Q-04 e Q-07 decididas na #18 (DEC-16, DEC-17) sem mudar o contrato: os
+      campos usados ja estao na visao (`job.absoluteDeadline`,
+      `job.activation`, `task.duration`, `task.period`).
 - Justificativa: conjunto selecionado basta ao despacho e so exige sorteio
   quando o empate cruza o corte; copia congelada garante, tambem em tempo de
   execucao, o invariante "Politicas nao modificam estado".
@@ -336,12 +339,85 @@ anterior. Data inicial dos registros: 2026-10-12.
   configuracao ja validada (muda a assinatura e o adaptador Vue e contraria a
   DEC-10, que manda o nucleo validar antes de aplicar).
 
+### DEC-16: Desempates pelos valores do job
+
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #18). Requisitos:
+  REQ-07, REQ-08. Resolve Q-04.
+- Decisao: empate de prioridade segue a ordem de A.4.3. Prazo e ingresso usam
+  os valores do job candidato; duracao segue o texto do enunciado:
+    1. job que executava antes da selecao, conforme DEC-18;
+    2. menor prazo absoluto do job (`job.absoluteDeadline`);
+    3. menor instante de ativacao do job (`job.activation`), que no primeiro
+       job coincide com o ingresso da tarefa;
+    4. menor duracao da tarefa (`task.duration`), como em A.4.3 ("duracao da
+       tarefa: duracao menor deve ser escolhida"); nao o trabalho restante;
+    5. sorteio registrado (DEC-06, #20).
+- Justificativa: cada ativacao e um job com prazo proprio (DEC-02, REQ-08);
+  prazo relativo e ingresso sao iguais para todos os jobs de uma tarefa e nao
+  distinguem um job atrasado de outro recem-ativado. Para a duracao o usuario
+  escolheu seguir o enunciado literalmente.
+- Alternativa descartada: trabalho restante do job (`task.duration -
+  job.executed`) no criterio (4); seria um desempate por menor tempo restante
+  que o enunciado nao pede.
+- Consequencia: no EDF a prioridade ja e o prazo absoluto, entao o criterio
+  (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
+  ou ordem das candidatas (DEC-13).
+
+### DEC-17: Prioridade RM de tarefas aperiodicas
+
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #18). Requisitos:
+  REQ-07, REQ-03. Resolve Q-07; complementa DEC-09.
+- Decisao: no RM, tarefa aperiodica (periodo zero, DEC-09) tem prioridade
+  menor que qualquer tarefa periodica, como se o periodo fosse infinito.
+  Aperiodicas empatam entre si e seguem os desempates de DEC-16.
+- Justificativa: RM da prioridade maior a tarefas mais frequentes; uma tarefa
+  ativada uma unica vez tem a menor frequencia possivel. Ler periodo zero
+  literalmente como "menor periodo" daria a ela a maior prioridade.
+- Consequencia: sob carga, o job aperiodico espera os periodicos; termina
+  porque cada tarefa periodica gera no maximo dez jobs (DEC-09), e eventual
+  perda de prazo e registrada (REQ-08). EDF nao e afetado: ordena por prazo
+  absoluto do job.
+
+### DEC-18: Quantum vencido e primeiro desempate
+
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #18). Requisitos:
+  REQ-07, REQ-01. Detalha DEC-03 e DEC-13.
+- Decisao: o criterio (1) de A.4.3 vale para o job que executava antes da
+  selecao e ainda tem fatia. O job cuja fatia vence na fronteira volta a fila
+  sem essa vantagem e disputa a partir do criterio (2); se for escolhido de
+  novo, inicia nova fatia (DEC-03). Depois da selecao, a permanencia na CPU
+  segue DEC-07, inclusive para esse job.
+- Justificativa: A.3.3 define quantum como o tempo maximo que uma tarefa pode
+  executar, em sistema de tempo compartilhado, e A.4.3 (1) existe para evitar
+  troca de contexto. Como a politica e consultada a cada tick (DEC-07), job de
+  prioridade maior ja preempta sem esperar o quantum; o quantum so muda a
+  escala num empate de prioridade, e isso exige retirar o criterio (1) do job
+  vencido.
+- Exemplo (teste para #16/#21): RM, 1 CPU, quantum 2, mesmo periodo; J ativado
+  em 0 com duracao 4 e prazo absoluto 10; K ativado em 1 com duracao 2 e prazo
+  absoluto 9. Em 1, J continua pelo criterio (1). Em 2, a fatia de J vence e
+  K vence pelo prazo: J [0, 2), K [2, 4), J [4, 6).
+- Consequencia:
+    - Nao e round-robin: o empatado so assume a CPU se vencer os criterios (2)
+      a (5); caso contrario o job vencido segue executando.
+    - Na #14 o motor identifica as fatias vencidas na fronteira antes de montar
+      a visao. Proposta: `previousCpu` nulo para esse job, sem mudar a forma do
+      contrato (DEC-13); o despacho le as CPUs do estado, nao `previousCpu`.
+    - `quantum-expired` e registrado sempre (DEC-03). Se a troca causada pelo
+      vencimento tambem gera `preemption` fica para a #14.
+- Alternativas descartadas:
+    - Job vencido manter o criterio (1): venceria todo empate e o quantum nunca
+      mudaria a escala.
+    - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); a
+      selecao no vencimento seria igual a de qualquer tick, anulando o quantum,
+      e empates totais seriam sorteados a cada tick.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
 2. Avancar o relogio para t+1.
 3. Contabilizar conclusoes antes das perdas de prazo (DEC-04); fatias vencidas
-   entram com a #14.
+   entram com a #14 e retiram o primeiro desempate do job (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
 5. Selecionar pela politica e despachar (DEC-07, DEC-13).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).

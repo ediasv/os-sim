@@ -102,12 +102,15 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 Fonte: A.4 a A.4.3.
 
 - Implementar RM preemptivo (menor periodo) e EDF preemptivo (menor prazo absoluto).
+  No RM, tarefa aperiodica tem a menor prioridade (DEC-17).
 - Politica substituivel, sem reescrever o ciclo de simulacao.
 - Em empate de prioridade: quem executava antes da selecao, prazo, ingresso,
-  menor duracao e sorteio, nessa ordem. Sem desempate escondido pelo ID.
+  menor duracao e sorteio, nessa ordem; prazo e ingresso do job, duracao da
+  tarefa (DEC-16). Sem desempate escondido pelo ID.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar.
 - Quantum limita uma fatia; vencimento devolve job incompleto a fila e reavalia,
-  podendo selecionar o mesmo job. DEC-03 registra a interpretacao adotada.
+  podendo selecionar o mesmo job. DEC-03 registra a interpretacao adotada; o job
+  com fatia vencida perde o primeiro desempate (DEC-18).
 - Aceitacao: politica de teste valida o motor independentemente de RM/EDF; testes
   separados conferem prioridades, preempcoes e cada nivel de desempate.
 
@@ -158,16 +161,15 @@ Fonte: gerais 5 e 6; A.5.
 - Q-03: valores padrao, zero, campos ausentes, IDs e limites numericos resolvidos
   em 2026-10-16 por DEC-10. Resta para E4 somente o formato dos diagnosticos do
   parser (linha, campo e texto de cada erro).
-- Q-04: definir como os desempates usam prazo/ingresso do job versus parametros
-  da tarefa. Proposta: prazo absoluto, instante da ativacao e duracao requerida
-  daquele job; explicitar o mapeamento antes de implementar politicas.
+- Q-04: resolvida em 2026-10-17 por DEC-16: prazo absoluto e instante da
+  ativacao do job; duracao da tarefa, como em A.4.3 (nao o trabalho restante).
 - Q-05: confirmar apresentacao final com tarefas ordenadas e CPUs identificadas;
   figuras 2.5/2.6 sao referencias de comportamento, nao substituem A.2.5.
 - Q-06: definir deteccao de falta de progresso e cancelamento no modo completo
   quando edicoes deixam jobs suspensos indefinidamente. Nao impor termino falso
   nem ignorar futuras ativacoes quando todas as CPUs estiverem desligadas.
-- Q-07: definir prioridade RM de tarefas aperiodicas (periodo zero), pois RM
-  ordena por menor periodo. Resolver antes de implementar RM (E2).
+- Q-07: resolvida em 2026-10-17 por DEC-17 (aperiodica tem a menor prioridade
+  RM; aperiodicas empatam entre si).
 
 ## Invariantes do nucleo
 
