@@ -4,8 +4,10 @@ An operating-system simulator desktop app built with Electron, Vue 3 and TypeScr
 
 ## Specification and implementation plan
 
-The current implementation is a tick-counter scaffold, not the completed
-simulator. Scope: Project A only, core logic and tests before the visual interface.
+The simulator is under construction: the core engine is partially implemented
+and the UI is still a tick counter. Current status lives in the
+[delivery plan](docs/plan.md). Scope: Project A only, core logic and tests
+before the visual interface.
 
 Read the shared project context in this order:
 
@@ -27,7 +29,7 @@ implementation status only in the plan. Proposed decisions are not delivered cod
 ```sh
 npm install
 npm start          # run the app with hot reload
-npm test           # vitest unit tests (core + composables)
+npm test           # vitest unit tests (core + renderer helpers)
 npm run lint       # oxlint + oxfmt check (npm run lint:fix to auto-fix)
 npm run typecheck  # vue-tsc over .ts and .vue files, plus a core-only check
 npm run package    # build an unpacked app into out/

@@ -69,7 +69,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   (2026-10-17): `npm test` 132/132, `npm run lint` e `npm run typecheck`
   aprovados; RM/EDF seguem para E2.
 - #51 Ajustes pos-revisao do PR #49: contrato do Simulator, testes e plano.
-  Implementada, aguardando commit/PR. O construtor rejeita configuracao
+  Concluida no PR #52 (merged, `7124aa3`). O construtor rejeita configuracao
   invalida com `ConfigValidationError`, que guarda `field`/`taskIndex` de cada
   problema; `getEligibleJobs()` segue publico e somente leitura (DEC-15).
   Testes novos: configuracao normalizada no snapshot 0, configuracao conferida
@@ -147,19 +147,14 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49) e #13 (PR #50)
-  concluidos; #51 implementada e aguardando commit/PR; evidencias registradas
-  acima.
-- #51 objetivo: fechar as pendencias da revisao do PR #49.
-- Feito: erro tipado de configuracao no construtor do `Simulator` e DEC-15
-  (inclui `getEligibleJobs()` publico); teste da configuracao normalizada;
-  testes de ativacao (REQ-03, DEC-09, DEC-11) e de elegibilidade (DEC-02);
-  evidencias deste plano corrigidas.
-- Verificacao (2026-10-17): `npm test` 139/139, `npm run lint` e
-  `npm run typecheck` aprovados. Testes de caracterizacao conferidos por
-  mutacao temporaria do motor. Aplicativo Electron nao executado.
-- Proximo passo: commit/PR da #51 com `Closes #51`; depois resolver Q-04/Q-07
-  e quantum/contexto na #14/#18.
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50) e
+  #51 (PR #52) concluidos; evidencias registradas acima. Nenhum item em
+  andamento.
+- Verificacao (2026-10-17, em `7124aa3`): `npm test` 139/139, `npm run lint`
+  e `npm run typecheck` aprovados. Aplicativo Electron nao executado.
+- Proximo passo: resolver Q-04/Q-07 na #18, que decide se job com quantum
+  vencido conta como "executava antes da selecao"; depois quantum e contexto
+  na #14.
 - Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-08 ainda proposta;
   quantum vencido e `previousCpu` (DEC-13) para #14/#18.
 - Bloqueios: nenhum.

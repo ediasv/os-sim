@@ -254,8 +254,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: `selected` e um conjunto sem ordem de exatamente
   min(`cpuCount`, candidatas) jobs; atribuir CPUs cabe ao despacho (DEC-07).
   O motor executa `checkDecision` e trata qualquer problema (job fora das
-  candidatas, repetido ou quantidade errada) como erro da politica. Com a
-  lista vazia, o motor guarda somente `selectedRefs(decision)`, copias
+  candidatas, repetido ou quantidade errada) como erro da politica. Sem
+  problemas, o motor guarda somente `selectedRefs(decision)`, copias
   `{taskId, index}`, nunca os objetos devolvidos pela politica: campos extras
   (por exemplo o job congelado da visao) vazariam para `CpuState.running` e um
   objeto compartilhado deixaria a politica alterar o estado depois (REQ-07,
