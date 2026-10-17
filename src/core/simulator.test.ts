@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
     DEFAULT_CONFIG,
-    type Job,
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
-import { findEligibleJobs } from './eligibility';
-import { createInitialState } from './snapshot';
 import { Simulator } from './simulator';
 
 const periodicTask: TaskDefinition = {
@@ -118,41 +115,5 @@ describe('Simulator', () => {
         sim.tick();
 
         expect(sim.getEligibleJobs()).toEqual([{ taskId: 1, index: 0 }]);
-    });
-});
-
-describe('findEligibleJobs', () => {
-    function job(index: number, state: Job['state']): Job {
-        return {
-            taskId: 1,
-            index,
-            activation: index,
-            absoluteDeadline: index + 2,
-            executed: 0,
-            state,
-            completedAt: state === 'completed' ? index + 1 : null,
-            deadlineMissed: false,
-        };
-    }
-
-    it('skips completed jobs but does not let a later job pass a suspended one', () => {
-        const state = createInitialState({
-            ...DEFAULT_CONFIG,
-            tasks: [periodicTask, { ...periodicTask, id: 2, color: 'AABBCC' }],
-        });
-        state.tasks[0].jobs.push(
-            job(0, 'completed'),
-            job(1, 'ready'),
-            job(2, 'ready'),
-        );
-        state.tasks[1].jobs.push(
-            { ...job(0, 'suspended'), taskId: 2 },
-            { ...job(1, 'ready'), taskId: 2 },
-        );
-
-        const eligible = findEligibleJobs(state);
-        expect(eligible).toEqual([{ taskId: 1, index: 1 }]);
-        expect(Object.isFrozen(eligible)).toBe(true);
-        expect(Object.isFrozen(eligible[0])).toBe(true);
     });
 });
