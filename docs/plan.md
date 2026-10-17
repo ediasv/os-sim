@@ -98,7 +98,10 @@ Requisito: REQ-07.
   em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
   (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
   (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
-  primeiro desempate). Fecha com o PR destas mudancas documentais.
+  primeiro desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
+  resolvidas na especificacao. Evidencia (2026-10-17, sobre `02d9875`): links
+  locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
+  `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
   (DEC-16, DEC-18).
@@ -156,19 +159,17 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 ## Trabalho atual
 
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50) e
-  #51 (PR #52) concluidos; evidencias registradas acima. #18 em andamento
-  (In Progress no Project).
-- #18 objetivo: registrar as decisoes que RM/EDF e desempates exigem, sem
-  mudar codigo de execucao. Feito: DEC-16, DEC-17 e DEC-18 na arquitetura;
-  Q-04 e Q-07 resolvidas na especificacao; comentario de `previousCpu` em
-  `policy.ts` aponta para DEC-18.
-- Verificacao (2026-10-17, sobre `02d9875`): links locais e IDs cruzados
-  conferidos; `npm test` 139/139, `npm run lint` e `npm run typecheck`
-  aprovados (so mudou um comentario em `policy.ts`). Aplicativo Electron nao
-  executado.
-- Proximo passo: commit/PR com `Closes #18`; depois quantum e contexto na #14
-  (DEC-18).
+- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
+  #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
+- #55 (descricoes das issues): corpos das issues abertas de #14 a #45
+  reescritos no template, revisados pelo usuario fase a fase; titulos vagos
+  ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
+  repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
+  aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
+  deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
+  executados. O template so aparece no GitHub depois do merge em `main` (nao
+  verificado).
+- Proximo passo: quantum e contexto na #14 (DEC-18).
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
