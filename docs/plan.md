@@ -79,6 +79,8 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
+  Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
+  visao expressa isso e se a troca por vencimento tambem gera `preemption`.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
   perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
@@ -91,10 +93,15 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 Requisito: REQ-07.
 
 - #18 Resolver Q-04/Q-07 antes de definir selecao multiprocessador; DEC-07 aceita
-  em 2026-10-17.
-- #19 Implementar RM e EDF separados do motor.
-- #20 Implementar desempates completos, sorteio com estado e evento correspondente.
-- #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs.
+  em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
+  (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
+  (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
+  primeiro desempate). Fecha com o PR destas mudancas documentais.
+- #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
+- #20 Implementar desempates completos, sorteio com estado e evento correspondente
+  (DEC-16, DEC-18).
+- #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
+  incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Nao apresentar limites teoricos uniprocessador como garantia multiprocessador.
 
 ### E3: Controle, historico e edicao
@@ -148,15 +155,19 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50) e
-  #51 (PR #52) concluidos; evidencias registradas acima. Nenhum item em
-  andamento.
-- Verificacao (2026-10-17, em `7124aa3`): `npm test` 139/139, `npm run lint`
-  e `npm run typecheck` aprovados. Aplicativo Electron nao executado.
-- Proximo passo: resolver Q-04/Q-07 na #18, que decide se job com quantum
-  vencido conta como "executava antes da selecao"; depois quantum e contexto
-  na #14.
-- Pendencias: Q-02 e Q-04 a Q-07 conforme fase; DEC-08 ainda proposta;
-  quantum vencido e `previousCpu` (DEC-13) para #14/#18.
+  #51 (PR #52) concluidos; evidencias registradas acima. #18 em andamento
+  (In Progress no Project).
+- #18 objetivo: registrar as decisoes que RM/EDF e desempates exigem, sem
+  mudar codigo de execucao. Feito: DEC-16, DEC-17 e DEC-18 na arquitetura;
+  Q-04 e Q-07 resolvidas na especificacao; comentario de `previousCpu` em
+  `policy.ts` aponta para DEC-18.
+- Verificacao (2026-10-17, sobre `02d9875`): links locais e IDs cruzados
+  conferidos; `npm test` 139/139, `npm run lint` e `npm run typecheck`
+  aprovados (so mudou um comentario em `policy.ts`). Aplicativo Electron nao
+  executado.
+- Proximo passo: commit/PR com `Closes #18`; depois quantum e contexto na #14
+  (DEC-18).
+- Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega
