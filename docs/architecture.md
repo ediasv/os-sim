@@ -12,7 +12,9 @@ afirma que os modulos planejados ja existem.
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
-  fatos registrados em dobro no dominio (DEC-12).
+  fatos registrados em dobro no dominio (DEC-12, DEC-19).
+- [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
+  snapshot os intervalos e o total desligado de cada CPU (DEC-19).
 - [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
@@ -106,6 +108,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: aceitar quantidade inteira positiva sem teto de 16; CPU sem trabalho
   fica logicamente desligada e pode reativar sem custo.
 - Consequencia: registrar intervalos e totais; nao simular energia ou latencia.
+  Intervalos e totais sao derivados dos eventos de cada snapshot (DEC-19).
 - Limitacao: recursos reais e representacao numerica continuam finitos; tratar
   falhas claramente, sem prometer capacidade infinita.
 
@@ -223,10 +226,12 @@ anterior. Data inicial dos registros: 2026-10-12.
   na #23 se o historico ficar grande.
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
-  `deadline-miss`. `findInconsistencies` exige que cada par concorde (um job em
-  no maximo uma CPU, uma unica perda registrada por job) e rejeita
-  `executed > duration` (DEC-14); testes do motor
-  (#13 ja verifica; #15 deve verificar) lista vazia apos cada passo.
+  `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
+  dos eventos `cpu-off`/`cpu-on` (DEC-19). `findInconsistencies` exige que cada
+  par concorde (um job em no maximo uma CPU, uma unica perda registrada por
+  job, `offSince` igual ao inicio do intervalo aberto) e rejeita
+  `executed > duration` (DEC-14); testes do motor (#13, #15) verificam lista
+  vazia apos cada passo.
 - Pendencias conhecidas do modelo, registradas no plano:
     - CPU ociosa (resolvida na #13): o estado pre-dispatch usa `offSince: null`;
       o primeiro despacho marca CPUs sem trabalho desligadas desde o tick 0
@@ -411,6 +416,35 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); a
       selecao no vencimento seria igual a de qualquer tick, anulando o quantum,
       e empates totais seriam sorteados a cada tick.
+
+### DEC-19: Intervalos de CPU desligada derivados do snapshot
+
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #15). Requisitos:
+  REQ-02, REQ-09. Detalha DEC-05; nao muda o modelo de DEC-12.
+- Decisao: `summarizeCpuOff(snapshot)` deriva, para cada CPU na ordem de
+  `cpus`, os intervalos [start, end) em que esteve desligada e o total
+  desligado, percorrendo os eventos `cpu-off`/`cpu-on`. Nada novo e guardado
+  no estado; qualquer snapshot basta, inclusive um restaurado do historico.
+- Detalhes:
+    - CPU ainda desligada no instante do snapshot tem o ultimo intervalo
+      aberto (`end: null`). O total conta somente ticks ja decorridos
+      (`clock - start` para o aberto), como `executions` guarda somente ticks
+      ja executados; CPU ociosa no snapshot 0 tem total 0.
+    - CPU que nunca desligou aparece com lista vazia e total 0.
+    - Sequencia malformada (religar CPU ligada, desligar CPU desligada, CPU
+      inexistente) lanca erro descritivo em vez de adivinhar intervalos.
+    - `offSince` e o intervalo aberto registram o mesmo fato:
+      `findInconsistencies` exige que concordem, que a sequencia seja valida e
+      que CPU com job nao esteja desligada. O motor confere isso a cada
+      despacho (DEC-14).
+- Justificativa: os eventos ja sao a fonte dos instantes exatos; guardar os
+  intervalos criaria mais um fato em dobro, e deixar a derivacao para a
+  interface separaria a inspecao (#37) do Gantt (#38).
+- Consequencia: custo O(eventos) por consulta; a interface pode guardar o
+  resultado por snapshot se necessario.
+- Alternativas descartadas: intervalos e totais guardados em `CpuState`
+  (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
+  dominio fora do nucleo e sem `findInconsistencies`).
 
 ## Fluxo de um passo
 

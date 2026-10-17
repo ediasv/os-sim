@@ -84,9 +84,15 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
   visao expressa isso e se a troca por vencimento tambem gera `preemption`.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
-  perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
-  fechamento da verificacao de intervalos e dos criterios especificos dessa issue.
+  Implementada na branch `feat/cpu-off-intervals` (DEC-19, aceita pelo
+  usuario): `summarizeCpuOff` (`src/core/cpuOff.ts`) deriva intervalos e totais
+  dos eventos de qualquer snapshot; `findInconsistencies` passa a conferir
+  `offSince` contra os eventos. Testes novos: CPU que nunca liga, que desliga e
+  religa varias vezes, que segue desligada ate o fim, consulta de snapshots
+  anteriores e sequencias malformadas; tarefa periodica com folgas termina so
+  com o 10o job, inclusive atrasado. Correspondencia REQ-03/REQ-08 -> testes
+  no PR. Evidencia (2026-10-17): `npm test` 153/153, `npm run lint` e
+  `npm run typecheck` aprovados. Fechar apos merge.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 
@@ -169,7 +175,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
-- Proximo passo: quantum e contexto na #14 (DEC-18).
+- #15 em andamento: implementacao e testes concluidos na branch
+  `feat/cpu-off-intervals` (DEC-19); falta PR e merge.
+- Proximo passo: PR da #15; depois quantum e contexto na #14 (DEC-18).
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 

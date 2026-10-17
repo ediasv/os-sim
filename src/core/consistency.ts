@@ -1,12 +1,15 @@
 /**
  * Cross-checks facts that the domain records twice (DEC-12): a running job is
- * marked both in `Job.state` and in `CpuState.running`, and a missed deadline
- * both in `Job.deadlineMissed` and as a `deadline-miss` event. The engine must
+ * marked both in `Job.state` and in `CpuState.running`, a missed deadline
+ * both in `Job.deadlineMissed` and as a `deadline-miss` event, and a CPU that
+ * is off both in `CpuState.offSince` and as its open `cpu-off` interval
+ * (DEC-19). The engine must
  * keep each pair in sync; its tests (#13, #15) assert that this list is empty
  * after every step. It also checks that no job ran past its duration, which
  * would have caught a half-applied step re-executing completed jobs.
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
+import { summarizeCpuOff, type CpuOffInterval } from './cpuOff';
 import { key } from './helpers/key';
 
 /** Describes every pair that disagrees; an empty list means the state is consistent. */
@@ -75,6 +78,41 @@ export function findInconsistencies(
         if (count !== expected) {
             issues.push(
                 `Job ${ref} has deadlineMissed = ${job.deadlineMissed} but ${count} deadline-miss event(s).`,
+            );
+        }
+    }
+
+    // An off CPU runs nothing, and offSince starts its open off interval (DEC-19).
+    for (const cpu of state.cpus) {
+        if (cpu.running !== null && cpu.offSince !== null) {
+            issues.push(
+                `CPU ${cpu.id} runs job ${key(cpu.running)} but is off since ${cpu.offSince}.`,
+            );
+        }
+    }
+    let openIntervals: Map<number, CpuOffInterval | undefined>;
+    try {
+        openIntervals = new Map(
+            summarizeCpuOff(state).map(({ cpuId, intervals }) => [
+                cpuId,
+                intervals.find(({ end }) => end === null),
+            ]),
+        );
+    } catch (error) {
+        issues.push((error as Error).message);
+        return issues;
+    }
+    for (const cpu of state.cpus) {
+        const open = openIntervals.get(cpu.id);
+        if (open === undefined) {
+            if (cpu.offSince !== null) {
+                issues.push(
+                    `CPU ${cpu.id} has offSince = ${cpu.offSince} but no open off interval.`,
+                );
+            }
+        } else if (cpu.offSince !== open.start) {
+            issues.push(
+                `CPU ${cpu.id} has offSince = ${cpu.offSince} but its open off interval starts at ${open.start}.`,
             );
         }
     }

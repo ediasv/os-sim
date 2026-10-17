@@ -1117,6 +1117,69 @@ describe('Simulator', () => {
         ]);
     });
 
+    it('finishes a periodic task only when its tenth job completes, even if late (DEC-09)', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                tasks: [
+                    // Idle gaps: every activated job completes before the next arrives.
+                    {
+                        ...periodicTask,
+                        arrival: 0,
+                        duration: 1,
+                        period: 3,
+                        deadline: 3,
+                    },
+                    // Every job, including the last, misses its deadline.
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        duration: 2,
+                        period: 3,
+                        deadline: 1,
+                    },
+                ],
+            },
+            firstAvailable,
+        );
+        const finished = () =>
+            sim
+                .getLatestSnapshot()
+                .events.filter((event) => event.kind === 'task-finished');
+        expectConsistent(sim);
+
+        for (let step = 1; step <= 30; step++) {
+            sim.tick();
+            expectConsistent(sim);
+            if (step === 25) {
+                // Nine jobs exist and all completed, yet a tenth is still due.
+                const tcb = sim.getLatestSnapshot().tasks[0];
+                expect(tcb.jobs).toHaveLength(9);
+                expect(tcb.jobs.every((job) => job.state === 'completed')).toBe(
+                    true,
+                );
+            }
+            if (step < 28) {
+                expect(finished()).toEqual([]);
+            }
+        }
+
+        expect(finished()).toEqual([
+            { kind: 'task-finished', time: 28, taskId: 1 },
+            { kind: 'task-finished', time: 29, taskId: 2 },
+        ]);
+        const late = sim.getLatestSnapshot().tasks[1].jobs;
+        expect(late).toHaveLength(10);
+        expect(late[9]).toMatchObject({
+            state: 'completed',
+            completedAt: 29,
+            deadlineMissed: true,
+        });
+    });
+
     it('records deadline misses for later jobs blocked behind an incomplete one (DEC-02)', () => {
         const sim = new Simulator(
             {
