@@ -17,6 +17,7 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { createInitialState, takeSnapshot } from './snapshot';
+import { deepCopy } from './helpers/deepCopy';
 import { key } from './helpers/key';
 
 const NO_WORK_POLICY: SchedulingPolicy = {
@@ -34,7 +35,7 @@ export interface ExecutionGuardResult {
  * globally by an injected policy, and quantum handling belongs to #14.
  */
 export class Simulator {
-    private readonly state: SimulationState;
+    private state: SimulationState;
     private readonly policy: SchedulingPolicy;
     private snapshotHistory: SimulationSnapshot[] = [];
 
@@ -56,11 +57,20 @@ export class Simulator {
             throw new Error(guardResult.reason);
         }
 
-        this.executeTick();
-        this.state.clock++;
-        this.completeJobsAndRecordDeadlineMisses();
-        this.activateDueJobs();
-        this.dispatch();
+        // DEC-14: mutate a working copy and commit it only if the whole step
+        // succeeds, so a failing policy leaves state and history unchanged.
+        const committed = this.state;
+        this.state = deepCopy(committed);
+        try {
+            this.executeTick();
+            this.state.clock++;
+            this.completeJobsAndRecordDeadlineMisses();
+            this.activateDueJobs();
+            this.dispatch();
+        } catch (error) {
+            this.state = committed;
+            throw error;
+        }
         this.recordSnapshot();
     }
 
@@ -115,7 +125,6 @@ export class Simulator {
                     : this.state.executions[previousIndex];
             if (
                 previous !== undefined &&
-                previous.cpuId === cpu.id &&
                 previous.job.taskId === job.taskId &&
                 previous.job.index === job.index &&
                 previous.end === this.state.clock
@@ -181,21 +190,51 @@ export class Simulator {
     }
 
     /**
-     * Validates one global policy decision, keeps selected jobs on their current
-     * CPUs where possible, then assigns any remaining jobs to available CPUs.
+     * Copies one global policy decision once and validates that copy (DEC-14),
+     * so a policy cannot return different values to the check and to dispatch.
+     * Selected jobs stay on their current CPUs where possible; any remaining
+     * jobs are assigned to available CPUs. It also emits the preemption,
+     * cpu-on and cpu-off events of the change and ends with the
+     * `findInconsistencies` check of the resulting state (DEC-12).
      */
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);
         const view = buildPolicyView(this.state, eligible);
         const decision = this.policy.select(view);
-        const issues = checkDecision(view, decision);
+        // Read `selected` a single time: a getter could answer differently later.
+        const rawSelected: unknown =
+            typeof decision === 'object' && decision !== null
+                ? decision.selected
+                : undefined;
+        if (!Array.isArray(rawSelected)) {
+            throw new Error(
+                'Invalid scheduling policy decision: expected an object with a selected array.',
+            );
+        }
+        if (
+            rawSelected.some((ref) => typeof ref !== 'object' || ref === null)
+        ) {
+            throw new Error(
+                'Invalid scheduling policy decision: every selected entry must be a job reference.',
+            );
+        }
+        const copied = selectedRefs({ selected: rawSelected });
+        const issues = checkDecision(view, { selected: copied });
         if (issues.length > 0) {
             throw new Error(
                 `Invalid scheduling policy decision:\n${issues.join('\n')}`,
             );
         }
+        // Keys match by string, so a policy-typed ref such as index '0' could
+        // pass the check; store the candidate's own numeric ref instead.
+        const candidateByKey = new Map(
+            view.candidates.map(({ job }) => [
+                key(job),
+                { taskId: job.taskId, index: job.index },
+            ]),
+        );
+        const selected = copied.map((ref) => candidateByKey.get(key(ref))!);
 
-        const selected = selectedRefs(decision);
         const selectedKeys = new Set(selected.map(key));
         const cpuByJob = new Map<string, number>();
         const reservedCpus = new Set<number>();
