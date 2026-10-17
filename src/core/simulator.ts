@@ -9,7 +9,7 @@ import {
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
-import { validateConfig } from './config';
+import { ConfigValidationError, validateConfig } from './config';
 import {
     buildPolicyView,
     checkDecision,
@@ -349,16 +349,18 @@ export class Simulator {
         return { ready: true };
     }
 
-    /** Validates all required inputs before creating any live simulator state. */
+    /**
+     * Validates all required inputs before creating any live simulator state.
+     * The configuration is checked before the policy, and its rejection keeps
+     * each issue's field and task index (DEC-15).
+     */
     private validateDependencies(
         config: SystemConfig,
         policy: SchedulingPolicy | undefined,
     ): { config: SystemConfig; policy: SchedulingPolicy } {
         const result = validateConfig(config);
         if (!result.ok) {
-            throw new Error(
-                result.issues.map((issue) => issue.message).join('\n'),
-            );
+            throw new ConfigValidationError(result.issues);
         }
         if (policy === undefined) {
             if (result.config.tasks.length > 0) {

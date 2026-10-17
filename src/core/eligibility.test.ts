@@ -53,6 +53,37 @@ describe('findEligibleJobs', () => {
         expect(findEligibleJobs(state)).toEqual([{ taskId: 1, index: 1 }]);
     });
 
+    it('skips a task that has no jobs yet', () => {
+        const secondTask = { ...task, id: 2, color: 'AABBCC' };
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [task, secondTask],
+        });
+        state.tasks[1].jobs.push(job(0, 'ready', 2));
+
+        expect(findEligibleJobs(state)).toEqual([{ taskId: 2, index: 0 }]);
+    });
+
+    it('skips a task whose jobs are all completed', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [task],
+        });
+        state.tasks[0].jobs.push(job(0, 'completed'), job(1, 'completed'));
+
+        expect(findEligibleJobs(state)).toEqual([]);
+    });
+
+    it('keeps a running oldest job eligible and blocks later ones', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [task],
+        });
+        state.tasks[0].jobs.push(job(0, 'running'), job(1, 'ready'));
+
+        expect(findEligibleJobs(state)).toEqual([{ taskId: 1, index: 0 }]);
+    });
+
     it('returns frozen refs so callers cannot mutate eligibility results', () => {
         const state = createInitialState({
             ...DEFAULT_CONFIG,
