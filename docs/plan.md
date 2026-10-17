@@ -51,17 +51,18 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
 - [x] #12 Implementar ativacoes e elegibilidade sequencial por tarefa (PR #49 merged).
-  DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
-  aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
-  configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
-  individual e elegibilidade de um job incompleto por tarefa. Evidencia:
-  `npm test` 103/103, `npm run lint` e `npm run typecheck` aprovados.
+      DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
+      aqui; `buildPolicyView` nao a verifica. Implementacao no PR #49: validacao da
+      configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
+      individual e elegibilidade de um job incompleto por tarefa. Evidencia:
+      `npm test` 103/103, `npm run lint` e `npm run typecheck` aprovados.
 - [x] #13 Implementar despacho global e execucao por tick com politica de teste.
       O motor injeta uma politica, valida a decisao, despacha globalmente, executa
       cada tick, registra conclusoes/perdas de prazo e desliga CPUs sem trabalho.
       CPUs ociosas iniciam com `offSince: 0`; `findInconsistencies` deve ser vazio
       apos cada despacho. Evidencia (2026-10-17): `npm test` 111/111,
       `npm run lint` e `npm run typecheck` aprovados; RM/EDF seguem para E2.
+      A API do `Simulator` exige politica; a UI so cria a instancia ao iniciar.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e

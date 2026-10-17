@@ -20,8 +20,9 @@ afirma que os modulos planejados ja existem.
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo e faz
   despacho global pela politica injetada antes de publicar snapshots completos.
-- [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
-  privada e publica snapshots via `shallowRef`.
+- [useSimulation](../src/renderer/composables/useSimulation.ts): mantem o
+  simulador privado; cria uma instancia somente ao receber configuracao e
+  politica obrigatoria, e publica snapshots via `shallowRef`.
 - [Processo principal](../src/main/main.ts): janela Electron.
 - [Preload](../src/preload/preload.ts): ainda sem API de arquivos.
 

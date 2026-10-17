@@ -1,5 +1,4 @@
 import {
-    DEFAULT_CONFIG,
     maxJobs,
     type Job,
     type JobRef,
@@ -31,22 +30,23 @@ export interface ExecutionGuardResult {
  */
 export class Simulator {
     private readonly state: SimulationState;
-    private readonly policy: SchedulingPolicy | undefined;
+    private readonly policy: SchedulingPolicy;
     private snapshotHistory: SimulationSnapshot[] = [];
 
-    constructor(
-        config: SystemConfig = DEFAULT_CONFIG,
-        policy?: SchedulingPolicy,
-    ) {
+    constructor(config: SystemConfig, policy: SchedulingPolicy) {
         const result = validateConfig(config);
         if (!result.ok) {
             throw new Error(
                 result.issues.map((issue) => issue.message).join('\n'),
             );
         }
-        if (policy === undefined && result.config.tasks.length > 0) {
-            throw new Error(
-                'A scheduling policy is required when the configuration has tasks.',
+        if (
+            policy === null ||
+            typeof policy !== 'object' ||
+            typeof policy.select !== 'function'
+        ) {
+            throw new TypeError(
+                'A scheduling policy with a select method is required.',
             );
         }
         this.state = createInitialState(result.config);
@@ -193,7 +193,7 @@ export class Simulator {
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);
         const view = buildPolicyView(this.state, eligible);
-        const decision = this.policy?.select(view) ?? { selected: [] };
+        const decision = this.policy.select(view);
         const issues = checkDecision(view, decision);
         if (issues.length > 0) {
             throw new Error(

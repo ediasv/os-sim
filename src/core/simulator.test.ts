@@ -28,7 +28,10 @@ const firstAvailable: SchedulingPolicy = {
 
 describe('Simulator', () => {
     it('publishes snapshot 0 built from the default configuration', () => {
-        const snapshot = new Simulator().getLatestSnapshot();
+        const snapshot = new Simulator(
+            DEFAULT_CONFIG,
+            firstAvailable,
+        ).getLatestSnapshot();
 
         expect(snapshot.clock).toBe(0);
         expect(snapshot.config).toEqual(DEFAULT_CONFIG);
@@ -37,14 +40,14 @@ describe('Simulator', () => {
     });
 
     it('advances the clock by exactly one tick per step (DEC-11)', () => {
-        const sim = new Simulator();
+        const sim = new Simulator(DEFAULT_CONFIG, firstAvailable);
         sim.tick();
         sim.tick();
         expect(sim.getLatestSnapshot().clock).toBe(2);
     });
 
     it('keeps earlier snapshots unchanged and frozen after later ticks', () => {
-        const sim = new Simulator();
+        const sim = new Simulator(DEFAULT_CONFIG, firstAvailable);
         const first = sim.getLatestSnapshot();
 
         sim.tick();
@@ -388,13 +391,13 @@ describe('Simulator', () => {
         ).toThrow(/wrong number of jobs/);
     });
 
-    it('requires an injected policy when tasks are configured', () => {
+    it('rejects a missing policy at runtime', () => {
         expect(
             () =>
-                new Simulator({
-                    ...DEFAULT_CONFIG,
-                    tasks: [{ ...periodicTask, arrival: 5 }],
-                }),
-        ).toThrow(/policy is required/);
+                new Simulator(
+                    DEFAULT_CONFIG,
+                    null as unknown as SchedulingPolicy,
+                ),
+        ).toThrow(/scheduling policy with a select method is required/);
     });
 });
