@@ -93,6 +93,7 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 - Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica.
   Faixas dos demais campos e campos opcionais em DEC-10.
 - Carregar arquivo de qualquer nome/caminho escolhido pelo usuario.
+- Cancelar a escolha do arquivo nao e erro (DEC-19).
 - Preservar lista de eventos sem executa-la no Projeto A (A.3.3.5).
 - Aceitacao: variantes validas produzem configuracao equivalente; erros indicam
   linha/campo/valor/motivo conforme DEC-19, e falhas de acesso explicam o
@@ -111,7 +112,7 @@ Fonte: A.4 a A.4.3.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar.
 - Quantum limita uma fatia; vencimento devolve job incompleto a fila e reavalia,
   podendo selecionar o mesmo job. DEC-03 registra a interpretacao adotada; o job
-  com fatia vencida perde o primeiro desempate (DEC-18).
+  com fatia vencida mantem o primeiro desempate (DEC-18).
 - Aceitacao: politica de teste valida o motor independentemente de RM/EDF; testes
   separados conferem prioridades, preempcoes e cada nivel de desempate.
 

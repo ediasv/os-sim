@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-17. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-18. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -81,8 +81,16 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
-  Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
-  visao expressa isso e se a troca por vencimento tambem gera `preemption`.
+  DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
+  primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
+  `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
+  registra so a conclusao. Implementada em `Simulator.expireSlices`, entre
+  conclusoes/perdas de prazo e ativacoes. Testes novos: exemplo de DEC-18,
+  troca no vencimento com `preemption` e migracao com quantum inteiro em 2
+  CPUs, retomada apos preempcao no meio da fatia, quantum 1 sem dividir o
+  intervalo, perda de prazo e vencimento na mesma fronteira e rollback de
+  politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
+  `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
   perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
@@ -98,7 +106,7 @@ Requisito: REQ-07.
   em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
   (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
   (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
-  primeiro desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
+  primeiro desempate; revista na #14: o job vencido mantem o desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
   resolvidas na especificacao. Evidencia (2026-10-17, sobre `02d9875`): links
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
@@ -125,12 +133,15 @@ Requisitos: REQ-04, REQ-05.
 
 ### E4: Configuracao e arquivos
 
-Requisitos: REQ-05, REQ-06.
+Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 
-- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10).
-- DEC-19 aceita em 2026-10-17: diagnosticos usam linhas do arquivo original,
-  acumulam erros recuperaveis e distinguem falhas de acesso. Evidencia deste PR:
-  decisao e exemplos registrados em [architecture.md](architecture.md#dec-19-diagnosticos-do-parser-de-configuracao);
+- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10;
+  REQ-06, REQ-10).
+- DEC-19 aceita em 2026-10-17 e revista pelo usuario em 2026-10-18: diagnosticos
+  usam linhas do arquivo original, acumulam erros recuperaveis, preservam
+  literalmente as mensagens do nucleo e distinguem falhas de acesso; cancelar
+  a escolha do arquivo nao e erro. Evidencia deste PR: decisao e exemplos em
+  [architecture.md](architecture.md#dec-19-diagnosticos-do-parser-de-configuracao);
   Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
   Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
@@ -176,8 +187,13 @@ Requisito: REQ-10; integracao de todos os anteriores.
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
-- Proximo passo: revisar/integrar o PR #57; depois implementar parser e
-  diagnosticos conforme DEC-19 nas #30, #31 e #34.
+- #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
+  usuario em 2026-10-17; quantum implementado e verificado (evidencia na E1),
+  em revisao no PR da #14.
+- #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
+  revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
+- Proximo passo: revisar e integrar o PR da #14; manter os diagnosticos de
+  DEC-19 nos escopos de #30, #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 

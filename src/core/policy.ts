@@ -21,8 +21,8 @@ export interface PolicyCandidate {
     /**
      * CPU that owned the job when the view was built, or null; feeds the first
      * tie-break ("who was running before the selection", DEC-03). The engine
-     * builds the view before releasing CPUs. A job whose quantum just expired
-     * must not count as running before (DEC-18); #14 implements that.
+     * builds the view before releasing CPUs, so a job whose quantum just
+     * expired still reports its CPU and keeps that tie-break (DEC-18).
      */
     readonly previousCpu: number | null;
 }
