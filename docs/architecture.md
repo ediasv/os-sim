@@ -10,6 +10,8 @@ afirma que os modulos planejados ja existem.
   intervalos, eventos e snapshot (DEC-12).
 - [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
+- [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
+  e diagnostica erros sintaticos com as linhas originais (DEC-19).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12).
