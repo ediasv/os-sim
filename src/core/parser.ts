@@ -42,6 +42,8 @@ export function parseConfig(text: string): ConfigParseResult {
         .map((line, index) => ({ number: index + 1, text: line.trim() }))
         .filter((line) => line.text.length > 0);
     const headerLine = sourceLines[0];
+    let header: Omit<SystemConfig, 'tasks'> | null = null;
+    let taskLines = sourceLines.slice(1);
 
     if (!headerLine) {
         addIssue(
@@ -63,11 +65,11 @@ export function parseConfig(text: string): ConfigParseResult {
             null,
             `cabecalho ausente; esperada uma linha com ${HEADER_FIELDS.join('; ')}.`,
         );
-        return { ok: false, issues };
+        taskLines = sourceLines;
+    } else {
+        header = parseHeader(headerLine, issues);
     }
 
-    const header = parseHeader(headerLine, issues);
-    const taskLines = sourceLines.slice(1);
     const tasks: TaskDefinition[] = [];
 
     if (taskLines.length === 0) {
@@ -117,7 +119,6 @@ function parseHeader(
             line.text,
             `esperada uma linha de cabecalho com ${HEADER_FIELDS.length} campos; recebidos ${fields.length}.`,
         );
-        return null;
     }
 
     const startIssueCount = issues.length;
@@ -172,35 +173,46 @@ function parseTask(
     line: SourceLine,
     issues: ConfigParseIssue[],
 ): TaskDefinition | null {
+    const startIssueCount = issues.length;
     const fields: string[] = [];
     let remainder = line.text;
+    let hasEventField = false;
 
     for (let index = 0; index < TASK_FIELDS.length; index += 1) {
         const separator = remainder.indexOf(';');
         if (separator < 0) {
-            const currentFieldIsMissing = remainder.length === 0;
-            const missingFields = [
-                ...TASK_FIELDS.slice(currentFieldIsMissing ? index : index + 1),
-                'lista_eventos',
-            ];
-            for (const field of missingFields) {
+            if (remainder.length > 0) {
+                fields.push(remainder.trim());
+            }
+            for (const field of TASK_FIELDS.slice(fields.length)) {
                 addIssue(
                     issues,
                     line.number,
                     field,
                     null,
-                    `campo obrigatorio ausente; esperados 7 campos e recebidos ${index + 1}.`,
+                    `campo obrigatorio ausente; esperados 7 campos e recebidos ${fields.length}.`,
                 );
             }
-            return null;
+            break;
         }
         fields.push(remainder.slice(0, separator).trim());
         remainder = remainder.slice(separator + 1);
+        if (index === TASK_FIELDS.length - 1) hasEventField = true;
     }
 
-    if (remainder.endsWith(';')) remainder = remainder.slice(0, -1);
-    const rawEvents = remainder.trim();
-    const startIssueCount = issues.length;
+    if (!hasEventField) {
+        addIssue(
+            issues,
+            line.number,
+            'lista_eventos',
+            null,
+            `campo obrigatorio ausente; esperados 7 campos e recebidos ${fields.length}.`,
+        );
+    }
+    if (hasEventField && remainder.endsWith(';')) {
+        remainder = remainder.slice(0, -1);
+    }
+    const rawEvents = hasEventField ? remainder.trim() : '';
     const values: number[] = [];
 
     fields.forEach((value, index) => {

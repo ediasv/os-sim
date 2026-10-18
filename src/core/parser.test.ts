@@ -100,6 +100,61 @@ describe('parseConfig', () => {
         expect(result.issues[0].message).toContain('valor "bad"');
     });
 
+    it('continues parsing task rows when the header is missing', () => {
+        const result = parseConfig('1;FFFFFF;bad;2;5;7;\n2;000000;0;bad;5;7;');
+
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(
+            result.issues.map(({ line, field }) => ({ line, field })),
+        ).toEqual([
+            { line: 1, field: 'cabecalho' },
+            { line: 1, field: 'ingresso' },
+            { line: 2, field: 'duracao' },
+        ]);
+    });
+
+    it('validates recognizable header fields after an extra-field error', () => {
+        const result = parseConfig('RM;bad;1;extra\n1;FFFFFF;0;1;0;1;');
+
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(
+            result.issues.map(({ line, field }) => ({ line, field })),
+        ).toEqual([
+            { line: 1, field: 'cabecalho' },
+            { line: 1, field: 'quantum' },
+        ]);
+    });
+
+    it('validates available task fields in truncated rows', () => {
+        const result = parseConfig('RM;5;1\nx;FFFFFF;bad;2;5;');
+
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(
+            result.issues.map(({ line, field }) => ({ line, field })),
+        ).toEqual([
+            { line: 2, field: 'prazo' },
+            { line: 2, field: 'lista_eventos' },
+            { line: 2, field: 'id' },
+            { line: 2, field: 'ingresso' },
+        ]);
+    });
+
+    it('validates an unterminated final task field while reporting missing events', () => {
+        const result = parseConfig('RM;5;1\n1;FFFFFF;0;2;5;bad');
+
+        expect(result.ok).toBe(false);
+        if (result.ok) return;
+        expect(
+            result.issues.map(({ line, field }) => ({ line, field })),
+        ).toEqual([
+            { line: 2, field: 'lista_eventos' },
+            { line: 2, field: 'prazo' },
+        ]);
+    });
+
     it('loads an unbounded number of task rows', () => {
         const tasks = Array.from(
             { length: 500 },
