@@ -195,19 +195,27 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - Frontend (#35 a #40): discussao registrada parcialmente na
   [spec propria do renderer](../src/renderer/docs/specification.md), sem
   alterar as specs gerais ou implementar telas. Registro de 2026-10-18:
-  18 requisitos FE, seis decisoes de apresentacao e seis pendencias, com
+  18 requisitos FE, seis decisoes de apresentacao e sete pendencias, com
   criterios verificaveis, organizacao de pastas acordada e dependencias de
   dominio/arquivos explicitamente separadas. Nao conclui Q-02/Q-05/Q-06 nem
   as issues de implementacao. Proximo passo da conversa: ID, cor e ingresso
   de tarefa existente; depois revisar matriz e estados pendentes.
 - Publicacao documental do frontend: solicitada pelo usuario em 2026-10-18,
-  na branch `docs/frontend-specification`, para revisao via PR com destino a
-  `main`. Registro documental pronto para revisao; a discussao permanece
+  na branch `docs/frontend-specification`, no
+  [PR #61](https://github.com/ediasv/os-sim/pull/61), com destino a `main`.
+  Registro documental pronto para revisao; a discussao permanece
   parcial. Verificacao em 2026-10-18: dois documentos, 13 links locais/ancoras,
-  18 FE, seis FE-DEC e seis PEND conferidos, com IDs unicos e referencias
+  18 FE, seis FE-DEC e sete PEND conferidos, com IDs unicos e referencias
   REQ/DEC validas. Diff sem problemas de whitespace e editor sem diagnosticos.
   Testes, lint e typecheck nao executados nesta entrega so documental;
   `node_modules` ausente. O aplicativo e o pacote nao foram executados.
+- Auditoria da discussao do frontend em 2026-10-18: matriz de 22 acordos e
+  alternativas superadas na spec propria, sem mudar as specs gerais. Explicita
+  o criterio de bloqueio, o alcance provisoriamente aceito da duracao e a
+  identidade/historico das CPUs retiradas. PEND-02 distingue formalizacao
+  externa de comportamentos ja discutidos; PEND-07 registra que arquitetura
+  interna, bibliotecas, contratos de apresentacao e estrategia de testes ainda
+  precisam de planejamento. Nao fecha decisoes pendentes nem implementacao.
 - Acompanhamento remoto do frontend: comentario de escopo, evidencias,
   pendencias e proximo passo publicado na #35 pelo GitKraken em 2026-10-18.
   Campo Status do Project nao atualizado: a integracao disponivel nao expoe

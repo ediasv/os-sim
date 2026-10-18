@@ -21,9 +21,11 @@ pendentes. O andamento permanece no [plano do projeto](../../../docs/plan.md).
   A.4.4 manda ignorar aperiodicas e informar o usuario. Ha divergencia com
   REQ-03, DEC-09 e DEC-17 atuais; a reconciliacao pertence ao dominio, nao a
   um filtro implementado exclusivamente na apresentacao.
-- Os itens FE abaixo registram acordos de apresentacao. Pendencias identificadas
-  por PEND nao sao requisitos aprovados. Bibliotecas, componentes concretos,
-  APIs e organizacao interna ainda nao sao definidos por esta spec.
+- Os itens FE abaixo registram acordos de apresentacao. As pendencias PEND
+  distinguem decisoes ainda abertas de formalizacao externa de comportamentos
+  ja discutidos; nao significam que todo acordo precise ser decidido de novo.
+  Bibliotecas, componentes concretos, APIs e organizacao interna ainda nao sao
+  definidos por esta spec.
 
 ## Organizacao de apresentacao acordada
 
@@ -159,6 +161,10 @@ Origem: REQ-04, REQ-10; Q-06.
 - Mostrar o tick alcancado, o motivo e os jobs que impedem o termino.
   CPUs desligadas isoladamente nao permitem inferir bloqueio: podem existir
   ativacoes futuras. A deteccao pertence a execucao, nao ao componente.
+- O caso acordado a apresentar e: nao ha jobs elegiveis nem ativacoes futuras,
+  mas restam jobs suspensos ou bloqueados por eles. Se todos os jobs terminaram,
+  apresentar conclusao, nao falta de progresso. Esse resultado deve vir do
+  contrato de execucao, sem um timeout arbitrario inferido pelo renderer.
 - Oferecer uma unica saida, Voltar ao passo a passo, preservando estado e
   historico para inspecao e edicao. Nao declarar conclusao normal.
 - Aceitacao: nao oferecer simultaneamente um Cancelar que desfaz o trabalho.
@@ -211,12 +217,19 @@ Origem: REQ-05, REQ-07, REQ-08; dependencia de Q-02 e #25/#26.
 
 - Ao editar duracao e prazo relativo, deixar claro que os novos valores valem
   para proximas ativacoes. Jobs ja criados conservam os valores de sua ativacao.
+- Isso inclui jobs prontos, suspensos ou pendentes que nunca receberam CPU:
+  a referencia e a ativacao, nao o inicio da execucao. O alcance da edicao de
+  duracao foi aceito pelo usuario como regra provisoria, valida ate revisao
+  explicita; nao aplicar uma alternativa diferente enquanto ela nao ocorrer.
 - Na edicao de periodo positivo, mostrar a proxima ativacao resultante
   devolvida pelo nucleo. A regra discutida usa a ultima ativacao, nao o tick
   da edicao; eventuais ativacoes vencidas nao podem ser fabricadas no passado.
 - Se esse calculo ja estiver vencido, a previa precisa informar a unica
   ativacao no tick da edicao e o calendario contado a partir dela, sem zerar
   a contagem total. A apresentacao nao gera jobs para implementar essa regra.
+- A edicao nao concede mais dez ativacoes: o limite total de dez jobs da
+  tarefa periodica continua valendo. Se ele ja foi atingido, nao anunciar
+  uma proxima ativacao inexistente; editar continua possivel conforme o nucleo.
 - Informar o efeito sobre a prioridade RM sem apresentar a prioridade de jobs
   antigos como congelada. A selecao permanece responsabilidade da politica.
 - Aceitacao: o formulario nao recalcula nem sobrescreve parametros de jobs
@@ -278,8 +291,15 @@ Origem: REQ-02, REQ-05, REQ-07; dependencia de Q-02.
   pendente para o proximo tick. Essa alternativa foi descartada na discussao.
 - A interface informa que editar quantum preserva o consumo da fatia atual e
   pode causar vencimento imediato; nunca zera o contador por conta propria.
+- Quando o nucleo informar vencimento, apresentar a nova selecao, que pode
+  escolher o mesmo job com uma nova fatia. Nao confundir consumo da fatia
+  com progresso total do job nem presumir troca obrigatoria de tarefa.
 - Ao alterar CPUs, atualizar as raias e a inspecao, preservando os trechos
   historicos das CPUs retiradas. Reduzir CPUs nao significa cancelar tarefas.
+- CPUs vigentes sao identificadas de 1 a N, conforme DEC-12. Na reducao de
+  quatro para duas, manter CPU 1 e CPU 2 vigentes e os trechos anteriores de
+  CPU 3 e CPU 4 consultaveis. A selecao global pode migrar um job prioritario
+  da CPU 4 para a CPU 1 e devolver outro a fila, sem apagar progresso ou prazo.
 - Aceitacao: a apresentacao reflete a nova selecao global, incluindo migracoes;
   nao decide quais jobs vao parar a partir apenas do ID das CPUs retiradas.
 - Cenarios de apresentacao: consumo de fatia 3 e novo quantum 2 mostram o
@@ -336,10 +356,57 @@ Todas registradas em 2026-10-18. Sao acordos funcionais, nao evidencia de codigo
 | FE-DEC-05 | Selecao nao muda o tick; futuro valido fica visivel e so edicao aceita o descarta. Separar inspecao de navegacao. | FE-06, FE-10, FE-11; REQ-04, REQ-05, REQ-09 |
 | FE-DEC-06 | SVG integral do historico valido, inclusive parcial, independente da janela. | FE-18; REQ-09 |
 
+## Conferencia dos acordos da conversa
+
+Conferencia documental em 2026-10-18. A matriz aponta onde cada acordo final
+esta registrado, nao comprova implementacao. Os efeitos de dominio descritos
+em FE-12 a FE-16 sao dependencias observaveis do renderer; esta conferencia
+nao altera contratos ou decisoes da arquitetura geral.
+
+| Acordo final conferido | Registro | Situacao |
+| --- | --- | --- |
+| Documentacao e responsabilidades em renderer, com nucleo agnostico. | FE-01; FE-DEC-01; organizacao de apresentacao | Acordado; bibliotecas e contratos concretos abertos em PEND-07. |
+| Preparar e validar antes do inicio explicito; snapshot zero nao e primeiro tick executado. | FE-02, FE-03; FE-DEC-02 | Acordado. |
+| Importar primeiro valida, depois confirma substituicao e retorna a preparacao. | FE-04 | Acordado; cancelar ou falhar preserva a sessao. |
+| Reiniciar usa o cenario inicial; Limpar retorna aos padroes sem apagar arquivos. | FE-05; FE-DEC-03 | Acordado. |
+| Retroceder conserva futuro visivel, resultados e sorteios; so edicao aceita o descarta. | FE-06, FE-11; FE-DEC-05 | Acordado. |
+| Cancelar execucao completa preserva ultimo tick valido e historico, sem rollback. | FE-07; FE-DEC-04 | Acordado; depende da execucao. |
+| Falta de progresso explica jobs bloqueadores e oferece uma saida para passo a passo. | FE-08; FE-DEC-04 | Acordado; deteccao e contrato externos. |
+| Inspecao separa tarefa, job, elegibilidade e perda de prazo. | FE-09 | Acordado; nao inventar ranking da politica. |
+| Clicar no Gantt seleciona tarefa/job sem mudar tick ou estado. | FE-10; FE-DEC-05 | Acordado; selecao de job somente futuro em PEND-03. |
+| Formularios sao rascunhos; aplicar e atomico, sem avancar o relogio. | FE-11 | Acordado; tarefas concluidas nao ficam inacessiveis para edicao. |
+| Duracao editada afeta somente proximas ativacoes, nao jobs ja criados. | FE-12 | Acordo provisoriamente aceito, nao decisao novamente em aberto. |
+| Prazo relativo editado afeta proximas ativacoes; prazos absolutos e perdas existentes permanecem. | FE-12 | Acordado; contrato externo. |
+| Novo periodo conta da ultima ativacao; se vencido, uma ativacao na edicao e calendario a partir dela. | FE-12 | Acordado; sem retroatividade ou reinicio da contagem de dez jobs. |
+| RM usa novo periodo na proxima selecao, inclusive para jobs existentes. | FE-12 | Consequencia acordada; nao congela prioridade por job. |
+| Suspensao e retomada por job incompleto, sem pausar prazo nem liberar ultrapassagem. | FE-13 | Acordado; retomar nao garante CPU imediata. |
+| Progresso ajustavel e intervencao registrada; nao reescreve CPU anterior; atingir duracao conclui naquele tick. | FE-14 | Acordado; contrato e eventos externos. |
+| Inclusao aceita ingresso atual/futuro; remocao cancela jobs incompletos e futuras ativacoes, preservando historico. | FE-15 | Acordado; cancelamento nao e conclusao normal. |
+| Quantum preserva consumo; novo limite pode vencer fatia no tick editado. | FE-16 | Acordado; sem configuracao agendada para proximo tick. |
+| Alterar CPUs refaz selecao global, permite migracao e conserva trabalho e raias historicas. | FE-16 | Acordado; nao escolher quem para pelo ID da CPU retirada. |
+| Gantt por tarefa, CPU nos trechos, eventos e regua alinhados, zoom e rolagem. | FE-17 | Requisitos e referencia acordados; detalhes visuais em PEND-04. |
+| SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado. | FE-18; FE-DEC-06 | Acordado; gravacao pela infraestrutura. |
+| Aperiodicas, conversoes e reabertura por conversao fora deste recorte. | Escopo; PEND-02 | Decisao final de escopo apos consultar A.4.4. |
+
+Alternativas superadas que nao devem voltar como requisitos implicitos:
+
+- Iniciar automaticamente ao carregar/cadastrar dados: prevalece inicio explicito.
+- Cancelar e restaurar estado anterior a execucao: prevalece ultimo tick valido.
+- Ocultar o futuro ao retroceder: prevalece manter todo futuro ainda valido.
+- Contar novo periodo desde a edicao: prevalece ultima ativacao, com o caso
+  vencido explicitado em FE-12.
+- Agendar parametros do sistema para proximo tick ou renovar a fatia por editar
+  quantum: prevalece aplicacao no tick editado, preservando consumo da fatia.
+- Regras discutidas de conversao/reabertura de aperiodicas: foram retiradas do
+  recorte; nao sao requisitos ativos desta interface.
+
 ## Dependencias e pendencias
 
 Os contratos abaixo sao responsabilidade do nucleo ou da infraestrutura.
 Nao criar implementacoes alternativas no renderer para antecipar sua entrega.
+Comportamento acordado nao significa contrato formalizado ou funcionalidade
+implementada; as dependencias nao devem ser listadas como novas escolhas do
+usuario quando o efeito funcional ja foi decidido.
 
 | Dependencia | O que a apresentacao precisa receber | Referencias |
 | --- | --- | --- |
@@ -353,9 +420,12 @@ Nao criar implementacoes alternativas no renderer para antecipar sua entrega.
 - PEND-01: definir edicao/reutilizacao de ID, efeito de mudar cor no historico
   e edicao de ingresso de tarefa existente. Esses campos ainda nao foram
   acordados; nao transforma-los em somente leitura por conveniencia.
-- PEND-02: formalizar os contratos independentes de dominio discutidos para
-  duracao, prazo, calendario, progresso, quantum, CPUs e remocao. Nao declarar
-  Q-02 resolvida nem presumir que o modelo atual ja os representa. Aperiodicas,
+- PEND-02 (dependencia externa, nao nova decisao de apresentacao): formalizar
+  os contratos independentes de dominio para os efeitos ja discutidos de
+  duracao, prazo, calendario, suspensao, progresso, quantum, CPUs, inclusao e
+  remocao, bem como cancelamento/bloqueio da execucao completa. Nao declarar
+  Q-02/Q-06 resolvidas nem presumir que o modelo atual ja os representa.
+  Reconciliar tambem o escopo periodico com REQ-03, DEC-09 e DEC-17. Aperiodicas,
   conversoes e reabertura por conversao deixaram o escopo desta interface.
 - PEND-03: definir o que o inspetor mostra ao selecionar trecho de um job que
   ainda nao existe no tick inspecionado. Nao navegar automaticamente nem
@@ -369,12 +439,17 @@ Nao criar implementacoes alternativas no renderer para antecipar sua entrega.
 - PEND-06: conferir disponibilidade dos comandos em preparacao, execucao,
   navegacao no passado, bloqueio, cancelamento, termino e erro. Nao habilitar
   comandos sem contrato implementado nem prometer capacidade via mocks.
+- PEND-07: detalhar a arquitetura interna de apresentacao, contratos entre
+  componentes/composables/adaptadores, tokens, bibliotecas e estrategia de
+  testes/entregas. As responsabilidades de pastas foram aceitas, mas propostas
+  anteriores de MVVM, bibliotecas ou ferramentas nao constituem escolhas
+  aprovadas por essa aceitacao. Planejar sem impor dependencias ao nucleo.
 
 ## Estado da discussao
 
 Em 2026-10-18, os fluxos FE-02 a FE-18 foram discutidos com o usuario,
 incluindo o ajuste manual de progresso e a redistribuicao global ao alterar
-CPUs. O registro e parcial: PEND-01 a PEND-06 permanecem abertos e os
+CPUs. O registro e parcial: PEND-01 a PEND-07 permanecem abertos e os
 contratos externos ainda precisam ser reconciliados nos escopos de dominio.
 
 Proximo passo da conversa: revisar ID, cor e ingresso de tarefa existente;
