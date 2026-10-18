@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-17. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-18. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -133,9 +133,17 @@ Requisitos: REQ-04, REQ-05.
 
 ### E4: Configuracao e arquivos
 
-Requisitos: REQ-05, REQ-06.
+Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 
-- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10).
+- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10;
+  REQ-06, REQ-10).
+- DEC-19 aceita em 2026-10-17 e revista pelo usuario em 2026-10-18: diagnosticos
+  usam linhas do arquivo original, acumulam erros recuperaveis, preservam
+  literalmente as mensagens do nucleo e distinguem falhas de acesso; cancelar
+  a escolha do arquivo nao e erro. Evidencia deste PR: decisao e exemplos em
+  [architecture.md](architecture.md#dec-19-diagnosticos-do-parser-de-configuracao);
+  Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
+  Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
@@ -169,6 +177,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
   #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
+- #29: decisao DEC-19 aceita e documentada no PR #57; aguarda integracao para
+  fechar a issue. A implementacao/testes do parser permanecem nas #30, #31 e #34.
 - #55 (descricoes das issues): corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
@@ -180,7 +190,10 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
   usuario em 2026-10-17; quantum implementado e verificado (evidencia na E1),
   em revisao no PR da #14.
-- Proximo passo: revisar e fazer merge do PR da #14; a issue fecha no merge.
+- #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
+  revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
+- Proximo passo: revisar e integrar o PR da #14; manter os diagnosticos de
+  DEC-19 nos escopos de #30, #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
