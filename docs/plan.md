@@ -192,6 +192,27 @@ Requisito: REQ-10; integracao de todos os anteriores.
   em revisao no PR da #14.
 - #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
   revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
+- Frontend (#35 a #40): discussao registrada parcialmente na
+  [spec propria do renderer](../src/renderer/docs/specification.md), sem
+  alterar as specs gerais ou implementar telas. Registro de 2026-10-18:
+  18 requisitos FE, seis decisoes de apresentacao e seis pendencias, com
+  criterios verificaveis, organizacao de pastas acordada e dependencias de
+  dominio/arquivos explicitamente separadas. Nao conclui Q-02/Q-05/Q-06 nem
+  as issues de implementacao. Proximo passo da conversa: ID, cor e ingresso
+  de tarefa existente; depois revisar matriz e estados pendentes.
+- Publicacao documental do frontend: solicitada pelo usuario em 2026-10-18,
+  na branch `docs/frontend-specification`, para revisao via PR com destino a
+  `main`. Registro documental pronto para revisao; a discussao permanece
+  parcial. Verificacao em 2026-10-18: dois documentos, 13 links locais/ancoras,
+  18 FE, seis FE-DEC e seis PEND conferidos, com IDs unicos e referencias
+  REQ/DEC validas. Diff sem problemas de whitespace e editor sem diagnosticos.
+  Testes, lint e typecheck nao executados nesta entrega so documental;
+  `node_modules` ausente. O aplicativo e o pacote nao foram executados.
+- Acompanhamento remoto do frontend: comentario de escopo, evidencias,
+  pendencias e proximo passo publicado na #35 pelo GitKraken em 2026-10-18.
+  Campo Status do Project nao atualizado: a integracao disponivel nao expoe
+  essa operacao, e `gk`/`gh` nao estao disponiveis como comandos locais.
+  Nenhuma issue funcional foi marcada como entregue ou fechada.
 - Proximo passo: revisar e integrar o PR da #14; manter os diagnosticos de
   DEC-19 nos escopos de #30, #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
