@@ -10,6 +10,8 @@ afirma que os modulos planejados ja existem.
   intervalos, eventos e snapshot (DEC-12).
 - [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
+- [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
+  e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12).
@@ -464,6 +466,31 @@ anterior. Data inicial dos registros: 2026-10-12.
   produzir diagnosticos semanticos artificiais. O parser preserva o texto
   recebido para os diagnosticos e associa tarefas analisadas as linhas
   originais. O contexto acrescentado envolve a mensagem sem modifica-la.
+
+### DEC-20: `;` final e fim da lista de eventos
+
+- Estado: aceita em 2026-10-19 pelo usuario (revisao do PR #60). Requisitos:
+  REQ-06. Detalha DEC-10 e DEC-19; resolve a questao aberta da #32 sobre o fim
+  da lista de eventos e a proposta CRLF/BOM da #30.
+- Decisao:
+    1. Cada linha, sem espacos nas pontas, pode terminar com um `;` opcional,
+       removido antes de separar os campos; `;;` final deixa um campo vazio.
+    2. Na tarefa, os seis primeiros campos sao fixos; a lista de eventos e o
+       texto apos o sexto `;`, aparado nas pontas, com separadores e espacos
+       internos preservados; sem sexto `;` ela e vazia. Assim `...;7`, `...;7;`
+       e `...;7;;` nao tem eventos, e `...;7;A;B;` guarda `A;B`.
+    3. Fins de linha LF, CRLF e CR, e marca BOM inicial, sao aceitos.
+    4. Campos numericos aceitam somente numerais decimais
+       (`[+-]?digitos(.digitos)?`); inteiros e faixas continuam com o nucleo
+       (DEC-10).
+- Justificativa: A.3.3.3 exige tratar linhas com e sem `;` final; exigir o
+  separador antes da lista de eventos rejeitaria arquivos validos, falha grave
+  pela A.3.3.7. Notacoes nao decimais eram convertidas sem aviso (`0x10`
+  virava 16).
+- Consequencia: um `;` final que fizesse parte do conteudo dos eventos nao e
+  preservado; o formato dos eventos vem no Projeto B, que pode rever esta
+  decisao. Mensagens do parser usam acentuacao como as do nucleo; os exemplos
+  desta documentacao seguem a convencao sem acentos.
 
 ## Fluxo de um passo
 

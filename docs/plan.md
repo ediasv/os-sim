@@ -145,8 +145,19 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
   Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
+  Implementada no PR #60: parser puro de sintaxe, diagnosticos com linhas
+  originais e testes de variantes, erros recuperaveis e 500 tarefas. Evidencia
+  (2026-10-18): `npm test` (154 testes), `npm run lint` e `npm run typecheck`
+  aprovados; a issue permanece aberta ate a integracao. Revisao do PR
+  (2026-10-19): `;` final opcional em toda linha e lista de eventos opcional
+  (DEC-20), numeros so decimais, mensagens revistas, arquivo vazio com
+  cabecalho e tarefa ausentes, e mapa tarefa/linha no resultado para a #31.
+  Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
+  `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
+  O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
+  continua nesta issue.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
@@ -179,6 +190,10 @@ Requisito: REQ-10; integracao de todos os anteriores.
   #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
 - #29: decisao DEC-19 aceita e documentada no PR #57; aguarda integracao para
   fechar a issue. A implementacao/testes do parser permanecem nas #30, #31 e #34.
+- #30 (PR #60 aberto): parser puro de sintaxe implementado e gates aprovados;
+  achados da revisao corrigidos em 2026-10-19 com DEC-20. Associacao de erros
+  semanticos permanece na #31, que pode usar `lines` do resultado. A issue fica
+  aberta ate a integracao do PR.
 - #55 (descricoes das issues): corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
@@ -192,8 +207,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   em revisao no PR da #14.
 - #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
   revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
-- Proximo passo: revisar e integrar o PR da #14; manter os diagnosticos de
-  DEC-19 nos escopos de #30, #31 e #34.
+- Proximo passo: integrar o PR da #60; revisar e integrar o PR da #14; manter os
+  diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
