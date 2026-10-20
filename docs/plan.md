@@ -92,15 +92,17 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
   `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  Implementada na branch `feat/cpu-off-intervals` (DEC-21, aceita pelo
-  usuario): `summarizeCpuOff` (`src/core/cpuOff.ts`) deriva intervalos e totais
-  dos eventos de qualquer snapshot; `findInconsistencies` passa a conferir
-  `offSince` contra os eventos. Testes novos: CPU que nunca liga, que desliga e
-  religa varias vezes, que segue desligada ate o fim, consulta de snapshots
-  anteriores e sequencias malformadas; tarefa periodica com folgas termina so
-  com o 10o job, inclusive atrasado. Correspondencia REQ-03/REQ-08 -> testes
-  no PR. Evidencia (2026-10-17): `npm test` 153/153, `npm run lint` e
-  `npm run typecheck` aprovados. Fechar apos merge.
+  Em revisao no PR #59 (DEC-21, aceita pelo usuario): `summarizeCpuOff`
+  (`src/core/cpuOff.ts`) deriva intervalos e totais dos eventos de qualquer
+  snapshot; `findInconsistencies` passa a conferir `offSince` contra os
+  eventos. Testes novos: CPU que nunca liga, que desliga e religa varias
+  vezes, que segue desligada ate o fim, consulta de snapshots anteriores e
+  sequencias malformadas; tarefas periodicas terminam so com o 10o job, tanto
+  com folgas entre jobs quanto com todos os jobs atrasados. Correspondencia
+  REQ-03/REQ-08 -> testes no PR #59. Revisao do PR (2026-10-20): erro dedicado
+  `CpuEventSequenceError`, rejeicao de eventos fora de ordem temporal e
+  intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
+  `main`): `npm test` 204/204, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 

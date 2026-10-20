@@ -1,12 +1,13 @@
 /**
  * Cross-checks facts that the domain records twice (DEC-12): a running job is
- * marked both in `Job.state` and in `CpuState.running`, a missed deadline
- * both in `Job.deadlineMissed` and as a `deadline-miss` event, and a CPU that
- * is off both in `CpuState.offSince` and as its open `cpu-off` interval
- * (DEC-21). The engine must
- * keep each pair in sync; its tests (#13, #15) assert that this list is empty
- * after every step. It also checks that no job ran past its duration, which
- * would have caught a half-applied step re-executing completed jobs.
+ * marked both in `Job.state` and in `CpuState.running`, a missed deadline both
+ * in `Job.deadlineMissed` and as a `deadline-miss` event, and a CPU that is off
+ * both in `CpuState.offSince` and as its open `cpu-off` interval (DEC-21). The
+ * engine runs this check after every dispatch and rejects the step on any
+ * issue (DEC-14); engine tests also assert an empty list after every step.
+ * It also rejects a job that ran past its duration, which would have caught a
+ * half-applied step re-executing completed jobs, a CPU that runs a job while
+ * off, and a malformed `cpu-off`/`cpu-on` sequence.
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
 import {

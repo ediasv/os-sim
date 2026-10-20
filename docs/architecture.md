@@ -231,8 +231,9 @@ anterior. Data inicial dos registros: 2026-10-12.
   `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
   dos eventos `cpu-off`/`cpu-on` (DEC-21). `findInconsistencies` exige que cada
   par concorde (um job em no maximo uma CPU, uma unica perda registrada por
-  job, `offSince` igual ao inicio do intervalo aberto) e rejeita
-  `executed > duration` (DEC-14); testes do motor (#13, #15) verificam lista
+  job, `offSince` igual ao inicio do intervalo aberto; ver DEC-21 para as
+  demais conferencias de CPU) e rejeita `executed > duration` (DEC-14); testes
+  do motor (#13, #15) verificam lista
   vazia apos cada passo.
 - Pendencias conhecidas do modelo, registradas no plano:
     - CPU ociosa (resolvida na #13): o estado pre-dispatch usa `offSince: null`;
@@ -500,11 +501,14 @@ anterior. Data inicial dos registros: 2026-10-12.
 ### DEC-21: Intervalos de CPU desligada derivados do snapshot
 
 - Estado: aceita em 2026-10-17 (decidida pelo usuario na #15). Requisitos:
-  REQ-02, REQ-09. Detalha DEC-05; nao muda o modelo de DEC-12.
+  REQ-02, REQ-04 (qualquer snapshot do historico) e REQ-09 (consumo pelo
+  Gantt, #38). Detalha DEC-05; nao acrescenta campos ao modelo de DEC-12,
+  acrescenta um fato em dobro conferido.
 - Decisao: `summarizeCpuOff(snapshot)` deriva, para cada CPU na ordem de
   `cpus`, os intervalos [start, end) em que esteve desligada e o total
   desligado, percorrendo os eventos `cpu-off`/`cpu-on`. Nada novo e guardado
-  no estado; qualquer snapshot basta, inclusive um restaurado do historico.
+  no estado; qualquer snapshot basta, inclusive um anterior do historico
+  (DEC-06).
 - Detalhes:
     - CPU ainda desligada no instante do snapshot tem o ultimo intervalo
       aberto (`end: null`). O total conta somente ticks ja decorridos
@@ -514,19 +518,23 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Sequencia malformada (religar CPU ligada, desligar CPU desligada, CPU
       inexistente, evento antes do anterior da mesma CPU ou depois do clock do
       snapshot) lanca `CpuEventSequenceError` com mensagem descritiva em vez
-      de adivinhar intervalos. Desligar e religar no mesmo instante continua
-      aceito: o motor nao gera esse par, e o intervalo `[t, t)` soma 0. `findInconsistencies` converte somente esse erro
-      em problema relatado; qualquer outro erro propaga, por indicar defeito do
-      codigo e nao do historico.
+      de adivinhar intervalos. `findInconsistencies` converte somente
+      `CpuEventSequenceError` em problema relatado; qualquer outro erro
+      propaga, por indicar defeito do codigo e nao do historico.
+    - Desligar e religar no mesmo instante continua aceito: o motor nao gera
+      esse par, e o intervalo `[t, t)` soma 0.
     - `offSince` e o intervalo aberto registram o mesmo fato:
       `findInconsistencies` exige que concordem, que a sequencia seja valida e
       que CPU com job nao esteja desligada. O motor confere isso a cada
       despacho (DEC-14).
 - Justificativa: os eventos ja sao a fonte dos instantes exatos; guardar os
   intervalos criaria mais um fato em dobro, e deixar a derivacao para a
-  interface separaria a inspecao (#37) do Gantt (#38).
+  interface obrigaria inspecao (#37) e Gantt (#38) a derivar por conta
+  propria, podendo divergir.
 - Consequencia: custo O(eventos) por consulta; a interface pode guardar o
-  resultado por snapshot se necessario.
+  resultado por snapshot se necessario. O motor tambem paga O(eventos) por
+  passo via `findInconsistencies`, como a conferencia de `deadline-miss`;
+  rever na #23 junto com DEC-12/DEC-14.
 - Alternativas descartadas: intervalos e totais guardados em `CpuState`
   (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
   dominio fora do nucleo e sem `findInconsistencies`).
