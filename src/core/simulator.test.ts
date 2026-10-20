@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ConfigValidationError } from './config';
 import { findInconsistencies } from './consistency';
+import { summarizeCpuOff } from './cpuOff';
 import {
     DEFAULT_CONFIG,
     type SimulationEvent,
@@ -1022,6 +1023,18 @@ describe('Simulator', () => {
         expect(
             snapshot.events.filter((event) => event.kind === 'task-finished'),
         ).toEqual([{ kind: 'task-finished', time: 3, taskId: 2 }]);
+        // Events of the two CPUs interleave; each keeps its own intervals.
+        expect(summarizeCpuOff(snapshot)).toEqual([
+            { cpuId: 1, intervals: [], totalOff: 0 },
+            {
+                cpuId: 2,
+                intervals: [
+                    { start: 0, end: 2 },
+                    { start: 3, end: null },
+                ],
+                totalOff: 2,
+            },
+        ]);
     });
 
     it('runs back-to-back jobs of a task as separate intervals and finishes the task once (DEC-09)', () => {
