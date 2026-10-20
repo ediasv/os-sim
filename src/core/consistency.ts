@@ -3,7 +3,7 @@
  * marked both in `Job.state` and in `CpuState.running`, a missed deadline
  * both in `Job.deadlineMissed` and as a `deadline-miss` event, and a CPU that
  * is off both in `CpuState.offSince` and as its open `cpu-off` interval
- * (DEC-19). The engine must
+ * (DEC-21). The engine must
  * keep each pair in sync; its tests (#13, #15) assert that this list is empty
  * after every step. It also checks that no job ran past its duration, which
  * would have caught a half-applied step re-executing completed jobs.
@@ -82,7 +82,7 @@ export function findInconsistencies(
         }
     }
 
-    // An off CPU runs nothing, and offSince starts its open off interval (DEC-19).
+    // An off CPU runs nothing, and offSince starts its open off interval (DEC-21).
     for (const cpu of state.cpus) {
         if (cpu.running !== null && cpu.offSince !== null) {
             issues.push(

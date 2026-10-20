@@ -137,7 +137,7 @@ describe('findInconsistencies: missed deadlines', () => {
     });
 });
 
-describe('findInconsistencies: CPU power (DEC-19)', () => {
+describe('findInconsistencies: CPU power (DEC-21)', () => {
     it('accepts offSince matching the open cpu-off interval', () => {
         const state = stateWith();
         state.cpus[0].offSince = 3;

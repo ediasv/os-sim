@@ -12,9 +12,9 @@ afirma que os modulos planejados ja existem.
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
-  fatos registrados em dobro no dominio (DEC-12, DEC-19).
+  fatos registrados em dobro no dominio (DEC-12, DEC-21).
 - [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
-  snapshot os intervalos e o total desligado de cada CPU (DEC-19).
+  snapshot os intervalos e o total desligado de cada CPU (DEC-21).
 - [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
@@ -108,7 +108,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: aceitar quantidade inteira positiva sem teto de 16; CPU sem trabalho
   fica logicamente desligada e pode reativar sem custo.
 - Consequencia: registrar intervalos e totais; nao simular energia ou latencia.
-  Intervalos e totais sao derivados dos eventos de cada snapshot (DEC-19).
+  Intervalos e totais sao derivados dos eventos de cada snapshot (DEC-21).
 - Limitacao: recursos reais e representacao numerica continuam finitos; tratar
   falhas claramente, sem prometer capacidade infinita.
 
@@ -227,7 +227,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
   `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
-  dos eventos `cpu-off`/`cpu-on` (DEC-19). `findInconsistencies` exige que cada
+  dos eventos `cpu-off`/`cpu-on` (DEC-21). `findInconsistencies` exige que cada
   par concorde (um job em no maximo uma CPU, uma unica perda registrada por
   job, `offSince` igual ao inicio do intervalo aberto) e rejeita
   `executed > duration` (DEC-14); testes do motor (#13, #15) verificam lista
@@ -417,7 +417,7 @@ anterior. Data inicial dos registros: 2026-10-12.
       selecao no vencimento seria igual a de qualquer tick, anulando o quantum,
       e empates totais seriam sorteados a cada tick.
 
-### DEC-19: Intervalos de CPU desligada derivados do snapshot
+### DEC-21: Intervalos de CPU desligada derivados do snapshot
 
 - Estado: aceita em 2026-10-17 (decidida pelo usuario na #15). Requisitos:
   REQ-02, REQ-09. Detalha DEC-05; nao muda o modelo de DEC-12.

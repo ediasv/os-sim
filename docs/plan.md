@@ -84,7 +84,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
   visao expressa isso e se a troca por vencimento tambem gera `preemption`.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  Implementada na branch `feat/cpu-off-intervals` (DEC-19, aceita pelo
+  Implementada na branch `feat/cpu-off-intervals` (DEC-21, aceita pelo
   usuario): `summarizeCpuOff` (`src/core/cpuOff.ts`) deriva intervalos e totais
   dos eventos de qualquer snapshot; `findInconsistencies` passa a conferir
   `offSince` contra os eventos. Testes novos: CPU que nunca liga, que desliga e
@@ -176,7 +176,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
 - #15 em andamento: implementacao e testes concluidos na branch
-  `feat/cpu-off-intervals` (DEC-19); falta PR e merge.
+  `feat/cpu-off-intervals` (DEC-21); falta PR e merge.
 - Proximo passo: PR da #15; depois quantum e contexto na #14 (DEC-18).
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.

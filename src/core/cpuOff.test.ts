@@ -39,7 +39,7 @@ function runSnapshots(
     return snapshots;
 }
 
-describe('summarizeCpuOff (DEC-19)', () => {
+describe('summarizeCpuOff (DEC-21)', () => {
     it('keeps a CPU that never turns on in one open interval since tick 0', () => {
         const snapshots = runSnapshots(
             {

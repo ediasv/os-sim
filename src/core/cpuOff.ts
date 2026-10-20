@@ -1,7 +1,7 @@
 /**
  * Periods in which each CPU was logically off (A.1.2, DEC-05), derived from
  * the `cpu-off`/`cpu-on` events of a snapshot instead of being stored
- * (DEC-19). Inspection (#37) and the Gantt (#38) read them from any snapshot.
+ * (DEC-21). Inspection (#37) and the Gantt (#38) read them from any snapshot.
  */
 import type { DeepReadonly, SimulationState } from './domain';
 
