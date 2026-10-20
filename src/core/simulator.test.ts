@@ -3,6 +3,7 @@ import { ConfigValidationError } from './config';
 import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
+    type SimulationEvent,
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
@@ -1211,5 +1212,301 @@ describe('Simulator', () => {
             { kind: 'deadline-miss', time: 2, job: { taskId: 1, index: 1 } },
             { kind: 'deadline-miss', time: 3, job: { taskId: 1, index: 2 } },
         ]);
+    });
+});
+
+describe('Simulator quantum (#14)', () => {
+    const J = { taskId: 1, index: 0 };
+    const K = { taskId: 2, index: 0 };
+
+    function task(
+        id: number,
+        color: string,
+        fields: Pick<TaskDefinition, 'arrival' | 'duration' | 'deadline'>,
+    ): TaskDefinition {
+        return { id, color, period: 0, rawEvents: '', ...fields };
+    }
+
+    function run(sim: Simulator, ticks: number): void {
+        for (let step = 0; step < ticks; step++) {
+            sim.tick();
+            expectConsistent(sim);
+        }
+    }
+
+    function eventsOf(sim: Simulator, kind: SimulationEvent['kind']) {
+        return sim
+            .getLatestSnapshot()
+            .events.filter((event) => event.kind === kind);
+    }
+
+    it('keeps the expired job on its CPU in a tie and starts a new slice (DEC-18)', () => {
+        // Stands in for A.4.3 (1) "was running before", then (2) deadline.
+        const views: PolicyView[] = [];
+        const runningThenDeadline: SchedulingPolicy = {
+            select: (view) => {
+                views.push(view);
+                const [best] = [...view.candidates].sort(
+                    (a, b) =>
+                        Number(b.previousCpu !== null) -
+                            Number(a.previousCpu !== null) ||
+                        a.job.absoluteDeadline - b.job.absoluteDeadline,
+                );
+                return {
+                    selected:
+                        best === undefined
+                            ? []
+                            : [
+                                  {
+                                      taskId: best.job.taskId,
+                                      index: best.job.index,
+                                  },
+                              ],
+                };
+            },
+        };
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 2,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 4,
+                        deadline: 10,
+                    }),
+                    task(2, 'AABBCC', { arrival: 1, duration: 2, deadline: 8 }),
+                ],
+            },
+            runningThenDeadline,
+        );
+
+        run(sim, 2);
+        const atTwo = sim.getLatestSnapshot();
+        const eventsAtTwo = atTwo.events.length;
+        expect(atTwo.cpus[0]).toMatchObject({ running: J, sliceElapsed: 0 });
+        run(sim, 4);
+
+        expect(
+            views
+                .find((view) => view.clock === 2)
+                ?.candidates.find((candidate) => candidate.job.taskId === 1)
+                ?.previousCpu,
+        ).toBe(1);
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: J, start: 0, end: 4 },
+            { cpuId: 1, job: K, start: 4, end: 6 },
+        ]);
+        expect(eventsOf(sim, 'quantum-expired')).toEqual([
+            { kind: 'quantum-expired', time: 2, cpuId: 1, job: J },
+        ]);
+        expect(eventsOf(sim, 'preemption')).toEqual([]);
+        expect(eventsOf(sim, 'completion')).toEqual([
+            { kind: 'completion', time: 4, job: J },
+            { kind: 'completion', time: 6, job: K },
+        ]);
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            executed: 4,
+            absoluteDeadline: 10,
+            deadlineMissed: false,
+            completedAt: 4,
+        });
+        expect(atTwo.events).toHaveLength(eventsAtTwo);
+    });
+
+    it('logs quantum-expired and preemption when another job takes the CPU, and gives a migrated job a full quantum', () => {
+        const A = { taskId: 1, index: 0 };
+        const B = { taskId: 2, index: 0 };
+        const C = { taskId: 3, index: 0 };
+        const base = { arrival: 0, duration: 4, deadline: 20 };
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                quantum: 2,
+                tasks: [
+                    task(1, 'F0E0D0', base),
+                    task(2, 'AABBCC', base),
+                    task(3, '112233', base),
+                ],
+            },
+            {
+                select: (view) => ({
+                    selected:
+                        view.clock === 0
+                            ? [A, B]
+                            : view.clock === 1
+                              ? [C, B]
+                              : [C, A],
+                }),
+            },
+        );
+
+        run(sim, 4);
+
+        const snapshot = sim.getLatestSnapshot();
+        // A resumed on CPU 2 at 2, so its slice expires at 4, not 3.
+        expect(eventsOf(sim, 'quantum-expired')).toEqual([
+            { kind: 'quantum-expired', time: 2, cpuId: 2, job: B },
+            { kind: 'quantum-expired', time: 3, cpuId: 1, job: C },
+            { kind: 'quantum-expired', time: 4, cpuId: 2, job: A },
+        ]);
+        expect(eventsOf(sim, 'preemption')).toEqual([
+            { kind: 'preemption', time: 1, cpuId: 1, preempted: A, by: C },
+            { kind: 'preemption', time: 2, cpuId: 2, preempted: B, by: A },
+        ]);
+        // C's reselection at 3 does not split its interval.
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: A, start: 0, end: 1 },
+            { cpuId: 2, job: B, start: 0, end: 2 },
+            { cpuId: 1, job: C, start: 1, end: 4 },
+            { cpuId: 2, job: A, start: 2, end: 4 },
+        ]);
+        expect(snapshot.cpus).toMatchObject([
+            { id: 1, running: C, sliceElapsed: 1 },
+            { id: 2, running: A, sliceElapsed: 0 },
+        ]);
+        expect(snapshot.tasks.map((tcb) => tcb.jobs[0])).toMatchObject([
+            { executed: 3, state: 'running' },
+            { executed: 2, state: 'ready' },
+            { executed: 3, state: 'running' },
+        ]);
+    });
+
+    it('restarts the slice when a job preempted mid-slice resumes on the same CPU', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 3,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 6,
+                        deadline: 20,
+                    }),
+                    task(2, 'AABBCC', {
+                        arrival: 0,
+                        duration: 1,
+                        deadline: 20,
+                    }),
+                ],
+            },
+            {
+                select: (view) => ({
+                    selected:
+                        view.candidates.length === 0
+                            ? []
+                            : [view.clock === 2 ? K : J],
+                }),
+            },
+        );
+
+        run(sim, 7);
+
+        expect(eventsOf(sim, 'quantum-expired')).toEqual([
+            { kind: 'quantum-expired', time: 6, cpuId: 1, job: J },
+        ]);
+        expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toMatchObject({
+            executed: 6,
+            completedAt: 7,
+        });
+    });
+
+    it('expires every boundary with quantum 1 without splitting the interval', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 1,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 3,
+                        deadline: 20,
+                    }),
+                ],
+            },
+            firstAvailable,
+        );
+
+        run(sim, 3);
+
+        expect(
+            eventsOf(sim, 'quantum-expired').map((event) => event.time),
+        ).toEqual([1, 2]);
+        expect(sim.getLatestSnapshot().executions).toEqual([
+            { cpuId: 1, job: J, start: 0, end: 3 },
+        ]);
+        expect(eventsOf(sim, 'preemption')).toEqual([]);
+    });
+
+    it('logs a deadline miss before the expiry at the same boundary and keeps running', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 2,
+                tasks: [
+                    task(1, 'F0E0D0', { arrival: 0, duration: 4, deadline: 2 }),
+                ],
+            },
+            firstAvailable,
+        );
+
+        run(sim, 2);
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(
+            snapshot.events
+                .filter((event) => event.time === 2)
+                .map((event) => event.kind),
+        ).toEqual(['deadline-miss', 'quantum-expired']);
+        expect(snapshot.cpus[0].running).toEqual(J);
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            executed: 2,
+            state: 'running',
+            deadlineMissed: true,
+        });
+    });
+
+    it('leaves state and history untouched when the policy throws at an expiry boundary (DEC-14)', () => {
+        let failed = false;
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 2,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 4,
+                        deadline: 20,
+                    }),
+                ],
+            },
+            {
+                select: (view) => {
+                    if (view.clock === 2 && !failed) {
+                        failed = true;
+                        throw new Error('boom');
+                    }
+                    return firstAvailable.select(view);
+                },
+            },
+        );
+
+        run(sim, 1);
+        const before = sim.getLatestSnapshot();
+        expect(() => sim.tick()).toThrow(/boom/);
+        expect(sim.getLatestSnapshot()).toBe(before);
+
+        // The retry must start from the restored state, not from a half-applied
+        // expiry: one event, one renewed slice, one tick of progress.
+        run(sim, 1);
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.clock).toBe(2);
+        expect(eventsOf(sim, 'quantum-expired')).toEqual([
+            { kind: 'quantum-expired', time: 2, cpuId: 1, job: J },
+        ]);
+        expect(snapshot.cpus[0]).toMatchObject({ running: J, sliceElapsed: 0 });
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({ executed: 2 });
     });
 });

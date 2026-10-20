@@ -47,8 +47,11 @@ export class ConfigValidationError extends Error {
 
 const ALGORITHMS: readonly AlgorithmId[] = ['RM', 'EDF'];
 
-/** Field names as written in the configuration file, so messages match what the user typed. */
-const FILE_LABELS: Record<ConfigField, string> = {
+/**
+ * Field names as written in the configuration file, so messages match what the
+ * user typed. Shared with the file parser, which reports issues by these names.
+ */
+export const FILE_LABELS = {
     algorithm: 'algoritmo_escalonamento',
     quantum: 'quantum',
     cpuCount: 'qtde_cpus',
@@ -58,7 +61,10 @@ const FILE_LABELS: Record<ConfigField, string> = {
     duration: 'duracao',
     period: 'periodo',
     deadline: 'prazo',
-};
+} as const satisfies Record<ConfigField, string>;
+
+/** A configuration field as the file names it. */
+export type FileFieldLabel = (typeof FILE_LABELS)[ConfigField];
 
 /** Six hex digits without `#`, the format given by the assignment (A.3.3). */
 const COLOR_PATTERN = /^[0-9A-F]{6}$/i;

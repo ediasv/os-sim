@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-17. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-18. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -81,8 +81,16 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
-  Job com fatia vencida perde o primeiro desempate (DEC-18); definir aqui como a
-  visao expressa isso e se a troca por vencimento tambem gera `preemption`.
+  Concluida no PR #58 (merged, `f8837df`). DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
+  primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
+  `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
+  registra so a conclusao. Implementada em `Simulator.expireSlices`, entre
+  conclusoes/perdas de prazo e ativacoes. Testes novos: exemplo de DEC-18,
+  troca no vencimento com `preemption` e migracao com quantum inteiro em 2
+  CPUs, retomada apos preempcao no meio da fatia, quantum 1 sem dividir o
+  intervalo, perda de prazo e vencimento na mesma fronteira e rollback de
+  politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
+  `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
   Implementada na branch `feat/cpu-off-intervals` (DEC-21, aceita pelo
   usuario): `summarizeCpuOff` (`src/core/cpuOff.ts`) deriva intervalos e totais
@@ -104,7 +112,7 @@ Requisito: REQ-07.
   em 2026-10-17. Decisoes aceitas pelo usuario em 2026-10-17: DEC-16
   (desempates com prazo e ativacao do job e duracao da tarefa), DEC-17
   (aperiodica com menor prioridade RM) e DEC-18 (quantum vencido perde o
-  primeiro desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
+  primeiro desempate; revista na #14: o job vencido mantem o desempate). Concluida no PR #54 (merged, `90ddfb5`): Q-04 e Q-07
   resolvidas na especificacao. Evidencia (2026-10-17, sobre `02d9875`): links
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
@@ -131,12 +139,31 @@ Requisitos: REQ-04, REQ-05.
 
 ### E4: Configuracao e arquivos
 
-Requisitos: REQ-05, REQ-06.
+Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 
-- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10).
+- #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10;
+  REQ-06, REQ-10). Concluida no PR #57 (merged, `7156519`).
+- DEC-19 aceita em 2026-10-17 e revista pelo usuario em 2026-10-18: diagnosticos
+  usam linhas do arquivo original, acumulam erros recuperaveis, preservam
+  literalmente as mensagens do nucleo e distinguem falhas de acesso; cancelar
+  a escolha do arquivo nao e erro. Evidencia deste PR: decisao e exemplos em
+  [architecture.md](architecture.md#dec-19-diagnosticos-do-parser-de-configuracao);
+  Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
+  Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
+  Concluida no PR #60 (merged, `b28e487`): parser puro de sintaxe, diagnosticos com linhas
+  originais e testes de variantes, erros recuperaveis e 500 tarefas. Evidencia
+  (2026-10-18): `npm test` (154 testes), `npm run lint` e `npm run typecheck`
+  aprovados. Revisao do PR
+  (2026-10-19): `;` final opcional em toda linha e lista de eventos opcional
+  (DEC-20), numeros so decimais, mensagens revistas, arquivo vazio com
+  cabecalho e tarefa ausentes, e mapa tarefa/linha no resultado para a #31.
+  Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
+  `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
+  O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
+  continua nesta issue.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
@@ -166,7 +193,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
+  #51 (PR #52), #18 (PR #54), #29 (PR #57), #14 (PR #58) e #30 (PR #60)
+  concluidos; evidencias registradas acima. Associacao de erros semanticos do
+  parser permanece na #31, que pode usar `lines` do resultado.
 - #55 (descricoes das issues): corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
@@ -175,9 +204,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template so aparece no GitHub depois do merge em `main` (nao
   verificado).
-- #15 em andamento: implementacao e testes concluidos na branch
-  `feat/cpu-off-intervals` (DEC-21); falta PR e merge.
-- Proximo passo: PR da #15; depois quantum e contexto na #14 (DEC-18).
+- #15 em revisao no PR #59 (DEC-21); fecha no merge.
+- Proximo passo: integrar o PR #59; manter os diagnosticos de DEC-19 nos
+  escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 

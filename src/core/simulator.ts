@@ -32,7 +32,8 @@ export interface ExecutionGuardResult {
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
  * Activations are processed at each boundary, eligible jobs are selected
- * globally by an injected policy, and quantum handling belongs to #14.
+ * globally by an injected policy, and slices that used the whole quantum
+ * are renewed at each boundary (DEC-03, DEC-18).
  */
 export class Simulator {
     private state: SimulationState;
@@ -65,6 +66,7 @@ export class Simulator {
             this.executeTick();
             this.state.clock++;
             this.completeJobsAndRecordDeadlineMisses();
+            this.expireSlices();
             this.activateDueJobs();
             this.dispatch();
         } catch (error) {
@@ -186,6 +188,34 @@ export class Simulator {
                     });
                 }
             }
+        }
+    }
+
+    /**
+     * Renews every slice that used the whole quantum (DEC-03). The job keeps
+     * its CPU until dispatch, so the view still counts it as running before
+     * the selection (DEC-18); a job completing now is skipped, since DEC-03
+     * only returns incomplete jobs to the selection.
+     */
+    private expireSlices(): void {
+        for (const cpu of this.state.cpus) {
+            if (
+                cpu.running === null ||
+                cpu.sliceElapsed < this.state.config.quantum
+            ) {
+                continue;
+            }
+            const job = this.findJob(cpu.running);
+            if (job === undefined || job.state === 'completed') {
+                continue;
+            }
+            this.state.events.push({
+                kind: 'quantum-expired',
+                time: this.state.clock,
+                cpuId: cpu.id,
+                job: { taskId: job.taskId, index: job.index },
+            });
+            cpu.sliceElapsed = 0;
         }
     }
 
