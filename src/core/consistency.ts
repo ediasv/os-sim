@@ -5,9 +5,9 @@
  * both in `CpuState.offSince` and as its open `cpu-off` interval (DEC-21). The
  * engine runs this check after every dispatch and rejects the step on any
  * issue (DEC-14); engine tests also assert an empty list after every step.
- * It also rejects a job that ran past its duration, which would have caught a
- * half-applied step re-executing completed jobs, a CPU that runs a job while
- * off, and a malformed `cpu-off`/`cpu-on` sequence.
+ * It also rejects a CPU that runs a job while off, a malformed
+ * `cpu-off`/`cpu-on` sequence, and a job that ran past its duration (which
+ * would have caught a half-applied step re-executing completed jobs).
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
 import {

@@ -100,9 +100,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   sequencias malformadas; tarefas periodicas terminam so com o 10o job, tanto
   com folgas entre jobs quanto com todos os jobs atrasados. Correspondencia
   REQ-03/REQ-08 -> testes no PR #59. Revisao do PR (2026-10-20): erro dedicado
-  `CpuEventSequenceError`, rejeicao de eventos fora de ordem temporal e
-  intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
-  `main`): `npm test` 204/204, `npm run lint` e `npm run typecheck` aprovados.
+  `CpuEventSequenceError` (outros erros propagam), rejeicao de eventos fora de
+  ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
+  `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 
@@ -195,17 +195,17 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52), #18 (PR #54), #29 (PR #57), #14 (PR #58) e #30 (PR #60)
-  concluidos; evidencias registradas acima. Associacao de erros semanticos do
-  parser permanece na #31, que pode usar `lines` do resultado.
-- #55 (descricoes das issues): corpos das issues abertas de #14 a #45
+  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58) e #30
+  (PR #60) concluidos; evidencias registradas acima. Associacao de erros
+  semanticos do parser permanece na #31, que pode usar `lines` do resultado.
+- #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
+  corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
   repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
-  executados. O template so aparece no GitHub depois do merge em `main` (nao
-  verificado).
+  executados. O template esta em `main` desde o merge.
 - #15 em revisao no PR #59 (DEC-21); fecha no merge.
 - Proximo passo: integrar o PR #59; manter os diagnosticos de DEC-19 nos
   escopos de #31 e #34.

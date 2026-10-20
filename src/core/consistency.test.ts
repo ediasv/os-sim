@@ -200,6 +200,20 @@ describe('findInconsistencies: CPU power (DEC-21)', () => {
             'CPU 1 turned on at 1 while not off.',
         ]);
     });
+
+    it('lets an error other than a malformed sequence propagate', () => {
+        const state = stateWith();
+        // Only summarizeCpuOff reads `time`, so this stands in for a bug there.
+        state.events.push({
+            kind: 'cpu-off',
+            cpuId: 1,
+            get time(): number {
+                throw new TypeError('boom');
+            },
+        });
+
+        expect(() => findInconsistencies(state)).toThrow(TypeError);
+    });
 });
 
 describe('findInconsistencies: execution budget', () => {
