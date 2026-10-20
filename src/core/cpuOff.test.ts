@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findInconsistencies } from './consistency';
-import { summarizeCpuOff } from './cpuOff';
+import { CpuEventSequenceError, summarizeCpuOff } from './cpuOff';
 import {
     DEFAULT_CONFIG,
     type SimulationSnapshot,
@@ -207,15 +207,34 @@ describe('summarizeCpuOff (DEC-21)', () => {
     });
 
     describe('malformed event sequences', () => {
+        /** Two CPUs at clock 5, so events up to tick 5 are not in the future. */
         function idleState() {
-            return createInitialState({ ...DEFAULT_CONFIG, cpuCount: 2 });
+            const state = createInitialState({
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+            });
+            state.clock = 5;
+            return state;
+        }
+
+        /** The error `summarizeCpuOff` throws, so its class can be checked. */
+        function thrownBy(state: ReturnType<typeof idleState>): unknown {
+            try {
+                summarizeCpuOff(state);
+            } catch (error) {
+                return error;
+            }
+            return undefined;
         }
 
         it('rejects turning on a CPU that is not off', () => {
             const state = idleState();
             state.events.push({ kind: 'cpu-on', time: 1, cpuId: 1 });
 
-            expect(() => summarizeCpuOff(state)).toThrow(/CPU 1/);
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /CPU 1 turned on at 1 while not off/,
+            );
         });
 
         it('rejects turning off a CPU that is already off', () => {
@@ -225,14 +244,20 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 { kind: 'cpu-off', time: 1, cpuId: 2 },
             );
 
-            expect(() => summarizeCpuOff(state)).toThrow(/CPU 2/);
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /CPU 2 turned off at 1 while already off/,
+            );
         });
 
         it('rejects an event for a CPU that does not exist', () => {
             const state = idleState();
             state.events.push({ kind: 'cpu-off', time: 0, cpuId: 3 });
 
-            expect(() => summarizeCpuOff(state)).toThrow(/CPU 3/);
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /names CPU 3, which does not exist/,
+            );
         });
     });
 });

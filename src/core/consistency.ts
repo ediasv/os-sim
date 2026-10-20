@@ -9,7 +9,11 @@
  * would have caught a half-applied step re-executing completed jobs.
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
-import { summarizeCpuOff, type CpuOffInterval } from './cpuOff';
+import {
+    CpuEventSequenceError,
+    summarizeCpuOff,
+    type CpuOffSummary,
+} from './cpuOff';
 import { key } from './helpers/key';
 
 /** Describes every pair that disagrees; an empty list means the state is consistent. */
@@ -90,30 +94,30 @@ export function findInconsistencies(
             );
         }
     }
-    let openIntervals: Map<number, CpuOffInterval | undefined>;
+    let summaries: CpuOffSummary[] | undefined;
     try {
-        openIntervals = new Map(
-            summarizeCpuOff(state).map(({ cpuId, intervals }) => [
-                cpuId,
-                intervals.find(({ end }) => end === null),
-            ]),
-        );
+        summaries = summarizeCpuOff(state);
     } catch (error) {
-        issues.push((error as Error).message);
-        return issues;
+        if (!(error instanceof CpuEventSequenceError)) {
+            throw error;
+        }
+        issues.push(error.message);
     }
-    for (const cpu of state.cpus) {
-        const open = openIntervals.get(cpu.id);
-        if (open === undefined) {
-            if (cpu.offSince !== null) {
+    // Without valid intervals there is no open interval to compare offSince to.
+    if (summaries !== undefined) {
+        for (const [index, cpu] of state.cpus.entries()) {
+            const last = summaries[index].intervals.at(-1);
+            if (last?.end !== null) {
+                if (cpu.offSince !== null) {
+                    issues.push(
+                        `CPU ${cpu.id} has offSince = ${cpu.offSince} but no open off interval.`,
+                    );
+                }
+            } else if (cpu.offSince !== last.start) {
                 issues.push(
-                    `CPU ${cpu.id} has offSince = ${cpu.offSince} but no open off interval.`,
+                    `CPU ${cpu.id} has offSince = ${cpu.offSince} but its open off interval starts at ${last.start}.`,
                 );
             }
-        } else if (cpu.offSince !== open.start) {
-            issues.push(
-                `CPU ${cpu.id} has offSince = ${cpu.offSince} but its open off interval starts at ${open.start}.`,
-            );
         }
     }
 

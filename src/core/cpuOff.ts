@@ -5,6 +5,18 @@
  */
 import type { DeepReadonly, SimulationState } from './domain';
 
+/**
+ * A `cpu-off`/`cpu-on` history that cannot be turned into intervals. Its own
+ * class lets `findInconsistencies` and the interface tell a malformed history
+ * apart from a programming error.
+ */
+export class CpuEventSequenceError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'CpuEventSequenceError';
+    }
+}
+
 /** CPU off during [start, end); `end` is null while it is still off at the snapshot. */
 export interface CpuOffInterval {
     readonly start: number;
@@ -38,21 +50,21 @@ export function summarizeCpuOff(
         }
         const intervals = intervalsByCpu.get(event.cpuId);
         if (intervals === undefined) {
-            throw new Error(
+            throw new CpuEventSequenceError(
                 `Event ${event.kind} at ${event.time} names CPU ${event.cpuId}, which does not exist.`,
             );
         }
         const open = intervals.at(-1)?.end === null;
         if (event.kind === 'cpu-off') {
             if (open) {
-                throw new Error(
+                throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned off at ${event.time} while already off.`,
                 );
             }
             intervals.push({ start: event.time, end: null });
         } else {
             if (!open) {
-                throw new Error(
+                throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned on at ${event.time} while not off.`,
                 );
             }
