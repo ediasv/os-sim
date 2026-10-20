@@ -35,8 +35,9 @@ export interface CpuOffSummary {
 
 /**
  * Lists every off interval and the total per CPU, in `cpus` order, including
- * CPUs that were never off. Throws when the events do not alternate off/on per
- * CPU or name an unknown CPU, since the intervals would then be guesses.
+ * CPUs that were never off. Throws `CpuEventSequenceError` when the events of a
+ * CPU do not alternate off/on, go back in time, come after the snapshot clock,
+ * or name an unknown CPU, since the intervals would then be guesses.
  */
 export function summarizeCpuOff(
     snapshot: DeepReadonly<SimulationState>,
@@ -54,11 +55,22 @@ export function summarizeCpuOff(
                 `Event ${event.kind} at ${event.time} names CPU ${event.cpuId}, which does not exist.`,
             );
         }
-        const open = intervals.at(-1)?.end === null;
+        if (event.time > snapshot.clock) {
+            throw new CpuEventSequenceError(
+                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} is after the snapshot clock ${snapshot.clock}.`,
+            );
+        }
+        const last = intervals.at(-1);
+        const open = last?.end === null;
         if (event.kind === 'cpu-off') {
             if (open) {
                 throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned off at ${event.time} while already off.`,
+                );
+            }
+            if (last?.end != null && event.time < last.end) {
+                throw new CpuEventSequenceError(
+                    `CPU ${event.cpuId} turned off at ${event.time}, before it turned on at ${last.end}.`,
                 );
             }
             intervals.push({ start: event.time, end: null });
@@ -66,6 +78,11 @@ export function summarizeCpuOff(
             if (!open) {
                 throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned on at ${event.time} while not off.`,
+                );
+            }
+            if (event.time < last.start) {
+                throw new CpuEventSequenceError(
+                    `CPU ${event.cpuId} turned on at ${event.time}, before it turned off at ${last.start}.`,
                 );
             }
             intervals[intervals.length - 1] = {

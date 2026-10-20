@@ -259,5 +259,56 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 /names CPU 3, which does not exist/,
             );
         });
+
+        it('rejects turning on a CPU before it turned off', () => {
+            const state = idleState();
+            state.events.push(
+                { kind: 'cpu-off', time: 3, cpuId: 1 },
+                { kind: 'cpu-on', time: 2, cpuId: 1 },
+            );
+
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /CPU 1 turned on at 2, before it turned off at 3/,
+            );
+        });
+
+        it('rejects turning off a CPU before it last turned on', () => {
+            const state = idleState();
+            state.events.push(
+                { kind: 'cpu-off', time: 0, cpuId: 2 },
+                { kind: 'cpu-on', time: 4, cpuId: 2 },
+                { kind: 'cpu-off', time: 3, cpuId: 2 },
+            );
+
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /CPU 2 turned off at 3, before it turned on at 4/,
+            );
+        });
+
+        it('rejects an event after the snapshot clock', () => {
+            const state = idleState();
+            state.events.push({ kind: 'cpu-off', time: 6, cpuId: 1 });
+
+            expect(thrownBy(state)).toBeInstanceOf(CpuEventSequenceError);
+            expect(() => summarizeCpuOff(state)).toThrow(
+                /cpu-off at 6 .* after the snapshot clock 5/,
+            );
+        });
+
+        it('accepts turning on in the same tick it turned off', () => {
+            const state = idleState();
+            state.events.push(
+                { kind: 'cpu-off', time: 2, cpuId: 1 },
+                { kind: 'cpu-on', time: 2, cpuId: 1 },
+            );
+
+            expect(summarizeCpuOff(state)[0]).toEqual({
+                cpuId: 1,
+                intervals: [{ start: 2, end: 2 }],
+                totalOff: 0,
+            });
+        });
     });
 });

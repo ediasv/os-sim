@@ -140,6 +140,7 @@ describe('findInconsistencies: missed deadlines', () => {
 describe('findInconsistencies: CPU power (DEC-21)', () => {
     it('accepts offSince matching the open cpu-off interval', () => {
         const state = stateWith();
+        state.clock = 3;
         state.cpus[0].offSince = 3;
         state.events.push(
             { kind: 'cpu-off', time: 0, cpuId: 1 },
@@ -152,6 +153,7 @@ describe('findInconsistencies: CPU power (DEC-21)', () => {
 
     it('reports offSince that disagrees with the last cpu-off event', () => {
         const state = stateWith();
+        state.clock = 3;
         state.cpus[0].offSince = 2;
         state.events.push({ kind: 'cpu-off', time: 3, cpuId: 1 });
 
@@ -191,6 +193,7 @@ describe('findInconsistencies: CPU power (DEC-21)', () => {
 
     it('reports a malformed cpu-off/cpu-on sequence', () => {
         const state = stateWith();
+        state.clock = 1;
         state.events.push({ kind: 'cpu-on', time: 1, cpuId: 1 });
 
         expect(findInconsistencies(state)).toEqual([

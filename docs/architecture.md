@@ -512,8 +512,10 @@ anterior. Data inicial dos registros: 2026-10-12.
       ja executados; CPU ociosa no snapshot 0 tem total 0.
     - CPU que nunca desligou aparece com lista vazia e total 0.
     - Sequencia malformada (religar CPU ligada, desligar CPU desligada, CPU
-      inexistente) lanca `CpuEventSequenceError` com mensagem descritiva em vez
-      de adivinhar intervalos. `findInconsistencies` converte somente esse erro
+      inexistente, evento antes do anterior da mesma CPU ou depois do clock do
+      snapshot) lanca `CpuEventSequenceError` com mensagem descritiva em vez
+      de adivinhar intervalos. Desligar e religar no mesmo instante continua
+      aceito: o motor nao gera esse par, e o intervalo `[t, t)` soma 0. `findInconsistencies` converte somente esse erro
       em problema relatado; qualquer outro erro propaga, por indicar defeito do
       codigo e nao do historico.
     - `offSince` e o intervalo aberto registram o mesmo fato:
