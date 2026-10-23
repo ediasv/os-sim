@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from 'vue';
+import { ConfigValidationError } from '../core/config';
 import {
+    commandFailure,
     currentError,
     describeError,
     dismissError,
@@ -136,5 +138,49 @@ describe('installErrorHandlers', () => {
             message: 'Uncaught Error: timer boom',
         } as never);
         expect(currentError.value).toBe('timer boom');
+    });
+});
+
+describe('commandFailure', () => {
+    it('returns config errors with their issues and keeps them off the banner', () => {
+        const issues = [{ field: 'cpuCount', message: 'bad cpus' }] as const;
+        const result = commandFailure(new ConfigValidationError(issues));
+        expect(result).toEqual({
+            ok: false,
+            error: { kind: 'config', message: 'bad cpus', issues },
+        });
+        expect(currentError.value).toBeNull();
+    });
+
+    it('leaves the banner untouched for config errors', () => {
+        reportError(new Error('earlier'));
+        commandFailure(
+            new ConfigValidationError([{ field: 'quantum', message: 'q' }]),
+        );
+        expect(currentError.value).toBe('earlier');
+    });
+
+    it('returns other errors as unexpected and shows them on the banner', () => {
+        const err = new Error('policy failed');
+        expect(commandFailure(err)).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: 'policy failed' },
+        });
+        expect(currentError.value).toBe('policy failed');
+        expect(console.error).toHaveBeenCalledWith(err);
+    });
+
+    it('describes a thrown plain object as JSON, not [object Object]', () => {
+        expect(commandFailure({ code: 1 })).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: '{"code":1}' },
+        });
+    });
+
+    it('classifies a thrown string as unexpected', () => {
+        expect(commandFailure('boom')).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: 'boom' },
+        });
     });
 });

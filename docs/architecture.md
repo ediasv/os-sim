@@ -29,7 +29,10 @@ afirma que os modulos planejados ja existem.
   (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
   expoe os jobs elegiveis somente para leitura (DEC-15).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
-  privada e publica snapshots via `shallowRef`.
+  privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
+  `tick`, que devolvem resultado (DEC-23).
+- [Erros da interface](../src/renderer/errors.ts): banner global e
+  `commandFailure`, que classifica erros dos comandos (DEC-24).
 - [Processo principal](../src/main/main.ts): janela Electron.
 - [Preload](../src/preload/preload.ts): ainda sem API de arquivos.
 
@@ -564,6 +567,59 @@ anterior. Data inicial dos registros: 2026-10-12.
   da lista de eventos.
 - Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
   job; deixaria a ordem do log depender da posicao das tarefas na lista.
+
+### DEC-23: Contrato do adaptador Vue
+
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65).
+  Requisitos: REQ-04, REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
+- Decisao:
+    1. `useSimulation()` nao recebe argumentos, comeca com `DEFAULT_CONFIG` e
+       nao falha. Expoe somente `view` (`shallowRef` do ultimo snapshot
+       congelado), `load(config, policy?)` e `tick()`; a instancia e o estado
+       vivo ficam privados.
+    2. `load` reconstroi a simulacao em t=0 quando uma configuracao inteira e
+       carregada (arquivo, E4). Repassa configuracao e politica ao construtor
+       do `Simulator` sem validar de novo e cria a nova instancia antes de
+       descartar a atual: em falha, instancia, `view` e historico ficam como
+       estavam.
+    3. `tick` avanca um tick; em falha `view` continua no ultimo snapshot
+       valido, que DEC-14 garante ser o estado atual.
+    4. Editar parametros durante a simulacao mantem a simulacao e o passado e
+       altera somente a partir do tick k. E uma operacao do nucleo (REQ-05,
+       Q-02/#25, #26), exposta pelo adaptador com o mesmo contrato.
+- Justificativa: recarregar e uma simulacao nova, pois o snapshot 0 depende da
+  configuracao (DEC-11); editar e ramificar o historico existente. O mesmo
+  adaptador atende a configuracao carregada (E4) e a politica escolhida (E2).
+- Alternativas descartadas: criar um adaptador novo a cada configuracao (a
+  interface teria de trocar a referencia) e um `reset` no `Simulator`
+  (repetiria a validacao e o estado inicial que o construtor ja garante).
+
+### DEC-24: Arquitetura de erros da interface
+
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #65). Requisitos:
+  REQ-10, REQ-05. Complementa DEC-14, DEC-15 e DEC-19.
+- Decisao:
+    1. Categorias:
+        - corrigivel pelo usuario: configuracao invalida
+          (`ConfigValidationError` com `issues`); diagnosticos do parser,
+          falhas de leitura e edicoes rejeitadas entram nas #31, #33 e #26;
+        - inesperado: decisao invalida da politica, inconsistencia, politica
+          ausente e qualquer outra excecao.
+        - Cancelar a escolha do arquivo nao e erro (DEC-19).
+    2. Comandos do adaptador nunca lancam: devolvem `CommandResult` (`ok` ou
+       `ok: false` com `AppError`) e, em falha, o estado fica inalterado.
+    3. Erro corrigivel vai somente no resultado, e o componente o mostra onde o
+       usuario agiu (por campo ou linha).
+    4. Erro inesperado vai no resultado e em `reportError` (banner e console).
+       Os handlers do Vue e da janela continuam como ultima rede de seguranca.
+    5. O nucleo continua lancando erros tipados e devolvendo os resultados de
+       `validateConfig` e `parseConfig`; o renderer classifica num unico lugar
+       (`commandFailure`).
+- Justificativa: o chamador, inclusive a execucao automatica (E5), sabe que o
+  comando falhou; erros por campo e linha (DEC-19) mantem o contexto; o banner
+  continua significando falha do programa.
+- Alternativas descartadas: tudo no banner (perde o contexto de campo e
+  linha) e uma ref de erro publicada pelo adaptador (segunda fonte de verdade).
 
 ## Fluxo de um passo
 
