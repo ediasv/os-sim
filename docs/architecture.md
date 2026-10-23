@@ -23,7 +23,8 @@ afirma que os modulos planejados ja existem.
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
   congelada e conferencia da decisao (DEC-13); RM/EDF continuam para E2.
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
-  nos limites de tick, executa jobs, registra conclusoes/perdas de prazo e faz
+  nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
+  (ordem dos eventos em DEC-22) e faz
   despacho global pela politica injetada antes de publicar snapshots completos
   (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
   expoe os jobs elegiveis somente para leitura (DEC-15).
@@ -539,13 +540,36 @@ anterior. Data inicial dos registros: 2026-10-12.
   (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
   dominio fora do nucleo e sem `findInconsistencies`).
 
+### DEC-22: Ordem dos eventos numa fronteira
+
+- Estado: aceita em 2026-10-23 (decidida pelo usuario na #16). Requisitos:
+  REQ-01, REQ-08, REQ-09. Detalha DEC-04 e DEC-11.
+- Contexto: o motor registrava conclusao e perda de prazo job a job; com
+  varios jobs na mesma fronteira, a perda de uma tarefa listada antes podia
+  aparecer antes da conclusao de outra, ao contrario das etapas de DEC-11.
+- Decisao: os eventos de uma fronteira seguem etapas globais, nesta ordem:
+  todas as conclusoes (cada uma seguida do `task-finished` da tarefa, quando
+  for o ultimo job), todas as perdas de prazo, todas as fatias vencidas, todas
+  as ativacoes e, por fim, os eventos do despacho (`preemption`, `cpu-on`,
+  `cpu-off`, por CPU). Dentro de uma etapa, a ordem segue a lista de tarefas
+  e o indice do job (ou o ID da CPU), sem significado de prioridade.
+- Justificativa: a lista de eventos passa a refletir o fluxo documentado do
+  passo e pode ser lida linearmente pela inspecao e pelo Gantt (#37, #38).
+  DEC-04 continua garantindo, por job, que conclusao no prazo nao e perda.
+- Consequencia: `completeJobsAndRecordDeadlineMisses` percorre os jobs em
+  duas passadas. Nenhuma escala, intervalo ou estado de job muda; so a ordem
+  da lista de eventos.
+- Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
+  job; deixaria a ordem do log depender da posicao das tarefas na lista.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
 2. Avancar o relogio para t+1.
 3. Contabilizar conclusoes antes das perdas de prazo (DEC-04) e das fatias
-   vencidas (#14); job que conclui nao registra vencimento, e o job vencido
-   mantem o primeiro desempate (DEC-18).
+   vencidas (#14), em etapas globais na lista de eventos (DEC-22); job que
+   conclui nao registra vencimento, e o job vencido mantem o primeiro
+   desempate (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
 5. Selecionar pela politica e despachar (DEC-07, DEC-13).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
