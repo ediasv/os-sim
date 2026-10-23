@@ -27,7 +27,7 @@ Evidencia: inspecao de [package.json](../package.json),
 [useSimulation.ts](../src/renderer/composables/useSimulation.ts).
 Existencia verificada por leitura; testes nao executados nesta entrega documental.
 Os testes do contador e do composable foram removidos em `caf476e`; cobertura
-do nucleo volta com E1 e a do adaptador com #17.
+do nucleo voltou com E1 e a do adaptador com #17.
 Essa base nao equivale a atender os requisitos funcionais do Projeto A.
 
 ## Entregas planejadas
@@ -121,7 +121,22 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   teste no PR. Evidencia (2026-10-23, apos ajustes da revisao): `npm test`
   209/209, `npm run lint` e `npm run typecheck` aprovados; mutacao em que CPU
   ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
+- #65 Definir arquitetura de erros e comandos do adaptador Vue.
+  Em andamento (branch `feat/vue-adapter-tests`; DEC-23 revista e DEC-24,
+  propostas). Comandos `load`/`tick` devolvem `CommandResult`; erro de
+  configuracao vai so ao resultado, erro inesperado tambem ao banner; `load`
+  reconstroi em t=0 e so substitui a simulacao atual em sucesso. Testes novos:
+  `commandFailure` (configuracao fora do banner, banner anterior preservado,
+  inesperado no banner, string lancada) e comandos do adaptador. Os testes
+  falharam antes da implementacao. Evidencia (2026-10-23): `npm test` 221/221,
+  `npm run lint` e `npm run typecheck` aprovados. Proximo passo: aceite de
+  DEC-23/DEC-24 e PR.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
+  Em andamento, depende de #65 (mesma branch). Testes do adaptador cobrem
+  snapshot 0, snapshot novo por tick com anteriores congelados e intactos,
+  somente `view`/`load`/`tick` expostos e erro de `tick()` no banner com o
+  ultimo snapshot valido preservado e continuacao (DEC-14). Nao executado:
+  iniciar o app e clicar no botao de tick.
 - #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
   Aberta na revisao do PR #62; depende de #16.
 
