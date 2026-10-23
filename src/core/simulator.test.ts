@@ -34,10 +34,12 @@ function expectConsistent(sim: Simulator): void {
 }
 
 /**
- * Checks the multi-CPU invariants of REQ-02 over the whole run, not only the
- * current state that `findInconsistencies` sees: no job runs on two CPUs in
- * the same tick, no CPU runs two jobs in the same tick, and no CPU stays off
- * while an eligible job waits.
+ * Checks the multi-CPU invariants of REQ-02. Over the whole execution
+ * history: no job runs on two CPUs and no CPU runs two jobs in the same tick.
+ * In the current state: busy CPUs equal min(cpuCount, eligible jobs) and only
+ * idle CPUs are off. The busy count uses the engine's own eligibility, so it
+ * shows that dispatch places every selected job, not which jobs are eligible
+ * (#63). Call it after every tick to cover the whole run, as `run()` does.
  */
 function expectMultiCpuInvariants(sim: Simulator): void {
     expectConsistent(sim);
@@ -58,6 +60,11 @@ function expectMultiCpuInvariants(sim: Simulator): void {
     expect(busy).toBe(
         Math.min(snapshot.config.cpuCount, sim.getEligibleJobs().length),
     );
+    for (const cpu of snapshot.cpus) {
+        expect(cpu.offSince !== null, `CPU ${cpu.id} power state`).toBe(
+            cpu.running === null,
+        );
+    }
 }
 
 function task(
@@ -1282,7 +1289,8 @@ describe('Simulator', () => {
             {
                 ...DEFAULT_CONFIG,
                 tasks: [
-                    // Listed first, so a per-job pass would log its miss first.
+                    // Listed first: logging job by job (rejected in DEC-22)
+                    // would put its miss before task 2's completion.
                     {
                         ...base,
                         id: 1,
@@ -1661,7 +1669,9 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
                 ],
             },
             {
-                // Scripted choices: 1 and 2 first, then 3 and 4 displace 2.
+                // Scripted: 1 and 2 until t=2; at t=2, 3 takes CPU 1 freed by 1
+                // and 4 preempts 2 on CPU 2; afterwards every candidate, up to
+                // cpuCount.
                 select: (view) => {
                     const chosen = view.candidates.filter(({ job }) =>
                         view.clock < 2
@@ -1671,7 +1681,9 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
                               : true,
                     );
                     return {
-                        selected: chosen.map(({ job }) => ref(job.taskId)),
+                        selected: chosen
+                            .slice(0, view.cpuCount)
+                            .map(({ job }) => ref(job.taskId)),
                     };
                 },
             },
