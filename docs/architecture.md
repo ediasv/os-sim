@@ -570,8 +570,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-23: Contrato do adaptador Vue
 
-- Estado: proposta (escolhas do usuario na #17 e na #65). Requisitos: REQ-04,
-  REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65).
+  Requisitos: REQ-04, REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
 - Decisao:
     1. `useSimulation()` nao recebe argumentos, comeca com `DEFAULT_CONFIG` e
        nao falha. Expoe somente `view` (`shallowRef` do ultimo snapshot
@@ -596,8 +596,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-24: Arquitetura de erros da interface
 
-- Estado: proposta (escolhas do usuario na #65). Requisitos: REQ-10, REQ-05.
-  Complementa DEC-14, DEC-15 e DEC-19.
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #65). Requisitos:
+  REQ-10, REQ-05. Complementa DEC-14, DEC-15 e DEC-19.
 - Decisao:
     1. Categorias:
         - corrigivel pelo usuario: configuracao invalida
