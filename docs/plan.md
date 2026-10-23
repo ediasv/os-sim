@@ -122,8 +122,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 - #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
-  Aberta na revisao do PR #62; depende de #16. Em andamento no branch
-  `fix/issue-63-independent-eligibility`. `countEligibleJobs` (teste do
+  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64. `countEligibleJobs` (teste do
   Simulator) aplica DEC-02 ao snapshot sem `findEligibleJobs`: job `ready`
   ou `running` cujos jobs anteriores da tarefa estao todos concluidos.
   `expectMultiCpuInvariants` passa a conferir CPUs ocupadas =
@@ -233,9 +232,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
   de erros semanticos do parser permanece na #31, que pode usar `lines` do
   resultado.
-- #63 em andamento (iniciada em 2026-10-23) no branch
-  `fix/issue-63-independent-eligibility`, ainda sem commit nem PR; mutacoes
-  e gates registrados em E1. Fecha no merge do PR.
+- #63 em revisao no PR #64 (iniciada em 2026-10-23); mutacoes e gates
+  registrados em E1. Fecha no merge do PR.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -244,7 +242,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
-- Proximo passo: abrir e integrar o PR da #63; depois #17 ou E2. Manter os diagnosticos de
+- Proximo passo: revisar e integrar o PR #64 (#63); depois #17 ou E2. Manter os diagnosticos de
   DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
