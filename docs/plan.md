@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-18. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-23. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -92,7 +92,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
   `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  Em revisao no PR #59 (DEC-21, aceita pelo usuario): `summarizeCpuOff`
+  Concluida no PR #59 (merged, `9acdcda`; DEC-21, aceita pelo usuario): `summarizeCpuOff`
   (`src/core/cpuOff.ts`) deriva intervalos e totais dos eventos de qualquer
   snapshot; `findInconsistencies` passa a conferir `offSince` contra os
   eventos. Testes novos: CPU que nunca liga, que desliga e religa varias
@@ -104,7 +104,26 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
   `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
+  Em revisao no PR #62 (DEC-22, aceita pelo usuario). O motor passa a
+  registrar todas as conclusoes antes de todas as perdas de prazo na mesma
+  fronteira. O teste da DEC-22 foi escrito antes e falhou com a ordem antiga;
+  essa execucao nao ficou registrada no repositorio. Testes novos: ordem por
+  etapas com todos os fatos em fronteiras compartilhadas (2 CPUs), job
+  posterior retido com CPU livre ate a conclusao do anterior e quantum maior
+  que a duracao; testes existentes de preempcao ganham assercoes de prazo
+  preservado. `expectMultiCpuInvariants`, chamado a cada passo dos testes
+  multi-CPU e do quantum, confere no historico de execucoes que nenhum job
+  ocupa duas CPUs e nenhuma CPU executa dois jobs no mesmo tick e, no estado
+  atual, que CPUs ocupadas = min(`cpuCount`, elegiveis) e que so CPUs ociosas
+  estao desligadas. A contagem usa a elegibilidade do proprio motor: mostra
+  que o despacho coloca cada job selecionado numa CPU, nao quais jobs sao
+  elegiveis (conferencia independente na #63). Correspondencia cenario ->
+  teste no PR. Evidencia (2026-10-23, apos ajustes da revisao): `npm test`
+  209/209, `npm run lint` e `npm run typecheck` aprovados; mutacao em que CPU
+  ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
+- #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
+  Aberta na revisao do PR #62; depende de #16.
 
 ### E2: Politicas obrigatorias
 
@@ -195,9 +214,14 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58) e #30
-  (PR #60) concluidos; evidencias registradas acima. Associacao de erros
-  semanticos do parser permanece na #31, que pode usar `lines` do resultado.
+  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58), #30
+  (PR #60) e #15 (PR #59) concluidos; evidencias registradas acima. Associacao
+  de erros semanticos do parser permanece na #31, que pode usar `lines` do
+  resultado.
+- #16 em revisao no PR #62 (iniciada em 2026-10-23), com a tabela
+  cenario -> teste na descricao; evidencia em E1. Corpo da issue alinhado a
+  DEC-18 revista e a DEC-22. Ajustes da revisao do PR #62 aplicados;
+  conferencia independente de CPUs ocupadas em #63. Fecha no merge do PR.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -206,9 +230,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
-- #15 em revisao no PR #59 (DEC-21); fecha no merge.
-- Proximo passo: integrar o PR #59; manter os diagnosticos de DEC-19 nos
-  escopos de #31 e #34.
+- Proximo passo: revisar e integrar o PR #62; manter os diagnosticos de
+  DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 

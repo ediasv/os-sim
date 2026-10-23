@@ -146,7 +146,11 @@ export class Simulator {
         }
     }
 
-    /** Completes work before checking deadlines at the new boundary (DEC-04). */
+    /**
+     * Completes work before checking deadlines at the new boundary (DEC-04),
+     * in two passes so every completion is logged before any deadline miss,
+     * whichever task comes first (DEC-22).
+     */
     private completeJobsAndRecordDeadlineMisses(): void {
         for (const tcb of this.state.tasks) {
             for (const job of tcb.jobs) {
@@ -174,7 +178,11 @@ export class Simulator {
                         });
                     }
                 }
+            }
+        }
 
+        for (const tcb of this.state.tasks) {
+            for (const job of tcb.jobs) {
                 if (
                     job.state !== 'completed' &&
                     !job.deadlineMissed &&
