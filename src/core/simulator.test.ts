@@ -5,6 +5,7 @@ import { summarizeCpuOff } from './cpuOff';
 import {
     DEFAULT_CONFIG,
     type SimulationEvent,
+    type SimulationSnapshot,
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
@@ -34,12 +35,35 @@ function expectConsistent(sim: Simulator): void {
 }
 
 /**
+ * Counts the jobs allowed to run under DEC-02, read from the snapshot without
+ * the engine's `findEligibleJobs`: a ready or running job whose earlier jobs
+ * in the task have all completed.
+ */
+function countEligibleJobs(snapshot: SimulationSnapshot): number {
+    let count = 0;
+    for (const tcb of snapshot.tasks) {
+        for (const [i, job] of tcb.jobs.entries()) {
+            const runnable = job.state === 'ready' || job.state === 'running';
+            const earlierDone = tcb.jobs
+                .slice(0, i)
+                .every((earlier) => earlier.state === 'completed');
+            if (runnable && earlierDone) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+/**
  * Checks the multi-CPU invariants of REQ-02. Over the whole execution
  * history: no job runs on two CPUs and no CPU runs two jobs in the same tick.
  * In the current state: busy CPUs equal min(cpuCount, eligible jobs) and only
- * idle CPUs are off. The busy count uses the engine's own eligibility, so it
- * shows that dispatch places every selected job, not which jobs are eligible
- * (#63). Call it after every tick to cover the whole run, as `run()` does.
+ * idle CPUs are off. The eligible count comes from `countEligibleJobs`, not
+ * from the engine, so the check also fails when the engine omits an eligible
+ * job or offers a later job while an earlier one is incomplete (#63). DEC-02
+ * then lives in both places; changing the rule means updating both. Call it
+ * after every tick to cover the whole run, as `run()` does.
  */
 function expectMultiCpuInvariants(sim: Simulator): void {
     expectConsistent(sim);
@@ -57,8 +81,8 @@ function expectMultiCpuInvariants(sim: Simulator): void {
         }
     }
     const busy = snapshot.cpus.filter((cpu) => cpu.running !== null).length;
-    expect(busy).toBe(
-        Math.min(snapshot.config.cpuCount, sim.getEligibleJobs().length),
+    expect(busy, 'busy CPUs vs DEC-02 eligibility').toBe(
+        Math.min(snapshot.config.cpuCount, countEligibleJobs(snapshot)),
     );
     for (const cpu of snapshot.cpus) {
         expect(cpu.offSince !== null, `CPU ${cpu.id} power state`).toBe(
