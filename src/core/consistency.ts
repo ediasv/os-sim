@@ -1,12 +1,20 @@
 /**
  * Cross-checks facts that the domain records twice (DEC-12): a running job is
- * marked both in `Job.state` and in `CpuState.running`, and a missed deadline
- * both in `Job.deadlineMissed` and as a `deadline-miss` event. The engine must
- * keep each pair in sync; its tests (#13, #15) assert that this list is empty
- * after every step. It also checks that no job ran past its duration, which
- * would have caught a half-applied step re-executing completed jobs.
+ * marked both in `Job.state` and in `CpuState.running`, a missed deadline both
+ * in `Job.deadlineMissed` and as a `deadline-miss` event, and a CPU that is off
+ * both in `CpuState.offSince` and as its open `cpu-off` interval (DEC-21). The
+ * engine runs this check after every dispatch and rejects the step on any
+ * issue (DEC-14); engine tests also assert an empty list after every step.
+ * It also rejects a CPU that runs a job while off, a malformed
+ * `cpu-off`/`cpu-on` sequence, and a job that ran past its duration (which
+ * would have caught a half-applied step re-executing completed jobs).
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
+import {
+    CpuEventSequenceError,
+    summarizeCpuOff,
+    type CpuOffSummary,
+} from './cpuOff';
 import { key } from './helpers/key';
 
 /** Describes every pair that disagrees; an empty list means the state is consistent. */
@@ -76,6 +84,41 @@ export function findInconsistencies(
             issues.push(
                 `Job ${ref} has deadlineMissed = ${job.deadlineMissed} but ${count} deadline-miss event(s).`,
             );
+        }
+    }
+
+    // An off CPU runs nothing, and offSince starts its open off interval (DEC-21).
+    for (const cpu of state.cpus) {
+        if (cpu.running !== null && cpu.offSince !== null) {
+            issues.push(
+                `CPU ${cpu.id} runs job ${key(cpu.running)} but is off since ${cpu.offSince}.`,
+            );
+        }
+    }
+    let summaries: CpuOffSummary[] | undefined;
+    try {
+        summaries = summarizeCpuOff(state);
+    } catch (error) {
+        if (!(error instanceof CpuEventSequenceError)) {
+            throw error;
+        }
+        issues.push(error.message);
+    }
+    // Without valid intervals there is no open interval to compare offSince to.
+    if (summaries !== undefined) {
+        for (const [index, cpu] of state.cpus.entries()) {
+            const last = summaries[index].intervals.at(-1);
+            if (last?.end !== null) {
+                if (cpu.offSince !== null) {
+                    issues.push(
+                        `CPU ${cpu.id} has offSince = ${cpu.offSince} but no open off interval.`,
+                    );
+                }
+            } else if (cpu.offSince !== last.start) {
+                issues.push(
+                    `CPU ${cpu.id} has offSince = ${cpu.offSince} but its open off interval starts at ${last.start}.`,
+                );
+            }
         }
     }
 

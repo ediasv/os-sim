@@ -137,6 +137,85 @@ describe('findInconsistencies: missed deadlines', () => {
     });
 });
 
+describe('findInconsistencies: CPU power (DEC-21)', () => {
+    it('accepts offSince matching the open cpu-off interval', () => {
+        const state = stateWith();
+        state.clock = 3;
+        state.cpus[0].offSince = 3;
+        state.events.push(
+            { kind: 'cpu-off', time: 0, cpuId: 1 },
+            { kind: 'cpu-on', time: 2, cpuId: 1 },
+            { kind: 'cpu-off', time: 3, cpuId: 1 },
+        );
+
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+
+    it('reports offSince that disagrees with the last cpu-off event', () => {
+        const state = stateWith();
+        state.clock = 3;
+        state.cpus[0].offSince = 2;
+        state.events.push({ kind: 'cpu-off', time: 3, cpuId: 1 });
+
+        expect(findInconsistencies(state)).toEqual([
+            'CPU 1 has offSince = 2 but its open off interval starts at 3.',
+        ]);
+    });
+
+    it('reports a CPU off by events but with offSince null', () => {
+        const state = stateWith();
+        state.events.push({ kind: 'cpu-off', time: 0, cpuId: 1 });
+
+        expect(findInconsistencies(state)).toEqual([
+            'CPU 1 has offSince = null but its open off interval starts at 0.',
+        ]);
+    });
+
+    it('reports offSince set on a CPU that events show as on', () => {
+        const state = stateWith();
+        state.cpus[1].offSince = 0;
+
+        expect(findInconsistencies(state)).toEqual([
+            'CPU 2 has offSince = 0 but no open off interval.',
+        ]);
+    });
+
+    it('reports a CPU running a job while marked off', () => {
+        const state = stateWith(job({ state: 'running' }));
+        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].offSince = 0;
+        state.events.push({ kind: 'cpu-off', time: 0, cpuId: 1 });
+
+        expect(findInconsistencies(state)).toEqual([
+            'CPU 1 runs job 1.0 but is off since 0.',
+        ]);
+    });
+
+    it('reports a malformed cpu-off/cpu-on sequence', () => {
+        const state = stateWith();
+        state.clock = 1;
+        state.events.push({ kind: 'cpu-on', time: 1, cpuId: 1 });
+
+        expect(findInconsistencies(state)).toEqual([
+            'CPU 1 turned on at 1 while not off.',
+        ]);
+    });
+
+    it('lets an error other than a malformed sequence propagate', () => {
+        const state = stateWith();
+        // Only summarizeCpuOff reads `time`, so this stands in for a bug there.
+        state.events.push({
+            kind: 'cpu-off',
+            cpuId: 1,
+            get time(): number {
+                throw new TypeError('boom');
+            },
+        });
+
+        expect(() => findInconsistencies(state)).toThrow(TypeError);
+    });
+});
+
 describe('findInconsistencies: execution budget', () => {
     it('reports a job that executed more ticks than its duration', () => {
         const state = stateWith(job({ executed: 3 }));

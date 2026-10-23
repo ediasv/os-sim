@@ -225,7 +225,7 @@ export class Simulator {
      * Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
-     * `findInconsistencies` check of the resulting state (DEC-12).
+     * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
      */
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);

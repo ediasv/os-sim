@@ -81,7 +81,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
-  DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
+  Concluida no PR #58 (merged, `f8837df`). DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
   primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
   `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
   registra so a conclusao. Implementada em `Simulator.expireSlices`, entre
@@ -92,9 +92,17 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
   `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
-  perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
-  fechamento da verificacao de intervalos e dos criterios especificos dessa issue.
+  Em revisao no PR #59 (DEC-21, aceita pelo usuario): `summarizeCpuOff`
+  (`src/core/cpuOff.ts`) deriva intervalos e totais dos eventos de qualquer
+  snapshot; `findInconsistencies` passa a conferir `offSince` contra os
+  eventos. Testes novos: CPU que nunca liga, que desliga e religa varias
+  vezes, que segue desligada ate o fim, consulta de snapshots anteriores e
+  sequencias malformadas; tarefas periodicas terminam so com o 10o job, tanto
+  com folgas entre jobs quanto com todos os jobs atrasados. Correspondencia
+  REQ-03/REQ-08 -> testes no PR #59. Revisao do PR (2026-10-20): erro dedicado
+  `CpuEventSequenceError` (outros erros propagam), rejeicao de eventos fora de
+  ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
+  `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 
@@ -136,7 +144,7 @@ Requisitos: REQ-04, REQ-05.
 Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 
 - #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10;
-  REQ-06, REQ-10).
+  REQ-06, REQ-10). Concluida no PR #57 (merged, `7156519`).
 - DEC-19 aceita em 2026-10-17 e revista pelo usuario em 2026-10-18: diagnosticos
   usam linhas do arquivo original, acumulam erros recuperaveis, preservam
   literalmente as mensagens do nucleo e distinguem falhas de acesso; cancelar
@@ -145,10 +153,10 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
   Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
-  Implementada no PR #60: parser puro de sintaxe, diagnosticos com linhas
+  Concluida no PR #60 (merged, `b28e487`): parser puro de sintaxe, diagnosticos com linhas
   originais e testes de variantes, erros recuperaveis e 500 tarefas. Evidencia
   (2026-10-18): `npm test` (154 testes), `npm run lint` e `npm run typecheck`
-  aprovados; a issue permanece aberta ate a integracao. Revisao do PR
+  aprovados. Revisao do PR
   (2026-10-19): `;` final opcional em toda linha e lista de eventos opcional
   (DEC-20), numeros so decimais, mensagens revistas, arquivo vazio com
   cabecalho e tarefa ausentes, e mapa tarefa/linha no resultado para a #31.
@@ -187,28 +195,20 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
-- #29: decisao DEC-19 aceita e documentada no PR #57; aguarda integracao para
-  fechar a issue. A implementacao/testes do parser permanecem nas #30, #31 e #34.
-- #30 (PR #60 aberto): parser puro de sintaxe implementado e gates aprovados;
-  achados da revisao corrigidos em 2026-10-19 com DEC-20. Associacao de erros
-  semanticos permanece na #31, que pode usar `lines` do resultado. A issue fica
-  aberta ate a integracao do PR.
-- #55 (descricoes das issues): corpos das issues abertas de #14 a #45
+  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58) e #30
+  (PR #60) concluidos; evidencias registradas acima. Associacao de erros
+  semanticos do parser permanece na #31, que pode usar `lines` do resultado.
+- #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
+  corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
   repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
-  executados. O template so aparece no GitHub depois do merge em `main` (nao
-  verificado).
-- #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
-  usuario em 2026-10-17; quantum implementado e verificado (evidencia na E1),
-  em revisao no PR da #14.
-- #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
-  revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
-- Proximo passo: integrar o PR da #60; revisar e integrar o PR da #14; manter os
-  diagnosticos de DEC-19 nos escopos de #31 e #34.
+  executados. O template esta em `main` desde o merge.
+- #15 em revisao no PR #59 (DEC-21); fecha no merge.
+- Proximo passo: integrar o PR #59; manter os diagnosticos de DEC-19 nos
+  escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
