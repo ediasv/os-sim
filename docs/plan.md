@@ -104,7 +104,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
   `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
-  Em revisao no PR #62 (DEC-22, aceita pelo usuario). O motor passa a
+  Concluida no PR #62 (merged, `4b28fe8`; DEC-22, aceita pelo usuario). O motor passa a
   registrar todas as conclusoes antes de todas as perdas de prazo na mesma
   fronteira. O teste da DEC-22 foi escrito antes e falhou com a ordem antiga;
   essa execucao nao ficou registrada no repositorio. Testes novos: ordem por
@@ -115,15 +115,34 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   multi-CPU e do quantum, confere no historico de execucoes que nenhum job
   ocupa duas CPUs e nenhuma CPU executa dois jobs no mesmo tick e, no estado
   atual, que CPUs ocupadas = min(`cpuCount`, elegiveis) e que so CPUs ociosas
-  estao desligadas. A contagem usa a elegibilidade do proprio motor: mostra
-  que o despacho coloca cada job selecionado numa CPU, nao quais jobs sao
-  elegiveis (conferencia independente na #63). Correspondencia cenario ->
+  estao desligadas. No PR #62 a contagem usava a elegibilidade do proprio
+  motor; a #63 a substitui por uma contagem independente. Correspondencia cenario ->
   teste no PR. Evidencia (2026-10-23, apos ajustes da revisao): `npm test`
   209/209, `npm run lint` e `npm run typecheck` aprovados; mutacao em que CPU
   ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 - #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
-  Aberta na revisao do PR #62; depende de #16.
+  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64.
+  `eligibleJobKeys` (teste do Simulator) rederiva DEC-02 dos estados dos
+  jobs no snapshot, sem `findEligibleJobs`: job `ready` ou `running` cujos
+  jobs anteriores da tarefa estao todos concluidos. `expectMultiCpuInvariants`
+  passa a conferir que todo job em execucao pertence a esse conjunto e que
+  CPUs ocupadas = min(`cpuCount`, tamanho do conjunto); a regra de DEC-02 fica
+  no motor e no teste (aceito pelo usuario na revisao do PR #62). Comparar so
+  contagens nao bastava: com CPUs saturadas ou troca de job da mesma tarefa
+  os numeros coincidem. Mutacoes temporarias em `findEligibleJobs`,
+  revertidas, sem registro de execucao no repositorio: M1 omite job
+  preemptado em `ready` (`executed > 0`); M2 oferece todo job
+  `ready`/`running` mesmo com anterior incompleto; M3 escolhe o job
+  incompleto mais recente (`findLastIndex`). Antes da mudanca, nenhuma falha
+  vinha da conferencia (M1 e M2 falhavam so em assercoes fixadas a mao).
+  Depois, a contagem falha com M1 em "restarts the slice when a job preempted
+  mid-slice resumes on the same CPU" (quantum) e "processes every kind of
+  fact at shared boundaries in stage order" (2 CPUs); a pertinencia falha com
+  M2 e M3 em "holds a later activation without running it, even with a free
+  CPU" (CPU executa job 1:1). So com contagem, M3 passava pela conferencia.
+  Evidencia (2026-10-23): `npm test` 209/209, `npm run lint` e
+  `npm run typecheck` aprovados.
 
 ### E2: Politicas obrigatorias
 
@@ -215,13 +234,11 @@ Requisito: REQ-10; integracao de todos os anteriores.
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
   #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58), #30
-  (PR #60) e #15 (PR #59) concluidos; evidencias registradas acima. Associacao
+  (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
   de erros semanticos do parser permanece na #31, que pode usar `lines` do
   resultado.
-- #16 em revisao no PR #62 (iniciada em 2026-10-23), com a tabela
-  cenario -> teste na descricao; evidencia em E1. Corpo da issue alinhado a
-  DEC-18 revista e a DEC-22. Ajustes da revisao do PR #62 aplicados;
-  conferencia independente de CPUs ocupadas em #63. Fecha no merge do PR.
+- #63 em revisao no PR #64 (iniciada em 2026-10-23); mutacoes e gates
+  registrados em E1. Fecha no merge do PR.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -230,7 +247,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
-- Proximo passo: revisar e integrar o PR #62; manter os diagnosticos de
+- Proximo passo: revisar e integrar o PR #64 (#63); depois #17 ou E2. Manter os diagnosticos de
   DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
