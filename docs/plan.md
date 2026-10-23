@@ -104,8 +104,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
   `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
-  Implementada na branch `worktree-issue-16-e1-testes-nucleo`, aguardando PR
-  (DEC-22, aceita pelo usuario). O motor passa a registrar todas as conclusoes
+  Em revisao no PR #62 (DEC-22, aceita pelo usuario). O motor passa a registrar todas as conclusoes
   antes de todas as perdas de prazo na mesma fronteira (teste escrito antes,
   falhou com a ordem antiga). Testes novos: ordem por etapas com todos os
   fatos em fronteiras compartilhadas (2 CPUs), job posterior retido com CPU
@@ -211,9 +210,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (PR #60) e #15 (PR #59) concluidos; evidencias registradas acima. Associacao
   de erros semanticos do parser permanece na #31, que pode usar `lines` do
   resultado.
-- #16 implementada (iniciada em 2026-10-23), aguardando commit e PR com a
-  tabela cenario -> teste; evidencia em E1. Corpo da issue alinhado a DEC-18
-  revista e a DEC-22. Fecha no merge do PR.
+- #16 em revisao no PR #62 (iniciada em 2026-10-23), com a tabela
+  cenario -> teste na descricao; evidencia em E1. Corpo da issue alinhado a
+  DEC-18 revista e a DEC-22. Fecha no merge do PR.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -222,8 +221,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
-- Proximo passo: revisar, commitar e abrir o PR da #16; manter os diagnosticos de DEC-19 nos
-  escopos de #31 e #34.
+- Proximo passo: revisar e integrar o PR #62; manter os diagnosticos de
+  DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
