@@ -122,22 +122,27 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
 - #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
-  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64. `countEligibleJobs` (teste do
-  Simulator) aplica DEC-02 ao snapshot sem `findEligibleJobs`: job `ready`
-  ou `running` cujos jobs anteriores da tarefa estao todos concluidos.
-  `expectMultiCpuInvariants` passa a conferir CPUs ocupadas =
-  min(`cpuCount`, essa contagem); a regra de DEC-02 fica no motor e no teste
-  (aceito pelo usuario na revisao do PR #62). Mutacoes temporarias em
-  `findEligibleJobs`, revertidas: M1 omite job preemptado em `ready`
-  (`executed > 0`); M2 oferece todo job `ready`/`running` mesmo com anterior
-  incompleto. Antes da mudanca, nenhuma falha vinha da conferencia (M1 e M2
-  falhavam so em assercoes fixadas a mao). Depois, a conferencia falha com
-  M1 em "restarts the slice when a job preempted mid-slice resumes on the
-  same CPU" (quantum) e "processes every kind of fact at shared boundaries
-  in stage order" (2 CPUs), e com M2 em "holds a later activation without
-  running it, even with a free CPU" (2 CPUs ocupadas, esperado 1). Evidencia
-  (2026-10-23): `npm test` 209/209, `npm run lint` e `npm run typecheck`
-  aprovados.
+  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64.
+  `eligibleJobKeys` (teste do Simulator) rederiva DEC-02 dos estados dos
+  jobs no snapshot, sem `findEligibleJobs`: job `ready` ou `running` cujos
+  jobs anteriores da tarefa estao todos concluidos. `expectMultiCpuInvariants`
+  passa a conferir que todo job em execucao pertence a esse conjunto e que
+  CPUs ocupadas = min(`cpuCount`, tamanho do conjunto); a regra de DEC-02 fica
+  no motor e no teste (aceito pelo usuario na revisao do PR #62). Comparar so
+  contagens nao bastava: com CPUs saturadas ou troca de job da mesma tarefa
+  os numeros coincidem. Mutacoes temporarias em `findEligibleJobs`,
+  revertidas, sem registro de execucao no repositorio: M1 omite job
+  preemptado em `ready` (`executed > 0`); M2 oferece todo job
+  `ready`/`running` mesmo com anterior incompleto; M3 escolhe o job
+  incompleto mais recente (`findLastIndex`). Antes da mudanca, nenhuma falha
+  vinha da conferencia (M1 e M2 falhavam so em assercoes fixadas a mao).
+  Depois, a contagem falha com M1 em "restarts the slice when a job preempted
+  mid-slice resumes on the same CPU" (quantum) e "processes every kind of
+  fact at shared boundaries in stage order" (2 CPUs); a pertinencia falha com
+  M2 e M3 em "holds a later activation without running it, even with a free
+  CPU" (CPU executa job 1:1). So com contagem, M3 passava pela conferencia.
+  Evidencia (2026-10-23): `npm test` 209/209, `npm run lint` e
+  `npm run typecheck` aprovados.
 
 ### E2: Politicas obrigatorias
 

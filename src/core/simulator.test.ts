@@ -35,12 +35,14 @@ function expectConsistent(sim: Simulator): void {
 }
 
 /**
- * Counts the jobs allowed to run under DEC-02, read from the snapshot without
- * the engine's `findEligibleJobs`: a ready or running job whose earlier jobs
- * in the task have all completed.
+ * Lists the jobs allowed to run under DEC-02, as `taskId:index` keys,
+ * re-derived from the job states in the snapshot rather than taken from the
+ * engine's `findEligibleJobs` (src/core/eligibility.ts): a ready or running
+ * job whose earlier jobs in the task have all completed. DEC-02 thus lives in
+ * both places; changing the rule means updating both.
  */
-function countEligibleJobs(snapshot: SimulationSnapshot): number {
-    let count = 0;
+function eligibleJobKeys(snapshot: SimulationSnapshot): Set<string> {
+    const keys = new Set<string>();
     for (const tcb of snapshot.tasks) {
         for (const [i, job] of tcb.jobs.entries()) {
             const runnable = job.state === 'ready' || job.state === 'running';
@@ -48,22 +50,21 @@ function countEligibleJobs(snapshot: SimulationSnapshot): number {
                 .slice(0, i)
                 .every((earlier) => earlier.state === 'completed');
             if (runnable && earlierDone) {
-                count++;
+                keys.add(`${job.taskId}:${job.index}`);
             }
         }
     }
-    return count;
+    return keys;
 }
 
 /**
  * Checks the multi-CPU invariants of REQ-02. Over the whole execution
  * history: no job runs on two CPUs and no CPU runs two jobs in the same tick.
- * In the current state: busy CPUs equal min(cpuCount, eligible jobs) and only
- * idle CPUs are off. The eligible count comes from `countEligibleJobs`, not
- * from the engine, so the check also fails when the engine omits an eligible
- * job or offers a later job while an earlier one is incomplete (#63). DEC-02
- * then lives in both places; changing the rule means updating both. Call it
- * after every tick to cover the whole run, as `run()` does.
+ * In the current state: every running job is eligible under DEC-02, busy CPUs
+ * equal min(cpuCount, eligible jobs) and only idle CPUs are off. Eligibility
+ * comes from `eligibleJobKeys`, not from the engine, so the check fails when
+ * the engine runs a job DEC-02 forbids or leaves a CPU idle while an eligible
+ * job waits. Call it after every tick to cover the whole run, as `run()` does.
  */
 function expectMultiCpuInvariants(sim: Simulator): void {
     expectConsistent(sim);
@@ -80,9 +81,16 @@ function expectMultiCpuInvariants(sim: Simulator): void {
             }
         }
     }
+    const eligible = eligibleJobKeys(snapshot);
+    for (const cpu of snapshot.cpus) {
+        if (cpu.running !== null) {
+            const key = `${cpu.running.taskId}:${cpu.running.index}`;
+            expect(eligible.has(key), `CPU ${cpu.id} runs ${key}`).toBe(true);
+        }
+    }
     const busy = snapshot.cpus.filter((cpu) => cpu.running !== null).length;
     expect(busy, 'busy CPUs vs DEC-02 eligibility').toBe(
-        Math.min(snapshot.config.cpuCount, countEligibleJobs(snapshot)),
+        Math.min(snapshot.config.cpuCount, eligible.size),
     );
     for (const cpu of snapshot.cpus) {
         expect(cpu.offSince !== null, `CPU ${cpu.id} power state`).toBe(
