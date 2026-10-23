@@ -122,7 +122,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   209/209, `npm run lint` e `npm run typecheck` aprovados; mutacao em que CPU
   ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
 - #65 Definir arquitetura de erros e comandos do adaptador Vue.
-  Em revisao no PR #66 (DEC-23 revista e DEC-24, aceitas pelo usuario em
+  Concluida no PR #66 (DEC-23 revista e DEC-24, aceitas pelo usuario em
   2026-10-23). Comandos `load`/`tick` devolvem `CommandResult`; erro de
   configuracao vai so ao resultado, erro inesperado tambem ao banner; `load`
   reconstroi em t=0 e so substitui a simulacao atual em sucesso. Testes novos:
@@ -131,10 +131,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   testes falharam antes da implementacao; os dois acrescentados na revisao
   (objeto lancado, mensagem da politica ausente) falharam com mutacoes
   temporarias de `commandFailure` e `load`. Evidencia (2026-10-23): `npm test`
-  222/222, `npm run lint` e `npm run typecheck` aprovados. Proximo passo:
-  merge do PR #66.
+  222/222, `npm run lint` e `npm run typecheck` aprovados.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
-  Em revisao no PR #66, junto com #65. Testes do adaptador cobrem
+  Concluida no PR #66, junto com #65. Testes do adaptador cobrem
   snapshot 0, snapshot novo por tick com anteriores congelados e intactos,
   somente `view`/`load`/`tick` expostos e erro de `tick()` no banner com o
   ultimo snapshot valido preservado e continuacao (DEC-14). Nao executado:
