@@ -127,10 +127,12 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuracao vai so ao resultado, erro inesperado tambem ao banner; `load`
   reconstroi em t=0 e so substitui a simulacao atual em sucesso. Testes novos:
   `commandFailure` (configuracao fora do banner, banner anterior preservado,
-  inesperado no banner, string lancada) e comandos do adaptador. Os testes
-  falharam antes da implementacao. Evidencia (2026-10-23): `npm test` 221/221,
-  `npm run lint` e `npm run typecheck` aprovados. Proximo passo: merge do
-  PR #66.
+  inesperado no banner, string e objeto lancados) e comandos do adaptador. Os
+  testes falharam antes da implementacao; os dois acrescentados na revisao
+  (objeto lancado, mensagem da politica ausente) falharam com mutacoes
+  temporarias de `commandFailure` e `load`. Evidencia (2026-10-23): `npm test`
+  222/222, `npm run lint` e `npm run typecheck` aprovados. Proximo passo:
+  merge do PR #66.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
   Em revisao no PR #66, junto com #65. Testes do adaptador cobrem
   snapshot 0, snapshot novo por tick com anteriores congelados e intactos,

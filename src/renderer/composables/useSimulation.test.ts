@@ -23,8 +23,6 @@ const oneTask: SystemConfig = {
     ],
 };
 
-const twoCpus: SystemConfig = { ...oneTask, cpuCount: 2 };
-
 const firstAvailable: SchedulingPolicy = {
     select: (view) => ({
         selected: view.candidates
@@ -75,7 +73,7 @@ describe('useSimulation', () => {
         sim.tick();
         const before = sim.view.value;
 
-        const result = sim.load({ ...twoCpus, cpuCount: 0 }, firstAvailable);
+        const result = sim.load({ ...oneTask, cpuCount: 0 }, firstAvailable);
 
         expect(result.ok).toBe(false);
         expect(!result.ok && result.error.kind).toBe('config');
@@ -97,7 +95,9 @@ describe('useSimulation', () => {
         const result = sim.load(oneTask);
 
         expect(!result.ok && result.error.kind).toBe('unexpected');
-        expect(currentError.value).not.toBeNull();
+        expect(currentError.value).toBe(
+            'A scheduling policy is required when tasks are configured.',
+        );
         expect(sim.view.value).toBe(before);
     });
 

@@ -170,6 +170,13 @@ describe('commandFailure', () => {
         expect(console.error).toHaveBeenCalledWith(err);
     });
 
+    it('describes a thrown plain object as JSON, not [object Object]', () => {
+        expect(commandFailure({ code: 1 })).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: '{"code":1}' },
+        });
+    });
+
     it('classifies a thrown string as unexpected', () => {
         expect(commandFailure('boom')).toEqual({
             ok: false,

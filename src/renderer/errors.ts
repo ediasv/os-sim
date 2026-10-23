@@ -51,6 +51,7 @@ export type AppError =
       }
     | { readonly kind: 'unexpected'; readonly message: string };
 
+/** Outcome of an adapter command; a failure leaves the state unchanged (DEC-24). */
 export type CommandResult =
     | { readonly ok: true }
     | { readonly ok: false; readonly error: AppError };
