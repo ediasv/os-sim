@@ -6,10 +6,18 @@
  *
  * Ties are out of scope until #20: a priority tie that crosses the CPU cut is
  * resolved there (DEC-16, DEC-18). This is the single place where that
- * tie-break must be plugged in, in `rankedSelection`.
+ * tie-break must be plugged in, in `rankedSelection`. Until then such a tie
+ * falls back to the candidate order (the order of the configuration file),
+ * a hidden tie-break that REQ-07 forbids, so RM and EDF must not reach the
+ * user (E4/E5) before #20.
  */
 import type { AlgorithmId } from './domain';
-import type { PolicyCandidate, PolicyView, SchedulingPolicy } from './policy';
+import type {
+    PolicyCandidate,
+    PolicyDecision,
+    PolicyView,
+    SchedulingPolicy,
+} from './policy';
 
 /** Lower value means higher priority. */
 type PriorityKey = (candidate: PolicyCandidate) => number;
@@ -17,11 +25,15 @@ type PriorityKey = (candidate: PolicyCandidate) => number;
 function rankedSelection(
     view: PolicyView,
     priority: PriorityKey,
-): { selected: PolicyCandidate['job'][] } {
+): PolicyDecision {
     const count = Math.min(view.cpuCount, view.candidates.length);
-    const ranked = [...view.candidates].sort(
-        (a, b) => priority(a) - priority(b),
-    );
+    // Compares instead of subtracting: two aperiodic RM tasks both rank as
+    // Infinity, and Infinity - Infinity would be NaN.
+    const ranked = [...view.candidates].sort((a, b) => {
+        const pa = priority(a);
+        const pb = priority(b);
+        return pa < pb ? -1 : pa > pb ? 1 : 0;
+    });
     return { selected: ranked.slice(0, count).map((c) => c.job) };
 }
 
@@ -41,10 +53,16 @@ export const edfPolicy: SchedulingPolicy = {
     select: (view) => rankedSelection(view, ({ job }) => job.absoluteDeadline),
 };
 
+/** Policy for each algorithm name accepted in the configuration. */
+export type PolicyRegistry = Readonly<Record<AlgorithmId, SchedulingPolicy>>;
+
 /**
- * Links the configured `algorithm` to its policy. The caller passes the result
- * to the Simulator, which never reads the algorithm name (DEC-01).
+ * Built-in policies, keyed by the configured `algorithm`; `createSimulator`
+ * resolves the configuration's algorithm here (DEC-25). A new algorithm is
+ * added by extending `AlgorithmId` and registering it here, which the
+ * `Record` type enforces at compile time (A.4.2).
  */
-export function policyFor(algorithm: AlgorithmId): SchedulingPolicy {
-    return algorithm === 'EDF' ? edfPolicy : rmPolicy;
-}
+export const DEFAULT_POLICIES: PolicyRegistry = Object.freeze({
+    RM: rmPolicy,
+    EDF: edfPolicy,
+});

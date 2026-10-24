@@ -1,6 +1,7 @@
 import { shallowRef, type ShallowRef } from 'vue';
 import type { SimulationSnapshot, SystemConfig } from '../../core/domain';
-import type { SchedulingPolicy } from '../../core/policy';
+import { createSimulator } from '../../core/createSimulator';
+import { DEFAULT_POLICIES, type PolicyRegistry } from '../../core/policies';
 import { Simulator } from '../../core/simulator';
 import { commandFailure, type CommandResult } from '../errors';
 
@@ -11,10 +12,14 @@ import { commandFailure, type CommandResult } from '../errors';
  * Commands never throw: they return a result classified by DEC-24, and a
  * failure leaves the simulation and `view` unchanged. Edits during the run
  * (#25/#26) will follow the same contract.
+ *
+ * Loaded simulations run the policy that `policies` registers for the
+ * configured algorithm (DEC-25); production uses the built-in registry and
+ * tests pass their own. The initial empty simulation never fails.
  */
-export function useSimulation(): {
+export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     view: ShallowRef<SimulationSnapshot>;
-    load: (config: SystemConfig, policy?: SchedulingPolicy) => CommandResult;
+    load: (config: SystemConfig) => CommandResult;
     tick: () => CommandResult;
 } {
     let sim = new Simulator();
@@ -25,13 +30,10 @@ export function useSimulation(): {
      * instance is built before the current one is dropped, so a rejected
      * configuration keeps the running simulation.
      */
-    function load(
-        config: SystemConfig,
-        policy?: SchedulingPolicy,
-    ): CommandResult {
+    function load(config: SystemConfig): CommandResult {
         let next: Simulator;
         try {
-            next = new Simulator(config, policy);
+            next = createSimulator(config, policies);
         } catch (error) {
             return commandFailure(error);
         }

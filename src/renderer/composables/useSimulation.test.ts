@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isReactive } from 'vue';
 import type { SystemConfig } from '../../core/domain';
+import type { PolicyRegistry } from '../../core/policies';
 import type { SchedulingPolicy } from '../../core/policy';
 import { Simulator } from '../../core/simulator';
 import { currentError, dismissError } from '../errors';
@@ -31,6 +32,11 @@ const firstAvailable: SchedulingPolicy = {
     }),
 };
 
+/** Registry that runs `policy` whatever the configured algorithm (DEC-25). */
+function only(policy: SchedulingPolicy): PolicyRegistry {
+    return { RM: policy, EDF: policy };
+}
+
 beforeEach(() => {
     dismissError();
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -48,9 +54,9 @@ describe('useSimulation', () => {
     });
 
     it('loads a new config from t=0', () => {
-        const sim = useSimulation();
+        const sim = useSimulation(only(firstAvailable));
         sim.tick();
-        expect(sim.load(oneTask, firstAvailable)).toEqual({ ok: true });
+        expect(sim.load(oneTask)).toEqual({ ok: true });
         expect(sim.view.value.clock).toBe(0);
         expect(sim.view.value.cpus[0].running).toEqual({
             taskId: 1,
@@ -59,8 +65,8 @@ describe('useSimulation', () => {
     });
 
     it('ticks the loaded simulation with its own policy', () => {
-        const sim = useSimulation();
-        sim.load(oneTask, firstAvailable);
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
         expect(sim.tick()).toEqual({ ok: true });
         expect(sim.view.value.executions).toEqual([
             { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 1 },
@@ -68,12 +74,12 @@ describe('useSimulation', () => {
     });
 
     it('keeps the running simulation when load is rejected', () => {
-        const sim = useSimulation();
-        sim.load(oneTask, firstAvailable);
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
         sim.tick();
         const before = sim.view.value;
 
-        const result = sim.load({ ...oneTask, cpuCount: 0 }, firstAvailable);
+        const result = sim.load({ ...oneTask, cpuCount: 0 });
 
         expect(result.ok).toBe(false);
         expect(!result.ok && result.error.kind).toBe('config');
@@ -88,22 +94,33 @@ describe('useSimulation', () => {
         expect(sim.view.value.clock).toBe(2);
     });
 
-    it('reports a missing policy as unexpected', () => {
-        const sim = useSimulation();
+    it('reports an unregistered algorithm as unexpected', () => {
+        const sim = useSimulation({} as PolicyRegistry);
         const before = sim.view.value;
+        expect(before.clock).toBe(0);
 
         const result = sim.load(oneTask);
 
         expect(!result.ok && result.error.kind).toBe('unexpected');
         expect(currentError.value).toBe(
-            'A scheduling policy is required when tasks are configured.',
+            'No scheduling policy is registered for algorithm RM.',
         );
         expect(sim.view.value).toBe(before);
     });
 
+    it('loads with the default registry when none is given', () => {
+        const sim = useSimulation();
+
+        expect(sim.load(oneTask)).toEqual({ ok: true });
+        expect(sim.view.value.cpus[0].running).toEqual({
+            taskId: 1,
+            index: 0,
+        });
+    });
+
     it('publishes a new snapshot per tick and leaves earlier ones intact', () => {
-        const { view, load, tick } = useSimulation();
-        load(oneTask, firstAvailable);
+        const { view, load, tick } = useSimulation(only(firstAvailable));
+        load(oneTask);
         const first = view.value;
 
         tick();
@@ -126,8 +143,8 @@ describe('useSimulation', () => {
     });
 
     it('exposes only the snapshot and the commands', () => {
-        const adapter = useSimulation();
-        adapter.load(oneTask, firstAvailable);
+        const adapter = useSimulation(only(firstAvailable));
+        adapter.load(oneTask);
 
         expect(Object.keys(adapter).sort()).toEqual(['load', 'tick', 'view']);
         expect(adapter.view.value).not.toBeInstanceOf(Simulator);
@@ -145,8 +162,8 @@ describe('useSimulation', () => {
                 return firstAvailable.select(view);
             },
         };
-        const { view, load, tick } = useSimulation();
-        load(oneTask, policy);
+        const { view, load, tick } = useSimulation(only(policy));
+        load(oneTask);
         tick();
         const lastValid = view.value;
 

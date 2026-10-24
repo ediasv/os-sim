@@ -21,7 +21,11 @@ afirma que os modulos planejados ja existem.
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
-  congelada e conferencia da decisao (DEC-13); RM/EDF continuam para E2.
+  congelada e conferencia da decisao (DEC-13).
+- [Politicas](../src/core/policies.ts): RM e EDF (DEC-17) e o registro
+  `DEFAULT_POLICIES`, que associa cada algoritmo a sua politica (DEC-25).
+- [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
+  resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz
@@ -573,15 +577,16 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65).
   Requisitos: REQ-04, REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
 - Decisao:
-    1. `useSimulation()` nao recebe argumentos, comeca com `DEFAULT_CONFIG` e
-       nao falha. Expoe somente `view` (`shallowRef` do ultimo snapshot
-       congelado), `load(config, policy?)` e `tick()`; a instancia e o estado
-       vivo ficam privados.
+    1. `useSimulation(policies?)` recebe somente o registro de politicas
+       (padrao `DEFAULT_POLICIES`; testes passam o seu, DEC-25), comeca com
+       `DEFAULT_CONFIG` e nao falha. Expoe somente `view` (`shallowRef` do
+       ultimo snapshot congelado), `load(config)` e `tick()`; a instancia e o
+       estado vivo ficam privados.
     2. `load` reconstroi a simulacao em t=0 quando uma configuracao inteira e
-       carregada (arquivo, E4). Repassa configuracao e politica ao construtor
-       do `Simulator` sem validar de novo e cria a nova instancia antes de
-       descartar a atual: em falha, instancia, `view` e historico ficam como
-       estavam.
+       carregada (arquivo, E4). Cria a simulacao com
+       `createSimulator(config, policies)` (DEC-25), sem validar de novo, e
+       cria a nova instancia antes de descartar a atual: em falha, instancia,
+       `view` e historico ficam como estavam.
     3. `tick` avanca um tick; em falha `view` continua no ultimo snapshot
        valido, que DEC-14 garante ser o estado atual.
     4. Editar parametros durante a simulacao mantem a simulacao e o passado e
@@ -620,6 +625,45 @@ anterior. Data inicial dos registros: 2026-10-12.
   continua significando falha do programa.
 - Alternativas descartadas: tudo no banner (perde o contexto de campo e
   linha) e uma ref de erro publicada pelo adaptador (segunda fonte de verdade).
+
+### DEC-25: Politica escolhida pelo algoritmo da configuracao
+
+- Estado: aceita em 2026-10-24 (decidida pelo usuario no PR #74). Requisitos:
+  REQ-07 (A.4.1, A.4.2). Detalha DEC-01 e DEC-13; revisa DEC-23.
+- Decisao:
+    1. `PolicyRegistry` associa cada `AlgorithmId` a uma `SchedulingPolicy`;
+       `DEFAULT_POLICIES` registra RM e EDF. Um algoritmo novo entra
+       estendendo `AlgorithmId` e registrando a politica; o tipo do registro
+       exige a entrada em compilacao.
+    2. `createSimulator(config, policies?)` resolve `config.algorithm` no
+       registro e constroi o `Simulator` com a politica encontrada. O
+       `Simulator` continua recebendo uma politica e nunca le o nome do
+       algoritmo (DEC-01).
+    3. O adaptador cria simulacoes somente pela fabrica, com o registro
+       recebido na criacao (DEC-23): em producao o padrao, nos testes um
+       registro proprio.
+    4. Configuracao invalida tem precedencia e gera `ConfigValidationError`
+       (DEC-15), mesmo quando o algoritmo nao tem politica. Registro sem a
+       chave do algoritmo e erro inesperado (DEC-24).
+- Justificativa: o algoritmo executado em producao e sempre o configurado
+  (A.4.1); o motor e os testes do motor ficam intactos, e REQ-07 continua
+  testavel com politicas de teste injetadas diretamente.
+- Alternativas descartadas:
+    - `policyFor(algorithm)` deixado a cargo do chamador: politica e
+      algoritmo podiam divergir sem aviso.
+    - Registro no construtor do `Simulator`: garantia estrutural, mas muda
+      DEC-15 e todos os testes do motor.
+    - Resolvedor `(algorithm) => politica` no motor: so se justifica com troca
+      de algoritmo durante a simulacao, ainda indefinida (Q-02).
+    - Politica com identificador conferido pelo motor: estende DEC-13.
+- Consequencias:
+    - `new Simulator(config, policy)` direto continua permitido para testes e
+      pode divergir de `config.algorithm`; producao usa a fabrica.
+    - Trocar o algoritmo durante a simulacao fica com Q-02/#25; a fabrica
+      concentra a resolucao e pode virar resolvedor se for preciso.
+    - Ate a #20, empate de prioridade no corte de CPUs cai na ordem das
+      candidatas (ordem do arquivo), desempate escondido que REQ-07 proibe;
+      RM e EDF nao devem ser expostos ao usuario (E4/E5) antes da #20.
 
 ## Fluxo de um passo
 

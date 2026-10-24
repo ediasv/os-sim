@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Job, TaskDefinition } from './domain';
-import { edfPolicy, policyFor, rmPolicy } from './policies';
+import { DEFAULT_POLICIES, edfPolicy, rmPolicy } from './policies';
 import type { PolicyCandidate, PolicyView } from './policy';
 
 function task(id: number, period: number, deadline = 10): TaskDefinition {
@@ -37,7 +37,7 @@ function ids(v: PolicyView, policy = rmPolicy): number[] {
     return policy
         .select(v)
         .selected.map((s) => s.taskId)
-        .sort();
+        .sort((a, b) => a - b);
 }
 
 describe('RM', () => {
@@ -71,6 +71,22 @@ describe('RM', () => {
         expect(ids(view(2, [aper, slow, b]))).toEqual([1, 2]);
         expect(ids(view(1, [aper]))).toEqual([4]);
     });
+
+    it('ranks several aperiodic tasks below a periodic one (DEC-17)', () => {
+        const ap1 = cand(task(4, 0), 1);
+        const ap2 = cand(task(5, 0), 2);
+        const slow = cand(task(1, 1000), 1000);
+        expect(ids(view(1, [ap1, ap2, slow]))).toEqual([1]);
+        expect(ids(view(1, [slow, ap2, ap1]))).toEqual([1]);
+    });
+
+    it('selects every tied job when the tie does not cross the CPU cut', () => {
+        const x = cand(task(1, 5), 5);
+        const y = cand(task(2, 5), 5);
+        const slow = cand(task(3, 50), 50);
+        expect(ids(view(2, [slow, x, y]))).toEqual([1, 2]);
+        expect(ids(view(2, [y, slow, x]))).toEqual([1, 2]);
+    });
 });
 
 describe('EDF', () => {
@@ -93,9 +109,11 @@ describe('EDF', () => {
     });
 });
 
-describe('policyFor', () => {
-    it('links the algorithm to its policy', () => {
-        expect(policyFor('RM')).toBe(rmPolicy);
-        expect(policyFor('EDF')).toBe(edfPolicy);
+describe('DEFAULT_POLICIES', () => {
+    it('maps each algorithm id to its policy', () => {
+        expect(Object.keys(DEFAULT_POLICIES).sort()).toEqual(['EDF', 'RM']);
+        expect(DEFAULT_POLICIES.RM).toBe(rmPolicy);
+        expect(DEFAULT_POLICIES.EDF).toBe(edfPolicy);
+        expect(Object.isFrozen(DEFAULT_POLICIES)).toBe(true);
     });
 });
