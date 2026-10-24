@@ -286,6 +286,11 @@ Requisito: REQ-10; integracao de todos os anteriores.
   `docs/35-gantt-decision`; #38 segue DEC-08 e #39 nao muda de escopo.
 - #19 em revisao no PR #74 (iniciada em 2026-10-24): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2. Fecha no merge do PR.
+- #67 (F1, infraestrutura de testes do renderer) pronta para revisao em
+  2026-10-24: Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste do
+  ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
+  Lint global segue reprovado por CRLF preexistente. Fecha so no merge do PR.
 - Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
   (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.

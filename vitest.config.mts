@@ -1,7 +1,8 @@
+import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
 
-// Tests run in Node. core/ has no DOM, and Vue's reactivity works without one.
 export default defineConfig({
+    plugins: [vue()],
     test: {
         include: ['src/**/*.test.ts'],
         environment: 'node',

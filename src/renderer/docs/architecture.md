@@ -1,6 +1,7 @@
 # Arquitetura e entregas do renderer
 
-Planejamento atualizado em 2026-10-23, ainda sem implementacao. A
+Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
+preparada na #67, sem implementacao visual das entregas abaixo. A
 [spec de apresentacao](specification.md) registra comportamentos; este
 documento registra responsabilidades, contratos propostos e ordem de codigo.
 O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
@@ -23,10 +24,11 @@ geral; nao inclui alterar regras, documentos, modelo ou API do nucleo.
 - Recomendacao tecnica: manter Vue, TypeScript, Vite e CSS com tokens; nao
   adicionar inicialmente Tailwind, Pinia, Router, microfrontends ou releases
   independentes. O produto continua sendo o aplicativo Electron.
-- Ferramentas propostas: Inter empacotada localmente, Lucide Vue para icones,
-  Vue Test Utils com jsdom para componentes e Playwright para verificacao
-  visual/ponta a ponta. Ainda nao instaladas ou declaradas aprovadas apenas
-  porque a organizacao de pastas foi aceita.
+- Ferramentas propostas: Inter empacotada localmente, Lucide Vue para icones
+  e Playwright para verificacao visual/ponta a ponta. Ainda nao instaladas ou
+  declaradas aprovadas apenas porque a organizacao de pastas foi aceita.
+  Vue Test Utils e jsdom foram aprovados para testes na #67; suporte e
+  verificacao estao descritos abaixo.
 - Acordado apos esclarecimento: sem tooltip na entrega 1; manter nome
   acessivel de botoes de icone. Reka UI nao entra apenas para tooltip.
   Bibliotecas de dialogos/selecoes podem ser avaliadas na entrega que precisar
@@ -189,11 +191,65 @@ futura conforme FE-10; listas extensas consultaveis sem corte inacessivel.
 Nenhum componente recebe ou modifica o simulador vivo. Suspender, retomar e
 editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
 
+## Testes de componentes (#67)
+
+O [Vitest](../../../vitest.config.mts) usa o plugin Vue existente para
+transformar SFCs, incluindo `<script setup lang="ts">`. O ambiente padrao
+continua `node`: nucleo, auxiliares e composables sem montagem nao recebem
+DOM. Somente arquivos que precisam montar componentes declaram
+`// @vitest-environment jsdom` no inicio.
+
+As dependencias de desenvolvimento `@vue/test-utils` e `jsdom` permitem
+montar componentes reais e disparar eventos sem iniciar Electron.
+O [teste do ErrorBanner](../components/ErrorBanner.test.ts) verifica ausencia
+inicial, renderizacao reativa, clique em Dismiss e exibicao de novo erro
+apos o descarte. Limpa estado global e mocks e desmonta os componentes
+automaticamente, sem alterar o componente ou a classificacao de DEC-24.
+
+Executar na raiz com Node dentro das engines de Vitest 5 e jsdom 30: 22.22.2
+ou superior da linha 22 (o CI usa Node 22), 24.15 ou superior da linha 24, ou
+26+. Node 25 fica fora dessas engines; funcionou na verificacao abaixo, mas
+nao e garantido:
+
+```sh
+npm test -- src/renderer/components/ErrorBanner.test.ts
+npm test
+npm run typecheck
+npm run lint
+```
+
+Se o Node global for 25, o teste pode usar um Node 24 temporario:
+
+```sh
+npm exec --yes --package=node@24 -- node node_modules/vitest/vitest.mjs run src/renderer/components/ErrorBanner.test.ts
+```
+
+jsdom verifica DOM e eventos, nao layout, pixels, foco nativo do Electron ou
+distribuicao. Esta infraestrutura nao implementa componentes, estilos ou
+contratos novos; verificacao visual e pacote continuam fora de F1.
+
+### Evidencia da #67 (2026-10-24)
+
+Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
+(fora das engines, ver acima):
+
+- Teste focado do ErrorBanner 2/2; `npm test` 242/242 em 14 arquivos (240 do
+  `main` mais 2 do F1); `npm run typecheck` aprovado; `oxlint` do codigo e
+  formato de `package.json`, `vitest.config.mts` e do teste aprovados.
+- Isolamento: teste descartavel no nucleo confirmou `window` e `document`
+  ausentes sem a diretiva jsdom, e o teste do componente a declara
+  explicitamente. O teste descartavel foi removido.
+- `npm run lint` global segue reprovado por formatacao preexistente fora do
+  escopo: o checkout usa CRLF e `oxfmt --check` acusa ate arquivos nao
+  alterados; copias LF dos arquivos alterados passam. Nenhuma normalizacao
+  geral foi feita.
+- Links locais e IDs deste documento conferidos. Build, aplicativo, verificacao
+  visual e pacote nao executados. F2, #36 e #37 nao foram implementadas.
+
 ## Verificacao e pendencias tecnicas
 
-- Componentes SFC precisam do suporte Vue no Vitest e ambiente DOM somente
-  para os testes do renderer que o requerem. O ambiente Node do nucleo nao
-  deve ser trocado globalmente por jsdom.
+- Suporte SFC e DOM seletivo estao disponiveis conforme a secao de testes;
+  preservar Node como ambiente padrao nos proximos incrementos.
 - Projecoes e geometria recebem testes puros; componentes, testes de
   propriedades/eventos e teclado; integracao, testes dos comandos reais.
   Playwright compara estados e viewports, nao uma captura unica para todo o app.
@@ -203,8 +259,8 @@ editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
   disponibilidade completa, escalabilidade/redimensionamento alem dos casos
   iniciais, foco dos dialogos e aprovacao das bibliotecas propostas. Isso nao
   reabre os acordos funcionais ja aceitos na spec.
-- Nenhuma ferramenta foi instalada, nenhum componente foi implementado e
-  nenhum criterio de execucao foi marcado como atendido por este documento.
+- Exceto a infraestrutura de testes da #67, as ferramentas e os componentes
+  planejados nao foram implementados nem seus criterios marcados como atendidos.
 - Diferencas entre expectativas da interface e a API disponivel ficam
   registradas como dependencias, sem propor DECs ou alterar documentos do
   nucleo neste escopo. Ajustes futuros de integracao precisam de verificacao
