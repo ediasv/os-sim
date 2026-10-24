@@ -87,7 +87,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 
 - Pelo menos cabecalho e uma tarefa, sem limite arbitrario de tarefas.
 - IDs unicos; cores RGB hexadecimais distintas por tarefa.
-- Strings sem distincao entre maiusculas/minusculas; aceitar `;` final opcional.
+- Strings sem distincao entre maiusculas/minusculas; aceitar `;` final opcional
+  (DEC-20).
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
   conteudo interno do campo de eventos indiscriminadamente.
 - Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica.

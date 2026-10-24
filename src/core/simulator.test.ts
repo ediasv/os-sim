@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ConfigValidationError } from './config';
 import { findInconsistencies } from './consistency';
+import { summarizeCpuOff } from './cpuOff';
 import {
     DEFAULT_CONFIG,
     type SimulationEvent,
+    type SimulationSnapshot,
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
@@ -30,6 +32,92 @@ const firstAvailable: SchedulingPolicy = {
 
 function expectConsistent(sim: Simulator): void {
     expect(findInconsistencies(sim.getLatestSnapshot())).toEqual([]);
+}
+
+/**
+ * Lists the jobs allowed to run under DEC-02, as `taskId:index` keys,
+ * re-derived from the job states in the snapshot rather than taken from the
+ * engine's `findEligibleJobs` (src/core/eligibility.ts): a ready or running
+ * job whose earlier jobs in the task have all completed. DEC-02 thus lives in
+ * both places; changing the rule means updating both.
+ */
+function eligibleJobKeys(snapshot: SimulationSnapshot): Set<string> {
+    const keys = new Set<string>();
+    for (const tcb of snapshot.tasks) {
+        for (const [i, job] of tcb.jobs.entries()) {
+            const runnable = job.state === 'ready' || job.state === 'running';
+            const earlierDone = tcb.jobs
+                .slice(0, i)
+                .every((earlier) => earlier.state === 'completed');
+            if (runnable && earlierDone) {
+                keys.add(`${job.taskId}:${job.index}`);
+            }
+        }
+    }
+    return keys;
+}
+
+/**
+ * Checks the multi-CPU invariants of REQ-02. Over the whole execution
+ * history: no job runs on two CPUs and no CPU runs two jobs in the same tick.
+ * In the current state: every running job is eligible under DEC-02, busy CPUs
+ * equal min(cpuCount, eligible jobs) and only idle CPUs are off. Eligibility
+ * comes from `eligibleJobKeys`, not from the engine, so the check fails when
+ * the engine runs a job DEC-02 forbids or leaves a CPU idle while an eligible
+ * job waits. Call it after every tick to cover the whole run, as `run()` does.
+ */
+function expectMultiCpuInvariants(sim: Simulator): void {
+    expectConsistent(sim);
+    const snapshot = sim.getLatestSnapshot();
+    for (const [i, a] of snapshot.executions.entries()) {
+        for (const b of snapshot.executions.slice(i + 1)) {
+            const overlap = a.start < b.end && b.start < a.end;
+            const sameJob =
+                a.job.taskId === b.job.taskId && a.job.index === b.job.index;
+            if (overlap && (sameJob || a.cpuId === b.cpuId)) {
+                expect.fail(
+                    `Overlapping executions: ${JSON.stringify(a)} and ${JSON.stringify(b)}`,
+                );
+            }
+        }
+    }
+    const eligible = eligibleJobKeys(snapshot);
+    for (const cpu of snapshot.cpus) {
+        if (cpu.running !== null) {
+            const key = `${cpu.running.taskId}:${cpu.running.index}`;
+            expect(eligible.has(key), `CPU ${cpu.id} runs ${key}`).toBe(true);
+        }
+    }
+    const busy = snapshot.cpus.filter((cpu) => cpu.running !== null).length;
+    expect(busy, 'busy CPUs vs DEC-02 eligibility').toBe(
+        Math.min(snapshot.config.cpuCount, eligible.size),
+    );
+    for (const cpu of snapshot.cpus) {
+        expect(cpu.offSince !== null, `CPU ${cpu.id} power state`).toBe(
+            cpu.running === null,
+        );
+    }
+}
+
+function task(
+    id: number,
+    color: string,
+    fields: Pick<TaskDefinition, 'arrival' | 'duration' | 'deadline'>,
+): TaskDefinition {
+    return { id, color, period: 0, rawEvents: '', ...fields };
+}
+
+function run(sim: Simulator, ticks: number): void {
+    for (let step = 0; step < ticks; step++) {
+        sim.tick();
+        expectMultiCpuInvariants(sim);
+    }
+}
+
+function eventsOf(sim: Simulator, kind: SimulationEvent['kind']) {
+    return sim
+        .getLatestSnapshot()
+        .events.filter((event) => event.kind === kind);
 }
 
 describe('Simulator', () => {
@@ -390,7 +478,7 @@ describe('Simulator', () => {
             { taskId: 2, index: 0 },
             { taskId: 1, index: 0 },
         ]);
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
     });
 
     it('preempts and resumes a job without losing its execution progress', () => {
@@ -432,6 +520,7 @@ describe('Simulator', () => {
         expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toMatchObject({
             executed: 1,
             state: 'running',
+            absoluteDeadline: 2,
         });
         sim.tick();
         expectConsistent(sim);
@@ -859,7 +948,7 @@ describe('Simulator', () => {
                 },
             },
         );
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
 
         const expectedRunning = [
             { taskId: 1, index: 0 },
@@ -871,7 +960,7 @@ describe('Simulator', () => {
                 sim.getLatestSnapshot().cpus.map((cpu) => cpu.running),
             ).toEqual(expectedRunning);
             sim.tick();
-            expectConsistent(sim);
+            expectMultiCpuInvariants(sim);
         }
 
         const snapshot = sim.getLatestSnapshot();
@@ -916,19 +1005,19 @@ describe('Simulator', () => {
                 }),
             },
         );
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
 
         sim.tick();
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
         expect(sim.getLatestSnapshot().cpus[0]).toMatchObject({
             running: j3,
             sliceElapsed: 0,
         });
 
         sim.tick();
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
         sim.tick();
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
 
         const snapshot = sim.getLatestSnapshot();
         expect(snapshot.executions).toEqual([
@@ -991,7 +1080,7 @@ describe('Simulator', () => {
             },
             firstAvailable,
         );
-        expectConsistent(sim);
+        expectMultiCpuInvariants(sim);
         const powerEvents = () =>
             sim
                 .getLatestSnapshot()
@@ -1006,7 +1095,7 @@ describe('Simulator', () => {
 
         for (let step = 0; step < 3; step++) {
             sim.tick();
-            expectConsistent(sim);
+            expectMultiCpuInvariants(sim);
         }
 
         expect(powerEvents()).toEqual([
@@ -1022,6 +1111,18 @@ describe('Simulator', () => {
         expect(
             snapshot.events.filter((event) => event.kind === 'task-finished'),
         ).toEqual([{ kind: 'task-finished', time: 3, taskId: 2 }]);
+        // Events of the two CPUs interleave; each keeps its own intervals.
+        expect(summarizeCpuOff(snapshot)).toEqual([
+            { cpuId: 1, intervals: [], totalOff: 0 },
+            {
+                cpuId: 2,
+                intervals: [
+                    { start: 0, end: 2 },
+                    { start: 3, end: null },
+                ],
+                totalOff: 2,
+            },
+        ]);
     });
 
     it('runs back-to-back jobs of a task as separate intervals and finishes the task once (DEC-09)', () => {
@@ -1118,6 +1219,69 @@ describe('Simulator', () => {
         ]);
     });
 
+    it('finishes a periodic task only when its tenth job completes, even if late (DEC-09)', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                tasks: [
+                    // Idle gaps: every activated job completes before the next arrives.
+                    {
+                        ...periodicTask,
+                        arrival: 0,
+                        duration: 1,
+                        period: 3,
+                        deadline: 3,
+                    },
+                    // Every job, including the last, misses its deadline.
+                    {
+                        ...periodicTask,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        duration: 2,
+                        period: 3,
+                        deadline: 1,
+                    },
+                ],
+            },
+            firstAvailable,
+        );
+        const finished = () =>
+            sim
+                .getLatestSnapshot()
+                .events.filter((event) => event.kind === 'task-finished');
+        expectMultiCpuInvariants(sim);
+
+        for (let step = 1; step <= 30; step++) {
+            sim.tick();
+            expectMultiCpuInvariants(sim);
+            if (step === 25) {
+                // Nine jobs exist and all completed, yet a tenth is still due.
+                const tcb = sim.getLatestSnapshot().tasks[0];
+                expect(tcb.jobs).toHaveLength(9);
+                expect(tcb.jobs.every((job) => job.state === 'completed')).toBe(
+                    true,
+                );
+            }
+            if (step < 28) {
+                expect(finished()).toEqual([]);
+            }
+        }
+
+        expect(finished()).toEqual([
+            { kind: 'task-finished', time: 28, taskId: 1 },
+            { kind: 'task-finished', time: 29, taskId: 2 },
+        ]);
+        const late = sim.getLatestSnapshot().tasks[1].jobs;
+        expect(late).toHaveLength(10);
+        expect(late[9]).toMatchObject({
+            state: 'completed',
+            completedAt: 29,
+            deadlineMissed: true,
+        });
+    });
+
     it('records deadline misses for later jobs blocked behind an incomplete one (DEC-02)', () => {
         const sim = new Simulator(
             {
@@ -1150,32 +1314,79 @@ describe('Simulator', () => {
             { kind: 'deadline-miss', time: 3, job: { taskId: 1, index: 2 } },
         ]);
     });
+
+    it('logs every completion before any deadline miss at a shared boundary (DEC-22)', () => {
+        const base = { period: 0, rawEvents: '' };
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                tasks: [
+                    // Listed first: logging job by job (rejected in DEC-22)
+                    // would put its miss before task 2's completion.
+                    {
+                        ...base,
+                        id: 1,
+                        color: 'F0E0D0',
+                        arrival: 0,
+                        duration: 1,
+                        deadline: 2,
+                    },
+                    {
+                        ...base,
+                        id: 2,
+                        color: 'AABBCC',
+                        arrival: 0,
+                        duration: 2,
+                        deadline: 10,
+                    },
+                    {
+                        ...base,
+                        id: 3,
+                        color: '112233',
+                        arrival: 2,
+                        duration: 1,
+                        deadline: 10,
+                    },
+                ],
+            },
+            {
+                select: (view) => {
+                    const preferred =
+                        view.candidates.find(({ job }) => job.taskId === 2) ??
+                        view.candidates[0];
+                    return {
+                        selected:
+                            preferred === undefined
+                                ? []
+                                : [
+                                      {
+                                          taskId: preferred.job.taskId,
+                                          index: preferred.job.index,
+                                      },
+                                  ],
+                    };
+                },
+            },
+        );
+        sim.tick();
+        expectConsistent(sim);
+        sim.tick();
+        expectConsistent(sim);
+
+        expect(
+            sim.getLatestSnapshot().events.filter((event) => event.time === 2),
+        ).toEqual([
+            { kind: 'completion', time: 2, job: { taskId: 2, index: 0 } },
+            { kind: 'task-finished', time: 2, taskId: 2 },
+            { kind: 'deadline-miss', time: 2, job: { taskId: 1, index: 0 } },
+            { kind: 'activation', time: 2, job: { taskId: 3, index: 0 } },
+        ]);
+    });
 });
 
 describe('Simulator quantum (#14)', () => {
     const J = { taskId: 1, index: 0 };
     const K = { taskId: 2, index: 0 };
-
-    function task(
-        id: number,
-        color: string,
-        fields: Pick<TaskDefinition, 'arrival' | 'duration' | 'deadline'>,
-    ): TaskDefinition {
-        return { id, color, period: 0, rawEvents: '', ...fields };
-    }
-
-    function run(sim: Simulator, ticks: number): void {
-        for (let step = 0; step < ticks; step++) {
-            sim.tick();
-            expectConsistent(sim);
-        }
-    }
-
-    function eventsOf(sim: Simulator, kind: SimulationEvent['kind']) {
-        return sim
-            .getLatestSnapshot()
-            .events.filter((event) => event.kind === kind);
-    }
 
     it('keeps the expired job on its CPU in a tie and starts a new slice (DEC-18)', () => {
         // Stands in for A.4.3 (1) "was running before", then (2) deadline.
@@ -1344,9 +1555,12 @@ describe('Simulator quantum (#14)', () => {
         expect(eventsOf(sim, 'quantum-expired')).toEqual([
             { kind: 'quantum-expired', time: 6, cpuId: 1, job: J },
         ]);
+        // Preemption changed the CPU owner only: progress and deadline survive.
         expect(sim.getLatestSnapshot().tasks[0].jobs[0]).toMatchObject({
             executed: 6,
             completedAt: 7,
+            absoluteDeadline: 20,
+            deadlineMissed: false,
         });
     });
 
@@ -1445,5 +1659,238 @@ describe('Simulator quantum (#14)', () => {
         ]);
         expect(snapshot.cpus[0]).toMatchObject({ running: J, sliceElapsed: 0 });
         expect(snapshot.tasks[0].jobs[0]).toMatchObject({ executed: 2 });
+    });
+});
+
+describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
+    function eventsAt(sim: Simulator, time: number) {
+        return sim
+            .getLatestSnapshot()
+            .events.filter((event) => event.time === time);
+    }
+
+    it('processes every kind of fact at shared boundaries in stage order (DEC-04, DEC-11, DEC-22)', () => {
+        const ref = (taskId: number) => ({ taskId, index: 0 });
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                quantum: 2,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 2,
+                        deadline: 10,
+                    }),
+                    task(2, 'AABBCC', {
+                        arrival: 0,
+                        duration: 4,
+                        deadline: 20,
+                    }),
+                    task(3, '112233', { arrival: 0, duration: 1, deadline: 2 }),
+                    task(4, '445566', {
+                        arrival: 2,
+                        duration: 1,
+                        deadline: 10,
+                    }),
+                    task(5, '778899', {
+                        arrival: 4,
+                        duration: 1,
+                        deadline: 10,
+                    }),
+                ],
+            },
+            {
+                // Scripted: 1 and 2 until t=2; at t=2, 3 takes CPU 1 freed by 1
+                // and 4 preempts 2 on CPU 2; afterwards every candidate, up to
+                // cpuCount.
+                select: (view) => {
+                    const chosen = view.candidates.filter(({ job }) =>
+                        view.clock < 2
+                            ? job.taskId <= 2
+                            : view.clock === 2
+                              ? job.taskId === 3 || job.taskId === 4
+                              : true,
+                    );
+                    return {
+                        selected: chosen
+                            .slice(0, view.cpuCount)
+                            .map(({ job }) => ref(job.taskId)),
+                    };
+                },
+            },
+        );
+        expectMultiCpuInvariants(sim);
+
+        run(sim, 2);
+        // Completion, deadline miss, slice expiry, activation, then dispatch.
+        expect(eventsAt(sim, 2)).toEqual([
+            { kind: 'completion', time: 2, job: ref(1) },
+            { kind: 'task-finished', time: 2, taskId: 1 },
+            { kind: 'deadline-miss', time: 2, job: ref(3) },
+            { kind: 'quantum-expired', time: 2, cpuId: 2, job: ref(2) },
+            { kind: 'activation', time: 2, job: ref(4) },
+            {
+                kind: 'preemption',
+                time: 2,
+                cpuId: 2,
+                preempted: ref(2),
+                by: ref(4),
+            },
+        ]);
+
+        run(sim, 1);
+        // A CPU released by completions is powered off after them.
+        expect(eventsAt(sim, 3)).toEqual([
+            { kind: 'completion', time: 3, job: ref(3) },
+            { kind: 'task-finished', time: 3, taskId: 3 },
+            { kind: 'completion', time: 3, job: ref(4) },
+            { kind: 'task-finished', time: 3, taskId: 4 },
+            { kind: 'cpu-off', time: 3, cpuId: 2 },
+        ]);
+
+        run(sim, 1);
+        // The activation comes before the power-on it causes.
+        expect(eventsAt(sim, 4)).toEqual([
+            { kind: 'activation', time: 4, job: ref(5) },
+            { kind: 'cpu-on', time: 4, cpuId: 2 },
+        ]);
+
+        run(sim, 1);
+        // Task 2 ends exactly where its slice would expire: no expiry logged.
+        expect(eventsAt(sim, 5)).toEqual([
+            { kind: 'completion', time: 5, job: ref(2) },
+            { kind: 'task-finished', time: 5, taskId: 2 },
+            { kind: 'completion', time: 5, job: ref(5) },
+            { kind: 'task-finished', time: 5, taskId: 5 },
+            { kind: 'cpu-off', time: 5, cpuId: 1 },
+            { kind: 'cpu-off', time: 5, cpuId: 2 },
+        ]);
+
+        const snapshot = sim.getLatestSnapshot();
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: ref(1), start: 0, end: 2 },
+            { cpuId: 2, job: ref(2), start: 0, end: 2 },
+            { cpuId: 1, job: ref(3), start: 2, end: 3 },
+            { cpuId: 2, job: ref(4), start: 2, end: 3 },
+            { cpuId: 1, job: ref(2), start: 3, end: 5 },
+            { cpuId: 2, job: ref(5), start: 4, end: 5 },
+        ]);
+        expect(snapshot.tasks.map((tcb) => tcb.jobs[0])).toMatchObject([
+            { completedAt: 2, deadlineMissed: false },
+            { executed: 4, completedAt: 5, deadlineMissed: false },
+            { executed: 1, completedAt: 3, deadlineMissed: true },
+            { completedAt: 3, deadlineMissed: false },
+            { completedAt: 5, deadlineMissed: false },
+        ]);
+        expect(snapshot.cpus).toMatchObject([
+            { id: 1, running: null, offSince: 5 },
+            { id: 2, running: null, offSince: 5 },
+        ]);
+    });
+
+    it('holds a later activation without running it, even with a free CPU, until the earlier job completes (DEC-02)', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 2,
+                tasks: [
+                    {
+                        ...task(1, 'F0E0D0', {
+                            arrival: 0,
+                            duration: 3,
+                            deadline: 2,
+                        }),
+                        period: 2,
+                    },
+                ],
+            },
+            firstAvailable,
+        );
+        const first = { taskId: 1, index: 0 };
+        const second = { taskId: 1, index: 1 };
+        expectMultiCpuInvariants(sim);
+
+        run(sim, 2);
+        // The second job is active and its deadline runs, but it may not use
+        // the idle CPU 2 while the first job is incomplete.
+        let snapshot = sim.getLatestSnapshot();
+        expect(snapshot.tasks[0].jobs[1]).toMatchObject({
+            activation: 2,
+            absoluteDeadline: 4,
+            executed: 0,
+            state: 'ready',
+        });
+        expect(sim.getEligibleJobs()).toEqual([first]);
+        expect(snapshot.cpus).toMatchObject([
+            { id: 1, running: first },
+            { id: 2, running: null, offSince: 0 },
+        ]);
+
+        run(sim, 1);
+        // It starts at the exact boundary where the first job completes.
+        snapshot = sim.getLatestSnapshot();
+        expect(snapshot.tasks[0].jobs[0]).toMatchObject({
+            state: 'completed',
+            completedAt: 3,
+        });
+        expect(snapshot.cpus[0]).toMatchObject({
+            running: second,
+            sliceElapsed: 0,
+        });
+        expect(sim.getEligibleJobs()).toEqual([second]);
+
+        run(sim, 1);
+        // Its own deadline (activation 2 + 2) passes while it runs.
+        snapshot = sim.getLatestSnapshot();
+        expect(eventsOf(sim, 'deadline-miss')).toEqual([
+            { kind: 'deadline-miss', time: 2, job: first },
+            { kind: 'deadline-miss', time: 4, job: second },
+        ]);
+        expect(snapshot.tasks[0].jobs[1]).toMatchObject({
+            executed: 1,
+            state: 'running',
+            deadlineMissed: true,
+        });
+        expect(snapshot.tasks[0].jobs[2]).toMatchObject({
+            activation: 4,
+            state: 'ready',
+        });
+        expect(snapshot.executions).toEqual([
+            { cpuId: 1, job: first, start: 0, end: 3 },
+            { cpuId: 1, job: second, start: 3, end: 4 },
+        ]);
+        expect(summarizeCpuOff(snapshot)[1]).toEqual({
+            cpuId: 2,
+            intervals: [{ start: 0, end: null }],
+            totalOff: 4,
+        });
+    });
+
+    it('never expires a slice when the quantum exceeds the duration', () => {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                quantum: 10,
+                tasks: [
+                    task(1, 'F0E0D0', {
+                        arrival: 0,
+                        duration: 3,
+                        deadline: 20,
+                    }),
+                ],
+            },
+            firstAvailable,
+        );
+
+        run(sim, 4);
+
+        expect(eventsOf(sim, 'quantum-expired')).toEqual([]);
+        expect(eventsOf(sim, 'completion')).toEqual([
+            { kind: 'completion', time: 3, job: { taskId: 1, index: 0 } },
+        ]);
+        expect(sim.getLatestSnapshot().executions).toEqual([
+            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 3 },
+        ]);
     });
 });

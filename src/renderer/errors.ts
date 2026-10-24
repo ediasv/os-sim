@@ -1,4 +1,5 @@
 import { shallowRef, type App } from 'vue';
+import { ConfigValidationError, type ConfigIssue } from '../core/config';
 
 /** Latest uncaught error, as display text. `null` when nothing to show. */
 export const currentError = shallowRef<string | null>(null);
@@ -36,6 +37,42 @@ export function reportError(err: unknown): void {
 
 export function dismissError(): void {
     currentError.value = null;
+}
+
+/**
+ * Why a command failed (DEC-24). `config` is correctable by the user and
+ * keeps the issues for display next to the fields; `unexpected` is a bug.
+ */
+export type AppError =
+    | {
+          readonly kind: 'config';
+          readonly message: string;
+          readonly issues: readonly ConfigIssue[];
+      }
+    | { readonly kind: 'unexpected'; readonly message: string };
+
+/** Outcome of an adapter command; a failure leaves the state unchanged (DEC-24). */
+export type CommandResult =
+    | { readonly ok: true }
+    | { readonly ok: false; readonly error: AppError };
+
+/**
+ * Turns an error caught by a command into its result (DEC-24). Correctable
+ * errors go only to the caller, which shows them where the user acted;
+ * unexpected ones also reach the banner, which stays reserved for bugs.
+ */
+export function commandFailure(err: unknown): CommandResult {
+    if (err instanceof ConfigValidationError) {
+        return {
+            ok: false,
+            error: { kind: 'config', message: err.message, issues: err.issues },
+        };
+    }
+    reportError(err);
+    return {
+        ok: false,
+        error: { kind: 'unexpected', message: describeError(err) },
+    };
 }
 
 export function installErrorHandlers(

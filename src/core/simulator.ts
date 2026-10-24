@@ -146,7 +146,11 @@ export class Simulator {
         }
     }
 
-    /** Completes work before checking deadlines at the new boundary (DEC-04). */
+    /**
+     * Completes work before checking deadlines at the new boundary (DEC-04),
+     * in two passes so every completion is logged before any deadline miss,
+     * whichever task comes first (DEC-22).
+     */
     private completeJobsAndRecordDeadlineMisses(): void {
         for (const tcb of this.state.tasks) {
             for (const job of tcb.jobs) {
@@ -174,7 +178,11 @@ export class Simulator {
                         });
                     }
                 }
+            }
+        }
 
+        for (const tcb of this.state.tasks) {
+            for (const job of tcb.jobs) {
                 if (
                     job.state !== 'completed' &&
                     !job.deadlineMissed &&
@@ -225,7 +233,7 @@ export class Simulator {
      * Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
-     * `findInconsistencies` check of the resulting state (DEC-12).
+     * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
      */
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);

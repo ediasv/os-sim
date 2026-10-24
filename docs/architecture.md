@@ -10,21 +10,29 @@ afirma que os modulos planejados ja existem.
   intervalos, eventos e snapshot (DEC-12).
 - [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
+- [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
+  e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
-  fatos registrados em dobro no dominio (DEC-12).
+  fatos registrados em dobro no dominio (DEC-12, DEC-21).
+- [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
+  snapshot os intervalos e o total desligado de cada CPU (DEC-21).
 - [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
   congelada e conferencia da decisao (DEC-13); RM/EDF continuam para E2.
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
-  nos limites de tick, executa jobs, registra conclusoes/perdas de prazo e faz
+  nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
+  (ordem dos eventos em DEC-22) e faz
   despacho global pela politica injetada antes de publicar snapshots completos
   (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
   expoe os jobs elegiveis somente para leitura (DEC-15).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
-  privada e publica snapshots via `shallowRef`.
+  privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
+  `tick`, que devolvem resultado (DEC-23).
+- [Erros da interface](../src/renderer/errors.ts): banner global e
+  `commandFailure`, que classifica erros dos comandos (DEC-24).
 - [Processo principal](../src/main/main.ts): janela Electron.
 - [Preload](../src/preload/preload.ts): ainda sem API de arquivos.
 
@@ -99,6 +107,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   de preparacao, migracao e troca de contexto nulos; sem release jitter.
 - Consequencia: testar tick zero e eventos simultaneos. Perda de prazo e evento
   unico por job, nao estado terminal; enunciado exige continuar a execucao.
+  Ordem dos eventos de uma fronteira na lista: DEC-22.
 
 ### DEC-05: CPUs logicas sem teto arbitrario
 
@@ -106,6 +115,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: aceitar quantidade inteira positiva sem teto de 16; CPU sem trabalho
   fica logicamente desligada e pode reativar sem custo.
 - Consequencia: registrar intervalos e totais; nao simular energia ou latencia.
+  Intervalos e totais sao derivados dos eventos de cada snapshot (DEC-21).
 - Limitacao: recursos reais e representacao numerica continuam finitos; tratar
   falhas claramente, sem prometer capacidade infinita.
 
@@ -189,7 +199,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Justificativa: todo snapshot tem o mesmo significado, inclusive o inicial,
   e restaurar k basta para reexecutar a partir dele.
 - Consequencia: avancar de k para k+1 executa [k, k+1) e processa a fronteira
-  k+1. Nao existe snapshot de configuracao "antes de t=0".
+  k+1. Nao existe snapshot de configuracao "antes de t=0". Ordem dos eventos
+  de uma fronteira na lista: DEC-22.
 
 ### DEC-12: Modelo de dominio em dados simples
 
@@ -223,10 +234,13 @@ anterior. Data inicial dos registros: 2026-10-12.
   na #23 se o historico ficar grande.
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
-  `deadline-miss`. `findInconsistencies` exige que cada par concorde (um job em
-  no maximo uma CPU, uma unica perda registrada por job) e rejeita
-  `executed > duration` (DEC-14); testes do motor
-  (#13 ja verifica; #15 deve verificar) lista vazia apos cada passo.
+  `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
+  dos eventos `cpu-off`/`cpu-on` (DEC-21). `findInconsistencies` exige que cada
+  par concorde (um job em no maximo uma CPU, uma unica perda registrada por
+  job, `offSince` igual ao inicio do intervalo aberto; ver DEC-21 para as
+  demais conferencias de CPU) e rejeita `executed > duration` (DEC-14); testes
+  do motor (#13, #15) verificam lista
+  vazia apos cada passo.
 - Pendencias conhecidas do modelo, registradas no plano:
     - CPU ociosa (resolvida na #13): o estado pre-dispatch usa `offSince: null`;
       o primeiro despacho marca CPUs sem trabalho desligadas desde o tick 0
@@ -465,13 +479,156 @@ anterior. Data inicial dos registros: 2026-10-12.
   recebido para os diagnosticos e associa tarefas analisadas as linhas
   originais. O contexto acrescentado envolve a mensagem sem modifica-la.
 
+### DEC-20: `;` final e fim da lista de eventos
+
+- Estado: aceita em 2026-10-19 pelo usuario (revisao do PR #60). Requisitos:
+  REQ-06. Detalha DEC-10 e DEC-19; resolve a questao aberta da #32 sobre o fim
+  da lista de eventos e a proposta CRLF/BOM da #30.
+- Decisao:
+    1. Cada linha, sem espacos nas pontas, pode terminar com um `;` opcional,
+       removido antes de separar os campos; `;;` final deixa um campo vazio.
+    2. Na tarefa, os seis primeiros campos sao fixos; a lista de eventos e o
+       texto apos o sexto `;`, aparado nas pontas, com separadores e espacos
+       internos preservados; sem sexto `;` ela e vazia. Assim `...;7`, `...;7;`
+       e `...;7;;` nao tem eventos, e `...;7;A;B;` guarda `A;B`.
+    3. Fins de linha LF, CRLF e CR, e marca BOM inicial, sao aceitos.
+    4. Campos numericos aceitam somente numerais decimais
+       (`[+-]?digitos(.digitos)?`); inteiros e faixas continuam com o nucleo
+       (DEC-10).
+- Justificativa: A.3.3.3 exige tratar linhas com e sem `;` final; exigir o
+  separador antes da lista de eventos rejeitaria arquivos validos, falha grave
+  pela A.3.3.7. Notacoes nao decimais eram convertidas sem aviso (`0x10`
+  virava 16).
+- Consequencia: um `;` final que fizesse parte do conteudo dos eventos nao e
+  preservado; o formato dos eventos vem no Projeto B, que pode rever esta
+  decisao. Mensagens do parser usam acentuacao como as do nucleo; os exemplos
+  desta documentacao seguem a convencao sem acentos.
+
+### DEC-21: Intervalos de CPU desligada derivados do snapshot
+
+- Estado: aceita em 2026-10-17 (decidida pelo usuario na #15). Requisitos:
+  REQ-02, REQ-04 (qualquer snapshot do historico) e REQ-09 (consumo pelo
+  Gantt, #38). Detalha DEC-05; nao acrescenta campos ao modelo de DEC-12,
+  acrescenta um fato em dobro conferido.
+- Decisao: `summarizeCpuOff(snapshot)` deriva, para cada CPU na ordem de
+  `cpus`, os intervalos [start, end) em que esteve desligada e o total
+  desligado, percorrendo os eventos `cpu-off`/`cpu-on`. Nada novo e guardado
+  no estado; qualquer snapshot basta, inclusive um anterior do historico
+  (DEC-06).
+- Detalhes:
+    - CPU ainda desligada no instante do snapshot tem o ultimo intervalo
+      aberto (`end: null`). O total conta somente ticks ja decorridos
+      (`clock - start` para o aberto), como `executions` guarda somente ticks
+      ja executados; CPU ociosa no snapshot 0 tem total 0.
+    - CPU que nunca desligou aparece com lista vazia e total 0.
+    - Sequencia malformada (religar CPU ligada, desligar CPU desligada, CPU
+      inexistente, evento antes do anterior da mesma CPU ou depois do clock do
+      snapshot) lanca `CpuEventSequenceError` com mensagem descritiva em vez
+      de adivinhar intervalos. `findInconsistencies` converte somente
+      `CpuEventSequenceError` em problema relatado; qualquer outro erro
+      propaga, por indicar defeito do codigo e nao do historico.
+    - Desligar e religar no mesmo instante continua aceito: o motor nao gera
+      esse par, e o intervalo `[t, t)` soma 0.
+    - `offSince` e o intervalo aberto registram o mesmo fato:
+      `findInconsistencies` exige que concordem, que a sequencia seja valida e
+      que CPU com job nao esteja desligada. O motor confere isso a cada
+      despacho (DEC-14).
+- Justificativa: os eventos ja sao a fonte dos instantes exatos; guardar os
+  intervalos criaria mais um fato em dobro, e deixar a derivacao para a
+  interface obrigaria inspecao (#37) e Gantt (#38) a derivar por conta
+  propria, podendo divergir.
+- Consequencia: custo O(eventos) por consulta; a interface pode guardar o
+  resultado por snapshot se necessario. O motor tambem paga O(eventos) por
+  passo via `findInconsistencies`, como a conferencia de `deadline-miss`;
+  rever na #23 junto com DEC-12/DEC-14.
+- Alternativas descartadas: intervalos e totais guardados em `CpuState`
+  (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
+  dominio fora do nucleo e sem `findInconsistencies`).
+
+### DEC-22: Ordem dos eventos numa fronteira
+
+- Estado: aceita em 2026-10-23 (decidida pelo usuario na #16). Requisitos:
+  REQ-01, REQ-08, REQ-09. Detalha DEC-04 e DEC-11.
+- Contexto: o motor registrava conclusao e perda de prazo job a job; com
+  varios jobs na mesma fronteira, a perda de uma tarefa listada antes podia
+  aparecer antes da conclusao de outra, ao contrario das etapas de DEC-11.
+- Decisao: os eventos de uma fronteira seguem etapas globais, nesta ordem:
+  todas as conclusoes (cada uma seguida do `task-finished` da tarefa, quando
+  for o ultimo job), todas as perdas de prazo, todas as fatias vencidas, todas
+  as ativacoes e, por fim, os eventos do despacho, agrupados por CPU em ordem
+  de ID (`preemption`, `cpu-on` ou `cpu-off` de cada CPU). Dentro de uma
+  etapa, a ordem segue a lista de tarefas e o indice do job (ou o ID da CPU),
+  sem significado de prioridade.
+- Justificativa: a lista de eventos passa a refletir o fluxo documentado do
+  passo e pode ser lida linearmente pela inspecao e pelo Gantt (#37, #38).
+  DEC-04 continua garantindo, por job, que conclusao no prazo nao e perda.
+- Consequencia: `completeJobsAndRecordDeadlineMisses` percorre os jobs em
+  duas passadas. Nenhuma escala, intervalo ou estado de job muda; so a ordem
+  da lista de eventos.
+- Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
+  job; deixaria a ordem do log depender da posicao das tarefas na lista.
+
+### DEC-23: Contrato do adaptador Vue
+
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65).
+  Requisitos: REQ-04, REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
+- Decisao:
+    1. `useSimulation()` nao recebe argumentos, comeca com `DEFAULT_CONFIG` e
+       nao falha. Expoe somente `view` (`shallowRef` do ultimo snapshot
+       congelado), `load(config, policy?)` e `tick()`; a instancia e o estado
+       vivo ficam privados.
+    2. `load` reconstroi a simulacao em t=0 quando uma configuracao inteira e
+       carregada (arquivo, E4). Repassa configuracao e politica ao construtor
+       do `Simulator` sem validar de novo e cria a nova instancia antes de
+       descartar a atual: em falha, instancia, `view` e historico ficam como
+       estavam.
+    3. `tick` avanca um tick; em falha `view` continua no ultimo snapshot
+       valido, que DEC-14 garante ser o estado atual.
+    4. Editar parametros durante a simulacao mantem a simulacao e o passado e
+       altera somente a partir do tick k. E uma operacao do nucleo (REQ-05,
+       Q-02/#25, #26), exposta pelo adaptador com o mesmo contrato.
+- Justificativa: recarregar e uma simulacao nova, pois o snapshot 0 depende da
+  configuracao (DEC-11); editar e ramificar o historico existente. O mesmo
+  adaptador atende a configuracao carregada (E4) e a politica escolhida (E2).
+- Alternativas descartadas: criar um adaptador novo a cada configuracao (a
+  interface teria de trocar a referencia) e um `reset` no `Simulator`
+  (repetiria a validacao e o estado inicial que o construtor ja garante).
+
+### DEC-24: Arquitetura de erros da interface
+
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #65). Requisitos:
+  REQ-10, REQ-05. Complementa DEC-14, DEC-15 e DEC-19.
+- Decisao:
+    1. Categorias:
+        - corrigivel pelo usuario: configuracao invalida
+          (`ConfigValidationError` com `issues`); diagnosticos do parser,
+          falhas de leitura e edicoes rejeitadas entram nas #31, #33 e #26;
+        - inesperado: decisao invalida da politica, inconsistencia, politica
+          ausente e qualquer outra excecao.
+        - Cancelar a escolha do arquivo nao e erro (DEC-19).
+    2. Comandos do adaptador nunca lancam: devolvem `CommandResult` (`ok` ou
+       `ok: false` com `AppError`) e, em falha, o estado fica inalterado.
+    3. Erro corrigivel vai somente no resultado, e o componente o mostra onde o
+       usuario agiu (por campo ou linha).
+    4. Erro inesperado vai no resultado e em `reportError` (banner e console).
+       Os handlers do Vue e da janela continuam como ultima rede de seguranca.
+    5. O nucleo continua lancando erros tipados e devolvendo os resultados de
+       `validateConfig` e `parseConfig`; o renderer classifica num unico lugar
+       (`commandFailure`).
+- Justificativa: o chamador, inclusive a execucao automatica (E5), sabe que o
+  comando falhou; erros por campo e linha (DEC-19) mantem o contexto; o banner
+  continua significando falha do programa.
+- Alternativas descartadas: tudo no banner (perde o contexto de campo e
+  linha) e uma ref de erro publicada pelo adaptador (segunda fonte de verdade).
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
 2. Avancar o relogio para t+1.
 3. Contabilizar conclusoes antes das perdas de prazo (DEC-04) e das fatias
-   vencidas (#14); job que conclui nao registra vencimento, e o job vencido
-   mantem o primeiro desempate (DEC-18).
+   vencidas (#14), em etapas globais na lista de eventos (DEC-22); job que
+   conclui nao registra vencimento, e o job vencido mantem o primeiro
+   desempate (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
 5. Selecionar pela politica e despachar (DEC-07, DEC-13).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).

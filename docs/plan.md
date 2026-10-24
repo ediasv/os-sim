@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-18. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-23. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -27,7 +27,7 @@ Evidencia: inspecao de [package.json](../package.json),
 [useSimulation.ts](../src/renderer/composables/useSimulation.ts).
 Existencia verificada por leitura; testes nao executados nesta entrega documental.
 Os testes do contador e do composable foram removidos em `caf476e`; cobertura
-do nucleo volta com E1 e a do adaptador com #17.
+do nucleo voltou com E1 e a do adaptador com #17.
 Essa base nao equivale a atender os requisitos funcionais do Projeto A.
 
 ## Entregas planejadas
@@ -81,7 +81,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   `running`, job `ready` nao elegivel). Evidencia (2026-10-17): `npm test`
   139/139, `npm run lint` e `npm run typecheck` aprovados.
 - #14 Implementar quantum e preservacao de contexto na retomada/migracao.
-  DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
+  Concluida no PR #58 (merged, `f8837df`). DEC-18 revista pelo usuario em 2026-10-17: job com fatia vencida mantem o
   primeiro desempate, sem mudar a visao (DEC-13); troca por vencimento registra
   `quantum-expired` e `preemption`; conclusao na fronteira do vencimento
   registra so a conclusao. Implementada em `Simulator.expireSlices`, entre
@@ -92,11 +92,73 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   politica que falha no vencimento (DEC-14). Evidencia (2026-10-17):
   `npm test` 145/145, `npm run lint` e `npm run typecheck` aprovados.
 - #15 Implementar conclusao, perda de prazo e intervalos de CPUs desligadas.
-  A representacao inicial e as transicoes `cpu-off`/`cpu-on`, conclusoes e
-  perdas de prazo foram antecipadas na #13 para executar ticks; manter na #15 o
-  fechamento da verificacao de intervalos e dos criterios especificos dessa issue.
+  Concluida no PR #59 (merged, `9acdcda`; DEC-21, aceita pelo usuario): `summarizeCpuOff`
+  (`src/core/cpuOff.ts`) deriva intervalos e totais dos eventos de qualquer
+  snapshot; `findInconsistencies` passa a conferir `offSince` contra os
+  eventos. Testes novos: CPU que nunca liga, que desliga e religa varias
+  vezes, que segue desligada ate o fim, consulta de snapshots anteriores e
+  sequencias malformadas; tarefas periodicas terminam so com o 10o job, tanto
+  com folgas entre jobs quanto com todos os jobs atrasados. Correspondencia
+  REQ-03/REQ-08 -> testes no PR #59. Revisao do PR (2026-10-20): erro dedicado
+  `CpuEventSequenceError` (outros erros propagam), rejeicao de eventos fora de
+  ordem temporal e intervalos fechados com duas CPUs. Evidencia (2026-10-20, apos merge de
+  `main`): `npm test` 205/205, `npm run lint` e `npm run typecheck` aprovados.
 - #16 Testar fronteiras, sobreposicao, quantum, preempcao e multiplas CPUs.
+  Concluida no PR #62 (merged, `4b28fe8`; DEC-22, aceita pelo usuario). O motor passa a
+  registrar todas as conclusoes antes de todas as perdas de prazo na mesma
+  fronteira. O teste da DEC-22 foi escrito antes e falhou com a ordem antiga;
+  essa execucao nao ficou registrada no repositorio. Testes novos: ordem por
+  etapas com todos os fatos em fronteiras compartilhadas (2 CPUs), job
+  posterior retido com CPU livre ate a conclusao do anterior e quantum maior
+  que a duracao; testes existentes de preempcao ganham assercoes de prazo
+  preservado. `expectMultiCpuInvariants`, chamado a cada passo dos testes
+  multi-CPU e do quantum, confere no historico de execucoes que nenhum job
+  ocupa duas CPUs e nenhuma CPU executa dois jobs no mesmo tick e, no estado
+  atual, que CPUs ocupadas = min(`cpuCount`, elegiveis) e que so CPUs ociosas
+  estao desligadas. No PR #62 a contagem usava a elegibilidade do proprio
+  motor; a #63 a substitui por uma contagem independente. Correspondencia cenario ->
+  teste no PR. Evidencia (2026-10-23, apos ajustes da revisao): `npm test`
+  209/209, `npm run lint` e `npm run typecheck` aprovados; mutacao em que CPU
+  ociosa desde o inicio nunca desliga falha 4 testes pela nova conferencia.
+- #65 Definir arquitetura de erros e comandos do adaptador Vue.
+  Concluida no PR #66 (DEC-23 revista e DEC-24, aceitas pelo usuario em
+  2026-10-23). Comandos `load`/`tick` devolvem `CommandResult`; erro de
+  configuracao vai so ao resultado, erro inesperado tambem ao banner; `load`
+  reconstroi em t=0 e so substitui a simulacao atual em sucesso. Testes novos:
+  `commandFailure` (configuracao fora do banner, banner anterior preservado,
+  inesperado no banner, string e objeto lancados) e comandos do adaptador. Os
+  testes falharam antes da implementacao; os dois acrescentados na revisao
+  (objeto lancado, mensagem da politica ausente) falharam com mutacoes
+  temporarias de `commandFailure` e `load`. Evidencia (2026-10-23): `npm test`
+  222/222, `npm run lint` e `npm run typecheck` aprovados.
 - #17 Restaurar testes do adaptador Vue e alinha-lo a API atual do Simulator.
+  Concluida no PR #66, junto com #65. Testes do adaptador cobrem
+  snapshot 0, snapshot novo por tick com anteriores congelados e intactos,
+  somente `view`/`load`/`tick` expostos e erro de `tick()` no banner com o
+  ultimo snapshot valido preservado e continuacao (DEC-14). Nao executado:
+  iniciar o app e clicar no botao de tick.
+- #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
+  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64.
+  `eligibleJobKeys` (teste do Simulator) rederiva DEC-02 dos estados dos
+  jobs no snapshot, sem `findEligibleJobs`: job `ready` ou `running` cujos
+  jobs anteriores da tarefa estao todos concluidos. `expectMultiCpuInvariants`
+  passa a conferir que todo job em execucao pertence a esse conjunto e que
+  CPUs ocupadas = min(`cpuCount`, tamanho do conjunto); a regra de DEC-02 fica
+  no motor e no teste (aceito pelo usuario na revisao do PR #62). Comparar so
+  contagens nao bastava: com CPUs saturadas ou troca de job da mesma tarefa
+  os numeros coincidem. Mutacoes temporarias em `findEligibleJobs`,
+  revertidas, sem registro de execucao no repositorio: M1 omite job
+  preemptado em `ready` (`executed > 0`); M2 oferece todo job
+  `ready`/`running` mesmo com anterior incompleto; M3 escolhe o job
+  incompleto mais recente (`findLastIndex`). Antes da mudanca, nenhuma falha
+  vinha da conferencia (M1 e M2 falhavam so em assercoes fixadas a mao).
+  Depois, a contagem falha com M1 em "restarts the slice when a job preempted
+  mid-slice resumes on the same CPU" (quantum) e "processes every kind of
+  fact at shared boundaries in stage order" (2 CPUs); a pertinencia falha com
+  M2 e M3 em "holds a later activation without running it, even with a free
+  CPU" (CPU executa job 1:1). So com contagem, M3 passava pela conferencia.
+  Evidencia (2026-10-23): `npm test` 209/209, `npm run lint` e
+  `npm run typecheck` aprovados.
 
 ### E2: Politicas obrigatorias
 
@@ -136,7 +198,7 @@ Requisitos: REQ-04, REQ-05.
 Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 
 - #29 Definir diagnosticos do parser restantes de Q-03 (valores em DEC-10;
-  REQ-06, REQ-10).
+  REQ-06, REQ-10). Concluida no PR #57 (merged, `7156519`).
 - DEC-19 aceita em 2026-10-17 e revista pelo usuario em 2026-10-18: diagnosticos
   usam linhas do arquivo original, acumulam erros recuperaveis, preservam
   literalmente as mensagens do nucleo e distinguem falhas de acesso; cancelar
@@ -145,8 +207,19 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Q-03 atualizada na [specification.md](specification.md#questoes-abertas-antes-das-entregas-afetadas).
   Links e IDs conferidos; documentacao apenas, testes e gates nao aplicaveis.
 - #30 Implementar parser do arquivo com espacos, caixa e ";" final opcionais.
+  Concluida no PR #60 (merged, `b28e487`): parser puro de sintaxe, diagnosticos com linhas
+  originais e testes de variantes, erros recuperaveis e 500 tarefas. Evidencia
+  (2026-10-18): `npm test` (154 testes), `npm run lint` e `npm run typecheck`
+  aprovados. Revisao do PR
+  (2026-10-19): `;` final opcional em toda linha e lista de eventos opcional
+  (DEC-20), numeros so decimais, mensagens revistas, arquivo vazio com
+  cabecalho e tarefa ausentes, e mapa tarefa/linha no resultado para a #31.
+  Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
+  `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
+  O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
+  continua nesta issue.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
@@ -176,53 +249,26 @@ Requisito: REQ-10; integracao de todos os anteriores.
 ## Trabalho atual
 
 - Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52) e #18 (PR #54) concluidos; evidencias registradas acima.
-- #29: decisao DEC-19 aceita e documentada no PR #57; aguarda integracao para
-  fechar a issue. A implementacao/testes do parser permanecem nas #30, #31 e #34.
-- #55 (descricoes das issues): corpos das issues abertas de #14 a #45
+  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58), #30
+  (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
+  de erros semanticos do parser permanece na #31, que pode usar `lines` do
+  resultado.
+- #63 em revisao no PR #64 (iniciada em 2026-10-23); mutacoes e gates
+  registrados em E1. Fecha no merge do PR.
+- #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
+  corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
   ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
   repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
-  executados. O template so aparece no GitHub depois do merge em `main` (nao
-  verificado).
-- #14 (em andamento): DEC-18 revista e eventos do vencimento decididos com o
-  usuario em 2026-10-17; quantum implementado e verificado (evidencia na E1),
-  em revisao no PR da #14.
-- #29: DEC-19 revista conforme aprovacao do usuario; atualizacao documental em
-  revisao no PR #57. Implementacao e testes permanecem nas #30, #31 e #34.
-- Frontend (#35 a #40): discussao registrada parcialmente na
-  [spec propria do renderer](../src/renderer/docs/specification.md), sem
-  alterar as specs gerais ou implementar telas. Registro de 2026-10-18:
-  18 requisitos FE, seis decisoes de apresentacao e sete pendencias, com
-  criterios verificaveis, organizacao de pastas acordada e dependencias de
-  dominio/arquivos explicitamente separadas. Nao conclui Q-02/Q-05/Q-06 nem
-  as issues de implementacao. Proximo passo da conversa: ID, cor e ingresso
-  de tarefa existente; depois revisar matriz e estados pendentes.
-- Publicacao documental do frontend: solicitada pelo usuario em 2026-10-18,
-  na branch `docs/frontend-specification`, no
-  [PR #61](https://github.com/ediasv/os-sim/pull/61), com destino a `main`.
-  Registro documental pronto para revisao; a discussao permanece
-  parcial. Verificacao em 2026-10-18: dois documentos, 13 links locais/ancoras,
-  18 FE, seis FE-DEC e sete PEND conferidos, com IDs unicos e referencias
-  REQ/DEC validas. Diff sem problemas de whitespace e editor sem diagnosticos.
-  Testes, lint e typecheck nao executados nesta entrega so documental;
-  `node_modules` ausente. O aplicativo e o pacote nao foram executados.
-- Auditoria da discussao do frontend em 2026-10-18: matriz de 22 acordos e
-  alternativas superadas na spec propria, sem mudar as specs gerais. Explicita
-  o criterio de bloqueio, o alcance provisoriamente aceito da duracao e a
-  identidade/historico das CPUs retiradas. PEND-02 distingue formalizacao
-  externa de comportamentos ja discutidos; PEND-07 registra que arquitetura
-  interna, bibliotecas, contratos de apresentacao e estrategia de testes ainda
-  precisam de planejamento. Nao fecha decisoes pendentes nem implementacao.
-- Acompanhamento remoto do frontend: comentario de escopo, evidencias,
-  pendencias e proximo passo publicado na #35 pelo GitKraken em 2026-10-18.
-  Campo Status do Project nao atualizado: a integracao disponivel nao expoe
-  essa operacao, e `gk`/`gh` nao estao disponiveis como comandos locais.
-  Nenhuma issue funcional foi marcada como entregue ou fechada.
-- Proximo passo: revisar e integrar o PR da #14; manter os diagnosticos de
-  DEC-19 nos escopos de #30, #31 e #34.
+  executados. O template esta em `main` desde o merge.
+- Frontend (#35 a #40, PR #61): [spec de apresentacao](../src/renderer/docs/specification.md)
+  e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
+  planejamento da apresentacao e suas expectativas de integracao, sem alterar
+  os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
+- Proximo passo: revisar e integrar o PR #64 (#63); depois #17 ou E2. Manter os diagnosticos de
+  DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
