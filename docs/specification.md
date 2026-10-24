@@ -138,7 +138,7 @@ Fonte: gerais 3; A.2.1 a A.2.5.
 - Menor ID mais proximo do eixo X; IDs decrescentes de cima para baixo.
 - Atualizar a cada passo no modo interativo e exibir resultado no modo completo.
 - Exportar imagem da simulacao inteira, nao captura da janela nem apenas area
-  visivel, sem teto arbitrario de tempo. Preferencia por SVG em DEC-08.
+  visivel, sem teto arbitrario de tempo. Formato SVG definido em DEC-08.
 - Aceitacao: exportacao inclui todos os intervalos, tarefas, CPUs e legenda,
   mesmo quando a tela precisa de rolagem ou zoom.
 
@@ -166,8 +166,10 @@ Fonte: gerais 5 e 6; A.5.
   numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
 - Q-04: resolvida em 2026-10-17 por DEC-16: prazo absoluto e instante da
   ativacao do job; duracao da tarefa, como em A.4.3 (nao o trabalho restante).
-- Q-05: confirmar apresentacao final com tarefas ordenadas e CPUs identificadas;
-  figuras 2.5/2.6 sao referencias de comportamento, nao substituem A.2.5.
+- Q-05: resolvida em 2026-10-24 por DEC-08 (tarefas em ID decrescente, CPU e job
+  em cada trecho, faixas de CPU desligada, SVG). Layout confirmado pelo usuario
+  como similar as figuras da secao 6.4 do livro; figuras 2.5/2.6 seguem como
+  referencia de comportamento, nao substituem A.2.5.
 - Q-06: definir deteccao de falta de progresso e cancelamento no modo completo
   quando edicoes deixam jobs suspensos indefinidamente. Nao impor termino falso
   nem ignorar futuras ativacoes quando todas as CPUs estiverem desligadas.
