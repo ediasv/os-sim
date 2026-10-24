@@ -173,7 +173,7 @@ Requisito: REQ-07.
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
-  Em revisao no PR #74 (DEC-25, aceita pelo usuario em 2026-10-24).
+  Concluida no PR #74 (merged, `cf139aa`; DEC-25, aceita pelo usuario em 2026-10-24).
   `src/core/policies.ts`: `rmPolicy`, `edfPolicy` e o registro
   `DEFAULT_POLICIES`; `src/core/createSimulator.ts` resolve `config.algorithm`
   no registro; o adaptador cria simulacoes pela fabrica (`load(config)`). Motor
@@ -279,9 +279,15 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
   planejamento da apresentacao e suas expectativas de integracao, sem alterar
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
-- #19 em revisao no PR #74 (iniciada em 2026-10-24): RM, EDF e registro de
-  politicas por algoritmo (DEC-25); evidencias em E2. Fecha no merge do PR.
-- Proximo passo: integrar o PR #74 (#19); depois #20 (desempates). Manter os
+- #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
+  politicas por algoritmo (DEC-25); evidencias em E2.
+- #20 iniciada em 2026-10-24 no PR rascunho #75, sobre `main` apos o PR #74:
+  desempates de DEC-16/DEC-18 em RM e EDF, sorteio so no empate residual que
+  cruza o corte de CPUs, estado do gerador no snapshot e evento `tie-break`.
+  Pendente: DEC nova estendendo o contrato da politica para o sorteio; semente
+  inicial do gerador a combinar com o usuario. Verificacao inicial: `npm test`
+  aprovado na base.
+- Proximo passo: definir a semente do gerador e implementar a #20. Manter os
   diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
