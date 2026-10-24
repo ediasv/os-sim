@@ -173,6 +173,10 @@ Requisito: REQ-07.
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
+  Implementada em `src/core/policies.ts` (`rmPolicy`, `edfPolicy`, `policyFor`
+  liga `algorithm` a politica; motor inalterado). Sem desempates (#20): empate
+  no corte de CPUs fica sem regra completa. Evidencia: `npm test` 231/231, lint
+  e typecheck aprovados; issue segue aberta ate revisao.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
   (DEC-16, DEC-18).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
