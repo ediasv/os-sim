@@ -173,6 +173,18 @@ Requisito: REQ-07.
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
+  Em revisao no PR #74 (DEC-25, aceita pelo usuario em 2026-10-24).
+  `src/core/policies.ts`: `rmPolicy`, `edfPolicy` e o registro
+  `DEFAULT_POLICIES`; `src/core/createSimulator.ts` resolve `config.algorithm`
+  no registro; o adaptador cria simulacoes pela fabrica (`load(config)`). Motor
+  inalterado. Testes novos: prioridade com 1 e varias CPUs e candidatas em
+  qualquer ordem, aperiodicas abaixo de periodicas (DEC-17), empate que nao
+  cruza o corte, mesma configuracao com escalas diferentes em RM e EDF,
+  preempcao por chegada com o motor em RM e EDF, registro sem o algoritmo e
+  configuracao invalida antes do registro. Limite: sem desempates (#20), empate
+  no corte de CPUs cai na ordem do arquivo; RM/EDF nao vao ao usuario antes da
+  #20. Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
+  `npm run typecheck` aprovados.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
   (DEC-16, DEC-18).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
@@ -267,8 +279,10 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
   planejamento da apresentacao e suas expectativas de integracao, sem alterar
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
-- Proximo passo: revisar e integrar o PR #64 (#63); depois #17 ou E2. Manter os diagnosticos de
-  DEC-19 nos escopos de #31 e #34.
+- #19 em revisao no PR #74 (iniciada em 2026-10-24): RM, EDF e registro de
+  politicas por algoritmo (DEC-25); evidencias em E2. Fecha no merge do PR.
+- Proximo passo: integrar o PR #74 (#19); depois #20 (desempates). Manter os
+  diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.
 
