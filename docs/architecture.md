@@ -574,8 +574,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-23: Contrato do adaptador Vue
 
-- Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65).
-  Requisitos: REQ-04, REQ-05, REQ-10. Complementa DEC-14; erros seguem DEC-24.
+- Estado: aceita em 2026-10-23 (escolhas do usuario na #17 e na #65); revista
+  pela DEC-25 em 2026-10-24 no PR #74. Requisitos: REQ-04, REQ-05, REQ-10.
+  Complementa DEC-14; erros seguem DEC-24.
 - Decisao:
     1. `useSimulation(policies?)` recebe somente o registro de politicas
        (padrao `DEFAULT_POLICIES`; testes passam o seu, DEC-25), comeca com
