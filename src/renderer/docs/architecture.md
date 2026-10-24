@@ -110,18 +110,19 @@ Esta sequencia detalha dependencias das issues existentes, nao cria um plano
 concorrente nem autoriza comecar o frontend antes das entregas do nucleo.
 Nao e necessario fechar todos os detalhes visuais antes de preparar o
 incremento correspondente; resolver conflitos e lacunas quando afetarem seu
-contrato. O alinhamento de Q-05/DEC-08 na #35 continua sendo um gate.
+contrato. Q-05/DEC-08 foram resolvidas na #35 (2026-10-24); o gate visual esta
+liberado, sem dispensar o merge do registro.
 
-| Ordem | Entrega                                                                  | Verificacao e dependencia                                                                                                                  |
-| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | Base visual e area de trabalho vazia.                                    | Componentes, teclado, comparacao com Figma e redimensionamento; alinhamento de #35 antes da implementacao visual. Nao conclui #36.         |
-| 2     | Inspecao isolada de tarefas, jobs e CPUs.                                | Projecoes, selecao e estados em testes de componentes; parte somente de leitura da #37.                                                    |
-| 3     | Preparar, validar, iniciar, avancar um tick e atualizar os paineis.      | Integracao real com o nucleo, usando #17/#65 existentes e politicas de #19/#20; reconciliar preparacao com DEC-23.                         |
-| 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 ja concluida, #31/#32/#33/#34 ainda necessarias conforme escopo.           |
-| 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                           |
-| 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                              |
-| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                            |
-| 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG condicionado a DEC-08/#35. |
+| Ordem | Entrega                                                                  | Verificacao e dependencia                                                                                                                   |
+| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Base visual e area de trabalho vazia.                                    | Componentes, teclado, comparacao com Figma e redimensionamento; gate da #35 resolvido, aguardando merge. Nao conclui #36.                   |
+| 2     | Inspecao isolada de tarefas, jobs e CPUs.                                | Projecoes, selecao e estados em testes de componentes; parte somente de leitura da #37.                                                     |
+| 3     | Preparar, validar, iniciar, avancar um tick e atualizar os paineis.      | Integracao real com o nucleo, usando #17/#65 existentes e politicas de #19/#20; reconciliar preparacao com DEC-23.                          |
+| 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 ja concluida, #31/#32/#33/#34 ainda necessarias conforme escopo.            |
+| 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                            |
+| 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                               |
+| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                             |
+| 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG definido pela DEC-08 (#35). |
 
 Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
 substituem o nucleo na aplicacao ou habilitam comandos ficticios. Cada entrega

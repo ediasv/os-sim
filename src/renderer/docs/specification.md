@@ -349,15 +349,20 @@ Origem: REQ-02, REQ-05, REQ-07; expectativas relacionadas a Q-02.
 
 ### FE-17: Gantt consistente com os dados
 
-Origem: REQ-02, REQ-09; DEC-08 ainda proposta nos documentos gerais.
+Origem: REQ-02, REQ-09; DEC-08 aceita em 2026-10-24 (#35).
 
-- Raias de tarefas por ID decrescente; identificar CPU nos trechos executados.
-  Mostrar tambem intervalos de CPUs desligadas, inclusive de CPUs historicas.
-- Usar cor da tarefa em execucao, pronta sem preenchimento e suspensa em
-  preto com padrao distinto. Cores de amostra do prototipo nao sao um ciclo
-  fixo de quatro opcoes nem substituem as cores configuradas.
-- Mostrar eventos distintos e legenda. Numeros da regua, fronteiras dos
-  intervalos e marcadores devem compartilhar o mesmo alinhamento temporal.
+- Raias de tarefas por ID decrescente; identificar CPU e job nos trechos
+  executados. Um job posterior ainda nao elegivel mostra so o marcador de
+  ativacao. Mostrar tambem intervalos de CPUs desligadas, inclusive de CPUs
+  historicas, em faixas por CPU; o intervalo aberto termina no instante atual.
+- Usar cor da tarefa em execucao; pronta sem preenchimento, com contorno
+  tracejado na cor da tarefa; suspensa com hachura sobre fundo escuro. Tarefa
+  nao ativada ou terminada fica vazia. Cores de amostra do prototipo nao sao um
+  ciclo fixo de quatro opcoes nem substituem as cores configuradas.
+- Mostrar eventos distintos e legenda: ingresso/ativacao, termino do job, fim da
+  tarefa, perda de prazo, sorteio, preempcao, quantum vencido e instante atual.
+  Cada numero da regua identifica a celula do tick, centralizado nela; fronteiras
+  dos intervalos e marcadores ficam nas fronteiras exatas dos instantes.
 - Marcadores coincidentes na mesma raia ficam empilhados verticalmente,
   mantendo a posicao horizontal exata do tick. Preservar forma e descricao
   identificaveis por mouse e teclado, sem deslocar o instante representado.
@@ -374,9 +379,8 @@ Origem: REQ-02, REQ-09; DEC-08 ainda proposta nos documentos gerais.
 
 Origem: REQ-09, REQ-10; extensao parcial aprovada pelo usuario; #39.
 
-- Formato pretendido SVG, a partir dos dados, nunca captura da janela.
-  A preferencia foi aceita na conversa, mas sua formalizacao permanece
-  condicionada a avaliacao de DEC-08 na #35; esta spec nao altera seu estado.
+- Formato SVG, a partir dos dados, nunca captura da janela, conforme DEC-08
+  (aceita na #35).
 - Incluir todo o historico valido: tarefas, intervalos, CPUs, eventos e legenda,
   sem corte pelo cursor, zoom ou rolagem e sem controles da interface.
 - Nao atenuar no arquivo o trecho posterior ao cursor da tela. Nao impor um
@@ -444,12 +448,13 @@ operacoes do nucleo continuam condicionados as expectativas de integracao.
 | FE-DEC-03 | Reiniciar preserva o cenario inicial; Limpar volta aos padroes sem tarefas. Evitar uma acao ambigua.                                                                                    | FE-05; REQ-04, REQ-05                       |
 | FE-DEC-04 | Cancelar preserva ultimo tick valido; bloqueio tem uma unica saida para passo a passo. Nao desfazer trabalho implicitamente.                                                            | FE-07, FE-08; REQ-04, REQ-10                |
 | FE-DEC-05 | Selecao nao muda o tick; futuro valido fica visivel e so edicao aceita o descarta. Separar inspecao de navegacao.                                                                       | FE-06, FE-10, FE-11; REQ-04, REQ-05, REQ-09 |
-| FE-DEC-06 | Preferencia por SVG integral, inclusive parcial, independente da janela; formalizacao condicionada a DEC-08/#35.                                                                        | FE-18; REQ-09                               |
+| FE-DEC-06 | SVG integral, inclusive parcial, independente da janela; formalizado pela DEC-08 (#35).                                                                                                 | FE-18; REQ-09                               |
 | FE-DEC-07 | Apresentar edicao de ID, recolorir o historico valido e distinguir ingresso futuro de ingresso ocorrido; validar a integracao sem definir regras do nucleo.                             | FE-19; REQ-05, REQ-06, REQ-09               |
 | FE-DEC-08 | Selecao futura conserva o tick e informa ausencia do job naquele snapshot, sem comandos sobre ele.                                                                                      | FE-10; REQ-04, REQ-09                       |
 | FE-DEC-09 | Todos os diagnosticos ficam consultaveis com total, rolagem e teclado, sem perder mensagens do nucleo/parser.                                                                           | FE-20; REQ-06, REQ-10                       |
 | FE-DEC-10 | Empilhar marcadores coincidentes sem deslocar o tick; texto adaptativo preto/branco com contraste minimo de 4,5:1, preservando a cor da tarefa.                                         | FE-17; REQ-09, REQ-10                       |
 | FE-DEC-11 | Tooltip nao foi encontrado como componente definido no material inspecionado e nao integra a entrega 1. Manter nome acessivel dos botoes de icone; nao introduzir Reka UI para tooltip. | Arquitetura do renderer; REQ-10             |
+| FE-DEC-12 | Gantt conforme o Figma: numeros da regua no centro da celula do tick, marcadores nas fronteiras; pronta com contorno tracejado na cor da tarefa; suspensa hachurada em fundo escuro.    | FE-17; DEC-08; REQ-09                       |
 
 ## Conferencia dos acordos da conversa
 
@@ -481,8 +486,8 @@ permanecem dependencias externas. Os documentos gerais nao sao alterados.
 | Inclusao aceita ingresso atual/futuro; remocao cancela jobs incompletos e futuras ativacoes, preservando historico. | FE-15                                         | Acordado; cancelamento nao e conclusao normal.                                                              |
 | Quantum preserva consumo; novo limite pode vencer fatia no tick editado.                                            | FE-16                                         | Acordado; sem configuracao agendada para proximo tick.                                                      |
 | Alterar CPUs refaz selecao global, permite migracao e conserva trabalho e raias historicas.                         | FE-16                                         | Acordado; nao escolher quem para pelo ID da CPU retirada.                                                   |
-| Gantt por tarefa, CPU nos trechos, eventos e regua alinhados, zoom e rolagem.                                       | FE-17                                         | Requisitos e referencia acordados; detalhes visuais em PEND-04.                                             |
-| SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                      | FE-18; FE-DEC-06                              | Preferencia acordada; condicionada a DEC-08/#35; gravacao pela infraestrutura.                              |
+| Gantt por tarefa, CPU e job nos trechos, eventos, faixas de CPU, zoom e rolagem.                                    | FE-17; FE-DEC-12; DEC-08                      | Acordado na #35; detalhes de escala em PEND-04.                                                             |
+| SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                      | FE-18; FE-DEC-06                              | Acordado (DEC-08); gravacao pela infraestrutura.                                                            |
 | Recorte somente periodico discutido apos consultar A.4.4.                                                           | Escopo; PEND-02                               | Reconciliacao pendente; nao substitui DEC-09/DEC-17 nem autoriza filtro na UI.                              |
 | ID pode mudar sem colidir; criterio de geracao e reutilizacao ainda precisa ser definido.                           | FE-19; PEND-01                                | Experiencia planejada; identidade historica e validacao dependem do nucleo.                                 |
 | Cor aceita recolore todo o historico valido.                                                                        | FE-19; FE-DEC-07                              | Acordado; nao mutar snapshots antigos.                                                                      |
@@ -574,12 +579,14 @@ detalhar a primeira integracao funcional; implementar apenas apos autorizacao.
 
 Esta entrega limita-se aos documentos do renderer e a referencia do frontend
 no plano geral. Nao altera codigo, dependencias, regras ou documentos do
-nucleo. Q-02/Q-06 continuam externas; DEC-08 segue proposta e aperiodicas nao
+nucleo. Q-02/Q-06 continuam externas; Q-05 e DEC-08 foram resolvidas na #35 e
+aperiodicas nao
 sao excluidas por uma decisao implicita da camada de apresentacao.
 
 ## Rastreabilidade e verificacao futura
 
-- #35: alinhar esta spec, Q-05 e DEC-08 antes da implementacao visual.
+- #35: Q-05 e DEC-08 resolvidas em 2026-10-24; esta spec foi alinhada (FE-17,
+  FE-18, FE-DEC-12).
 - #36: FE-02 a FE-08, FE-11 e FE-16 (controles e ciclo de vida).
 - #37: FE-09 a FE-16 (inspecao e formularios), apos os contratos de E3/E4.
 - #38: FE-06, FE-10 e FE-17 (Gantt e eventos).
