@@ -2068,7 +2068,12 @@ describe('Simulator draws (#20)', () => {
             [
                 'that is not a tie object',
                 { selected: [], tie: { candidates: 'both', slots: 1 } },
-                /Invalid scheduling policy decision: tie must be/,
+                /Invalid scheduling policy decision: tie\.candidates must be/,
+            ],
+            [
+                'whose slots is not a number',
+                { selected: [], tie: { candidates: both, slots: '1' } },
+                /Invalid scheduling policy decision: tie\.slots must be/,
             ],
         ])('%s', (_, bad, message) => {
             const policy: SchedulingPolicy = {

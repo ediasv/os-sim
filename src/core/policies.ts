@@ -68,13 +68,14 @@ function rankedSelection(
         return { selected: ranked.slice(0, count).map((c) => c.job) };
     }
     // The group equal to the last selected job crosses the cut: the jobs
-    // strictly ahead of it win outright and the group shares the rest.
-    const ahead = ranked.filter(
-        (c) => compareCandidates(c, last, priority) < 0,
-    );
-    const group = ranked.filter(
-        (c) => compareCandidates(c, last, priority) === 0,
-    );
+    // strictly ahead of it win outright and the group shares the rest. The
+    // list is sorted, so the group is the contiguous run around the cut.
+    const tiedWithLast = (c: PolicyCandidate) =>
+        compareCandidates(c, last, priority) === 0;
+    const start = ranked.findIndex(tiedWithLast);
+    const after = ranked.findIndex((c, i) => i > count && !tiedWithLast(c));
+    const ahead = ranked.slice(0, start);
+    const group = ranked.slice(start, after === -1 ? undefined : after);
     return {
         selected: ahead.map((c) => c.job),
         tie: {

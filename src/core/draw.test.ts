@@ -42,6 +42,13 @@ describe('drawWinners', () => {
         );
     });
 
+    it('returns the group sorted by task ID, apart from the input', () => {
+        const tied = [ref(3), ref(1), ref(2)];
+        const { group } = drawWinners(tied, 1, DRAW_SEED);
+        expect(group).toEqual([ref(1), ref(2), ref(3)]);
+        expect(tied.map(key)).toEqual(['3.0', '1.0', '2.0']);
+    });
+
     it('advances the state once per winner', () => {
         const one = nextRandom(DRAW_SEED).state;
         const two = nextRandom(one).state;

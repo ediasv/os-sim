@@ -189,6 +189,16 @@ describe('RM', () => {
                 tie: { candidates: ['1.0', '2.0'], slots: 1 },
             });
         });
+
+        it('keeps the whole tied run between better and worse jobs', () => {
+            const better = cand(task(5, 2), 10);
+            const tied = [1, 2, 3].map((id) => cand(task(id, 5), 10));
+            const worse = cand(task(4, 9), 10);
+            expect(decide(view(2, [worse, ...tied, better]))).toEqual({
+                selected: ['5.0'],
+                tie: { candidates: ['1.0', '2.0', '3.0'], slots: 1 },
+            });
+        });
     });
 });
 

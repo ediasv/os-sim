@@ -20,11 +20,28 @@ import {
 import { drawWinners } from './draw';
 import { createInitialState, takeSnapshot } from './snapshot';
 import { deepCopy } from './helpers/deepCopy';
-import { compareJobRefs, key } from './helpers/key';
+import { key } from './helpers/key';
 
 const NO_WORK_POLICY: SchedulingPolicy = {
     select: () => ({ selected: [] }),
 };
+
+/**
+ * Checks that a list read from a policy decision holds only job references
+ * and returns plain copies of them (see `selectedRefs`). Shared by `selected`
+ * and `tie.candidates` so both are held to the same shape (DEC-14, DEC-26).
+ */
+function readJobRefs(raw: unknown, field: string): JobRef[] {
+    if (
+        !Array.isArray(raw) ||
+        raw.some((ref) => typeof ref !== 'object' || ref === null)
+    ) {
+        throw new Error(
+            `Invalid scheduling policy decision: ${field} must be an array of job references.`,
+        );
+    }
+    return selectedRefs({ selected: raw as JobRef[] });
+}
 
 /**
  * Reads a policy's `tie` field once and returns plain copies, for the same
@@ -32,24 +49,22 @@ const NO_WORK_POLICY: SchedulingPolicy = {
  * policy must not keep a handle on what the engine stores (DEC-14, DEC-26).
  */
 function copyTie(raw: unknown): PolicyTie {
-    const candidates: unknown =
-        typeof raw === 'object' && raw !== null
-            ? (raw as PolicyTie).candidates
-            : undefined;
-    const slots: unknown =
-        typeof raw === 'object' && raw !== null
-            ? (raw as PolicyTie).slots
-            : undefined;
-    if (
-        !Array.isArray(candidates) ||
-        candidates.some((ref) => typeof ref !== 'object' || ref === null) ||
-        typeof slots !== 'number'
-    ) {
+    if (typeof raw !== 'object' || raw === null) {
         throw new Error(
-            'Invalid scheduling policy decision: tie must be an object with a candidates array of job references and a numeric slots.',
+            'Invalid scheduling policy decision: tie must be an object.',
         );
     }
-    return { candidates: selectedRefs({ selected: candidates }), slots };
+    const candidates = readJobRefs(
+        (raw as PolicyTie).candidates,
+        'tie.candidates',
+    );
+    const slots: unknown = (raw as PolicyTie).slots;
+    if (typeof slots !== 'number') {
+        throw new Error(
+            'Invalid scheduling policy decision: tie.slots must be a number.',
+        );
+    }
+    return { candidates, slots };
 }
 
 export interface ExecutionGuardResult {
@@ -273,24 +288,12 @@ export class Simulator {
             typeof decision === 'object' && decision !== null
                 ? decision.selected
                 : undefined;
-        if (!Array.isArray(rawSelected)) {
-            throw new Error(
-                'Invalid scheduling policy decision: expected an object with a selected array.',
-            );
-        }
-        if (
-            rawSelected.some((ref) => typeof ref !== 'object' || ref === null)
-        ) {
-            throw new Error(
-                'Invalid scheduling policy decision: every selected entry must be a job reference.',
-            );
-        }
+        const copied = readJobRefs(rawSelected, 'selected');
         const rawTie: unknown =
             typeof decision === 'object' && decision !== null
                 ? decision.tie
                 : undefined;
         const tie = rawTie === undefined ? undefined : copyTie(rawTie);
-        const copied = selectedRefs({ selected: rawSelected });
         const issues = checkDecision(view, { selected: copied, tie });
         if (issues.length > 0) {
             throw new Error(
@@ -310,9 +313,12 @@ export class Simulator {
         if (tie !== undefined) {
             // DEC-26: the engine owns the generator; every winner is logged,
             // even one that keeps running, before the per-CPU events (DEC-22).
-            // Candidates are listed by task ID, whatever order the policy used.
-            const tied = tie.candidates.map(toCandidate).sort(compareJobRefs);
-            const draw = drawWinners(tied, tie.slots, this.state.drawState);
+            // Candidates are listed in the draw's order, by task ID.
+            const draw = drawWinners(
+                tie.candidates.map(toCandidate),
+                tie.slots,
+                this.state.drawState,
+            );
             this.state.drawState = draw.state;
             for (const winner of draw.winners) {
                 selected.push(winner);
@@ -320,7 +326,7 @@ export class Simulator {
                     kind: 'tie-break',
                     time: this.state.clock,
                     winner,
-                    candidates: tied.map((ref) => ({ ...ref })),
+                    candidates: draw.group.map((ref) => ({ ...ref })),
                 });
             }
         }
