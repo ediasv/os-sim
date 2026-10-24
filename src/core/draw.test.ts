@@ -58,7 +58,7 @@ describe('drawWinners', () => {
     });
 
     it.each([0, 3, 4, 1.5])(
-        'rejects %s slots for 3 tied jobs (DEC-26)',
+        'rejects %s slots for 3 tied jobs (DEC-27)',
         (slots) => {
             expect(() =>
                 drawWinners([ref(1), ref(2), ref(3)], slots, DRAW_SEED),

@@ -28,6 +28,8 @@ e nao declara resolvidas suas questoes abertas.
   nao excluir tarefas aceitas pelo nucleo nem implementar um filtro de tipo
   no renderer. Conversoes e reabertura por conversao nao ganharam contrato
   aprovado nesta discussao e nao devem ser implementadas por inferencia.
+- A interface nao exibe testes de escalonabilidade (utilizacao, limites de
+  RM/EDF); texto de ajuda que os citar traz a ressalva de DEC-26.
 - Os itens FE abaixo registram acordos de apresentacao. As pendencias PEND
   distinguem decisoes ainda abertas de formalizacao externa de comportamentos
   ja discutidos; nao significam que todo acordo precise ser decidido de novo.

@@ -183,10 +183,10 @@ Requisito: REQ-07.
   preempcao por chegada com o motor em RM e EDF, registro sem o algoritmo e
   configuracao invalida antes do registro. Limite: sem desempates (#20), empate
   no corte de CPUs cai na ordem do arquivo; RM/EDF nao vao ao usuario antes da
-  #20. Limite resolvido pela #20 (DEC-26). Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
+  #20. Limite resolvido pela #20 (DEC-27). Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
   `npm run typecheck` aprovados.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
-  (DEC-16, DEC-18). Em revisao no PR #75 (DEC-26, decidida pelo usuario em
+  (DEC-16, DEC-18). Em revisao no PR #75 (DEC-27, decidida pelo usuario em
   2026-10-24): RM e EDF aplicam DEC-16/DEC-18 e relatam o empate residual em
   `tie`; o motor sorteia com semente fixa, guarda `drawState` no snapshot e
   registra um `tie-break` por vencedor. Arquivos: `draw.ts`, `policy.ts`,
@@ -197,10 +197,23 @@ Requisito: REQ-07.
   vencedor que ja executava registrado; `tie` invalido nao altera estado nem
   historico; candidatas do `tie-break` em ordem de ID da tarefa; `tie` nulo
   rejeitado. `npm test` 278/278, `npm run lint` e `npm run typecheck`
-  aprovados.
+  aprovados. Revisao do PR: `drawWinners` recusa `slots` fora de
+  `1 <= slots < empatados`; `checkDecision` conta so empatados sorteaveis;
+  grupo ordenado uma vez; DEC renumerada de 26 para 27 apos a #22 ocupar a
+  DEC-26. Achado restante (ordem de validacao na fabrica) segue na #79.
+  Evidencia (2026-10-24, apos merge de `da52d14`): `npm test` 285/285,
+  `npm run lint` e `npm run typecheck` aprovados; IDs DEC-26/DEC-27
+  conferidos.
+- #79 Decidir fonte unica da ordem de validacao entre configuracao e registro
+  de politicas (achado 7 da revisao do PR #75). Depende do merge do PR #75.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
+  Decidida pelo usuario em 2026-10-24 (DEC-26): nada e exibido; citacoes
+  trazem a ressalva de varias CPUs e de simulacao finita. Registrada em
+  REQ-07 e no escopo da [spec do frontend](../src/renderer/docs/specification.md).
+  Evidencia (2026-10-24): links locais e IDs cruzados conferidos; mudanca so
+  documental, testes nao executados.
 
 ### E3: Controle, historico e edicao
 
@@ -298,7 +311,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
 - #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
-  motor e evento (DEC-26); evidencias em E2. Fecha no merge do PR.
+  motor e evento (DEC-27); evidencias em E2. Fecha no merge do PR.
+- #22 concluida no PR #77 (merged, `da52d14`): sem testes de
+  escalonabilidade (DEC-26); mudanca so documental, evidencias em E2.
 - Proximo passo: revisar e integrar o PR #75 (#20); depois #21 e a #68. Manter
   os diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-05 resolvida e DEC-08 aceita na

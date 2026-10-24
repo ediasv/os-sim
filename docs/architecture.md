@@ -23,16 +23,16 @@ afirma que os modulos planejados ja existem.
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
   congelada e conferencia da decisao (DEC-13).
 - [Politicas](../src/core/policies.ts): RM e EDF (DEC-17) com os desempates
-  de DEC-16/DEC-18, relatando o empate residual (DEC-26), e o registro
+  de DEC-16/DEC-18, relatando o empate residual (DEC-27), e o registro
   `DEFAULT_POLICIES`, que associa cada algoritmo a sua politica (DEC-25).
 - [Sorteio](../src/core/draw.ts): gerador pseudoaleatorio com semente fixa e
-  sorteio dos vencedores do empate residual (DEC-06, DEC-26).
+  sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
-  sorteando o empate residual relatado (DEC-26), antes de publicar snapshots
+  sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
   (DEC-15).
@@ -254,7 +254,7 @@ anterior. Data inicial dos registros: 2026-10-12.
       normalizada congelada; nao muta a entrada. Lista de tarefas vazia e valida
       no nucleo; exigir ao menos uma tarefa e regra do arquivo (E4).
     - Estado do gerador pseudoaleatorio entra no snapshot como `drawState`
-      (#20, DEC-26).
+      (#20, DEC-27).
 - Justificativa: dados simples tornam copia, congelamento e restauracao
   (DEC-06) triviais e impedem a UI de segurar objetos vivos.
 - Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
@@ -297,7 +297,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   repetido.
 - Decisao: `selected` e um conjunto sem ordem de exatamente
   min(`cpuCount`, candidatas) jobs, ou desse total menos as vagas de um
-  empate residual relatado em `tie` (DEC-26); atribuir CPUs cabe ao despacho
+  empate residual relatado em `tie` (DEC-27); atribuir CPUs cabe ao despacho
   (DEC-07).
   O motor executa `checkDecision` e trata qualquer problema (job fora das
   candidatas, repetido ou quantidade errada) como erro da politica. Sem
@@ -317,7 +317,7 @@ anterior. Data inicial dos registros: 2026-10-12.
     - O motor monta a visao antes de liberar as CPUs. Job com quantum vencido
       continua contando como "executava antes da selecao": `previousCpu` traz
       a CPU que ele ocupava (DEC-18).
-    - Sorteio do empate residual entra no contrato pela DEC-26 (#20): a
+    - Sorteio do empate residual entra no contrato pela DEC-27 (#20): a
       decisao ganha `tie` e o motor sorteia; a visao nao muda.
     - Q-04 e Q-07 decididas na #18 (DEC-16, DEC-17) sem mudar o contrato: os
       campos usados ja estao na visao (`job.absoluteDeadline`,
@@ -396,7 +396,7 @@ anterior. Data inicial dos registros: 2026-10-12.
        job coincide com o ingresso da tarefa;
     4. menor duracao da tarefa (`task.duration`), como em A.4.3 ("duracao da
        tarefa: duracao menor deve ser escolhida"); nao o trabalho restante;
-    5. sorteio registrado (DEC-06, DEC-26).
+    5. sorteio registrado (DEC-06, DEC-27).
 - Justificativa: cada ativacao e um job com prazo proprio (DEC-02, REQ-08);
   prazo relativo e ingresso sao iguais para todos os jobs de uma tarefa e nao
   distinguem um job atrasado de outro recem-ativado. Para a duracao o usuario
@@ -587,7 +587,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   todas as conclusoes (cada uma seguida do `task-finished` da tarefa, quando
   for o ultimo job), todas as perdas de prazo, todas as fatias vencidas, todas
   as ativacoes e, por fim, os eventos do despacho: primeiro os `tie-break` do
-  sorteio, na ordem sorteada (DEC-26), depois os eventos agrupados por CPU em
+  sorteio, na ordem sorteada (DEC-27), depois os eventos agrupados por CPU em
   ordem de ID (`preemption`, `cpu-on` ou `cpu-off` de cada CPU). Dentro de uma
   etapa, a ordem segue a lista de tarefas e o indice do job (ou o ID da CPU),
   sem significado de prioridade.
@@ -691,9 +691,38 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Trocar o algoritmo durante a simulacao fica com Q-02/#25; a fabrica
       concentra a resolucao e pode virar resolvedor se for preciso.
     - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
-      sorteio de DEC-26 (#20); nao cai mais na ordem do arquivo.
+      sorteio de DEC-27 (#20); nao cai mais na ordem do arquivo.
 
-### DEC-26: Sorteio do empate residual pelo motor
+### DEC-26: Sem testes de escalonabilidade
+
+- Estado: aceita em 2026-10-24 (decidida pelo usuario na #22). Requisitos:
+  REQ-07; afeta a apresentacao (REQ-09, REQ-10).
+- Decisao:
+    1. O simulador nao calcula nem exibe utilizacao, limite de RM
+       (U <= n(2^(1/n) - 1)), limite de EDF (U <= 1) ou qualquer veredito de
+       escalonabilidade. O resultado mostrado e a propria simulacao: Gantt,
+       perdas de prazo e tempo de CPU desligada.
+    2. Texto do aplicativo, da documentacao ou da demonstracao (#45) que
+       citar esses testes deixa claro que os limites de um processador, com
+       prazo igual ao periodo, nao garantem nada com varias CPUs, prazo
+       diferente do periodo ou aperiodicas, e que uma simulacao finita sem
+       perda de prazo nao prova escalonabilidade.
+- Justificativa: o enunciado pede RM e EDF (A.4), nao testes de
+  escalonabilidade. Com fila global e varias CPUs (REQ-02), prazo diferente
+  do periodo e aperiodicas (DEC-09, DEC-10, DEC-17), os limites da secao 2.4
+  da referencia teorica podem aprovar conjuntos que perdem prazo e reprovar
+  conjuntos que cumprem; exibi-los convidaria a le-los como garantia.
+- Alternativas descartadas:
+    - Exibir so a utilizacao, com ressalva: informacao sem uso definido no
+      enunciado.
+    - Exibir utilizacao e limites de RM/EDF com aviso: mais trabalho na E5 e
+      risco de leitura como garantia mesmo com o aviso.
+- Consequencias:
+    - A interface (E5) nao tem painel nem indicador de escalonabilidade.
+    - Analise de escalonabilidade para varios processadores fica fora do
+      escopo; exibir qualquer teste exige nova DEC.
+
+### DEC-27: Sorteio do empate residual pelo motor
 
 - Estado: aceita em 2026-10-24 (decidida pelo usuario na #20). Requisitos:
   REQ-07, REQ-04 (A.4.3). Detalha DEC-06, DEC-13, DEC-16 e DEC-22.
@@ -741,7 +770,7 @@ anterior. Data inicial dos registros: 2026-10-12.
    desempate (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
 5. Selecionar pela politica, sortear o empate residual e despachar (DEC-07,
-   DEC-13, DEC-26).
+   DEC-13, DEC-27).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
 
 Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem

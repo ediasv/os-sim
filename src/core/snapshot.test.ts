@@ -63,7 +63,7 @@ describe('createInitialState', () => {
         ]);
     });
 
-    it('starts the draw generator at the fixed seed, carried by snapshots (DEC-26)', () => {
+    it('starts the draw generator at the fixed seed, carried by snapshots (DEC-27)', () => {
         const state = createInitialState(twoCpus);
 
         expect(state.drawState).toBe(DRAW_SEED);

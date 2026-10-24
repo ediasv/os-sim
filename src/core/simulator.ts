@@ -29,7 +29,7 @@ const NO_WORK_POLICY: SchedulingPolicy = {
 /**
  * Checks that a list read from a policy decision holds only job references
  * and returns plain copies of them (see `selectedRefs`). Shared by `selected`
- * and `tie.candidates` so both are held to the same shape (DEC-14, DEC-26).
+ * and `tie.candidates` so both are held to the same shape (DEC-14, DEC-27).
  */
 function readJobRefs(raw: unknown, field: string): JobRef[] {
     if (
@@ -46,7 +46,7 @@ function readJobRefs(raw: unknown, field: string): JobRef[] {
 /**
  * Reads a policy's `tie` field once and returns plain copies, for the same
  * reasons as `selectedRefs`: a getter could answer differently later and the
- * policy must not keep a handle on what the engine stores (DEC-14, DEC-26).
+ * policy must not keep a handle on what the engine stores (DEC-14, DEC-27).
  */
 function copyTie(raw: unknown): PolicyTie {
     if (typeof raw !== 'object' || raw === null) {
@@ -274,7 +274,7 @@ export class Simulator {
      * Copies one global policy decision once and validates that copy (DEC-14),
      * so a policy cannot return different values to the check and to dispatch.
      * A reported residual tie is drawn here and logged as `tie-break` events
-     * (DEC-26). Selected jobs stay on their current CPUs where possible; any remaining
+     * (DEC-27). Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
      * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
@@ -311,7 +311,7 @@ export class Simulator {
         const toCandidate = (ref: JobRef) => candidateByKey.get(key(ref))!;
         const selected = copied.map(toCandidate);
         if (tie !== undefined) {
-            // DEC-26: the engine owns the generator; every winner is logged,
+            // DEC-27: the engine owns the generator; every winner is logged,
             // even one that keeps running, before the per-CPU events (DEC-22).
             // Candidates are listed in the draw's order, by task ID.
             const draw = drawWinners(

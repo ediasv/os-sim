@@ -148,7 +148,7 @@ export type SimulationEvent =
           /**
            * Residual tie resolved by a draw (A.4.3). Logged for every draw,
            * including when a winner was already running and keeps its CPU, so
-           * it need not pair with a start (DEC-26).
+           * it need not pair with a start (DEC-27).
            */
           readonly kind: 'tie-break';
           readonly time: number;
@@ -183,7 +183,7 @@ export interface SimulationState {
     cpus: CpuState[];
     executions: ExecutionSlice[];
     events: SimulationEvent[];
-    /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-26). */
+    /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-27). */
     drawState: number;
 }
 

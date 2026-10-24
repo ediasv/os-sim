@@ -112,10 +112,12 @@ Fonte: A.4 a A.4.3.
   tarefa (DEC-16). Sem desempate escondido pelo ID.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar;
   todo sorteio e registrado, inclusive quando o escolhido continua executando
-  (DEC-26).
+  (DEC-27).
 - Quantum limita uma fatia; vencimento devolve job incompleto a fila e reavalia,
   podendo selecionar o mesmo job. DEC-03 registra a interpretacao adotada; o job
   com fatia vencida mantem o primeiro desempate (DEC-18).
+- Nao calcular nem exibir testes de escalonabilidade (utilizacao, limites de
+  RM/EDF); texto que os citar traz a ressalva de DEC-26.
 - Aceitacao: politica de teste valida o motor independentemente de RM/EDF; testes
   separados conferem prioridades, preempcoes e cada nivel de desempate.
 

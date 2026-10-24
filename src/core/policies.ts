@@ -6,7 +6,7 @@
  *
  * A priority tie is broken by the A.4.3 criteria with the job's own values
  * (DEC-16, DEC-18). Jobs still equal on all of them that straddle the CPU cut
- * are reported as `tie` for the engine to draw (DEC-26); no ID or candidate
+ * are reported as `tie` for the engine to draw (DEC-27); no ID or candidate
  * order ever decides.
  */
 import type { AlgorithmId } from './domain';

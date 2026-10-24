@@ -242,7 +242,7 @@ describe('checkDecision', () => {
         expect(issues[2]).toMatch(/expected 2, got 3/);
     });
 
-    describe('with a residual tie (DEC-26)', () => {
+    describe('with a residual tie (DEC-27)', () => {
         it.each([
             ['part of the cut', [ref(1)], [ref(2), ref(3)], 1],
             ['the whole cut', [], [ref(1), ref(2), ref(3)], 2],

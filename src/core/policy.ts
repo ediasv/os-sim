@@ -50,7 +50,7 @@ export interface PolicyDecision {
     readonly selected: readonly JobRef[];
     /**
      * Residual tie that crosses the CPU cut, if any; the engine draws the
-     * remaining CPUs among it (DEC-26). Without it, `selected` is complete.
+     * remaining CPUs among it (DEC-27). Without it, `selected` is complete.
      */
     readonly tie?: PolicyTie;
 }
@@ -67,7 +67,7 @@ export interface PolicyTie {
 /**
  * A scheduling algorithm (RM, EDF, or a test policy). It only reads the view
  * and never mutates anything (DEC-01); a residual tie is reported in `tie`
- * and drawn by the engine, so policies never hold the generator (DEC-26).
+ * and drawn by the engine, so policies never hold the generator (DEC-27).
  */
 export interface SchedulingPolicy {
     select(view: PolicyView): PolicyDecision;

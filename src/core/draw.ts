@@ -1,5 +1,5 @@
 /**
- * Pseudo-random draw for residual ties (A.4.3, DEC-06, DEC-26). The generator
+ * Pseudo-random draw for residual ties (A.4.3, DEC-06, DEC-27). The generator
  * is a pure function of a 32-bit state that lives in `SimulationState`, so
  * every snapshot carries it and replaying from a snapshot repeats the same
  * draws (REQ-04). Only the engine calls it; policies never see it (DEC-13).
@@ -9,7 +9,7 @@ import { compareJobRefs } from './helpers/key';
 
 /**
  * Generator state at tick 0. Fixed, so the same configuration always yields
- * the same draws without adding a field to the configuration file (DEC-26).
+ * the same draws without adding a field to the configuration file (DEC-27).
  */
 export const DRAW_SEED = 0x5eed2026;
 
@@ -28,7 +28,7 @@ export function nextRandom(state: number): { value: number; state: number } {
  * task ID and job index. Drawing from that sorted group makes the result
  * depend only on its members and the state, never on the order the policy
  * listed them in; the engine logs the same order. Throws unless `slots` is an
- * integer that fills at least one CPU and leaves at least one job out (DEC-26).
+ * integer that fills at least one CPU and leaves at least one job out (DEC-27).
  */
 export function drawWinners(
     tied: readonly DeepReadonly<JobRef>[],
