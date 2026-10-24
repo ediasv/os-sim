@@ -4,12 +4,10 @@
  * min(cpuCount, candidates); the engine validates and dispatches. They read no
  * ID and no candidate order as a criterion.
  *
- * Ties are out of scope until #20: a priority tie that crosses the CPU cut is
- * resolved there (DEC-16, DEC-18). This is the single place where that
- * tie-break must be plugged in, in `rankedSelection`. Until then such a tie
- * falls back to the candidate order (the order of the configuration file),
- * a hidden tie-break that REQ-07 forbids, so RM and EDF must not reach the
- * user (E4/E5) before #20.
+ * A priority tie is broken by the A.4.3 criteria with the job's own values
+ * (DEC-16, DEC-18). Jobs still equal on all of them that straddle the CPU cut
+ * are reported as `tie` for the engine to draw (DEC-26); no ID or candidate
+ * order ever decides.
  */
 import type { AlgorithmId } from './domain';
 import type {
@@ -22,19 +20,68 @@ import type {
 /** Lower value means higher priority. */
 type PriorityKey = (candidate: PolicyCandidate) => number;
 
+/** Orders lower values first; compares instead of subtracting, see below. */
+function ascending(a: number, b: number): number {
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Priority, then A.4.3 in order (DEC-16): the job that was running before the
+ * selection, even if its slice just expired (DEC-18); earlier absolute
+ * deadline; earlier activation; shorter task duration. Zero means a residual
+ * tie that only a draw may break.
+ */
+function compareCandidates(
+    a: PolicyCandidate,
+    b: PolicyCandidate,
+    priority: PriorityKey,
+): number {
+    return (
+        // Two aperiodic RM tasks both rank as Infinity, and Infinity -
+        // Infinity would be NaN.
+        ascending(priority(a), priority(b)) ||
+        ascending(
+            a.previousCpu === null ? 1 : 0,
+            b.previousCpu === null ? 1 : 0,
+        ) ||
+        ascending(a.job.absoluteDeadline, b.job.absoluteDeadline) ||
+        ascending(a.job.activation, b.job.activation) ||
+        ascending(a.task.duration, b.task.duration)
+    );
+}
+
 function rankedSelection(
     view: PolicyView,
     priority: PriorityKey,
 ): PolicyDecision {
     const count = Math.min(view.cpuCount, view.candidates.length);
-    // Compares instead of subtracting: two aperiodic RM tasks both rank as
-    // Infinity, and Infinity - Infinity would be NaN.
-    const ranked = [...view.candidates].sort((a, b) => {
-        const pa = priority(a);
-        const pb = priority(b);
-        return pa < pb ? -1 : pa > pb ? 1 : 0;
-    });
-    return { selected: ranked.slice(0, count).map((c) => c.job) };
+    const ranked = [...view.candidates].sort((a, b) =>
+        compareCandidates(a, b, priority),
+    );
+    const last = ranked[count - 1];
+    const firstOut = ranked[count];
+    if (
+        last === undefined ||
+        firstOut === undefined ||
+        compareCandidates(last, firstOut, priority) !== 0
+    ) {
+        return { selected: ranked.slice(0, count).map((c) => c.job) };
+    }
+    // The group equal to the last selected job crosses the cut: the jobs
+    // strictly ahead of it win outright and the group shares the rest.
+    const ahead = ranked.filter(
+        (c) => compareCandidates(c, last, priority) < 0,
+    );
+    const group = ranked.filter(
+        (c) => compareCandidates(c, last, priority) === 0,
+    );
+    return {
+        selected: ahead.map((c) => c.job),
+        tie: {
+            candidates: group.map((c) => c.job),
+            slots: count - ahead.length,
+        },
+    };
 }
 
 /**

@@ -6,6 +6,7 @@ import {
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
+import { DRAW_SEED } from './draw';
 import { createInitialState, takeSnapshot } from './snapshot';
 
 const periodic: TaskDefinition = {
@@ -60,6 +61,13 @@ describe('createInitialState', () => {
             { id: 1, running: null, sliceElapsed: 0, offSince: null },
             { id: 2, running: null, sliceElapsed: 0, offSince: null },
         ]);
+    });
+
+    it('starts the draw generator at the fixed seed, carried by snapshots (DEC-26)', () => {
+        const state = createInitialState(twoCpus);
+
+        expect(state.drawState).toBe(DRAW_SEED);
+        expect(takeSnapshot(state).drawState).toBe(DRAW_SEED);
     });
 });
 

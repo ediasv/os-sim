@@ -22,15 +22,18 @@ afirma que os modulos planejados ja existem.
   (DEC-02).
 - [Politica](../src/core/policy.ts): contrato da politica injetada, visao
   congelada e conferencia da decisao (DEC-13).
-- [Politicas](../src/core/policies.ts): RM e EDF (DEC-17) e o registro
+- [Politicas](../src/core/policies.ts): RM e EDF (DEC-17) com os desempates
+  de DEC-16/DEC-18, relatando o empate residual (DEC-26), e o registro
   `DEFAULT_POLICIES`, que associa cada algoritmo a sua politica (DEC-25).
+- [Sorteio](../src/core/draw.ts): gerador pseudoaleatorio com semente fixa e
+  sorteio dos vencedores do empate residual (DEC-06, DEC-26).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz
-  despacho global pela politica injetada antes de publicar snapshots completos
-  (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
+  despacho global pela politica injetada, sorteando o empate residual relatado
+  (DEC-26), antes de publicar snapshots completos (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
   expoe os jobs elegiveis somente para leitura (DEC-15).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
@@ -228,8 +231,8 @@ anterior. Data inicial dos registros: 2026-10-12.
       mensagem em portugues com o nome do campo no arquivo) e devolve copia
       normalizada congelada; nao muta a entrada. Lista de tarefas vazia e valida
       no nucleo; exigir ao menos uma tarefa e regra do arquivo (E4).
-    - Estado do gerador pseudoaleatorio entra no snapshot com #20/#23, sem campo
-      provisorio antes disso.
+    - Estado do gerador pseudoaleatorio entra no snapshot como `drawState`
+      (#20, DEC-26).
 - Justificativa: dados simples tornam copia, congelamento e restauracao
   (DEC-06) triviais e impedem a UI de segurar objetos vivos.
 - Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
@@ -271,7 +274,9 @@ anterior. Data inicial dos registros: 2026-10-12.
   congela a copia inteira; rejeita job inexistente, concluido, suspenso ou
   repetido.
 - Decisao: `selected` e um conjunto sem ordem de exatamente
-  min(`cpuCount`, candidatas) jobs; atribuir CPUs cabe ao despacho (DEC-07).
+  min(`cpuCount`, candidatas) jobs, ou desse total menos as vagas de um
+  empate residual relatado em `tie` (DEC-26); atribuir CPUs cabe ao despacho
+  (DEC-07).
   O motor executa `checkDecision` e trata qualquer problema (job fora das
   candidatas, repetido ou quantidade errada) como erro da politica. Sem
   problemas, o motor guarda somente `selectedRefs(decision)`, copias
@@ -290,8 +295,8 @@ anterior. Data inicial dos registros: 2026-10-12.
     - O motor monta a visao antes de liberar as CPUs. Job com quantum vencido
       continua contando como "executava antes da selecao": `previousCpu` traz
       a CPU que ele ocupava (DEC-18).
-    - Sorteio do empate residual entra no contrato com a #20, em nova decisao
-      que estende visao e decisao; esta decisao nao reserva campos para ele.
+    - Sorteio do empate residual entra no contrato pela DEC-26 (#20): a
+      decisao ganha `tie` e o motor sorteia; a visao nao muda.
     - Q-04 e Q-07 decididas na #18 (DEC-16, DEC-17) sem mudar o contrato: os
       campos usados ja estao na visao (`job.absoluteDeadline`,
       `job.activation`, `task.duration`, `task.period`).
@@ -369,7 +374,7 @@ anterior. Data inicial dos registros: 2026-10-12.
        job coincide com o ingresso da tarefa;
     4. menor duracao da tarefa (`task.duration`), como em A.4.3 ("duracao da
        tarefa: duracao menor deve ser escolhida"); nao o trabalho restante;
-    5. sorteio registrado (DEC-06, #20).
+    5. sorteio registrado (DEC-06, DEC-26).
 - Justificativa: cada ativacao e um job com prazo proprio (DEC-02, REQ-08);
   prazo relativo e ingresso sao iguais para todos os jobs de uma tarefa e nao
   distinguem um job atrasado de outro recem-ativado. Para a duracao o usuario
@@ -559,8 +564,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: os eventos de uma fronteira seguem etapas globais, nesta ordem:
   todas as conclusoes (cada uma seguida do `task-finished` da tarefa, quando
   for o ultimo job), todas as perdas de prazo, todas as fatias vencidas, todas
-  as ativacoes e, por fim, os eventos do despacho, agrupados por CPU em ordem
-  de ID (`preemption`, `cpu-on` ou `cpu-off` de cada CPU). Dentro de uma
+  as ativacoes e, por fim, os eventos do despacho: primeiro os `tie-break` do
+  sorteio, na ordem sorteada (DEC-26), depois os eventos agrupados por CPU em
+  ordem de ID (`preemption`, `cpu-on` ou `cpu-off` de cada CPU). Dentro de uma
   etapa, a ordem segue a lista de tarefas e o indice do job (ou o ID da CPU),
   sem significado de prioridade.
 - Justificativa: a lista de eventos passa a refletir o fluxo documentado do
@@ -662,9 +668,46 @@ anterior. Data inicial dos registros: 2026-10-12.
       pode divergir de `config.algorithm`; producao usa a fabrica.
     - Trocar o algoritmo durante a simulacao fica com Q-02/#25; a fabrica
       concentra a resolucao e pode virar resolvedor se for preciso.
-    - Ate a #20, empate de prioridade no corte de CPUs cai na ordem das
-      candidatas (ordem do arquivo), desempate escondido que REQ-07 proibe;
-      RM e EDF nao devem ser expostos ao usuario (E4/E5) antes da #20.
+    - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
+      sorteio de DEC-26 (#20); nao cai mais na ordem do arquivo.
+
+### DEC-26: Sorteio do empate residual pelo motor
+
+- Estado: aceita em 2026-10-24 (decidida pelo usuario na #20). Requisitos:
+  REQ-07, REQ-04 (A.4.3). Detalha DEC-06, DEC-13, DEC-16 e DEC-22.
+- Decisao:
+    1. A politica so relata o empate: `PolicyDecision.tie` traz os jobs
+       iguais em prioridade e nos quatro criterios de DEC-16 que cruzam o
+       corte de CPUs e quantas vagas restam (`slots`). Sem `tie`, `selected`
+       e completo. `checkDecision` confere que os empatados sao candidatas,
+       sem repeticao, fora de `selected`, com `1 <= slots < empatados` e
+       `selected + slots = min(cpuCount, candidatas)`.
+    2. O motor sorteia: gerador mulberry32 em [draw.ts](../src/core/draw.ts),
+       semente fixa `DRAW_SEED`, estado em `SimulationState.drawState`,
+       copiado em todo snapshot. O grupo e ordenado por ID da tarefa e indice
+       do job antes do sorteio, de modo que o resultado so depende dos membros
+       e do estado.
+    3. Um evento `tie-break` por vencedor, no instante da selecao, com todo o
+       grupo em `candidates`, listado na mesma ordem (ordem de apresentacao,
+       nao desempate); sempre registrado, inclusive quando o vencedor
+       ja executava (varios jobs em execucao empatados em todos os
+       criterios). Na lista, vem apos as ativacoes e antes dos eventos por
+       CPU do despacho (DEC-22).
+- Justificativa: o motor ja guarda tudo que entra no snapshot, e politicas
+  continuam funcoes puras da visao congelada (DEC-13). Semente fixa repete os
+  sorteios para a mesma configuracao sem mudar o formato do arquivo (REQ-06).
+  Registrar todo sorteio deixa visivel cada escolha aleatoria (REQ-04).
+- Consequencia: um passo que falha descarta tambem o avanco do gerador
+  (DEC-14). Restaurar snapshots (#23, #24) repete os sorteios por levar
+  `drawState`.
+- Alternativas descartadas:
+    - Politica sorteia recebendo o gerador: poe estado mutavel no contrato,
+      contra DEC-13.
+    - Semente configuravel (muda o formato do arquivo e a edicao) ou derivada
+      da configuracao (qualquer edicao muda todos os sorteios).
+    - Evento com `winners[]`: muda o tipo do evento sem ganho para o Gantt.
+    - Registrar so quando o vencedor (re)comeca: um sorteio que mantem o job
+      na CPU ficaria sem marca.
 
 ## Fluxo de um passo
 
@@ -675,7 +718,8 @@ anterior. Data inicial dos registros: 2026-10-12.
    conclui nao registra vencimento, e o job vencido mantem o primeiro
    desempate (DEC-18).
 4. Registrar as ativacoes devidas em t+1.
-5. Selecionar pela politica e despachar (DEC-07, DEC-13).
+5. Selecionar pela politica, sortear o empate residual e despachar (DEC-07,
+   DEC-13, DEC-26).
 6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
 
 Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem

@@ -179,6 +179,8 @@ export interface SimulationState {
     cpus: CpuState[];
     executions: ExecutionSlice[];
     events: SimulationEvent[];
+    /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-26). */
+    drawState: number;
 }
 
 /** Recursively read-only view, used so snapshot consumers cannot mutate them. */

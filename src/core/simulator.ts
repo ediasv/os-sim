@@ -14,15 +14,43 @@ import {
     buildPolicyView,
     checkDecision,
     selectedRefs,
+    type PolicyTie,
     type SchedulingPolicy,
 } from './policy';
+import { drawWinners } from './draw';
 import { createInitialState, takeSnapshot } from './snapshot';
 import { deepCopy } from './helpers/deepCopy';
-import { key } from './helpers/key';
+import { compareJobRefs, key } from './helpers/key';
 
 const NO_WORK_POLICY: SchedulingPolicy = {
     select: () => ({ selected: [] }),
 };
+
+/**
+ * Reads a policy's `tie` field once and returns plain copies, for the same
+ * reasons as `selectedRefs`: a getter could answer differently later and the
+ * policy must not keep a handle on what the engine stores (DEC-14, DEC-26).
+ */
+function copyTie(raw: unknown): PolicyTie {
+    const candidates: unknown =
+        typeof raw === 'object' && raw !== null
+            ? (raw as PolicyTie).candidates
+            : undefined;
+    const slots: unknown =
+        typeof raw === 'object' && raw !== null
+            ? (raw as PolicyTie).slots
+            : undefined;
+    if (
+        !Array.isArray(candidates) ||
+        candidates.some((ref) => typeof ref !== 'object' || ref === null) ||
+        typeof slots !== 'number'
+    ) {
+        throw new Error(
+            'Invalid scheduling policy decision: tie must be an object with a candidates array of job references and a numeric slots.',
+        );
+    }
+    return { candidates: selectedRefs({ selected: candidates }), slots };
+}
 
 export interface ExecutionGuardResult {
     ready: boolean;
@@ -230,7 +258,8 @@ export class Simulator {
     /**
      * Copies one global policy decision once and validates that copy (DEC-14),
      * so a policy cannot return different values to the check and to dispatch.
-     * Selected jobs stay on their current CPUs where possible; any remaining
+     * A reported residual tie is drawn here and logged as `tie-break` events
+     * (DEC-26). Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
      * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
@@ -256,8 +285,13 @@ export class Simulator {
                 'Invalid scheduling policy decision: every selected entry must be a job reference.',
             );
         }
+        const rawTie: unknown =
+            typeof decision === 'object' && decision !== null
+                ? decision.tie
+                : undefined;
+        const tie = rawTie === undefined ? undefined : copyTie(rawTie);
         const copied = selectedRefs({ selected: rawSelected });
-        const issues = checkDecision(view, { selected: copied });
+        const issues = checkDecision(view, { selected: copied, tie });
         if (issues.length > 0) {
             throw new Error(
                 `Invalid scheduling policy decision:\n${issues.join('\n')}`,
@@ -271,7 +305,25 @@ export class Simulator {
                 { taskId: job.taskId, index: job.index },
             ]),
         );
-        const selected = copied.map((ref) => candidateByKey.get(key(ref))!);
+        const toCandidate = (ref: JobRef) => candidateByKey.get(key(ref))!;
+        const selected = copied.map(toCandidate);
+        if (tie !== undefined) {
+            // DEC-26: the engine owns the generator; every winner is logged,
+            // even one that keeps running, before the per-CPU events (DEC-22).
+            // Candidates are listed by task ID, whatever order the policy used.
+            const tied = tie.candidates.map(toCandidate).sort(compareJobRefs);
+            const draw = drawWinners(tied, tie.slots, this.state.drawState);
+            this.state.drawState = draw.state;
+            for (const winner of draw.winners) {
+                selected.push(winner);
+                this.state.events.push({
+                    kind: 'tie-break',
+                    time: this.state.clock,
+                    winner,
+                    candidates: tied.map((ref) => ({ ...ref })),
+                });
+            }
+        }
 
         const selectedKeys = new Set(selected.map(key));
         const cpuByJob = new Map<string, number>();

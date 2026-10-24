@@ -183,10 +183,21 @@ Requisito: REQ-07.
   preempcao por chegada com o motor em RM e EDF, registro sem o algoritmo e
   configuracao invalida antes do registro. Limite: sem desempates (#20), empate
   no corte de CPUs cai na ordem do arquivo; RM/EDF nao vao ao usuario antes da
-  #20. Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
+  #20. Limite resolvido pela #20 (DEC-26). Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
   `npm run typecheck` aprovados.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
-  (DEC-16, DEC-18).
+  (DEC-16, DEC-18). Em revisao no PR #75 (DEC-26, decidida pelo usuario em
+  2026-10-24): RM e EDF aplicam DEC-16/DEC-18 e relatam o empate residual em
+  `tie`; o motor sorteia com semente fixa, guarda `drawState` no snapshot e
+  registra um `tie-break` por vencedor. Arquivos: `draw.ts`, `policy.ts`,
+  `policies.ts`, `simulator.ts`, `domain.ts`, `snapshot.ts` e testes.
+  Evidencia (2026-10-24): um teste por criterio em RM e EDF (criterio 2 nao
+  separa empate no EDF, conforme DEC-16); empate que cabe nas CPUs sem
+  sorteio nem evento; mesma configuracao repete sorteios e `drawState`;
+  vencedor que ja executava registrado; `tie` invalido nao altera estado nem
+  historico; candidatas do `tie-break` em ordem de ID da tarefa; `tie` nulo
+  rejeitado. `npm test` 278/278, `npm run lint` e `npm run typecheck`
+  aprovados.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
@@ -281,13 +292,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
-- #20 iniciada em 2026-10-24 no PR rascunho #75, sobre `main` apos o PR #74:
-  desempates de DEC-16/DEC-18 em RM e EDF, sorteio so no empate residual que
-  cruza o corte de CPUs, estado do gerador no snapshot e evento `tie-break`.
-  Pendente: DEC nova estendendo o contrato da politica para o sorteio; semente
-  inicial do gerador a combinar com o usuario. Verificacao inicial: `npm test`
-  aprovado na base.
-- Proximo passo: definir a semente do gerador e implementar a #20. Manter os
+- #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
+  motor e evento (DEC-26); evidencias em E2. Fecha no merge do PR.
+- Proximo passo: revisar e integrar o PR #75 (#20); depois #21. Manter os
   diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
 - Bloqueios: nenhum.

@@ -241,6 +241,87 @@ describe('checkDecision', () => {
         expect(issues[1]).toMatch(/4\.0 is not a candidate/);
         expect(issues[2]).toMatch(/expected 2, got 3/);
     });
+
+    describe('with a residual tie (DEC-26)', () => {
+        it.each([
+            ['part of the cut', [ref(1)], [ref(2), ref(3)], 1],
+            ['the whole cut', [], [ref(1), ref(2), ref(3)], 2],
+        ])('accepts a tie covering %s', (_, selected, candidates, slots) => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected,
+                    tie: { candidates, slots },
+                }),
+            ).toEqual([]);
+        });
+
+        it('reports a tied job that is not a candidate', () => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected: [ref(1)],
+                    tie: { candidates: [ref(2), ref(9)], slots: 1 },
+                }),
+            ).toEqual(['Tied job 9.0 is not a candidate.']);
+        });
+
+        it('reports a job tied more than once', () => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected: [ref(1)],
+                    tie: { candidates: [ref(2), ref(3), ref(2)], slots: 1 },
+                }),
+            ).toEqual(['Job 2.0 is tied more than once.']);
+        });
+
+        it('reports a job both selected and tied', () => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected: [ref(1)],
+                    tie: { candidates: [ref(1), ref(2)], slots: 1 },
+                }),
+            ).toEqual(['Job 1.0 is both selected and tied.']);
+        });
+
+        it('reports a tie that fills no CPU', () => {
+            expect(
+                checkDecision(viewOf(4), {
+                    selected: [ref(1), ref(2)],
+                    tie: { candidates: [ref(3), ref(4)], slots: 0 },
+                }),
+            ).toEqual(['Tie must fill at least one CPU, got 0 slots.']);
+        });
+
+        it('reports a fractional number of slots', () => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected: [ref(1)],
+                    tie: { candidates: [ref(2), ref(3)], slots: 1.5 },
+                }),
+            ).toContain('Tie must fill at least one CPU, got 1.5 slots.');
+        });
+
+        it('reports a tie that leaves no job out', () => {
+            expect(
+                checkDecision(viewOf(3), {
+                    selected: [],
+                    tie: { candidates: [ref(2), ref(3)], slots: 2 },
+                }),
+            ).toEqual([
+                'Tie must leave out at least one job: 2 slots for 2 tied jobs.',
+            ]);
+        });
+
+        it('counts the tie slots with the selected jobs', () => {
+            expect(
+                checkDecision(viewOf(4), {
+                    selected: [ref(1), ref(2)],
+                    tie: { candidates: [ref(3), ref(4)], slots: 1 },
+                }),
+            ).toEqual([
+                'Policy selected the wrong number of jobs: expected 2, got 3.',
+            ]);
+        });
+    });
 });
 
 describe('selectedRefs', () => {
