@@ -263,6 +263,10 @@ Requisito: REQ-10; integracao de todos os anteriores.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
+- Frontend (#35 a #40, PR #61): [spec de apresentacao](../src/renderer/docs/specification.md)
+  e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
+  planejamento da apresentacao e suas expectativas de integracao, sem alterar
+  os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
 - Proximo passo: revisar e integrar o PR #64 (#63); depois #17 ou E2. Manter os diagnosticos de
   DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.

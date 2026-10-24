@@ -1,0 +1,210 @@
+# Arquitetura e entregas do renderer
+
+Planejamento atualizado em 2026-10-23, ainda sem implementacao. A
+[spec de apresentacao](specification.md) registra comportamentos; este
+documento registra responsabilidades, contratos propostos e ordem de codigo.
+O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
+Requisitos e contratos de dominio pertencem a [especificacao geral](../../../docs/specification.md)
+e a [arquitetura geral](../../../docs/architecture.md), nunca aos componentes.
+Essas fontes sao apenas consultadas neste planejamento. O escopo do PR fica
+nos documentos do renderer, com no maximo a referencia ao frontend no plano
+geral; nao inclui alterar regras, documentos, modelo ou API do nucleo.
+
+## Diretrizes e propostas
+
+- Acordado: frontend em `src/renderer/`, nucleo agnostico, separacao entre
+  estado de dominio, apresentacao e rascunhos; componentes recebem dados
+  somente de leitura e emitem intencoes. Nao implementar regras ausentes do
+  nucleo, nem criar todas as pastas antecipadamente.
+- Planejamento discutido: base visual, inspecao isolada e primeira integracao
+  funcional, nessa ordem, com testes em cada incremento. Os nomes de
+  componentes abaixo sao propostas, nao APIs implementadas ou obrigacao de
+  criar um arquivo por conceito.
+- Recomendacao tecnica: manter Vue, TypeScript, Vite e CSS com tokens; nao
+  adicionar inicialmente Tailwind, Pinia, Router, microfrontends ou releases
+  independentes. O produto continua sendo o aplicativo Electron.
+- Ferramentas propostas: Inter empacotada localmente, Lucide Vue para icones,
+  Vue Test Utils com jsdom para componentes e Playwright para verificacao
+  visual/ponta a ponta. Ainda nao instaladas ou declaradas aprovadas apenas
+  porque a organizacao de pastas foi aceita.
+- Acordado apos esclarecimento: sem tooltip na entrega 1; manter nome
+  acessivel de botoes de icone. Reka UI nao entra apenas para tooltip.
+  Bibliotecas de dialogos/selecoes podem ser avaliadas na entrega que precisar
+  desses comportamentos, sem construir uma biblioteca inteira antes do uso.
+
+## Referencias do Figma
+
+Na [pagina Telas](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=0-1)
+foram inventariados 11 frames. Execucao, edicao, andamento e estado vazio
+foram inspecionados visualmente nesta retomada. Eles compartilham uma area de
+trabalho; nao sao 11 aplicacoes ou rotas independentes.
+
+| Referencia                      | Uso na implementacao                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------ |
+| Tela principal                  | Toolbar, lista de tarefas, Gantt, painel do sistema e detalhes/jobs como composicao comum. |
+| Configurar, editar e remover    | Dialogos sobre a mesma area de trabalho, com rascunho e confirmacao.                       |
+| Andamento, bloqueio e conclusao | Estados da sessao e sobreposicoes; nao recriar a composicao inteira.                       |
+| Erro de importacao e alertas    | Mensagens contextualizadas, distintas do banner de falhas inesperadas (DEC-24).            |
+| Estado vazio                    | Referencia para a preparacao; nao copiar tick zero antes do inicio explicito.              |
+| Exportacao                      | Referencia de layout, nao evidencia de exportacao integral ou contrato ja implementado.    |
+
+As Fundacoes ja possuem nomes CSS, como `--color-bg-app`,
+`--color-text-primary` e `--spacing-xs`, familia Inter e variantes dos botoes.
+Reutilizar essas referencias; corrigir os contrastes conhecidos, sem reduzir
+texto essencial apenas para caber. Os quatro exemplos de cores nao formam um
+ciclo para atribuir tarefas. ID imutavel e rollback no cancelamento do
+prototipo nao prevalecem sobre os acordos documentados. Tooltip nao foi
+encontrado como componente definido no material inspecionado; uma consulta
+adicional de reacoes nao retornou resultado, portanto nao ha afirmacao de
+auditoria completa de todas as interacoes do arquivo.
+
+## Modulos e fronteiras
+
+| Area proposta             | Responsabilidade                                                                         | Limite                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `components/`             | Botoes, campos, mensagens e demais elementos genericos quando necessarios.               | Nao conhece tarefa, job ou Simulator.                            |
+| `features/session/`       | Toolbar, composicao vazia e apresentacao de preparacao, andamento, bloqueio e conclusao. | Nao executa politica nem decide termino/bloqueio.                |
+| `features/inspection/`    | Lista de tarefas, detalhes, tabela de jobs e CPUs.                                       | Apenas consulta os dados publicados e emite selecao.             |
+| `features/configuration/` | Formularios, rascunhos, confirmacoes e diagnosticos.                                     | Nao duplica validacao semantica ou modifica snapshots.           |
+| `features/gantt/`         | Projecao dos registros, geometria, desenho, selecao e SVG.                               | Nao inventa eventos nem reconstroi regras ausentes do nucleo.    |
+| `composables/`            | Coordenacao Vue, selecao, dialogos, zoom e publicacao dos dados.                         | Nao guarda outra copia mutavel do dominio.                       |
+| `adapters/`               | Consumo da API publica do nucleo e da ponte autorizada de arquivos.                      | Sem componentes visuais; renderer nao importa Node/main/preload. |
+
+`App` compoe os modulos. O coordenador de sessao usa uma unica instancia
+privada do simulador ativo, mantida na fronteira do adaptador; nenhum painel
+cria outra. `WorkspaceLayout` apenas distribui slots de toolbar, lateral e
+conteudo. `Root` continua com `ErrorBanner` fora de `App`, para o banner
+sobreviver a falhas na inicializacao da aplicacao.
+
+### Dados e comandos
+
+Snapshot e consultas publicas do nucleo passam pelo adaptador e por funcoes
+puras de projecao ate as propriedades dos componentes. Cliques e formularios
+emitem intencoes; o coordenador chama o comando, trata seu resultado e so
+publica dados confirmados. Componentes nao recebem `Simulator` ou estado vivo.
+
+Projecoes preparam rotulos, percentuais e linhas de tabela, mas nao executam
+politicas, sorteiam, rederivam elegibilidade ou inventam ranking. A consulta
+de intervalos/totais de CPU desligada e `summarizeCpuOff` (DEC-21), nao uma
+implementacao nova no Gantt. Para a experiencia planejada, a UI precisa
+receber valores efetivos de cada job quando houver edicao da tarefa. Isso
+e uma expectativa de dados a conferir na integracao, nao uma exigencia de
+acrescentar campos em Job ou prescrever como o nucleo os representa.
+
+`useSimulation` ja expoe `view`, `load` e `tick`, com `CommandResult`
+(DEC-23/DEC-24, #17/#65 concluidas). Preservar esse contrato e o tratamento
+central de erros; nao duplicar banner, handlers ou classificacao por painel.
+`load` ja inicializa t=0, enquanto FE-02/FE-04 exigem preparacao antes de
+iniciar. Essa integracao precisa ser fechada antes da entrega 3: nao chamar
+`load` ao importar/preparar e esconder o snapshot como se o motor nao tivesse
+iniciado, nem alterar o adaptador nesta entrega documental.
+
+Estado de apresentacao: selecao, zoom, rolagem e dialogo aberto. Estado de
+rascunho: valores ainda nao aplicados. Configuracao vigente, relogio, jobs,
+CPUs, eventos e historico continuam pertencendo ao nucleo. A disponibilidade
+dos comandos reflete a fase e as capacidades reais, nao a existencia de mocks.
+
+## Ordem proposta de implementacao
+
+Esta sequencia detalha dependencias das issues existentes, nao cria um plano
+concorrente nem autoriza comecar o frontend antes das entregas do nucleo.
+Nao e necessario fechar todos os detalhes visuais antes de preparar o
+incremento correspondente; resolver conflitos e lacunas quando afetarem seu
+contrato. O alinhamento de Q-05/DEC-08 na #35 continua sendo um gate.
+
+| Ordem | Entrega                                                                  | Verificacao e dependencia                                                                                                                  |
+| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | Base visual e area de trabalho vazia.                                    | Componentes, teclado, comparacao com Figma e redimensionamento; alinhamento de #35 antes da implementacao visual. Nao conclui #36.         |
+| 2     | Inspecao isolada de tarefas, jobs e CPUs.                                | Projecoes, selecao e estados em testes de componentes; parte somente de leitura da #37.                                                    |
+| 3     | Preparar, validar, iniciar, avancar um tick e atualizar os paineis.      | Integracao real com o nucleo, usando #17/#65 existentes e politicas de #19/#20; reconciliar preparacao com DEC-23.                         |
+| 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 ja concluida, #31/#32/#33/#34 ainda necessarias conforme escopo.           |
+| 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                           |
+| 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                              |
+| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                            |
+| 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG condicionado a DEC-08/#35. |
+
+Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
+substituem o nucleo na aplicacao ou habilitam comandos ficticios. Cada entrega
+deve deixar claro o que e visual, o que esta integrado e o que depende de
+contrato ainda ausente. A etapa 4 exige o tratamento de arquivos ja acordado,
+sem aplicar um filtro de aperiodicas como solucao para PEND-02.
+As referencias a issues do nucleo indicam dependencias de consumo: nenhuma
+delas passa a fazer parte deste PR. Planejar um componente isolado com dados
+de exemplo nao exige concluir o nucleo nem autoriza modifica-lo para atender
+ao exemplo. A integracao funcional so e verificada com contratos reais.
+
+## Entrega 1: base visual
+
+Objetivo: substituir a apresentacao do contador pela estrutura visual de
+preparacao, baseada no estado vazio do Figma, sem implementar configuracao,
+escalonamento, historico ou Gantt. Nao criar um simulador apenas para desenhar
+o layout. Acoes ainda sem implementacao nao aparentam funcionar.
+
+| Incremento        | Ordem do codigo                                                                       | Criterio verificavel                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Fundacao          | Configurar testes de componentes, depois tokens CSS, estilos globais e fonte local.   | SFC monta no teste; testes do nucleo continuam em Node; aplicacao consome tokens.          |
+| Elementos basicos | `UiButton`, `UiIconButton`, `UiAlert` e adaptacao visual de `ErrorBanner`.            | Variantes, nome acessivel, foco e desabilitacao testados; banner sobrevive a falha de App. |
+| Composicao        | `WorkspaceLayout`, `SimulationToolbar` e `EmptyWorkspace`, depois verificacao visual. | Area de trabalho reconhecivel, sem sobreposicao ou comandos ficticios.                     |
+
+Contratos propostos:
+
+- `UiButton`: recebe variante, estado desabilitado e conteudo; emite clique.
+  Nao decide se uma operacao e permitida. Reusar as variantes do Figma.
+- `UiIconButton`: nome acessivel obrigatorio; sem tooltip na entrega 1.
+- `UiAlert`: aparencia de mensagem, sem conhecer parser ou simulador.
+  Nao confundir mensagem contextual de validacao com erro global inesperado.
+- `WorkspaceLayout`: slots de toolbar, lateral e conteudo, sem importar core.
+- `SimulationToolbar`: parametros e acoes disponiveis entram como dados;
+  sai a intencao do usuario. Nenhuma chamada direta ao motor.
+- `EmptyWorkspace`: apresenta preparacao sem tarefas e sem snapshot zero
+  ficticio. A implementacao funcional das acoes pertence a entrega 3/4.
+
+Verificacao: clique, desabilitacao, nome acessivel e foco nos testes; regressao
+do banner; screenshots em 1440 x 924 e 1024 x 768, conferindo textos e toolbar
+sem sobreposicao. Esses tamanhos sao cenarios iniciais, nao limites maximos
+ou definicao de tamanho minimo da janela. Nao ha teste de tooltip neste escopo.
+
+## Entrega 2: inspecao isolada
+
+Objetivo: apresentar tarefas, jobs e CPUs antes de integrar edicao, seguindo
+a lateral e os paineis inferiores da tela principal do Figma.
+
+| Componente proposto | Recebe                                                   | Emite                      |
+| ------------------- | -------------------------------------------------------- | -------------------------- |
+| `TaskList`          | Tarefas e identificacao da selecionada.                  | Selecionar tarefa.         |
+| `TaskDetails`       | Caracteristicas da tarefa selecionada.                   | Nenhum comando de dominio. |
+| `JobTable`          | Jobs, selecao e tick inspecionado.                       | Selecionar job.            |
+| `SystemInspector`   | CPUs, elegibilidade e pendencias informadas pelo nucleo. | Nenhum comando de dominio. |
+
+Ordem de codigo: funcoes de projecao e testes com exemplos tipados;
+`JobTable` e `SystemInspector`; `TaskList` e `TaskDetails`; coordenacao da
+selecao; verificacao dos estados do Figma e dos casos adicionais acordados.
+Reusar os elementos genericos da entrega 1, sem biblioteca de tabelas ou
+gerenciador global de estado apenas para essa composicao.
+
+Criterios: distinguir job concluido de tarefa aguardando; perda de prazo
+separada do estado; CPU ocupada/desligada conforme dados recebidos; selecao
+futura conforme FE-10; listas extensas consultaveis sem corte inacessivel.
+Nenhum componente recebe ou modifica o simulador vivo. Suspender, retomar e
+editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
+
+## Verificacao e pendencias tecnicas
+
+- Componentes SFC precisam do suporte Vue no Vitest e ambiente DOM somente
+  para os testes do renderer que o requerem. O ambiente Node do nucleo nao
+  deve ser trocado globalmente por jsdom.
+- Projecoes e geometria recebem testes puros; componentes, testes de
+  propriedades/eventos e teclado; integracao, testes dos comandos reais.
+  Playwright compara estados e viewports, nao uma captura unica para todo o app.
+- Codigo passa por `npm test`, `npm run lint` e `npm run typecheck`. Empacotar
+  nao equivale a validar distribuicao; E6 exige teste no ambiente-alvo.
+- Permanecem abertos os contratos detalhados das entregas 3 a 8, matriz de
+  disponibilidade completa, escalabilidade/redimensionamento alem dos casos
+  iniciais, foco dos dialogos e aprovacao das bibliotecas propostas. Isso nao
+  reabre os acordos funcionais ja aceitos na spec.
+- Nenhuma ferramenta foi instalada, nenhum componente foi implementado e
+  nenhum criterio de execucao foi marcado como atendido por este documento.
+- Diferencas entre expectativas da interface e a API disponivel ficam
+  registradas como dependencias, sem propor DECs ou alterar documentos do
+  nucleo neste escopo. Ajustes futuros de integracao precisam de verificacao
+  propria; esta arquitetura especifica somente a camada de apresentacao.
