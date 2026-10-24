@@ -31,10 +31,11 @@ afirma que os modulos planejados ja existem.
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
-  (ordem dos eventos em DEC-22) e faz
-  despacho global pela politica injetada, sorteando o empate residual relatado
-  (DEC-26), antes de publicar snapshots completos (DEC-07, DEC-14); rejeita configuracao invalida com `ConfigValidationError` e
-  expoe os jobs elegiveis somente para leitura (DEC-15).
+  (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
+  sorteando o empate residual relatado (DEC-26), antes de publicar snapshots
+  completos (DEC-07, DEC-14); rejeita configuracao invalida com
+  `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
+  (DEC-15).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
   `tick`, que devolvem resultado (DEC-23).
@@ -151,13 +152,34 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
-- Estado: proposta. Requisito: REQ-09.
-- Decisao proposta: linhas por tarefa em ID decrescente, CPU identificada em cada
-  trecho, faixas complementares por CPU para intervalos desligados. Exportar SVG
-  completo a partir dos dados, incluindo legenda e eventos.
+- Estado: aceita em 2026-10-24 (#35). Requisito: REQ-09. Resolve Q-05.
+- Decisao: linhas por tarefa em ID decrescente (menor ID junto ao eixo X) e, em
+  secao propria, uma faixa por CPU para os intervalos desligados (DEC-21); o
+  intervalo ainda aberto no instante atual termina nele. Cada trecho executado
+  identifica a CPU e o job (por exemplo, "CPU 1 · #2"). Um job posterior ja
+  ativado, mas nao elegivel por causa de DEC-02, mostra somente o marcador de
+  ativacao ate se tornar elegivel.
+- Estados (A.2.1): execucao com preenchimento na cor da tarefa, que e dado de
+  entrada; pronta sem preenchimento, com contorno tracejado na cor da tarefa;
+  suspensa com hachura sobre fundo escuro, lida como o "preto com preenchimento
+  diferente" do enunciado no tema escuro. Tarefa ainda nao ativada ou ja
+  terminada fica vazia, delimitada pelos marcadores. Estado suspenso so pode ser
+  desenhado com registros do nucleo (pendencia de DEC-12, #25/#26).
+- Eventos (A.2.2): marcadores com forma distinta e legenda para ingresso/ativacao,
+  termino do job, fim da tarefa (ultimo job, DEC-09), perda de prazo, sorteio,
+  preempcao e quantum vencido, alem do instante atual. "Termino" abrange job e
+  tarefa; o ultimo job gera os dois marcadores no mesmo instante.
+- Exportacao: SVG completo gerado a partir dos dados, com legenda e eventos.
+- Referencia visual: Tela principal na [pagina Telas do Figma](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=0-1),
+  confirmada pelo usuario como similar as figuras da secao 6.4 do livro do
+  Prof. Maziero (A.2.5, nao incluidas no repositorio). Detalhes de regua e
+  empilhamento de marcadores ficam em FE-17 do
+  [renderer](../src/renderer/docs/specification.md).
 - Justificativa: atender eixo Y e multiplas CPUs sem depender de screenshot ou
   limites de dimensao de canvas para imagens rasterizadas.
 - Consequencia: tela pode usar zoom/rolagem; exportacao nao depende do viewport.
+  #38 e #39 passam a seguir esta decisao; nenhuma muda de escopo, e #38 inclui o
+  rotulo de job e os marcadores de preempcao e quantum vencido.
 
 ### DEC-09: Ativacoes finitas e termino de tarefas
 

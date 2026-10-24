@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-23. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-24. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -251,6 +251,9 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 
 - #35 Resolver Q-05 e avaliar DEC-08 antes da implementacao visual.
+  Decisao registrada em 2026-10-24, aceita pelo usuario: DEC-08 aceita e Q-05
+  resolvida (rotulo de job, vazio para nao ativada/terminada, termino de job e
+  de tarefa, SVG). Issue segue aberta ate revisao do registro.
 - #36 Implementar controles de configuracao, execucao e navegacao no historico.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
@@ -290,13 +293,16 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
   planejamento da apresentacao e suas expectativas de integracao, sem alterar
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
+  #35 (2026-10-24): DEC-08 aceita e Q-05 resolvida no PR #76 (merged,
+  `5dd741f`); #38 segue DEC-08 e #39 nao muda de escopo.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
 - #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
   motor e evento (DEC-26); evidencias em E2. Fecha no merge do PR.
-- Proximo passo: revisar e integrar o PR #75 (#20); depois #21. Manter os
-  diagnosticos de DEC-19 nos escopos de #31 e #34.
-- Pendencias: Q-02, Q-05 e Q-06 conforme fase; DEC-08 ainda proposta.
+- Proximo passo: revisar e integrar o PR #75 (#20); depois #21 e a #68. Manter
+  os diagnosticos de DEC-19 nos escopos de #31 e #34.
+- Pendencias: Q-02 e Q-06 conforme fase; Q-05 resolvida e DEC-08 aceita na
+  #35.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega
