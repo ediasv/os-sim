@@ -96,6 +96,9 @@ export function checkDecision(
     const { tie } = decision;
     if (tie !== undefined) {
         const tied = new Set<string>();
+        // Only distinct, unselected candidates can be drawn, so only they
+        // count towards leaving a job out.
+        let drawable = 0;
         for (const ref of tie.candidates) {
             const id = key(ref);
             if (!candidates.has(id)) {
@@ -104,6 +107,8 @@ export function checkDecision(
                 issues.push(`Job ${id} is tied more than once.`);
             } else if (seen.has(id)) {
                 issues.push(`Job ${id} is both selected and tied.`);
+            } else {
+                drawable++;
             }
             tied.add(id);
         }
@@ -111,9 +116,9 @@ export function checkDecision(
             issues.push(
                 `Tie must fill at least one CPU, got ${tie.slots} slots.`,
             );
-        } else if (tie.slots >= tied.size) {
+        } else if (tie.slots >= drawable) {
             issues.push(
-                `Tie must leave out at least one job: ${tie.slots} slots for ${tied.size} tied jobs.`,
+                `Tie must leave out at least one job: ${tie.slots} slots for ${drawable} tied jobs.`,
             );
         }
     }

@@ -145,7 +145,11 @@ export type SimulationEvent =
           readonly by: JobRef;
       }
     | {
-          /** Residual tie resolved by a draw; marked when the winner (re)starts (A.4.3). */
+          /**
+           * Residual tie resolved by a draw (A.4.3). Logged for every draw,
+           * including when a winner was already running and keeps its CPU, so
+           * it need not pair with a start (DEC-26).
+           */
           readonly kind: 'tie-break';
           readonly time: number;
           readonly winner: JobRef;

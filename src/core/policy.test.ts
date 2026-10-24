@@ -261,7 +261,10 @@ describe('checkDecision', () => {
                     selected: [ref(1)],
                     tie: { candidates: [ref(2), ref(9)], slots: 1 },
                 }),
-            ).toEqual(['Tied job 9.0 is not a candidate.']);
+            ).toEqual([
+                'Tied job 9.0 is not a candidate.',
+                'Tie must leave out at least one job: 1 slots for 1 tied jobs.',
+            ]);
         });
 
         it('reports a job tied more than once', () => {
@@ -279,7 +282,10 @@ describe('checkDecision', () => {
                     selected: [ref(1)],
                     tie: { candidates: [ref(1), ref(2)], slots: 1 },
                 }),
-            ).toEqual(['Job 1.0 is both selected and tied.']);
+            ).toEqual([
+                'Job 1.0 is both selected and tied.',
+                'Tie must leave out at least one job: 1 slots for 1 tied jobs.',
+            ]);
         });
 
         it('reports a tie that fills no CPU', () => {

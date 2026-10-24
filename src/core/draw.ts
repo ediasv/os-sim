@@ -26,13 +26,19 @@ export function nextRandom(state: number): { value: number; state: number } {
  * Picks `slots` distinct winners from the tied jobs, in draw order, as plain
  * `{ taskId, index }` copies. The group is sorted by task ID and job index
  * first so the result depends only on its members and the state, never on
- * the order the policy listed them in.
+ * the order the policy listed them in. Throws unless `slots` is an integer
+ * that fills at least one CPU and leaves at least one job out (DEC-26).
  */
 export function drawWinners(
     tied: readonly DeepReadonly<JobRef>[],
     slots: number,
     state: number,
 ): { winners: JobRef[]; state: number } {
+    if (!Number.isInteger(slots) || slots < 1 || slots >= tied.length) {
+        throw new RangeError(
+            `Cannot draw ${slots} winners from ${tied.length} tied jobs.`,
+        );
+    }
     const remaining = tied
         .map(({ taskId, index }) => ({ taskId, index }))
         .sort(compareJobRefs);

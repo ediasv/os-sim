@@ -50,6 +50,15 @@ describe('drawWinners', () => {
         );
     });
 
+    it.each([0, 3, 4, 1.5])(
+        'rejects %s slots for 3 tied jobs (DEC-26)',
+        (slots) => {
+            expect(() =>
+                drawWinners([ref(1), ref(2), ref(3)], slots, DRAW_SEED),
+            ).toThrow(RangeError);
+        },
+    );
+
     it('returns plain copies, not the tied objects', () => {
         const tied = [{ taskId: 1, index: 0, extra: true }, ref(2)];
         const { winners } = drawWinners(tied, 1, DRAW_SEED);
