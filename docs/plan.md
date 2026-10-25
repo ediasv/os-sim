@@ -313,6 +313,13 @@ Requisito: REQ-10; integracao de todos os anteriores.
   exercitado. Checkouts Windows anteriores ao `.gitattributes` mantem CRLF
   ate um refresh unico dos arquivos (ou novo clone).
   Fecha so no merge do PR.
+- #68 (F2, fundacoes visuais do renderer) pronta para revisao em 2026-10-25,
+  com o gate da #35 ja em `main` (`5dd741f`): tokens, estilos base e Inter
+  empacotada (`@fontsource-variable/inter`, OFL-1.1). Os valores dos tokens
+  NAO foram conferidos contra o Figma (sem acesso a ele na sessao) e precisam
+  de revisao visual; detalhes e evidencia em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
+  Fecha so no merge do PR e apos essa conferencia.
 - Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
   (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
