@@ -687,6 +687,35 @@ anterior. Data inicial dos registros: 2026-10-12.
       candidatas (ordem do arquivo), desempate escondido que REQ-07 proibe;
       RM e EDF nao devem ser expostos ao usuario (E4/E5) antes da #20.
 
+### DEC-26: Sem testes de escalonabilidade
+
+- Estado: aceita em 2026-10-24 (decidida pelo usuario na #22). Requisitos:
+  REQ-07; afeta a apresentacao (REQ-09, REQ-10).
+- Decisao:
+    1. O simulador nao calcula nem exibe utilizacao, limite de RM
+       (U <= n(2^(1/n) - 1)), limite de EDF (U <= 1) ou qualquer veredito de
+       escalonabilidade. O resultado mostrado e a propria simulacao: Gantt,
+       perdas de prazo e tempo de CPU desligada.
+    2. Texto do aplicativo, da documentacao ou da demonstracao (#45) que
+       citar esses testes deixa claro que os limites de um processador, com
+       prazo igual ao periodo, nao garantem nada com varias CPUs, prazo
+       diferente do periodo ou aperiodicas, e que uma simulacao finita sem
+       perda de prazo nao prova escalonabilidade.
+- Justificativa: o enunciado pede RM e EDF (A.4), nao testes de
+  escalonabilidade. Com fila global e varias CPUs (REQ-02), prazo diferente
+  do periodo e aperiodicas (DEC-09, DEC-10, DEC-17), os limites da secao 2.4
+  da referencia teorica podem aprovar conjuntos que perdem prazo e reprovar
+  conjuntos que cumprem; exibi-los convidaria a le-los como garantia.
+- Alternativas descartadas:
+    - Exibir so a utilizacao, com ressalva: informacao sem uso definido no
+      enunciado.
+    - Exibir utilizacao e limites de RM/EDF com aviso: mais trabalho na E5 e
+      risco de leitura como garantia mesmo com o aviso.
+- Consequencias:
+    - A interface (E5) nao tem painel nem indicador de escalonabilidade.
+    - Analise de escalonabilidade para varios processadores fica fora do
+      escopo; exibir qualquer teste exige nova DEC.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.

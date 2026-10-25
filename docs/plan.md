@@ -190,6 +190,11 @@ Requisito: REQ-07.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
+  Decidida pelo usuario em 2026-10-24 (DEC-26): nada e exibido; citacoes
+  trazem a ressalva de varias CPUs e de simulacao finita. Registrada em
+  REQ-07 e no escopo da [spec do frontend](../src/renderer/docs/specification.md).
+  Evidencia (2026-10-24): links locais e IDs cruzados conferidos; mudanca so
+  documental, testes nao executados.
 
 ### E3: Controle, historico e edicao
 
@@ -291,6 +296,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
   Lint global segue reprovado por CRLF preexistente. Fecha so no merge do PR.
+- #22 decidida em 2026-10-24 (DEC-26, sem testes de escalonabilidade);
+  mudanca so documental, evidencias em E2. Fecha no merge do PR #77.
 - Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
   (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
