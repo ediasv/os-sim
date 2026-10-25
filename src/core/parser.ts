@@ -55,6 +55,29 @@ export type ConfigParseResult =
       }
     | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
 
+/** Text received for each field, as written (trimmed), keyed by core field. */
+export type ConfigFieldTexts = Readonly<Partial<Record<ConfigField, string>>>;
+
+/**
+ * What could be formed from the file despite syntax issues: the header and the
+ * tasks that parsed, with where and how each was written (DEC-19).
+ */
+export interface ConfigDraft {
+    readonly config: SystemConfig;
+    readonly lines: ConfigSourceLines;
+    /** Texts received for the header fields. */
+    readonly headerTexts: ConfigFieldTexts;
+    /** Texts received for `config.tasks[i]`, in the same order. */
+    readonly taskTexts: readonly ConfigFieldTexts[];
+}
+
+export interface ConfigAnalysis {
+    /** Every syntax issue found; empty when the file is structurally valid. */
+    readonly issues: readonly ConfigParseIssue[];
+    /** Null when the header cannot be formed without inventing values. */
+    readonly draft: ConfigDraft | null;
+}
+
 interface SourceLine {
     readonly number: number;
     readonly text: string;
@@ -65,13 +88,26 @@ interface SourceLine {
  * core validator (DEC-10). Source line numbers are retained for diagnostics.
  */
 export function parseConfig(text: string): ConfigParseResult {
+    const { issues, draft } = analyzeConfig(text);
+    if (issues.length > 0 || draft === null) {
+        return { ok: false, issues };
+    }
+    return { ok: true, config: draft.config, lines: draft.lines };
+}
+
+/**
+ * Like `parseConfig`, but also returns the partial configuration when syntax
+ * issues exist, so the loader can add the core's problems to the same report
+ * (DEC-19). The caller must not apply a draft that comes with issues.
+ */
+export function analyzeConfig(text: string): ConfigAnalysis {
     const issues: ConfigParseIssue[] = [];
     const lines = text.split(/\r\n|\n|\r/);
     const sourceLines: SourceLine[] = lines
         .map((line, index) => ({ number: index + 1, text: line.trim() }))
         .filter((line) => line.text.length > 0);
     const headerLine = sourceLines[0];
-    let header: Omit<SystemConfig, 'tasks'> | null = null;
+    let header: ParsedHeader | null = null;
     let taskLines = sourceLines.slice(1);
 
     // A numeric first field means the header is missing: task lines start with
@@ -93,6 +129,7 @@ export function parseConfig(text: string): ConfigParseResult {
 
     const tasks: TaskDefinition[] = [];
     const taskLineNumbers: number[] = [];
+    const taskTexts: ConfigFieldTexts[] = [];
 
     if (taskLines.length === 0) {
         const endsWithLineBreak = /(?:\r\n|\n|\r)$/.test(text);
@@ -108,31 +145,38 @@ export function parseConfig(text: string): ConfigParseResult {
     }
 
     for (const line of taskLines) {
-        const task = parseTask(line, issues);
-        if (task) {
-            tasks.push(task);
+        const parsed = parseTask(line, issues);
+        if (parsed) {
+            tasks.push(parsed.task);
             taskLineNumbers.push(line.number);
+            taskTexts.push(parsed.texts);
         }
     }
 
-    if (!header || !headerLine || issues.length > 0) {
-        return { ok: false, issues };
+    if (!header || !headerLine) {
+        return { issues, draft: null };
     }
 
     return {
-        ok: true,
-        config: {
-            ...header,
-            tasks,
+        issues,
+        draft: {
+            config: { ...header.config, tasks },
+            lines: { header: headerLine.number, tasks: taskLineNumbers },
+            headerTexts: header.texts,
+            taskTexts,
         },
-        lines: { header: headerLine.number, tasks: taskLineNumbers },
     };
+}
+
+interface ParsedHeader {
+    readonly config: Omit<SystemConfig, 'tasks'>;
+    readonly texts: ConfigFieldTexts;
 }
 
 function parseHeader(
     line: SourceLine,
     issues: ConfigParseIssue[],
-): Omit<SystemConfig, 'tasks'> | null {
+): ParsedHeader | null {
     const fields = stripOptionalFinalSemicolon(line.text)
         .split(';')
         .map((field) => field.trim());
@@ -188,13 +232,21 @@ function parseHeader(
     ) {
         return null;
     }
-    return { algorithm, quantum, cpuCount };
+    return {
+        config: { algorithm, quantum, cpuCount },
+        texts: textsOf(HEADER_FIELDS, fields),
+    };
+}
+
+interface ParsedTask {
+    readonly task: TaskDefinition;
+    readonly texts: ConfigFieldTexts;
 }
 
 function parseTask(
     line: SourceLine,
     issues: ConfigParseIssue[],
-): TaskDefinition | null {
+): ParsedTask | null {
     // DEC-20: the event list is everything after the sixth ";", kept with its
     // inner separators; without a sixth ";" the task simply has no events.
     const segments = stripOptionalFinalSemicolon(line.text).split(';');
@@ -239,7 +291,19 @@ function parseTask(
     ) {
         return null;
     }
-    return { id, color, arrival, duration, period, deadline, rawEvents };
+    return {
+        task: { id, color, arrival, duration, period, deadline, rawEvents },
+        texts: textsOf(TASK_FIELDS, fields),
+    };
+}
+
+function textsOf(
+    names: readonly ConfigField[],
+    fields: readonly string[],
+): ConfigFieldTexts {
+    return Object.fromEntries(
+        names.map((name, index) => [name, fields[index]]),
+    );
 }
 
 /**

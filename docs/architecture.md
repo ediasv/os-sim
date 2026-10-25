@@ -13,6 +13,11 @@ afirma que os modulos planejados ja existem.
   `requireValidConfig` e o unico ponto que lanca esse erro (DEC-28).
 - [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
   e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
+  `analyzeConfig` devolve, junto dos erros, a configuracao parcial com linhas e
+  textos recebidos; `parseConfig` a descarta quando ha erros.
+- [Carregamento](../src/core/loadConfig.ts): `loadConfig` junta o parser e
+  `validateConfig` num so relatorio, com linha, campo e valor recebido nos
+  problemas do nucleo (DEC-19); nao repete regras semanticas.
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseConfig } from './parser';
+import { analyzeConfig, parseConfig } from './parser';
 
 const standardFile = ['RM;5;2', '1;abcdef;0;2;5;7;ML1:3;MU1:4'].join('\n');
 
@@ -299,5 +299,46 @@ describe('parseConfig', () => {
         expect(
             parsedConfig(['RM;1;1', ...tasks].join('\n')).tasks,
         ).toHaveLength(tasks.length);
+    });
+});
+
+describe('analyzeConfig', () => {
+    it('keeps the tasks that parsed, with their lines and received texts, next to the syntax issues', () => {
+        const { issues, draft } = analyzeConfig(
+            'rm; 5;1\n\n1;abc;x;1;0;1\n2; abcdef ;0;1;0;1;E1',
+        );
+
+        expect(issues.map(({ line, field }) => ({ line, field }))).toEqual([
+            { line: 3, field: 'ingresso' },
+        ]);
+        expect(draft?.config.tasks.map((task) => task.id)).toEqual([2]);
+        expect(draft?.lines).toEqual({ header: 1, tasks: [4] });
+        expect(draft?.headerTexts).toMatchObject({
+            algorithm: 'rm',
+            quantum: '5',
+        });
+        expect(draft?.taskTexts).toEqual([
+            {
+                id: '2',
+                color: 'abcdef',
+                arrival: '0',
+                duration: '1',
+                period: '0',
+                deadline: '1',
+            },
+        ]);
+    });
+
+    it('has no draft when the header cannot be formed', () => {
+        expect(analyzeConfig('RM;bad;1\n1;FFFFFF;0;1;0;1').draft).toBeNull();
+        expect(analyzeConfig('1;FFFFFF;0;1;0;1').draft).toBeNull();
+    });
+
+    it('agrees with parseConfig on a valid file', () => {
+        const analysis = analyzeConfig(standardFile);
+        const parsed = parseConfig(standardFile);
+
+        expect(analysis.issues).toEqual([]);
+        expect(parsed.ok && parsed.config).toEqual(analysis.draft?.config);
     });
 });
