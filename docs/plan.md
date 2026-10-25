@@ -273,8 +273,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
   de erros semanticos do parser permanece na #31, que pode usar `lines` do
   resultado.
-- #63 em revisao no PR #64 (iniciada em 2026-10-23); mutacoes e gates
-  registrados em E1. Fecha no merge do PR.
+- #63 concluida no PR #64 (merged); mutacoes e gates registrados em E1.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -287,19 +286,19 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
   planejamento da apresentacao e suas expectativas de integracao, sem alterar
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
-  #35 (2026-10-24): DEC-08 aceita e Q-05 resolvida em revisao no PR da branch
-  `docs/35-gantt-decision`; #38 segue DEC-08 e #39 nao muda de escopo.
-- #19 em revisao no PR #74 (iniciada em 2026-10-24): RM, EDF e registro de
-  politicas por algoritmo (DEC-25); evidencias em E2. Fecha no merge do PR.
-- #67 (F1, infraestrutura de testes do renderer) pronta para revisao em
-  2026-10-24: Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste do
-  ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
+  #35 concluida no PR #76 (merged, `5dd741f`, 2026-10-24): DEC-08 aceita e
+  Q-05 resolvida; #38 segue DEC-08 e #39 nao muda de escopo. Apenas
+  documentacao; links e IDs conferidos, sem build.
+- #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
+  politicas por algoritmo (DEC-25); evidencias em E2.
+- #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
+  `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
+  do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
   Lint global reprovado por CRLF preexistente na epoca; causa tratada na #80.
-  Fecha so no merge do PR.
-- #22 decidida em 2026-10-24 (DEC-26, sem testes de escalonabilidade);
-  mudanca so documental, evidencias em E2. Fecha no merge do PR #77.
-- #80 (E6, ambiente) pronta para revisao em 2026-10-25, escopo ampliado para
+- #22 concluida no PR #77 (merged, `da52d14`; DEC-26, sem testes de
+  escalonabilidade); mudanca so documental, evidencias em E2.
+- #80 (E6, ambiente) concluida no PR #81 (merged, `5a569db`), escopo ampliado para
   incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
   24.22.1 em `devEngines.runtime` no `package.json`, lido pelos workflows CI e
   release (`node-version-file`), e `.gitattributes` com `* text=auto eol=lf`.
@@ -312,20 +311,21 @@ Requisito: REQ-10; integracao de todos os anteriores.
   executados (sem push; clone LF equivale ao checkout Linux), release nao
   exercitado. Checkouts Windows anteriores ao `.gitattributes` mantem CRLF
   ate um refresh unico dos arquivos (ou novo clone).
-  Fecha so no merge do PR.
-- #68 (F2, fundacoes visuais do renderer) pronta para revisao em 2026-10-25,
-  com o gate da #35 ja em `main` (`5dd741f`): tokens, estilos base e Inter
-  empacotada (`@fontsource-variable/inter`, OFL-1.1). Valores lidos da pagina
-  Fundacoes do Figma (tema escuro), com 4 desvios de contraste documentados;
-  comparacao visual lado a lado e app Electron ainda nao executados.
+- #68 (F2, fundacoes visuais do renderer) concluida no PR #82 (merged,
+  `700a178`, 2026-10-25), com o gate da #35 ja em `main`: tokens, estilos base e
+  Inter empacotada (`@fontsource-variable/inter`, OFL-1.1). Valores lidos da
+  pagina Fundacoes do Figma (tema escuro), com 4 desvios de contraste
+  documentados; `npm test` 253/253, typecheck e lint aprovados, CI verde.
+  Revisao do PR: links da doc e heranca de cor do botao Dismiss corrigidos.
+  Nao executados: app Electron e comparacao visual lado a lado com o Figma
+  (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-  Fecha so no merge do PR.
-- Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
-  (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
+- Proximo passo: integrar o PR #75 (#20); depois #70 (controles e mensagens
+  do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
-- Pendencias: Q-02 e Q-06 conforme fase; Q-05 resolvida e DEC-08 aceita na #35
-  (pendente de merge).
+- Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
+  #35.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega
