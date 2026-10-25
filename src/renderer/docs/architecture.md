@@ -250,46 +250,60 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
 Primeiro incremento da entrega 1, sem componentes funcionais, sem alterar
 `App`, `ErrorBanner` ou o nucleo.
 
-- [tokens.css](styles/tokens.css): unica fonte de cores semanticas,
-  espacamentos, raios, sombras e tipografia, com os nomes das Fundacoes do Figma
-  (`--color-bg-app`, `--color-text-primary`, `--spacing-xs`, ...). Cores de
-  tarefa nao tem token: sao dados de entrada (REQ-06), sem ciclo de quatro cores.
-- [base.css](styles/base.css): padroes de elemento e anel de foco, so com
-  `var(--...)`. [index.css](index.css) importa fonte, tokens e base.
+- [tokens.css](styles/tokens.css): unica fonte dos valores da pagina
+  [Fundacoes](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=60-163)
+  (colecao `os-sim`, **modo escuro**): cores semanticas, espacamento, raio e os
+  11 estilos de texto, com os nomes de codigo do Figma (`--color-bg-app`,
+  `--color-text-primary`, `--spacing-xs`, `--font-body-md`, ...). Os
+  `--font-*` sao o shorthand `font` (peso, tamanho, `normal`, familia). O
+  Figma nao define sombras; nao ha token delas. Cores de tarefa nao tem token:
+  `task/1..4` sao amostras e o "ciclo de quatro cores" do Figma nao vale (REQ-06).
+- [base.css](styles/base.css): `color-scheme: dark`, corpo com
+  `--font-body-md`, anel de foco, so com `var(--...)`. [index.css](index.css)
+  importa fonte, tokens e base.
 - Inter via `@fontsource-variable/inter` (OFL-1.1), importada do pacote e
   emitida pelo Vite no bundle: sem servico externo de fontes. Justificativa: a
   forma usual de empacotar Inter localmente com Vite, sem copiar binarios para
   o repositorio. Custo: `wght.css` inclui todos os subconjuntos (cerca de 220 kB
   de woff2); reduzir a latin/latin-ext se o tamanho do pacote importar.
-- Legibilidade: texto essencial nunca abaixo de 12 px; texto principal,
-  secundario e esmaecido passam de 4,5:1 em todas as superficies, assim como
-  textos sobre accent/danger e de feedback; borda forte e anel de foco passam
-  de 3:1. Os contrastes insuficientes conhecidos do prototipo nao foram
-  reproduzidos.
-- [Teste das fundacoes](styles/foundations.test.ts): razoes de contraste WCAG,
-  ausencia de tokens de cor de tarefa, de valores literais em `base.css` e de
-  URLs externas. O CSS e lido com `?raw`; o `vitest.config.mts` libera o
-  processamento de `.css?raw`, que o Vitest esvazia por padrao.
+- [Teste das fundacoes](styles/foundations.test.ts): valores iguais aos do
+  Figma, contraste WCAG, ausencia de tokens de cor de tarefa, de valores
+  literais em `base.css` e de URLs externas. O CSS e lido com `?raw`; o
+  `vitest.config.mts` libera o processamento de `.css?raw`, que o Vitest esvazia
+  por padrao.
 
-Limitacao conhecida: os valores numericos dos tokens sao provisorios. A pagina
-Fundacoes do Figma nao pode ser lida na sessao (sem ferramenta do Figma; o
-acesso web falha por WebGL/403) e os documentos so registram nomes. Antes do
-merge, conferir os valores com o Figma e ajustar `tokens.css`; o teste continua
-valendo como piso de contraste.
+Desvios do Figma, para corrigir contrastes conhecidos como insuficientes:
+
+| Token                        | Figma        | Aqui      | Motivo                                                      |
+| ---------------------------- | ------------ | --------- | ----------------------------------------------------------- |
+| `--color-text-on-color`      | `#FFFFFF`    | `#171A21` | Branco da 3,23:1 sobre accent e 3,67:1 sobre danger.        |
+| `--color-accent-text`        | (nao existe) | `#6E9FFB` | Accent como texto: 4,35:1 em `bg-raised`, 4,37:1 em subtle. |
+| `--color-status-danger-text` | (nao existe) | `#F27878` | Danger como texto: 4,22:1 em surface, 3,83:1 em raised.     |
+| `--color-focus-ring`         | (nao existe) | `#6E9FFB` | Anel de foco acima de 3:1 em todas as superficies.          |
+
+Os fills `accent-default` e `status-danger` ficam como no Figma; os `-text`
+sao para texto sobre superficies. Outras ressalvas: `border-default` (1,5:1) so
+separador, nao delimita controle; os estilos de 9 a 11 px (`label-xs`,
+`body-sm`, `body-xs`, `badge-*`) existem como no Figma, mas nao devem levar
+texto essencial (o teste exige 12 px ou mais nos estilos essenciais). O texto
+sobre cor de tarefa e o adaptativo preto/branco (FE-DEC-10) ficam para o Gantt;
+`text-on-task` so e o padrao escuro e passa de 4,5:1 nas amostras do Figma.
 
 ### Evidencia da #68 (2026-10-25)
 
 Sobre `main` em `5a569db`, worktree `feat/68-renderer-visual-foundations`,
 Node 24.22.1 (via `npm exec --package=node@24`; o Node global e 25.8.0):
 
-- `vitest run` 250/250 em 15 arquivos (8 novos); `vue-tsc` e `tsc` do nucleo
-  sem erros; `oxlint` sem achados; `oxfmt --check` limpo nos arquivos
-  alterados. O `oxfmt --check` global acusa 40 arquivos preexistentes por CRLF
-  neste checkout anterior ao `.gitattributes` (#80); nenhum e da #68.
+- `vitest run` 252/252 em 15 arquivos (10 novos); `vue-tsc` sem erros;
+  `oxlint` sem achados; `oxfmt --check` limpo. Primeira versao dos tokens
+  (valores provisorios, tema claro) foi substituida apos ler o Figma.
+- Valores lidos do Figma pela API do MCP (`get_metadata` da pagina Fundacoes,
+  2026-10-25), somente leitura; o teste fixa cada valor.
 - Build do renderer (`vite build` em pasta temporaria): 7 woff2 da Inter no
-  bundle e nenhuma URL externa no CSS gerado.
-- Nao executados: aplicativo Electron, comparacao visual com o Figma,
-  screenshots, pacote no ambiente-alvo.
+  bundle e nenhuma URL externa no CSS gerado (verificado na primeira versao;
+  `index.css` nao mudou).
+- Nao executados: aplicativo Electron, comparacao visual lado a lado com o
+  Figma, screenshots, pacote no ambiente-alvo.
 
 ## Verificacao e pendencias tecnicas
 

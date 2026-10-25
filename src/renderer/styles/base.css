@@ -5,14 +5,15 @@
     box-sizing: border-box;
 }
 
+:root {
+    color-scheme: dark;
+}
+
 body {
     margin: 0;
     background: var(--color-bg-app);
     color: var(--color-text-primary);
-    font-family: var(--font-family-sans);
-    font-size: var(--font-size-md);
-    font-weight: var(--font-weight-regular);
-    line-height: var(--line-height-normal);
+    font: var(--font-body-md);
     -webkit-font-smoothing: antialiased;
 }
 

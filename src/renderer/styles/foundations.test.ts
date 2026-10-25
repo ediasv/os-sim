@@ -37,30 +37,88 @@ function color(name: string): string {
     return value!;
 }
 
+const SURFACES = [
+    'color-bg-app',
+    'color-bg-surface',
+    'color-bg-raised',
+    'color-bg-track',
+    'color-bg-suspended',
+];
+
+// Values read from the Figma "Fundacoes" page (os-sim collection, dark mode).
+const FIGMA_VALUES: Record<string, string> = {
+    'color-bg-app': '#171a21',
+    'color-bg-surface': '#21242e',
+    'color-bg-raised': '#292b38',
+    'color-bg-track': '#1c1f29',
+    'color-bg-suspended': '#141419',
+    'color-border-default': '#3d404f',
+    'color-text-primary': '#edf0f5',
+    'color-text-secondary': '#9ea3b2',
+    'color-text-on-task': '#171a21',
+    'color-accent-default': '#548cfa',
+    'color-accent-subtle': '#1f2b45',
+    'color-status-danger': '#e55454',
+    'color-status-danger-subtle': '#342228',
+    'color-status-warning': '#f2b840',
+    'color-status-warning-subtle': '#36301f',
+    'color-status-success': '#4dbd78',
+    'color-status-success-subtle': '#1d3027',
+    'spacing-2xs': '4px',
+    'spacing-xs': '8px',
+    'spacing-sm': '12px',
+    'spacing-md': '14px',
+    'spacing-lg': '16px',
+    'spacing-xl': '20px',
+    'radius-xs': '3px',
+    'radius-sm': '4px',
+    'radius-md': '6px',
+    'radius-lg': '8px',
+    'radius-xl': '12px',
+};
+
+const FIGMA_FONTS: Record<string, [weight: number, size: number]> = {
+    'font-heading-lg': [600, 15],
+    'font-heading-md': [600, 14],
+    'font-heading-sm': [600, 13],
+    'font-label-md': [500, 13],
+    'font-label-sm': [500, 12],
+    'font-label-xs': [500, 10],
+    'font-body-md': [400, 12],
+    'font-body-sm': [400, 11],
+    'font-body-xs': [400, 10],
+    'font-badge-md': [700, 10],
+    'font-badge-sm': [700, 9],
+};
+
 describe('visual foundation tokens', () => {
-    it('defines the names referenced by the Figma foundations', () => {
-        for (const name of [
-            'color-bg-app',
-            'color-text-primary',
-            'spacing-xs',
-        ]) {
-            expect(tokens.has(name), `--${name}`).toBe(true);
+    it('keep the values of the Figma foundations', () => {
+        for (const [name, value] of Object.entries(FIGMA_VALUES)) {
+            expect(tokens.get(name), `--${name}`).toBe(value);
+        }
+        for (const [name, [weight, size]] of Object.entries(FIGMA_FONTS)) {
+            expect(tokens.get(name), `--${name}`).toBe(
+                `${weight} ${size}px/normal var(--font-family-sans)`,
+            );
         }
     });
 
-    it('keeps essential text at 4.5:1 on every surface', () => {
-        const surfaces = [
-            'color-bg-app',
-            'color-bg-surface',
-            'color-bg-surface-muted',
-            'color-bg-hover',
-        ];
+    it('hold no task colors or fixed palette, since they are input data', () => {
+        for (const name of tokens.keys()) {
+            expect(name).not.toMatch(/^color-task|palette|cycle/);
+        }
+    });
+
+    it('keep text at 4.5:1 on every surface', () => {
         for (const text of [
             'color-text-primary',
             'color-text-secondary',
-            'color-text-muted',
+            'color-accent-text',
+            'color-status-danger-text',
+            'color-status-success',
+            'color-status-warning',
         ]) {
-            for (const surface of surfaces) {
+            for (const surface of SURFACES) {
                 expect(
                     contrast(color(text), color(surface)),
                     `${text} on ${surface}`,
@@ -69,21 +127,12 @@ describe('visual foundation tokens', () => {
         }
     });
 
-    it('keeps filled and tinted feedback text at 4.5:1', () => {
+    it('keep tinted feedback text at 4.5:1 on its subtle fill', () => {
         const pairs: [string, string][] = [
-            ['color-text-on-accent', 'color-accent'],
-            ['color-text-on-accent', 'color-accent-hover'],
-            ['color-text-on-accent', 'color-accent-active'],
-            ['color-text-on-danger', 'color-danger'],
-            ['color-text-on-danger', 'color-danger-hover'],
-            ['color-accent', 'color-accent-subtle'],
-            ['color-accent', 'color-bg-surface'],
-            ['color-danger', 'color-danger-subtle'],
-            ['color-danger', 'color-bg-surface'],
-            ['color-warning', 'color-warning-subtle'],
-            ['color-warning', 'color-bg-surface'],
-            ['color-success', 'color-success-subtle'],
-            ['color-success', 'color-bg-surface'],
+            ['color-accent-text', 'color-accent-subtle'],
+            ['color-status-danger-text', 'color-status-danger-subtle'],
+            ['color-status-warning', 'color-status-warning-subtle'],
+            ['color-status-success', 'color-status-success-subtle'],
         ];
         for (const [foreground, background] of pairs) {
             expect(
@@ -93,35 +142,48 @@ describe('visual foundation tokens', () => {
         }
     });
 
-    it('keeps control boundaries and the focus ring at 3:1', () => {
-        for (const surface of [
-            'color-bg-app',
-            'color-bg-surface',
-            'color-bg-surface-muted',
+    it('keep text on filled accent and danger at 4.5:1', () => {
+        for (const fill of ['color-accent-default', 'color-status-danger']) {
+            expect(
+                contrast(color('color-text-on-color'), color(fill)),
+                `on-color on ${fill}`,
+            ).toBeGreaterThanOrEqual(4.5);
+        }
+    });
+
+    it('keep text on the Figma sample task colors at 4.5:1', () => {
+        // Samples only; real task colors come from the configuration.
+        for (const sample of ['#669efa', '#f28c59', '#8ccc73', '#c780e5']) {
+            expect(
+                contrast(color('color-text-on-task'), sample),
+                sample,
+            ).toBeGreaterThanOrEqual(4.5);
+        }
+    });
+
+    it('keep the focus ring at 3:1 on every surface', () => {
+        for (const surface of SURFACES) {
+            expect(
+                contrast(color('color-focus-ring'), color(surface)),
+                surface,
+            ).toBeGreaterThanOrEqual(3);
+        }
+    });
+
+    it('give essential text styles at least 12px', () => {
+        // 9 to 11px styles stay for auxiliary text only; they are not essential.
+        for (const name of [
+            'font-heading-lg',
+            'font-heading-md',
+            'font-heading-sm',
+            'font-label-md',
+            'font-label-sm',
+            'font-body-md',
         ]) {
-            for (const boundary of [
-                'color-border-strong',
-                'color-focus-ring',
-            ]) {
-                expect(
-                    contrast(color(boundary), color(surface)),
-                    `${boundary} on ${surface}`,
-                ).toBeGreaterThanOrEqual(3);
-            }
-        }
-    });
-
-    it('holds no task colors or fixed palette, since they are input data', () => {
-        for (const name of tokens.keys()) {
-            expect(name).not.toMatch(/task|series|palette/);
-        }
-    });
-
-    it('keeps sizes of essential text at 12px or more', () => {
-        for (const [name, value] of tokens) {
-            if (name.startsWith('font-size-')) {
-                expect(parseFloat(value) * 16, name).toBeGreaterThanOrEqual(12);
-            }
+            expect(
+                Number(tokens.get(name)!.match(/(\d+)px/)![1]),
+                name,
+            ).toBeGreaterThanOrEqual(12);
         }
     });
 });
@@ -130,7 +192,7 @@ describe('global styles', () => {
     it('take every color and size from tokens', () => {
         expect(baseCss).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|\d+px/i);
         expect(baseCss).toContain('var(--color-bg-app)');
-        expect(baseCss).toContain('var(--font-family-sans)');
+        expect(baseCss).toContain('var(--font-body-md)');
     });
 
     it('load the bundled font without any external service', () => {
