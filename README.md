@@ -40,22 +40,6 @@ npm run typecheck  # vue-tsc over .ts and .vue files, plus a core-only check
 npm run package    # build an unpacked app into out/
 ```
 
-### Line endings
-
-`.gitattributes` keeps text files with LF in the working tree on every OS,
-overriding `core.autocrlf`. `oxfmt` always writes LF, so a CRLF checkout (the
-default in Git for Windows) makes `npm run lint` fail even on unchanged files.
-
-A Windows checkout created before `.gitattributes` existed still has CRLF files
-and needs a one-time refresh. This discards uncommitted changes to tracked files, so
-commit or stash them first:
-
-```sh
-git rm --cached -r -q . && git reset --hard
-```
-
-Alternatively, clone the repository again.
-
 ## Project layout
 
 ```

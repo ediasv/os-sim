@@ -310,7 +310,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   59 arquivos, todos CRLF; clone LF passava. Normalizacao dos arquivos
   rastreados: 0 (indice ja em LF). Limitacoes: workflows e Linux real nao
   executados (sem push; clone LF equivale ao checkout Linux), release nao
-  exercitado. Checkouts Windows anteriores exigem refresh unico (README).
+  exercitado. Checkouts Windows anteriores ao `.gitattributes` mantem CRLF
+  ate um refresh unico dos arquivos (ou novo clone).
   Fecha so no merge do PR.
 - Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
   (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
