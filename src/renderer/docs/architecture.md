@@ -1,4 +1,4 @@
-# Arquitetura e entregas do renderer
+﻿# Arquitetura e entregas do renderer
 
 Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
 preparada na #67, sem implementacao visual das entregas abaixo. A
@@ -250,7 +250,7 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
 Primeiro incremento da entrega 1, sem componentes funcionais, sem alterar
 `App`, `ErrorBanner` ou o nucleo.
 
-- [tokens.css](styles/tokens.css): unica fonte dos valores da pagina
+- [tokens.css](../styles/tokens.css): unica fonte dos valores da pagina
   [Fundacoes](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=60-163)
   (colecao `os-sim`, **modo escuro**): cores semanticas, espacamento, raio e os
   11 estilos de texto, com os nomes de codigo do Figma (`--color-bg-app`,
@@ -258,15 +258,15 @@ Primeiro incremento da entrega 1, sem componentes funcionais, sem alterar
   `--font-*` sao o shorthand `font` (peso, tamanho, `normal`, familia). O
   Figma nao define sombras; nao ha token delas. Cores de tarefa nao tem token:
   `task/1..4` sao amostras e o "ciclo de quatro cores" do Figma nao vale (REQ-06).
-- [base.css](styles/base.css): `color-scheme: dark`, corpo com
-  `--font-body-md`, anel de foco, so com `var(--...)`. [index.css](index.css)
+- [base.css](../styles/base.css): `color-scheme: dark`, corpo com
+  `--font-body-md`, anel de foco, so com `var(--...)`. [index.css](../index.css)
   importa fonte, tokens e base.
 - Inter via `@fontsource-variable/inter` (OFL-1.1), importada do pacote e
   emitida pelo Vite no bundle: sem servico externo de fontes. Justificativa: a
   forma usual de empacotar Inter localmente com Vite, sem copiar binarios para
   o repositorio. Custo: `wght.css` inclui todos os subconjuntos (cerca de 220 kB
   de woff2); reduzir a latin/latin-ext se o tamanho do pacote importar.
-- [Teste das fundacoes](styles/foundations.test.ts): valores iguais aos do
+- [Teste das fundacoes](../styles/foundations.test.ts): valores iguais aos do
   Figma, contraste WCAG, ausencia de tokens de cor de tarefa, de valores
   literais em `base.css` e de URLs externas. O CSS e lido com `?raw`; o
   `vitest.config.mts` libera o processamento de `.css?raw`, que o Vitest esvazia
@@ -294,7 +294,7 @@ sobre cor de tarefa e o adaptativo preto/branco (FE-DEC-10) ficam para o Gantt;
 Sobre `main` em `5a569db`, worktree `feat/68-renderer-visual-foundations`,
 Node 24.22.1 (via `npm exec --package=node@24`; o Node global e 25.8.0):
 
-- `vitest run` 252/252 em 15 arquivos (10 novos); `vue-tsc` sem erros;
+- `vitest run` 253/253 em 15 arquivos (11 novos); `vue-tsc` sem erros;
   `oxlint` sem achados; `oxfmt --check` limpo. Primeira versao dos tokens
   (valores provisorios, tema claro) foi substituida apos ler o Figma.
 - Valores lidos do Figma pela API do MCP (`get_metadata` da pagina Fundacoes,

@@ -195,6 +195,11 @@ describe('global styles', () => {
         expect(baseCss).toContain('var(--font-body-md)');
     });
 
+    it('leave native control text color alone', () => {
+        // Inheriting it made ErrorBanner's Dismiss low-contrast under color-scheme: dark.
+        expect(baseCss).not.toMatch(/color:\s*inherit/);
+    });
+
     it('load the bundled font without any external service', () => {
         expect(indexCss).toContain("@import '@fontsource-variable/inter");
         for (const css of [indexCss, tokensCss, baseCss]) {
