@@ -10,6 +10,13 @@
         "name": "Eduardo Vinicius Dias",
         "email": "142503604+ediasv@users.noreply.github.com"
     },
+    "devEngines": {
+        "runtime": {
+            "name": "node",
+            "version": "24.22.1",
+            "onFail": "warn"
+        }
+    },
     "main": ".vite/build/main.cjs",
     "scripts": {
         "start": "electron-forge start",

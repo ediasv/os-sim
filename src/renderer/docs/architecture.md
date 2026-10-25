@@ -206,10 +206,10 @@ inicial, renderizacao reativa, clique em Dismiss e exibicao de novo erro
 apos o descarte. Limpa estado global e mocks e desmonta os componentes
 automaticamente, sem alterar o componente ou a classificacao de DEC-24.
 
-Executar na raiz com Node dentro das engines de Vitest 5 e jsdom 30: 22.22.2
-ou superior da linha 22 (o CI usa Node 22), 24.15 ou superior da linha 24, ou
-26+. Node 25 fica fora dessas engines; funcionou na verificacao abaixo, mas
-nao e garantido:
+Executar na raiz com a versao de Node declarada em `devEngines.runtime` no
+[package.json](../../../package.json) (24.22.1, fonte unica para desenvolvimento,
+CI e release; #80). Ela esta dentro das engines de Vitest 5 e jsdom 30, que
+excluem o Node 25:
 
 ```sh
 npm test -- src/renderer/components/ErrorBanner.test.ts
@@ -218,11 +218,8 @@ npm run typecheck
 npm run lint
 ```
 
-Se o Node global for 25, o teste pode usar um Node 24 temporario:
-
-```sh
-npm exec --yes --package=node@24 -- node node_modules/vitest/vitest.mjs run src/renderer/components/ErrorBanner.test.ts
-```
+Os fins de linha dos arquivos de texto sao LF em qualquer sistema, definidos
+em `.gitattributes`; assim `npm run lint` tambem passa em checkout Windows.
 
 jsdom verifica DOM e eventos, nao layout, pixels, foco nativo do Electron ou
 distribuicao. Esta infraestrutura nao implementa componentes, estilos ou
@@ -231,7 +228,8 @@ contratos novos; verificacao visual e pacote continuam fora de F1.
 ### Evidencia da #67 (2026-10-24)
 
 Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
-(fora das engines, ver acima):
+(fora das engines de Vitest 5 e jsdom 30; a versao padronizada veio depois, na
+#80):
 
 - Teste focado do ErrorBanner 2/2; `npm test` 242/242 em 14 arquivos (240 do
   `main` mais 2 do F1); `npm run typecheck` aprovado; `oxlint` do codigo e
@@ -242,7 +240,7 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
 - `npm run lint` global segue reprovado por formatacao preexistente fora do
   escopo: o checkout usa CRLF e `oxfmt --check` acusa ate arquivos nao
   alterados; copias LF dos arquivos alterados passam. Nenhuma normalizacao
-  geral foi feita.
+  geral foi feita. A causa foi tratada na #80 (`.gitattributes`).
 - Links locais e IDs deste documento conferidos. Build, aplicativo, verificacao
   visual e pacote nao executados. F2, #36 e #37 nao foram implementadas.
 

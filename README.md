@@ -26,6 +26,11 @@ implementation status only in the plan. Proposed decisions are not delivered cod
 
 ## Development
 
+Use the Node version declared in `devEngines.runtime` in `package.json`
+(currently 24.22.1). It is the single source for local development, CI and the
+release workflow: both workflows read it through `node-version-file`, so change
+it there and nowhere else. npm warns when another version is in use.
+
 ```sh
 npm install
 npm start          # run the app with hot reload
@@ -34,6 +39,22 @@ npm run lint       # oxlint + oxfmt check (npm run lint:fix to auto-fix)
 npm run typecheck  # vue-tsc over .ts and .vue files, plus a core-only check
 npm run package    # build an unpacked app into out/
 ```
+
+### Line endings
+
+`.gitattributes` keeps text files with LF in the working tree on every OS,
+overriding `core.autocrlf`. `oxfmt` always writes LF, so a CRLF checkout (the
+default in Git for Windows) makes `npm run lint` fail even on unchanged files.
+
+A Windows checkout created before `.gitattributes` existed still has CRLF files
+and needs a one-time refresh. This discards uncommitted changes to tracked files, so
+commit or stash them first:
+
+```sh
+git rm --cached -r -q . && git reset --hard
+```
+
+Alternatively, clone the repository again.
 
 ## Project layout
 

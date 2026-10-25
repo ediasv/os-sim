@@ -295,9 +295,23 @@ Requisito: REQ-10; integracao de todos os anteriores.
   2026-10-24: Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste do
   ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
-  Lint global segue reprovado por CRLF preexistente. Fecha so no merge do PR.
+  Lint global reprovado por CRLF preexistente na epoca; causa tratada na #80.
+  Fecha so no merge do PR.
 - #22 decidida em 2026-10-24 (DEC-26, sem testes de escalonabilidade);
   mudanca so documental, evidencias em E2. Fecha no merge do PR #77.
+- #80 (E6, ambiente) pronta para revisao em 2026-10-25, escopo ampliado para
+  incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
+  24.22.1 em `devEngines.runtime` no `package.json`, lido pelos workflows CI e
+  release (`node-version-file`), e `.gitattributes` com `* text=auto eol=lf`.
+  Verificado no Windows (`core.autocrlf=true`), com `npm ci` limpo do lockfile
+  em Node 24.22.1, no worktree e em clone novo: `npm test` 242/242 em 14
+  arquivos, `npm run lint` e `npm run typecheck` aprovados, `git diff --check`
+  limpo, lockfile inalterado. Causa confirmada: antes, `oxfmt --check` acusava
+  59 arquivos, todos CRLF; clone LF passava. Normalizacao dos arquivos
+  rastreados: 0 (indice ja em LF). Limitacoes: workflows e Linux real nao
+  executados (sem push; clone LF equivale ao checkout Linux), release nao
+  exercitado. Checkouts Windows anteriores exigem refresh unico (README).
+  Fecha so no merge do PR.
 - Proximo passo: integrar o PR #74 (#19) e o PR da #35; depois #20
   (desempates) e a #68. Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.

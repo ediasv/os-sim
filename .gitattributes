@@ -1,0 +1,5 @@
+# Text files are stored and checked out with LF on every OS. Without this, a
+# Windows checkout follows core.autocrlf (true by default in Git for Windows)
+# and gets CRLF, which `oxfmt --check` rejects because oxfmt always writes LF.
+# Files Git detects as binary (PDFs, images) are left untouched.
+* text=auto eol=lf
