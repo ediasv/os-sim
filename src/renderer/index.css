@@ -1,8 +1,4 @@
-body {
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-        sans-serif;
-    margin: auto;
-    max-width: 38rem;
-    padding: 2rem;
-}
+/* Inter is bundled from node_modules so the UI renders offline. */
+@import '@fontsource-variable/inter/wght.css';
+@import './styles/tokens.css';
+@import './styles/base.css';

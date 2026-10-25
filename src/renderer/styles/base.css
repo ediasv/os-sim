@@ -1,0 +1,30 @@
+/* Global element defaults built only from tokens.css. */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root {
+    color-scheme: dark;
+}
+
+body {
+    margin: 0;
+    background: var(--color-bg-app);
+    color: var(--color-text-primary);
+    font: var(--font-body-md);
+    -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+:focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}

@@ -8,5 +8,7 @@ export default defineConfig({
     test: {
         include: ['src/**/*.test.ts'],
         environment: 'node',
+        // Vitest blanks CSS by default; style tests read sources with ?raw.
+        css: { include: [/\.css\?raw$/] },
     },
 });

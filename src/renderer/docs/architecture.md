@@ -1,4 +1,4 @@
-# Arquitetura e entregas do renderer
+﻿# Arquitetura e entregas do renderer
 
 Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
 preparada na #67, sem implementacao visual das entregas abaixo. A
@@ -24,9 +24,10 @@ geral; nao inclui alterar regras, documentos, modelo ou API do nucleo.
 - Recomendacao tecnica: manter Vue, TypeScript, Vite e CSS com tokens; nao
   adicionar inicialmente Tailwind, Pinia, Router, microfrontends ou releases
   independentes. O produto continua sendo o aplicativo Electron.
-- Ferramentas propostas: Inter empacotada localmente, Lucide Vue para icones
-  e Playwright para verificacao visual/ponta a ponta. Ainda nao instaladas ou
-  declaradas aprovadas apenas porque a organizacao de pastas foi aceita.
+- Ferramentas propostas: Lucide Vue para icones e Playwright para verificacao
+  visual/ponta a ponta. Ainda nao instaladas ou declaradas aprovadas apenas
+  porque a organizacao de pastas foi aceita. Inter empacotada localmente entrou
+  na #68 (ver [Fundacoes visuais](#fundacoes-visuais-68)).
   Vue Test Utils e jsdom foram aprovados para testes na #67; suporte e
   verificacao estao descritos abaixo.
 - Acordado apos esclarecimento: sem tooltip na entrega 1; manter nome
@@ -244,6 +245,66 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
 - Links locais e IDs deste documento conferidos. Build, aplicativo, verificacao
   visual e pacote nao executados. F2, #36 e #37 nao foram implementadas.
 
+## Fundacoes visuais (#68)
+
+Primeiro incremento da entrega 1, sem componentes funcionais, sem alterar
+`App`, `ErrorBanner` ou o nucleo.
+
+- [tokens.css](../styles/tokens.css): unica fonte dos valores da pagina
+  [Fundacoes](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=60-163)
+  (colecao `os-sim`, **modo escuro**): cores semanticas, espacamento, raio e os
+  11 estilos de texto, com os nomes de codigo do Figma (`--color-bg-app`,
+  `--color-text-primary`, `--spacing-xs`, `--font-body-md`, ...). Os
+  `--font-*` sao o shorthand `font` (peso, tamanho, `normal`, familia). O
+  Figma nao define sombras; nao ha token delas. Cores de tarefa nao tem token:
+  `task/1..4` sao amostras e o "ciclo de quatro cores" do Figma nao vale (REQ-06).
+- [base.css](../styles/base.css): `color-scheme: dark`, corpo com
+  `--font-body-md`, anel de foco, so com `var(--...)`. [index.css](../index.css)
+  importa fonte, tokens e base.
+- Inter via `@fontsource-variable/inter` (OFL-1.1), importada do pacote e
+  emitida pelo Vite no bundle: sem servico externo de fontes. Justificativa: a
+  forma usual de empacotar Inter localmente com Vite, sem copiar binarios para
+  o repositorio. Custo: `wght.css` inclui todos os subconjuntos (cerca de 220 kB
+  de woff2); reduzir a latin/latin-ext se o tamanho do pacote importar.
+- [Teste das fundacoes](../styles/foundations.test.ts): valores iguais aos do
+  Figma, contraste WCAG, ausencia de tokens de cor de tarefa, de valores
+  literais em `base.css` e de URLs externas. O CSS e lido com `?raw`; o
+  `vitest.config.mts` libera o processamento de `.css?raw`, que o Vitest esvazia
+  por padrao.
+
+Desvios do Figma, para corrigir contrastes conhecidos como insuficientes:
+
+| Token                        | Figma        | Aqui      | Motivo                                                      |
+| ---------------------------- | ------------ | --------- | ----------------------------------------------------------- |
+| `--color-text-on-color`      | `#FFFFFF`    | `#171A21` | Branco da 3,23:1 sobre accent e 3,67:1 sobre danger.        |
+| `--color-accent-text`        | (nao existe) | `#6E9FFB` | Accent como texto: 4,35:1 em `bg-raised`, 4,37:1 em subtle. |
+| `--color-status-danger-text` | (nao existe) | `#F27878` | Danger como texto: 4,22:1 em surface, 3,83:1 em raised.     |
+| `--color-focus-ring`         | (nao existe) | `#6E9FFB` | Anel de foco acima de 3:1 em todas as superficies.          |
+
+Os fills `accent-default` e `status-danger` ficam como no Figma; os `-text`
+sao para texto sobre superficies. Outras ressalvas: `border-default` (1,5:1) so
+separador, nao delimita controle; os estilos de 9 a 11 px (`label-xs`,
+`body-sm`, `body-xs`, `badge-*`) existem como no Figma, mas nao devem levar
+texto essencial (o teste exige 12 px ou mais nos estilos essenciais). O texto
+sobre cor de tarefa e o adaptativo preto/branco (FE-DEC-10) ficam para o Gantt;
+`text-on-task` so e o padrao escuro e passa de 4,5:1 nas amostras do Figma.
+
+### Evidencia da #68 (2026-10-25)
+
+Sobre `main` em `5a569db`, worktree `feat/68-renderer-visual-foundations`,
+Node 24.22.1 (via `npm exec --package=node@24`; o Node global e 25.8.0):
+
+- `vitest run` 253/253 em 15 arquivos (11 novos); `vue-tsc` sem erros;
+  `oxlint` sem achados; `oxfmt --check` limpo. Primeira versao dos tokens
+  (valores provisorios, tema claro) foi substituida apos ler o Figma.
+- Valores lidos do Figma pela API do MCP (`get_metadata` da pagina Fundacoes,
+  2026-10-25), somente leitura; o teste fixa cada valor.
+- Build do renderer (`vite build` em pasta temporaria): 7 woff2 da Inter no
+  bundle e nenhuma URL externa no CSS gerado (verificado na primeira versao;
+  `index.css` nao mudou).
+- Nao executados: aplicativo Electron, comparacao visual lado a lado com o
+  Figma, screenshots, pacote no ambiente-alvo.
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
@@ -258,7 +319,8 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
   disponibilidade completa, escalabilidade/redimensionamento alem dos casos
   iniciais, foco dos dialogos e aprovacao das bibliotecas propostas. Isso nao
   reabre os acordos funcionais ja aceitos na spec.
-- Exceto a infraestrutura de testes da #67, as ferramentas e os componentes
+- Exceto a infraestrutura de testes da #67 e as fundacoes visuais da #68, as
+  ferramentas e os componentes
   planejados nao foram implementados nem seus criterios marcados como atendidos.
 - Diferencas entre expectativas da interface e a API disponivel ficam
   registradas como dependencias, sem propor DECs ou alterar documentos do
