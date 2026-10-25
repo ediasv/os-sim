@@ -196,7 +196,7 @@ editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
 O [Vitest](../../../vitest.config.mts) usa o plugin Vue existente para
 transformar SFCs, incluindo `<script setup lang="ts">`. O ambiente padrao
 continua `node`: nucleo, auxiliares e composables sem montagem nao recebem
-DOM. Somente arquivos que precisam montar componentes declaram
+DOM. Somente os testes do renderer que requerem DOM declaram
 `// @vitest-environment jsdom` no inicio.
 
 As dependencias de desenvolvimento `@vue/test-utils` e `jsdom` permitem
@@ -248,8 +248,9 @@ Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
 
 ## Verificacao e pendencias tecnicas
 
-- Suporte SFC e DOM seletivo estao disponiveis conforme a secao de testes;
-  preservar Node como ambiente padrao nos proximos incrementos.
+- Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
+  para os testes do renderer que o requerem, conforme a secao de testes.
+  O ambiente Node do nucleo nao deve ser trocado globalmente por jsdom.
 - Projecoes e geometria recebem testes puros; componentes, testes de
   propriedades/eventos e teclado; integracao, testes dos comandos reais.
   Playwright compara estados e viewports, nao uma captura unica para todo o app.
