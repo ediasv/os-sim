@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-24. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-27. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -217,9 +217,49 @@ Requisito: REQ-07.
   registro passa sem mudanca; `npm test` 300/300 em 16 arquivos, `npm run lint`
   e `npm run typecheck` aprovados (Node 24.21.0 local, fora do 24.22.1
   fixado); DEC-28 unica e links locais conferidos. Nao executado: app
-  Electron (sem mudanca no renderer).
+  Electron (sem mudanca no renderer). Concluida no PR #86 (merged,
+  `a92fd58`, 2026-10-27).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
-  incluindo o exemplo de quantum vencido de DEC-18.
+  incluindo o exemplo de quantum vencido de DEC-18. No PR #85:
+  `src/core/scenarios.test.ts` roda `createSimulator` com RM/EDF reais, com
+  `findInconsistencies` vazio no snapshot 0 e apos cada passo. Figuras com
+  quantum igual a maior duracao, sem vencimento na janela, e janelas
+  [0, 360] na 2.5 e [0, 55] na 2.6, com os eventos da borda (decidido na
+  #21). Esperados derivados a mao das figuras e decisoes. Conferidos por
+  mutacao: cada esperado alterado e cada criterio de DEC-16 (2) e (4) e da
+  DEC-17 removido da politica falham; trocar duracao por trabalho restante no
+  (4) nao e detectavel de ponta a ponta (ativacoes iguais) e e coberto em
+  `policies.test.ts` ("criterion 4: shorter task duration even with more work
+  left", RM e EDF), que falha com a troca. Segunda revisao do PR (2026-10-27),
+  tambem conferida por mutacao temporaria do motor ou da politica: aperiodica
+  com prazo 8 falha se empatar em prioridade com a periodica; listas exatas de
+  `quantum-expired` falham se o vencimento na fronteira de uma preempcao for
+  omitido; o sorteio falha se os vencedores forem ordenados por ID; a
+  preempcao simultanea falha se as CPUs livres forem preenchidas na ordem
+  inversa. A ordem de `selected` passou a ser contratual (DEC-13 revista).
+  Nenhuma mudanca no motor ou nas politicas. Evidencia (2026-10-27, Node
+  24.22.1, apos `npm ci`): `npm test` 336/336 em 17 arquivos (32 de cenario),
+  `npm run lint` e `npm run typecheck` aprovados. Nao executados: app
+  Electron; CI ate o push. Casos:
+    - figura 2.5 (RM) e 2.6 (EDF sem perda; RM perde o prazo de B em t=50 e o
+      conclui em 55, como na figura), com escala e lista de eventos completas;
+    - as mesmas escalas com quantum 1 e 7 mudam so eventos `quantum-expired`,
+      com a lista exata derivada das fatias (DEC-03, DEC-18), inclusive nas
+      fronteiras de preempcao e sem vencimento junto da conclusao; instantes
+      escritos a mao na 2.6 EDF com quantum 7; ordem da DEC-22 em t=100 da
+      2.5 com quantum 1 (vencimento, ativacao, preempcao);
+    - exemplo da DEC-18 com RM (J [0, 4), K [4, 6)), com lista de eventos
+      completa;
+    - em RM e EDF: empate que cabe nas CPUs, sorteio no corte com um
+      `tie-break` por vencedor, lista de eventos completa e vencedores nas
+      CPUs livres na ordem sorteada (DEC-27), com guarda que falha se a
+      semente sortear em ordem de ID; desempate por ativacao e por menor duracao da tarefa (o
+      vencedor e a tarefa de maior ID, para que desempate por ID falhe); em
+      RM, desempate por prazo absoluto (DEC-16);
+    - RM com tarefa aperiodica abaixo da periodica, com prazo menor que o da
+      periodica para que um empate de prioridade falhe (DEC-17);
+    - duas CPUs: distribuicao, preempcao na CPU 2 e, no caso espelhado, na
+      CPU 1, duas preempcoes no mesmo instante, CPUs desligadas e religadas.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
   Decidida pelo usuario em 2026-10-24 (DEC-26): nada e exibido; citacoes
   trazem a ressalva de varias CPUs e de simulacao finita. Registrada em
@@ -324,10 +364,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
   politicas por algoritmo (DEC-25); evidencias em E2.
 - #20 concluida no PR #75 (merged, `f22281d`, 2026-10-27): desempates,
   sorteio pelo motor e evento (DEC-27); evidencias em E2.
-- #79 implementada no worktree `worktree-79-validacao-fonte-unica`
-  (2026-10-27): `requireValidConfig` compartilhada pelo construtor do
-  `Simulator` e pela fabrica (DEC-28); evidencias em E2. Proximo passo: commit
-  e PR com `Closes #79`, quando solicitados.
+- #79 concluida no PR #86 (merged, `a92fd58`, 2026-10-27):
+  `requireValidConfig` compartilhada pelo construtor do `Simulator` e pela
+  fabrica (DEC-28); evidencias em E2.
 - #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
   `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
   do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
@@ -358,8 +397,21 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- Proximo passo: concluir a #79; depois #70 (controles e mensagens
-  do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
+- #21 em andamento (iniciada em 2026-10-27, branch
+  `issue-21-figuras-empates-multicpu`, PR #85): testes de simulacao
+  completa para as figuras 2.5/2.6, empates por algoritmo, varias CPUs, o
+  exemplo de DEC-18 e a prioridade RM de aperiodicas, com `findInconsistencies`
+  vazio a cada passo. Exemplo de DEC-18 na issue corrigido em 2026-10-27 para
+  J [0, 4), K [4, 6). Revisao do PR aplicada em 2026-10-27: rebase sobre
+  `main`, quantum com instantes conferidos, casos novos de DEC-16 (2) e (4),
+  DEC-17 e preempcao na CPU 1, ordem sorteada nas CPUs registrada na DEC-27.
+  Segunda revisao aplicada em 2026-10-27: cobertura real do criterio (4),
+  DEC-17 com prazo menor, vencimentos exatos, eventos do sorteio, preempcao
+  simultanea, DEC-13 revista (ordem de `selected`) e DEC-27 precisada. Testes
+  e gates concluidos (evidencias em E2); falta a revisao e integracao do PR
+  pelo usuario.
+- Proximo passo: revisar e integrar o PR #85 (#21); depois #70 (controles e
+  mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
 - Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
   #35.
