@@ -203,7 +203,9 @@ Requisito: REQ-07.
   DEC-26. Achado restante (ordem de validacao na fabrica) segue na #79.
   Evidencia (2026-10-24, apos merge de `da52d14`): `npm test` 285/285,
   `npm run lint` e `npm run typecheck` aprovados; IDs DEC-26/DEC-27
-  conferidos.
+  conferidos. Evidencia (2026-10-27, apos merge de `eecf575`; conflito so no
+  plano): `npm test` 298/298 em 16 arquivos, `npm run lint` e
+  `npm run typecheck` aprovados (Node 24.21.0 local, fora do 24.22.1 fixado).
 - #79 Decidir fonte unica da ordem de validacao entre configuracao e registro
   de politicas (achado 7 da revisao do PR #75). Depende do merge do PR #75.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
