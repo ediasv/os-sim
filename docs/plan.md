@@ -361,10 +361,11 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #21 em andamento (iniciada em 2026-10-27, branch
   `issue-21-figuras-empates-multicpu`, PR em rascunho): testes de simulacao
   completa para as figuras 2.5/2.6, empates por algoritmo, varias CPUs e o
-  exemplo de DEC-18, com `findInconsistencies` vazio a cada passo. Em aberto
-  com o usuario: o exemplo de DEC-18 na issue (J [0, 2), K [2, 4), J [4, 6))
-  diverge da DEC-18 revista na #14 (J [0, 4), K [4, 6)); quantum que preserve
-  as escalas das figuras e comparacao so da janela mostrada (DEC-09).
+  exemplo de DEC-18, com `findInconsistencies` vazio a cada passo. Exemplo de
+  DEC-18 na issue corrigido em 2026-10-27 para J [0, 4), K [4, 6). Quantum e
+  janelas das figuras decididos pelo usuario (opcao C, registrada na issue):
+  quantum sem vencimento na janela, mais um teste com quantum pequeno que so
+  acrescenta `quantum-expired`; janelas [0, 360) na 2.5 e [0, 55) na 2.6.
 - Proximo passo: #21 (teste da figura 2.5 primeiro); depois #70 (controles e
   mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
