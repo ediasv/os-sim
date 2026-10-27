@@ -753,6 +753,10 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: um passo que falha descarta tambem o avanco do gerador
   (DEC-14). Restaurar snapshots (#23, #24) repete os sorteios por levar
   `drawState`.
+- Consequencia (acordada com o usuario em 2026-10-27, na revisao do PR #85):
+  os vencedores entram na selecao na ordem sorteada; pela DEC-07, ocupam as
+  CPUs livres nessa ordem, e o primeiro sorteado fica com a CPU livre de menor
+  ID. Coberta em `src/core/scenarios.test.ts` (#21).
 - Alternativas descartadas:
     - Politica sorteia recebendo o gerador: poe estado mutavel no contrato,
       contra DEC-13.
