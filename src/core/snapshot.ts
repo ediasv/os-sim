@@ -8,6 +8,7 @@ import type {
     SimulationState,
     SystemConfig,
 } from './domain';
+import { DRAW_SEED } from './draw';
 import { freezeCopy } from './helpers/freezeCopy';
 
 /**
@@ -28,6 +29,7 @@ export function createInitialState(config: SystemConfig): SimulationState {
         })),
         executions: [],
         events: [],
+        drawState: DRAW_SEED,
     };
 }
 

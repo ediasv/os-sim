@@ -9,6 +9,8 @@ import {
     type SystemConfig,
     type TaskDefinition,
 } from './domain';
+import { DRAW_SEED } from './draw';
+import { rmPolicy } from './policies';
 import type { PolicyDecision, PolicyView, SchedulingPolicy } from './policy';
 import { Simulator } from './simulator';
 
@@ -1892,5 +1894,205 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
         expect(sim.getLatestSnapshot().executions).toEqual([
             { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 3 },
         ]);
+    });
+});
+
+describe('Simulator draws (#20)', () => {
+    type TieBreak = Extract<SimulationEvent, { kind: 'tie-break' }>;
+
+    const tied = (id: number, color: string) =>
+        task(id, color, { arrival: 0, duration: 2, deadline: 10 });
+    const config = (
+        cpuCount: number,
+        tasks: TaskDefinition[],
+    ): SystemConfig => ({ ...DEFAULT_CONFIG, cpuCount, tasks });
+    const keys = (refs: readonly { taskId: number; index: number }[]) =>
+        refs.map((r) => `${r.taskId}.${r.index}`).sort();
+    const drawsOf = (sim: Simulator) =>
+        eventsOf(sim, 'tie-break') as TieBreak[];
+
+    it('draws a residual tie and records it at the selection tick', () => {
+        const sim = new Simulator(
+            config(1, [tied(1, 'F0E0D0'), tied(2, 'AABBCC')]),
+            rmPolicy,
+        );
+        const start = sim.getLatestSnapshot();
+        const draws = drawsOf(sim);
+        expect(draws).toHaveLength(1);
+        const [draw] = draws;
+        expect(draw.time).toBe(0);
+        expect(keys(draw.candidates)).toEqual(['1.0', '2.0']);
+        expect(start.cpus[0].running).toEqual(draw.winner);
+        expect(start.drawState).not.toBe(DRAW_SEED);
+
+        run(sim, 4);
+        expect(drawsOf(sim)).toHaveLength(1);
+        expect(sim.getLatestSnapshot().executions[0]).toEqual({
+            cpuId: 1,
+            job: draw.winner,
+            start: 0,
+            end: 2,
+        });
+    });
+
+    it('lists the tied candidates by task ID', () => {
+        const sim = new Simulator(
+            config(1, [
+                tied(10, 'F0E0D0'),
+                tied(2, 'AABBCC'),
+                tied(1, '112233'),
+            ]),
+            rmPolicy,
+        );
+        const [draw] = drawsOf(sim);
+        expect(draw.candidates).toEqual([
+            { taskId: 1, index: 0 },
+            { taskId: 2, index: 0 },
+            { taskId: 10, index: 0 },
+        ]);
+    });
+
+    it('does not draw when the tie fits the CPUs', () => {
+        const sim = new Simulator(
+            config(2, [tied(1, 'F0E0D0'), tied(2, 'AABBCC')]),
+            rmPolicy,
+        );
+        run(sim, 2);
+        expect(drawsOf(sim)).toEqual([]);
+        expect(sim.getLatestSnapshot().drawState).toBe(DRAW_SEED);
+    });
+
+    it('records one event per winner', () => {
+        const sim = new Simulator(
+            config(2, [
+                tied(1, 'F0E0D0'),
+                tied(2, 'AABBCC'),
+                tied(3, '112233'),
+            ]),
+            rmPolicy,
+        );
+        const draws = drawsOf(sim);
+        expect(draws).toHaveLength(2);
+        for (const draw of draws) {
+            expect(draw.time).toBe(0);
+            expect(keys(draw.candidates)).toEqual(['1.0', '2.0', '3.0']);
+        }
+        const winners = keys(draws.map((d) => d.winner));
+        expect(new Set(winners).size).toBe(2);
+        const running = sim
+            .getLatestSnapshot()
+            .cpus.flatMap((cpu) => (cpu.running === null ? [] : [cpu.running]));
+        expect(keys(running)).toEqual(winners);
+    });
+
+    it('records a draw whose winner was already running', () => {
+        const sim = new Simulator(
+            config(2, [
+                task(1, 'F0E0D0', { arrival: 0, duration: 4, deadline: 20 }),
+                task(2, 'AABBCC', { arrival: 0, duration: 4, deadline: 20 }),
+                {
+                    ...task(3, '112233', {
+                        arrival: 1,
+                        duration: 2,
+                        deadline: 10,
+                    }),
+                    period: 10,
+                },
+            ]),
+            rmPolicy,
+        );
+        expect(drawsOf(sim)).toEqual([]);
+        const cpuOf = (snapshot: SimulationSnapshot, taskId: number) =>
+            snapshot.cpus.find((cpu) => cpu.running?.taskId === taskId)?.id;
+        const before = sim.getLatestSnapshot();
+
+        run(sim, 1);
+        const draws = drawsOf(sim);
+        expect(draws).toHaveLength(1);
+        expect(draws[0].time).toBe(1);
+        expect(keys(draws[0].candidates)).toEqual(['1.0', '2.0']);
+        const after = sim.getLatestSnapshot();
+        const winner = draws[0].winner.taskId;
+        const loser = winner === 1 ? 2 : 1;
+        expect(cpuOf(after, winner)).toBe(cpuOf(before, winner));
+        expect(cpuOf(after, 3)).toBe(cpuOf(before, loser));
+        expect(eventsOf(sim, 'preemption')).toEqual([
+            {
+                kind: 'preemption',
+                time: 1,
+                cpuId: cpuOf(before, loser),
+                preempted: { taskId: loser, index: 0 },
+                by: { taskId: 3, index: 0 },
+            },
+        ]);
+    });
+
+    it('repeats the same draws for the same configuration', () => {
+        const make = () =>
+            new Simulator(
+                config(1, [
+                    tied(1, 'F0E0D0'),
+                    tied(2, 'AABBCC'),
+                    tied(3, '112233'),
+                ]),
+                rmPolicy,
+            );
+        const first = make();
+        const second = make();
+        run(first, 6);
+        run(second, 6);
+        expect(drawsOf(first).length).toBeGreaterThan(1);
+        const a = first.getLatestSnapshot();
+        const b = second.getLatestSnapshot();
+        expect(b.events).toEqual(a.events);
+        expect(b.executions).toEqual(a.executions);
+        expect(b.drawState).toBe(a.drawState);
+    });
+
+    describe('rejects a malformed tie and keeps state and history', () => {
+        const both = [
+            { taskId: 1, index: 0 },
+            { taskId: 2, index: 0 },
+        ];
+        it.each([
+            [
+                'that breaks the contract',
+                { selected: [], tie: { candidates: both, slots: 2 } },
+                /Invalid scheduling policy decision:\nTie must leave out/,
+            ],
+            [
+                'that is null',
+                { selected: [], tie: null },
+                /Invalid scheduling policy decision: tie must be/,
+            ],
+            [
+                'that is not a tie object',
+                { selected: [], tie: { candidates: 'both', slots: 1 } },
+                /Invalid scheduling policy decision: tie\.candidates must be/,
+            ],
+            [
+                'whose slots is not a number',
+                { selected: [], tie: { candidates: both, slots: '1' } },
+                /Invalid scheduling policy decision: tie\.slots must be/,
+            ],
+        ])('%s', (_, bad, message) => {
+            const policy: SchedulingPolicy = {
+                select: (view) =>
+                    view.candidates.length === 0
+                        ? { selected: [] }
+                        : (bad as unknown as PolicyDecision),
+            };
+            const late = (id: number, color: string) =>
+                task(id, color, { arrival: 1, duration: 2, deadline: 10 });
+            const sim = new Simulator(
+                config(1, [late(1, 'F0E0D0'), late(2, 'AABBCC')]),
+                policy,
+            );
+            const before = sim.getLatestSnapshot();
+
+            expect(() => sim.tick()).toThrow(message);
+            expect(sim.getLatestSnapshot()).toBe(before);
+            expect(before.drawState).toBe(DRAW_SEED);
+        });
     });
 });

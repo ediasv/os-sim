@@ -14,8 +14,10 @@ import {
     buildPolicyView,
     checkDecision,
     selectedRefs,
+    type PolicyTie,
     type SchedulingPolicy,
 } from './policy';
+import { drawWinners } from './draw';
 import { createInitialState, takeSnapshot } from './snapshot';
 import { deepCopy } from './helpers/deepCopy';
 import { key } from './helpers/key';
@@ -23,6 +25,47 @@ import { key } from './helpers/key';
 const NO_WORK_POLICY: SchedulingPolicy = {
     select: () => ({ selected: [] }),
 };
+
+/**
+ * Checks that a list read from a policy decision holds only job references
+ * and returns plain copies of them (see `selectedRefs`). Shared by `selected`
+ * and `tie.candidates` so both are held to the same shape (DEC-14, DEC-27).
+ */
+function readJobRefs(raw: unknown, field: string): JobRef[] {
+    if (
+        !Array.isArray(raw) ||
+        raw.some((ref) => typeof ref !== 'object' || ref === null)
+    ) {
+        throw new Error(
+            `Invalid scheduling policy decision: ${field} must be an array of job references.`,
+        );
+    }
+    return selectedRefs({ selected: raw as JobRef[] });
+}
+
+/**
+ * Reads a policy's `tie` field once and returns plain copies, for the same
+ * reasons as `selectedRefs`: a getter could answer differently later and the
+ * policy must not keep a handle on what the engine stores (DEC-14, DEC-27).
+ */
+function copyTie(raw: unknown): PolicyTie {
+    if (typeof raw !== 'object' || raw === null) {
+        throw new Error(
+            'Invalid scheduling policy decision: tie must be an object.',
+        );
+    }
+    const candidates = readJobRefs(
+        (raw as PolicyTie).candidates,
+        'tie.candidates',
+    );
+    const slots: unknown = (raw as PolicyTie).slots;
+    if (typeof slots !== 'number') {
+        throw new Error(
+            'Invalid scheduling policy decision: tie.slots must be a number.',
+        );
+    }
+    return { candidates, slots };
+}
 
 export interface ExecutionGuardResult {
     ready: boolean;
@@ -230,7 +273,8 @@ export class Simulator {
     /**
      * Copies one global policy decision once and validates that copy (DEC-14),
      * so a policy cannot return different values to the check and to dispatch.
-     * Selected jobs stay on their current CPUs where possible; any remaining
+     * A reported residual tie is drawn here and logged as `tie-break` events
+     * (DEC-27). Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
      * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
@@ -244,20 +288,13 @@ export class Simulator {
             typeof decision === 'object' && decision !== null
                 ? decision.selected
                 : undefined;
-        if (!Array.isArray(rawSelected)) {
-            throw new Error(
-                'Invalid scheduling policy decision: expected an object with a selected array.',
-            );
-        }
-        if (
-            rawSelected.some((ref) => typeof ref !== 'object' || ref === null)
-        ) {
-            throw new Error(
-                'Invalid scheduling policy decision: every selected entry must be a job reference.',
-            );
-        }
-        const copied = selectedRefs({ selected: rawSelected });
-        const issues = checkDecision(view, { selected: copied });
+        const copied = readJobRefs(rawSelected, 'selected');
+        const rawTie: unknown =
+            typeof decision === 'object' && decision !== null
+                ? decision.tie
+                : undefined;
+        const tie = rawTie === undefined ? undefined : copyTie(rawTie);
+        const issues = checkDecision(view, { selected: copied, tie });
         if (issues.length > 0) {
             throw new Error(
                 `Invalid scheduling policy decision:\n${issues.join('\n')}`,
@@ -271,7 +308,28 @@ export class Simulator {
                 { taskId: job.taskId, index: job.index },
             ]),
         );
-        const selected = copied.map((ref) => candidateByKey.get(key(ref))!);
+        const toCandidate = (ref: JobRef) => candidateByKey.get(key(ref))!;
+        const selected = copied.map(toCandidate);
+        if (tie !== undefined) {
+            // DEC-27: the engine owns the generator; every winner is logged,
+            // even one that keeps running, before the per-CPU events (DEC-22).
+            // Candidates are listed in the draw's order, by task ID.
+            const draw = drawWinners(
+                tie.candidates.map(toCandidate),
+                tie.slots,
+                this.state.drawState,
+            );
+            this.state.drawState = draw.state;
+            for (const winner of draw.winners) {
+                selected.push(winner);
+                this.state.events.push({
+                    kind: 'tie-break',
+                    time: this.state.clock,
+                    winner,
+                    candidates: draw.group.map((ref) => ({ ...ref })),
+                });
+            }
+        }
 
         const selectedKeys = new Set(selected.map(key));
         const cpuByJob = new Map<string, number>();

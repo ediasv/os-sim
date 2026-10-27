@@ -48,12 +48,26 @@ export interface PolicyDecision {
      * such as a candidate's `job`: the engine keeps only `selectedRefs` copies.
      */
     readonly selected: readonly JobRef[];
+    /**
+     * Residual tie that crosses the CPU cut, if any; the engine draws the
+     * remaining CPUs among it (DEC-27). Without it, `selected` is complete.
+     */
+    readonly tie?: PolicyTie;
+}
+
+/**
+ * Jobs equal on priority and on every A.4.3 criterion (DEC-16) that compete
+ * for the last `slots` CPUs: more jobs than slots, so a draw must decide.
+ */
+export interface PolicyTie {
+    readonly candidates: readonly JobRef[];
+    readonly slots: number;
 }
 
 /**
  * A scheduling algorithm (RM, EDF, or a test policy). It only reads the view
- * and never mutates anything (DEC-01); draws for residual ties join the
- * contract with #20.
+ * and never mutates anything (DEC-01); a residual tie is reported in `tie`
+ * and drawn by the engine, so policies never hold the generator (DEC-27).
  */
 export interface SchedulingPolicy {
     select(view: PolicyView): PolicyDecision;
@@ -79,10 +93,40 @@ export function checkDecision(
         }
         seen.add(id);
     }
+    const { tie } = decision;
+    if (tie !== undefined) {
+        const tied = new Set<string>();
+        // Only distinct, unselected candidates can be drawn, so only they
+        // count towards leaving a job out.
+        let drawable = 0;
+        for (const ref of tie.candidates) {
+            const id = key(ref);
+            if (!candidates.has(id)) {
+                issues.push(`Tied job ${id} is not a candidate.`);
+            } else if (tied.has(id)) {
+                issues.push(`Job ${id} is tied more than once.`);
+            } else if (seen.has(id)) {
+                issues.push(`Job ${id} is both selected and tied.`);
+            } else {
+                drawable++;
+            }
+            tied.add(id);
+        }
+        if (!Number.isInteger(tie.slots) || tie.slots < 1) {
+            issues.push(
+                `Tie must fill at least one CPU, got ${tie.slots} slots.`,
+            );
+        } else if (tie.slots >= drawable) {
+            issues.push(
+                `Tie must leave out at least one job: ${tie.slots} slots for ${drawable} tied jobs.`,
+            );
+        }
+    }
     const expected = Math.min(view.cpuCount, view.candidates.length);
-    if (decision.selected.length !== expected) {
+    const filled = decision.selected.length + (tie?.slots ?? 0);
+    if (filled !== expected) {
         issues.push(
-            `Policy selected the wrong number of jobs: expected ${expected}, got ${decision.selected.length}.`,
+            `Policy selected the wrong number of jobs: expected ${expected}, got ${filled}.`,
         );
     }
     return issues;

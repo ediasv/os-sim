@@ -173,7 +173,7 @@ Requisito: REQ-07.
   locais e IDs cruzados conferidos; `npm test` 139/139, `npm run lint` e
   `npm run typecheck` aprovados.
 - #19 Implementar RM e EDF separados do motor (prioridades conforme DEC-17).
-  Em revisao no PR #74 (DEC-25, aceita pelo usuario em 2026-10-24).
+  Concluida no PR #74 (merged, `cf139aa`; DEC-25, aceita pelo usuario em 2026-10-24).
   `src/core/policies.ts`: `rmPolicy`, `edfPolicy` e o registro
   `DEFAULT_POLICIES`; `src/core/createSimulator.ts` resolve `config.algorithm`
   no registro; o adaptador cria simulacoes pela fabrica (`load(config)`). Motor
@@ -183,10 +183,31 @@ Requisito: REQ-07.
   preempcao por chegada com o motor em RM e EDF, registro sem o algoritmo e
   configuracao invalida antes do registro. Limite: sem desempates (#20), empate
   no corte de CPUs cai na ordem do arquivo; RM/EDF nao vao ao usuario antes da
-  #20. Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
+  #20. Limite resolvido pela #20 (DEC-27). Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
   `npm run typecheck` aprovados.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
-  (DEC-16, DEC-18).
+  (DEC-16, DEC-18). Em revisao no PR #75 (DEC-27, decidida pelo usuario em
+  2026-10-24): RM e EDF aplicam DEC-16/DEC-18 e relatam o empate residual em
+  `tie`; o motor sorteia com semente fixa, guarda `drawState` no snapshot e
+  registra um `tie-break` por vencedor. Arquivos: `draw.ts`, `policy.ts`,
+  `policies.ts`, `simulator.ts`, `domain.ts`, `snapshot.ts` e testes.
+  Evidencia (2026-10-24): um teste por criterio em RM e EDF (criterio 2 nao
+  separa empate no EDF, conforme DEC-16); empate que cabe nas CPUs sem
+  sorteio nem evento; mesma configuracao repete sorteios e `drawState`;
+  vencedor que ja executava registrado; `tie` invalido nao altera estado nem
+  historico; candidatas do `tie-break` em ordem de ID da tarefa; `tie` nulo
+  rejeitado. `npm test` 278/278, `npm run lint` e `npm run typecheck`
+  aprovados. Revisao do PR: `drawWinners` recusa `slots` fora de
+  `1 <= slots < empatados`; `checkDecision` conta so empatados sorteaveis;
+  grupo ordenado uma vez; DEC renumerada de 26 para 27 apos a #22 ocupar a
+  DEC-26. Achado restante (ordem de validacao na fabrica) segue na #79.
+  Evidencia (2026-10-24, apos merge de `da52d14`): `npm test` 285/285,
+  `npm run lint` e `npm run typecheck` aprovados; IDs DEC-26/DEC-27
+  conferidos. Evidencia (2026-10-27, apos merge de `eecf575`; conflito so no
+  plano): `npm test` 298/298 em 16 arquivos, `npm run lint` e
+  `npm run typecheck` aprovados (Node 24.21.0 local, fora do 24.22.1 fixado).
+- #79 Decidir fonte unica da ordem de validacao entre configuracao e registro
+  de politicas (achado 7 da revisao do PR #75). Depende do merge do PR #75.
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
@@ -291,6 +312,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   documentacao; links e IDs conferidos, sem build.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
+- #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
+  motor e evento (DEC-27); evidencias em E2. Fecha no merge do PR.
 - #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
   `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
   do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
