@@ -240,8 +240,8 @@ describe('Figure 2.6 (#21)', () => {
 
 describe('Quantum on the figure schedules (#21, DEC-18)', () => {
     // RM and EDF consult the policy every tick (DEC-07), so an expired slice
-    // only renews and logs `quantum-expired`. 7 divides none of the figure
-    // instants, so expiries also land off the activation boundaries.
+    // only renews and logs `quantum-expired`. Quantum 1 expires on every
+    // boundary; quantum 7, counted from each dispatch, expires between them.
     const figures = [
         { name: 'figure 2.5 RM', algorithm: 'RM', quantum: 100, ...FIG_2_5 },
         { name: 'figure 2.6 EDF', algorithm: 'EDF', quantum: 25, ...FIG_2_6 },
@@ -371,16 +371,17 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
     it('breaks a tie by earlier activation before any draw', () => {
         // At t=4, tasks 1 and 2 tie on priority (RM: same period; EDF: same
         // absolute deadline 20) and on deadline; neither ran before, so the
-        // earlier activation wins (DEC-16 criterion 3).
+        // earlier activation wins (DEC-16 criterion 3). It belongs to the
+        // higher ID, so falling back to ID or file order would fail (DEC-13).
         const s = simulate(
             config(1, [
-                periodic(1, { duration: 2, period: 20 }),
-                periodic(2, {
+                periodic(1, {
                     arrival: 1,
                     duration: 2,
                     period: 20,
                     deadline: 19,
                 }),
+                periodic(2, { duration: 2, period: 20 }),
                 periodic(3, { duration: 4, period: 10, deadline: 5 }),
             ]),
             8,
@@ -388,8 +389,8 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
 
         expect(s.executions).toEqual([
             { cpuId: 1, job: ref(3, 0), start: 0, end: 4 },
-            { cpuId: 1, job: ref(1, 0), start: 4, end: 6 },
-            { cpuId: 1, job: ref(2, 0), start: 6, end: 8 },
+            { cpuId: 1, job: ref(2, 0), start: 4, end: 6 },
+            { cpuId: 1, job: ref(1, 0), start: 6, end: 8 },
         ]);
         expect(eventsOf(s, 'tie-break')).toEqual([]);
     });
@@ -400,9 +401,10 @@ describe.each(['RM', 'EDF'] as const)(
     (algorithm) => {
         it('distributes jobs, preempts on the right CPU, and powers CPUs off and on', () => {
             // Task 2 has the lowest priority under both algorithms, so task 3
-            // preempts it on CPU 2 while task 1 keeps CPU 1. Under EDF task 3
-            // ties task 1 at t=2 (deadline 12), and task 1 stays by criterion
-            // (1). At t=4 task 2 resumes on the first free CPU (DEC-07).
+            // preempts it on CPU 2 while task 1 keeps CPU 1 (DEC-07). Under
+            // EDF tasks 3 and 1 share deadline 12 at t=2, but both fit the two
+            // CPUs, so no tie crosses the cut. At t=4 task 2 resumes on the
+            // first free CPU.
             const s = simulate(
                 {
                     algorithm,

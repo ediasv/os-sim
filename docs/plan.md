@@ -219,7 +219,7 @@ Requisito: REQ-07.
   fixado); DEC-28 unica e links locais conferidos. Nao executado: app
   Electron (sem mudanca no renderer).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
-  incluindo o exemplo de quantum vencido de DEC-18. Em revisao no PR #85:
+  incluindo o exemplo de quantum vencido de DEC-18. No PR #85 (rascunho):
   `src/core/scenarios.test.ts` roda `createSimulator` com RM/EDF reais e
   confere intervalos e eventos exatos, com `findInconsistencies` vazio no
   snapshot 0 e apos cada passo. Casos: figura 2.5 (RM, ate t=360) e 2.6 (EDF
@@ -227,7 +227,8 @@ Requisito: REQ-07.
   figura), com quantum sem vencimento; as mesmas escalas com quantum 1 e 7
   mudam so eventos `quantum-expired` (opcao C); exemplo da DEC-18 com RM
   (J [0, 4), K [4, 6)); em RM e EDF, empate que cabe nas CPUs, sorteio no
-  corte com um `tie-break` por vencedor e desempate por ativacao; duas CPUs
+  corte com um `tie-break` por vencedor e desempate por ativacao (a mais cedo
+  e a de maior ID, para nao passar por ordem de ID); duas CPUs
   com distribuicao, preempcao na CPU 2, CPUs desligadas e religadas.
   Esperados derivados a mao das figuras e decisoes; cada grupo conferido por
   mutacao do esperado (falha) antes do commit. Nenhuma mudanca no motor.
@@ -373,7 +374,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
 - #21 em andamento (iniciada em 2026-10-27, branch
-  `issue-21-figuras-empates-multicpu`, PR em rascunho): testes de simulacao
+  `issue-21-figuras-empates-multicpu`, PR #85 em rascunho): testes de simulacao
   completa para as figuras 2.5/2.6, empates por algoritmo, varias CPUs e o
   exemplo de DEC-18, com `findInconsistencies` vazio a cada passo. Exemplo de
   DEC-18 na issue corrigido em 2026-10-27 para J [0, 4), K [4, 6). Quantum e
@@ -381,7 +382,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   quantum sem vencimento na janela, mais um teste com quantum pequeno que so
   acrescenta `quantum-expired`; janelas [0, 360] na 2.5 e [0, 55] na 2.6,
   incluindo a conclusao na borda. Testes e gates concluidos (evidencias em
-  E2); PR #85 aguarda revisao.
+  E2); falta a revisao do usuario antes de tirar o PR de rascunho.
 - Proximo passo: revisar e integrar o PR #85 (#21); depois #70 (controles e
   mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
