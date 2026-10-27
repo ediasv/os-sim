@@ -237,3 +237,39 @@ describe('Figure 2.6 (#21)', () => {
         expect(s.tasks.map((tcb) => tcb.jobs.length)).toEqual([3, 2]);
     });
 });
+
+describe('Quantum on the figure schedules (#21, DEC-18)', () => {
+    // RM and EDF consult the policy every tick (DEC-07), so an expired slice
+    // only renews and logs `quantum-expired`. 7 divides none of the figure
+    // instants, so expiries also land off the activation boundaries.
+    const figures = [
+        { name: 'figure 2.5 RM', algorithm: 'RM', quantum: 100, ...FIG_2_5 },
+        { name: 'figure 2.6 EDF', algorithm: 'EDF', quantum: 25, ...FIG_2_6 },
+        { name: 'figure 2.6 RM', algorithm: 'RM', quantum: 25, ...FIG_2_6 },
+    ] as const;
+    const cases = figures.flatMap((figure) =>
+        [1, 7].map((small) => [figure.name, small, figure] as const),
+    );
+
+    it.each(cases)(
+        'changes only quantum-expired events: %s with quantum %i',
+        (_name, small, { algorithm, quantum, tasks, end }) => {
+            const baseline = simulate(
+                { algorithm, quantum, cpuCount: 1, tasks },
+                end,
+            );
+            const sliced = simulate(
+                { algorithm, quantum: small, cpuCount: 1, tasks },
+                end,
+            );
+
+            expect(sliced.executions).toEqual(baseline.executions);
+            expect(
+                eventsUntil(sliced, end).filter(
+                    (event) => event.kind !== 'quantum-expired',
+                ),
+            ).toEqual(eventsUntil(baseline, end));
+            expect(eventsOf(sliced, 'quantum-expired')).not.toEqual([]);
+        },
+    );
+});
