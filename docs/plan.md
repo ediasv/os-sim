@@ -207,7 +207,17 @@ Requisito: REQ-07.
   plano): `npm test` 298/298 em 16 arquivos, `npm run lint` e
   `npm run typecheck` aprovados (Node 24.21.0 local, fora do 24.22.1 fixado).
 - #79 Decidir fonte unica da ordem de validacao entre configuracao e registro
-  de politicas (achado 7 da revisao do PR #75). Depende do merge do PR #75.
+  de politicas (achado 7 da revisao do PR #75). Decidida pelo usuario em
+  2026-10-27 (DEC-28): `requireValidConfig` em `config.ts` e o unico ponto que
+  lanca `ConfigValidationError`; o construtor do `Simulator` e o caminho de
+  algoritmo sem politica de `createSimulator` o chamam. Arquivos: `config.ts`,
+  `simulator.ts`, `createSimulator.ts`, `config.test.ts` e arquitetura.
+  Evidencia (2026-10-27): testes novos de `requireValidConfig` falharam antes
+  da implementacao; o teste existente de configuracao invalida antes do
+  registro passa sem mudanca; `npm test` 300/300 em 16 arquivos, `npm run lint`
+  e `npm run typecheck` aprovados (Node 24.21.0 local, fora do 24.22.1
+  fixado); DEC-28 unica e links locais conferidos. Nao executado: app
+  Electron (sem mudanca no renderer).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
   incluindo o exemplo de quantum vencido de DEC-18.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
@@ -312,8 +322,12 @@ Requisito: REQ-10; integracao de todos os anteriores.
   documentacao; links e IDs conferidos, sem build.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
-- #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
-  motor e evento (DEC-27); evidencias em E2. Fecha no merge do PR.
+- #20 concluida no PR #75 (merged, `f22281d`, 2026-10-27): desempates,
+  sorteio pelo motor e evento (DEC-27); evidencias em E2.
+- #79 implementada no worktree `worktree-79-validacao-fonte-unica`
+  (2026-10-27): `requireValidConfig` compartilhada pelo construtor do
+  `Simulator` e pela fabrica (DEC-28); evidencias em E2. Proximo passo: commit
+  e PR com `Closes #79`, quando solicitados.
 - #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
   `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
   do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
@@ -344,7 +358,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- Proximo passo: integrar o PR #75 (#20); depois #70 (controles e mensagens
+- Proximo passo: concluir a #79; depois #70 (controles e mensagens
   do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
 - Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na

@@ -9,7 +9,7 @@ import {
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
-import { ConfigValidationError, validateConfig } from './config';
+import { requireValidConfig } from './config';
 import {
     buildPolicyView,
     checkDecision,
@@ -454,17 +454,14 @@ export class Simulator {
         config: SystemConfig,
         policy: SchedulingPolicy | undefined,
     ): { config: SystemConfig; policy: SchedulingPolicy } {
-        const result = validateConfig(config);
-        if (!result.ok) {
-            throw new ConfigValidationError(result.issues);
-        }
+        const validConfig = requireValidConfig(config);
         if (policy === undefined) {
-            if (result.config.tasks.length > 0) {
+            if (validConfig.tasks.length > 0) {
                 throw new TypeError(
                     'A scheduling policy is required when tasks are configured.',
                 );
             }
-            return { config: result.config, policy: NO_WORK_POLICY };
+            return { config: validConfig, policy: NO_WORK_POLICY };
         }
         if (
             policy === null ||
@@ -475,7 +472,7 @@ export class Simulator {
                 'A scheduling policy with a select method is required.',
             );
         }
-        return { config: result.config, policy };
+        return { config: validConfig, policy };
     }
 
     /**

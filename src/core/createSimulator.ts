@@ -1,4 +1,4 @@
-import { ConfigValidationError, validateConfig } from './config';
+import { requireValidConfig } from './config';
 import type { SystemConfig } from './domain';
 import { DEFAULT_POLICIES, type PolicyRegistry } from './policies';
 import { Simulator } from './simulator';
@@ -11,17 +11,16 @@ import { Simulator } from './simulator';
  *
  * An invalid configuration is reported as a `ConfigValidationError` even when
  * its algorithm has no policy, keeping the user-fixable error ahead of the
- * registry one (DEC-15, DEC-24).
+ * registry one (DEC-15, DEC-24). That branch validates through
+ * `requireValidConfig`, the same function the Simulator constructor uses
+ * (DEC-28).
  */
 export function createSimulator(
     config: SystemConfig,
     policies: PolicyRegistry = DEFAULT_POLICIES,
 ): Simulator {
     if (!Object.hasOwn(policies, config.algorithm)) {
-        const result = validateConfig(config);
-        if (!result.ok) {
-            throw new ConfigValidationError(result.issues);
-        }
+        requireValidConfig(config);
         throw new TypeError(
             `No scheduling policy is registered for algorithm ${config.algorithm}.`,
         );
