@@ -24,14 +24,18 @@ function task(
 function cand(
     t: TaskDefinition,
     absoluteDeadline: number,
-    extra: { activation?: number; previousCpu?: number | null } = {},
+    extra: {
+        activation?: number;
+        previousCpu?: number | null;
+        executed?: number;
+    } = {},
 ): PolicyCandidate {
     const job: Job = {
         taskId: t.id,
         index: 0,
         activation: extra.activation ?? 0,
         absoluteDeadline,
-        executed: 0,
+        executed: extra.executed ?? 0,
         state: 'ready',
         completedAt: null,
         deadlineMissed: false,
@@ -142,6 +146,13 @@ describe('RM', () => {
             expect(decide(view(1, [x, y]))).toEqual({ selected: ['2.0'] });
         });
 
+        it('criterion 4: shorter task duration even with more work left (DEC-16)', () => {
+            // Remaining work would pick task 1 (4 - 3 = 1 < 2); DEC-16 discards it.
+            const x = cand(task(1, 5, 10, 4), 10, { executed: 3 });
+            const y = cand(task(2, 5, 10, 2), 10);
+            expect(decide(view(1, [x, y]))).toEqual({ selected: ['2.0'] });
+        });
+
         it('applies the criteria in order', () => {
             const running = cand(task(1, 5, 10, 3), 9, {
                 activation: 1,
@@ -241,6 +252,15 @@ describe('EDF', () => {
         it('criterion 4: shorter task duration', () => {
             const x = cand(task(1, 5, 10, 3), 10);
             const y = cand(task(2, 50, 10, 1), 10);
+            expect(decide(view(1, [x, y]), edfPolicy)).toEqual({
+                selected: ['2.0'],
+            });
+        });
+
+        it('criterion 4: shorter task duration even with more work left (DEC-16)', () => {
+            // Remaining work would pick task 1 (4 - 3 = 1 < 2); DEC-16 discards it.
+            const x = cand(task(1, 5, 10, 4), 10, { executed: 3 });
+            const y = cand(task(2, 5, 10, 2), 10);
             expect(decide(view(1, [x, y]), edfPolicy)).toEqual({
                 selected: ['2.0'],
             });

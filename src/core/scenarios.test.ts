@@ -474,7 +474,8 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
         // duration wins (DEC-16 criterion 4) and belongs to the higher ID. With
         // equal activations the longer task never runs ahead of the shorter,
         // so duration and remaining work cannot be told apart end to end;
-        // `policies.test.ts` covers that difference.
+        // `policies.test.ts` ('criterion 4: shorter task duration even with
+        // more work left') covers that difference.
         const s = simulate(
             config(1, [
                 periodic(1, { duration: 4, period: 10 }),
