@@ -273,3 +273,124 @@ describe('Quantum on the figure schedules (#21, DEC-18)', () => {
         },
     );
 });
+
+describe('DEC-18 example (#21)', () => {
+    it('keeps J on the CPU when its slice expires in a tie: J [0, 4), K [4, 6)', () => {
+        // Same period: an RM priority tie that criterion (1) decides at t=1
+        // and again at t=2, when J's slice expires. At t=4 J completes on the
+        // boundary where the slice would expire, so only the completion is
+        // logged (DEC-03).
+        const J = ref(1, 0);
+        const K = ref(2, 0);
+        const s = simulate(
+            {
+                algorithm: 'RM',
+                quantum: 2,
+                cpuCount: 1,
+                tasks: [
+                    periodic(1, { duration: 4, period: 10 }),
+                    periodic(2, {
+                        arrival: 1,
+                        duration: 2,
+                        period: 10,
+                        deadline: 8,
+                    }),
+                ],
+            },
+            6,
+        );
+
+        expect(s.executions).toEqual([
+            { cpuId: 1, job: J, start: 0, end: 4 },
+            { cpuId: 1, job: K, start: 4, end: 6 },
+        ]);
+        expect(eventsOf(s, 'quantum-expired')).toEqual([
+            { kind: 'quantum-expired', time: 2, cpuId: 1, job: J },
+        ]);
+        expect(eventsOf(s, 'preemption')).toEqual([]);
+        expect(eventsOf(s, 'tie-break')).toEqual([]);
+        expect(eventsOf(s, 'completion')).toEqual([
+            done(4, 1, 0),
+            done(6, 2, 0),
+        ]);
+    });
+});
+
+describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
+    type TieBreak = Extract<SimulationEvent, { kind: 'tie-break' }>;
+    // Equal on priority and on every A.4.3 criterion under both algorithms.
+    const twin = (id: number) => periodic(id, { duration: 2, period: 10 });
+    const config = (cpuCount: number, tasks: TaskDefinition[]) => ({
+        algorithm,
+        quantum: 10,
+        cpuCount,
+        tasks,
+    });
+
+    it('does not draw when the tied jobs fit the CPUs', () => {
+        const s = simulate(config(2, [twin(1), twin(2)]), 2);
+
+        expect(eventsOf(s, 'tie-break')).toEqual([]);
+        const byTask = [...s.executions].sort(
+            (a, b) => a.job.taskId - b.job.taskId,
+        );
+        expect(byTask).toMatchObject([
+            { job: ref(1, 0), start: 0, end: 2 },
+            { job: ref(2, 0), start: 0, end: 2 },
+        ]);
+        expect(byTask[0].cpuId).not.toBe(byTask[1].cpuId);
+    });
+
+    it('draws at the CPU cut and records one tie-break per winner', () => {
+        const s = simulate(config(2, [twin(1), twin(2), twin(3)]), 4);
+        const all = [ref(1, 0), ref(2, 0), ref(3, 0)];
+
+        // The winner depends on DRAW_SEED, so it is read from the events.
+        const draws = eventsOf(s, 'tie-break') as TieBreak[];
+        expect(draws).toHaveLength(2);
+        for (const draw of draws) {
+            expect(draw.time).toBe(0);
+            expect(draw.candidates).toEqual(all);
+        }
+        const [first, second] = draws.map((draw) => draw.winner);
+        expect(first).not.toEqual(second);
+        const loser = all.find(
+            (job) =>
+                job.taskId !== first.taskId && job.taskId !== second.taskId,
+        );
+
+        // Winners take the free CPUs in draw order (DEC-27, DEC-07).
+        expect(s.executions).toEqual([
+            { cpuId: 1, job: first, start: 0, end: 2 },
+            { cpuId: 2, job: second, start: 0, end: 2 },
+            { cpuId: 1, job: loser, start: 2, end: 4 },
+        ]);
+        expect(s.events).toContainEqual({ kind: 'cpu-off', time: 2, cpuId: 2 });
+    });
+
+    it('breaks a tie by earlier activation before any draw', () => {
+        // At t=4, tasks 1 and 2 tie on priority (RM: same period; EDF: same
+        // absolute deadline 20) and on deadline; neither ran before, so the
+        // earlier activation wins (DEC-16 criterion 3).
+        const s = simulate(
+            config(1, [
+                periodic(1, { duration: 2, period: 20 }),
+                periodic(2, {
+                    arrival: 1,
+                    duration: 2,
+                    period: 20,
+                    deadline: 19,
+                }),
+                periodic(3, { duration: 4, period: 10, deadline: 5 }),
+            ]),
+            8,
+        );
+
+        expect(s.executions).toEqual([
+            { cpuId: 1, job: ref(3, 0), start: 0, end: 4 },
+            { cpuId: 1, job: ref(1, 0), start: 4, end: 6 },
+            { cpuId: 1, job: ref(2, 0), start: 6, end: 8 },
+        ]);
+        expect(eventsOf(s, 'tie-break')).toEqual([]);
+    });
+});
