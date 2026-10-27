@@ -7,7 +7,7 @@
  * intervals and events were derived by hand from the figures and the
  * decisions, never copied from the engine.
  */
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { findInconsistencies } from './consistency';
 import { createSimulator } from './createSimulator';
 import type {
@@ -117,6 +117,39 @@ const cpuOn = (time: number, cpuId = 1): SimulationEvent => ({
     time,
     cpuId,
 });
+const tieBreak = (
+    time: number,
+    winner: JobRef,
+    candidates: JobRef[],
+): SimulationEvent => ({ kind: 'tie-break', time, winner, candidates });
+
+/**
+ * Expiries a quantum adds to a schedule run without them (DEC-03, DEC-18):
+ * every execution starts a slice and every expiry renews it, so a slice
+ * expires each `quantum` ticks into the execution, except on the boundary
+ * where the job completes, which logs only the completion.
+ */
+function expectedExpiries(
+    baseline: SimulationSnapshot,
+    quantum: number,
+): SimulationEvent[] {
+    const expiries: SimulationEvent[] = [];
+    for (const { cpuId, job, start, end } of baseline.executions) {
+        const completes = baseline.events.some(
+            (event) =>
+                event.kind === 'completion' &&
+                event.time === end &&
+                event.job.taskId === job.taskId &&
+                event.job.index === job.index,
+        );
+        for (let time = start + quantum; time <= end; time += quantum) {
+            if (time !== end || !completes) {
+                expiries.push(expired(time, job, cpuId));
+            }
+        }
+    }
+    return expiries;
+}
 
 // The figures run with a quantum equal to the largest duration, so no slice
 // expires inside the window; the small-quantum block below checks that
@@ -269,11 +302,11 @@ describe('Figure 2.6 (#21)', () => {
 });
 
 describe('Quantum on the figure schedules (#21, DEC-18)', () => {
-    type QuantumExpired = Extract<SimulationEvent, { kind: 'quantum-expired' }>;
     // RM and EDF consult the policy every tick (DEC-07), so an expired slice
     // only renews and logs `quantum-expired`. Quantum 1 expires on every
-    // boundary where a job keeps running; quantum 7 expires away from the
-    // switches of the schedule. Either way only those events are added.
+    // boundary where an incomplete job was running, including those where it
+    // is preempted (DEC-18); quantum 7 expires away from the switches of the
+    // schedule. Either way only those events are added.
     const figures = [
         { name: 'figure 2.5 RM', algorithm: 'RM', ...FIG_2_5 },
         { name: 'figure 2.6 EDF', algorithm: 'EDF', ...FIG_2_6 },
@@ -301,30 +334,26 @@ describe('Quantum on the figure schedules (#21, DEC-18)', () => {
                     (event) => event.kind !== 'quantum-expired',
                 ),
             ).toEqual(baseline.events);
-
-            // An expiry belongs to a job running on that CPU; a job completing
-            // on that boundary logs only the completion (DEC-18).
-            const expiries = eventsOf(
-                sliced,
-                'quantum-expired',
-            ) as QuantumExpired[];
-            expect(expiries).not.toEqual([]);
-            for (const expiry of expiries) {
-                const running = sliced.executions.some(
-                    (execution) =>
-                        execution.cpuId === expiry.cpuId &&
-                        execution.job.taskId === expiry.job.taskId &&
-                        execution.job.index === expiry.job.index &&
-                        execution.start < expiry.time &&
-                        expiry.time <= execution.end,
-                );
-                expect(running, `expiry at t=${expiry.time}`).toBe(true);
-                expect(sliced.events).not.toContainEqual(
-                    done(expiry.time, expiry.job.taskId, expiry.job.index),
-                );
-            }
+            expect(eventsOf(sliced, 'quantum-expired')).toEqual(
+                expectedExpiries(baseline, small),
+            );
         },
     );
+
+    it('logs the expiry before the activation and the preemption at t=100 (DEC-22)', () => {
+        // C's slice of 1 expires as A1 arrives and preempts it: both are
+        // logged (DEC-18), in the stage order of DEC-22.
+        const s = simulate(
+            { algorithm: 'RM', quantum: 1, cpuCount: 1, tasks: FIG_2_5.tasks },
+            100,
+        );
+
+        expect(s.events.filter((event) => event.time === 100)).toEqual([
+            expired(100, ref(3, 0)),
+            act(100, 1, 1),
+            preempt(100, ref(3, 0), ref(1, 1)),
+        ]);
+    });
 
     it('expires figure 2.6 EDF slices of 7 at the derived instants', () => {
         // Each dispatch or resume starts a slice, and each expiry renews it
@@ -412,6 +441,14 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
             { job: ref(2, 0), start: 0, end: 2 },
         ]);
         expect(byTask[0].cpuId).not.toBe(byTask[1].cpuId);
+        expect(s.events).toEqual([
+            act(0, 1, 0),
+            act(0, 2, 0),
+            done(2, 1, 0),
+            done(2, 2, 0),
+            cpuOff(2, 1),
+            cpuOff(2, 2),
+        ]);
     });
 
     it('draws at the CPU cut and records one tie-break per winner', () => {
@@ -420,17 +457,18 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
 
         // The winner depends on DRAW_SEED, so it is read from the events.
         const draws = eventsOf(s, 'tie-break') as TieBreak[];
-        expect(draws).toHaveLength(2);
-        for (const draw of draws) {
-            expect(draw.time).toBe(0);
-            expect(draw.candidates).toEqual(all);
-        }
         const [first, second] = draws.map((draw) => draw.winner);
-        expect(first).not.toEqual(second);
+        expect(
+            first.taskId,
+            'DRAW_SEED must draw out of ID order, or sorting the winners by ID would go unnoticed',
+        ).toBeGreaterThan(second.taskId);
         const loser = all.find(
             (job) =>
                 job.taskId !== first.taskId && job.taskId !== second.taskId,
         );
+        assert(loser !== undefined, 'one job must lose the draw');
+        // Completions follow the task list, not the draw (DEC-22).
+        const [low, high] = [first, second].sort((a, b) => a.taskId - b.taskId);
 
         // The selection receives the winners in draw order, and free CPUs are
         // filled in selection order (DEC-27, DEC-07).
@@ -439,7 +477,20 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
             { cpuId: 2, job: second, start: 0, end: 2 },
             { cpuId: 1, job: loser, start: 2, end: 4 },
         ]);
-        expect(s.events).toContainEqual(cpuOff(2, 2));
+        // Tie-breaks come after the activations and before the per-CPU
+        // events, in draw order (DEC-22, DEC-27).
+        expect(s.events).toEqual([
+            act(0, 1, 0),
+            act(0, 2, 0),
+            act(0, 3, 0),
+            tieBreak(0, first, all),
+            tieBreak(0, second, all),
+            done(2, low.taskId, 0),
+            done(2, high.taskId, 0),
+            cpuOff(2, 2),
+            done(4, loser.taskId, 0),
+            cpuOff(4, 1),
+        ]);
     });
 
     it('breaks a tie by earlier activation before any draw', () => {
@@ -525,9 +576,9 @@ describe('RM priority of an aperiodic task (#21, DEC-17)', () => {
         // infinite. Its deadline (8) is earlier than the periodic job's (10),
         // so a priority tie would let DEC-16 criterion (2) run the aperiodic
         // job first, and so would reading period zero as the smallest
-        // period. Finishing at 5, it still meets its deadline. Its single job is the
-        // last one, so its completion is followed by `task-finished` (DEC-09,
-        // DEC-22).
+        // period. Finishing at 5, it still meets its deadline. Its single job
+        // is the last one, so its completion is followed by `task-finished`
+        // (DEC-09, DEC-22).
         const s = simulate(
             {
                 algorithm: 'RM',
