@@ -162,3 +162,78 @@ describe('Figure 2.5 (#21)', () => {
         expect(s.tasks.map((tcb) => tcb.jobs.length)).toEqual([4, 3, 2]);
     });
 });
+
+/** Figure 2.6: A and B with deadline equal to period; utilization is 100%. */
+const FIG_2_6 = {
+    tasks: [
+        periodic(1, { duration: 10, period: 20 }),
+        periodic(2, { duration: 25, period: 50 }),
+    ],
+    end: 55,
+};
+
+describe('Figure 2.6 (#21)', () => {
+    // Quantum 25 is the largest duration, so no slice expires (option C).
+    const run = (algorithm: 'RM' | 'EDF') =>
+        simulate(
+            { algorithm, quantum: 25, cpuCount: 1, tasks: FIG_2_6.tasks },
+            FIG_2_6.end,
+        );
+
+    it('meets every deadline under EDF up to t=55', () => {
+        const s = run('EDF');
+
+        // At t=40, B0's deadline (50) beats A2's (60), so B0 keeps the CPU.
+        expect(s.executions).toEqual([
+            { cpuId: 1, job: ref(1, 0), start: 0, end: 10 },
+            { cpuId: 1, job: ref(2, 0), start: 10, end: 20 },
+            { cpuId: 1, job: ref(1, 1), start: 20, end: 30 },
+            { cpuId: 1, job: ref(2, 0), start: 30, end: 45 },
+            { cpuId: 1, job: ref(1, 2), start: 45, end: 55 },
+        ]);
+        expect(eventsUntil(s, FIG_2_6.end)).toEqual([
+            act(0, 1, 0),
+            act(0, 2, 0),
+            done(10, 1, 0),
+            act(20, 1, 1),
+            preempt(20, ref(2, 0), ref(1, 1)),
+            done(30, 1, 1),
+            act(40, 1, 2),
+            done(45, 2, 0),
+            act(50, 2, 1),
+            done(55, 1, 2),
+        ]);
+        expect(eventsOf(s, 'deadline-miss')).toEqual([]);
+        expect(s.tasks.map((tcb) => tcb.jobs.length)).toEqual([3, 2]);
+    });
+
+    it("misses B's deadline at t=50 under RM and keeps running it", () => {
+        const s = run('RM');
+
+        // DEC-09 runs a late job to completion, as the B [50, 55) drawn in
+        // the figure; the miss precedes the activation at t=50 (DEC-22).
+        expect(s.executions).toEqual([
+            { cpuId: 1, job: ref(1, 0), start: 0, end: 10 },
+            { cpuId: 1, job: ref(2, 0), start: 10, end: 20 },
+            { cpuId: 1, job: ref(1, 1), start: 20, end: 30 },
+            { cpuId: 1, job: ref(2, 0), start: 30, end: 40 },
+            { cpuId: 1, job: ref(1, 2), start: 40, end: 50 },
+            { cpuId: 1, job: ref(2, 0), start: 50, end: 55 },
+        ]);
+        expect(eventsUntil(s, FIG_2_6.end)).toEqual([
+            act(0, 1, 0),
+            act(0, 2, 0),
+            done(10, 1, 0),
+            act(20, 1, 1),
+            preempt(20, ref(2, 0), ref(1, 1)),
+            done(30, 1, 1),
+            act(40, 1, 2),
+            preempt(40, ref(2, 0), ref(1, 2)),
+            done(50, 1, 2),
+            { kind: 'deadline-miss', time: 50, job: ref(2, 0) },
+            act(50, 2, 1),
+            done(55, 2, 0),
+        ]);
+        expect(s.tasks.map((tcb) => tcb.jobs.length)).toEqual([3, 2]);
+    });
+});
