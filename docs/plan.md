@@ -358,8 +358,15 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- Proximo passo: concluir a #79; depois #70 (controles e mensagens
-  do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
+- #21 em andamento (iniciada em 2026-10-27, branch
+  `issue-21-figuras-empates-multicpu`, PR em rascunho): testes de simulacao
+  completa para as figuras 2.5/2.6, empates por algoritmo, varias CPUs e o
+  exemplo de DEC-18, com `findInconsistencies` vazio a cada passo. Em aberto
+  com o usuario: o exemplo de DEC-18 na issue (J [0, 2), K [2, 4), J [4, 6))
+  diverge da DEC-18 revista na #14 (J [0, 4), K [4, 6)); quantum que preserve
+  as escalas das figuras e comparacao so da janela mostrada (DEC-09).
+- Proximo passo: #21 (teste da figura 2.5 primeiro); depois #70 (controles e
+  mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
 - Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
   #35.
