@@ -394,3 +394,56 @@ describe.each(['RM', 'EDF'] as const)('Ties under %s (#21)', (algorithm) => {
         expect(eventsOf(s, 'tie-break')).toEqual([]);
     });
 });
+
+describe.each(['RM', 'EDF'] as const)(
+    'Two CPUs under %s (#21)',
+    (algorithm) => {
+        it('distributes jobs, preempts on the right CPU, and powers CPUs off and on', () => {
+            // Task 2 has the lowest priority under both algorithms, so task 3
+            // preempts it on CPU 2 while task 1 keeps CPU 1. Under EDF task 3
+            // ties task 1 at t=2 (deadline 12), and task 1 stays by criterion
+            // (1). At t=4 task 2 resumes on the first free CPU (DEC-07).
+            const s = simulate(
+                {
+                    algorithm,
+                    quantum: 10,
+                    cpuCount: 2,
+                    tasks: [
+                        periodic(1, { duration: 4, period: 12 }),
+                        periodic(2, { duration: 6, period: 30 }),
+                        periodic(3, { arrival: 2, duration: 2, period: 10 }),
+                    ],
+                },
+                16,
+            );
+
+            expect(s.executions).toEqual([
+                { cpuId: 1, job: ref(1, 0), start: 0, end: 4 },
+                { cpuId: 2, job: ref(2, 0), start: 0, end: 2 },
+                { cpuId: 2, job: ref(3, 0), start: 2, end: 4 },
+                { cpuId: 1, job: ref(2, 0), start: 4, end: 8 },
+                { cpuId: 1, job: ref(3, 1), start: 12, end: 14 },
+                { cpuId: 2, job: ref(1, 1), start: 12, end: 16 },
+            ]);
+            expect(s.events).toEqual([
+                act(0, 1, 0),
+                act(0, 2, 0),
+                act(2, 3, 0),
+                preempt(2, ref(2, 0), ref(3, 0), 2),
+                done(4, 1, 0),
+                done(4, 3, 0),
+                { kind: 'cpu-off', time: 4, cpuId: 2 },
+                done(8, 2, 0),
+                { kind: 'cpu-off', time: 8, cpuId: 1 },
+                act(12, 1, 1),
+                act(12, 3, 1),
+                { kind: 'cpu-on', time: 12, cpuId: 1 },
+                { kind: 'cpu-on', time: 12, cpuId: 2 },
+                done(14, 3, 1),
+                { kind: 'cpu-off', time: 14, cpuId: 1 },
+                done(16, 1, 1),
+                { kind: 'cpu-off', time: 16, cpuId: 2 },
+            ]);
+        });
+    },
+);
