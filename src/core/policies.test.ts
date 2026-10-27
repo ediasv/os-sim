@@ -83,6 +83,11 @@ describe('RM', () => {
         expect(ids(view(2, [c, b, a]))).toEqual([2, 3]);
     });
 
+    it('returns the selection in rank order (DEC-13)', () => {
+        const v = view(2, [cand(task(1, 20), 20), cand(task(2, 10), 10)]);
+        expect(rmPolicy.select(v).selected.map(key)).toEqual(['2.0', '1.0']);
+    });
+
     it('preempts when a higher priority job arrives', () => {
         expect(ids(view(1, [a]))).toEqual([1]);
         expect(ids(view(1, [a, b]))).toEqual([2]);
@@ -225,6 +230,11 @@ describe('EDF', () => {
     it('picks the earliest deadlines on several CPUs, in any order', () => {
         expect(ids(view(2, [a, b, c]), edfPolicy)).toEqual([1, 3]);
         expect(ids(view(2, [c, b, a]), edfPolicy)).toEqual([1, 3]);
+    });
+
+    it('returns the selection in rank order (DEC-13)', () => {
+        const v = view(2, [cand(task(1, 20), 20), cand(task(2, 10), 10)]);
+        expect(edfPolicy.select(v).selected.map(key)).toEqual(['2.0', '1.0']);
     });
 
     it('preempts when a job with an earlier deadline arrives', () => {

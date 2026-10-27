@@ -43,9 +43,10 @@ export interface PolicyView {
 export interface PolicyDecision {
     /**
      * Jobs that run during [clock, clock+1): exactly min(cpuCount, candidates),
-     * so no CPU stays off while eligible work waits (REQ-02). Unordered: which
-     * CPU each job gets belongs to dispatch (DEC-07). Any `JobRef` will do,
-     * such as a candidate's `job`: the engine keeps only `selectedRefs` copies.
+     * so no CPU stays off while eligible work waits (REQ-02). In priority
+     * order: dispatch keeps each running job's CPU and fills the free ones in
+     * this order (DEC-07, DEC-13). Any `JobRef` will do, such as a
+     * candidate's `job`: the engine keeps only `selectedRefs` copies.
      */
     readonly selected: readonly JobRef[];
     /**

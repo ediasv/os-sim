@@ -613,7 +613,9 @@ describe.each(['RM', 'EDF'] as const)(
         // Task 2 has the lowest priority under both algorithms, so task 3
         // preempts it on CPU 2 while task 1 keeps CPU 1 (DEC-07). Under EDF
         // tasks 3 and 1 share deadline 12 at t=2, but both fit the two CPUs,
-        // so no tie crosses the cut.
+        // so no tie crosses the cut. When several jobs start at once (t=0,
+        // t=12), they take the free CPUs in the policy's selection order,
+        // highest priority on CPU 1 (DEC-13, DEC-07).
         const run = () =>
             simulate(
                 {
@@ -668,6 +670,50 @@ describe.each(['RM', 'EDF'] as const)(
                 cpuOff(14, 1),
                 done(16, 1, 1),
                 cpuOff(16, 2),
+            ]);
+        });
+
+        it('preempts both CPUs at the same instant', () => {
+            // Tasks 3 and 4 arrive together at t=2 and displace tasks 1 and 2,
+            // taking the free CPUs in selection order; one preemption per CPU,
+            // in CPU order (DEC-22). Tasks 1 and 2 resume on their CPUs at
+            // t=4. EDF deadlines (30, 40, 12, 14) keep the RM order.
+            const s = simulate(
+                {
+                    algorithm,
+                    quantum: 10,
+                    cpuCount: 2,
+                    tasks: [
+                        periodic(1, { duration: 6, period: 30 }),
+                        periodic(2, { duration: 6, period: 40 }),
+                        periodic(3, { arrival: 2, duration: 2, period: 10 }),
+                        periodic(4, { arrival: 2, duration: 2, period: 12 }),
+                    ],
+                },
+                8,
+            );
+
+            expect(s.executions).toEqual([
+                { cpuId: 1, job: ref(1, 0), start: 0, end: 2 },
+                { cpuId: 2, job: ref(2, 0), start: 0, end: 2 },
+                { cpuId: 1, job: ref(3, 0), start: 2, end: 4 },
+                { cpuId: 2, job: ref(4, 0), start: 2, end: 4 },
+                { cpuId: 1, job: ref(1, 0), start: 4, end: 8 },
+                { cpuId: 2, job: ref(2, 0), start: 4, end: 8 },
+            ]);
+            expect(s.events).toEqual([
+                act(0, 1, 0),
+                act(0, 2, 0),
+                act(2, 3, 0),
+                act(2, 4, 0),
+                preempt(2, ref(1, 0), ref(3, 0), 1),
+                preempt(2, ref(2, 0), ref(4, 0), 2),
+                done(4, 3, 0),
+                done(4, 4, 0),
+                done(8, 1, 0),
+                done(8, 2, 0),
+                cpuOff(8, 1),
+                cpuOff(8, 2),
             ]);
         });
 

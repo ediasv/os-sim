@@ -287,8 +287,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-13: Contrato da politica injetada
 
-- Estado: aceita em 2026-10-16. Requisitos: REQ-02, REQ-07. Detalha DEC-01;
-  escopo acordado com o usuario na #10.
+- Estado: aceita em 2026-10-16; revista em 2026-10-27 (acordada com o usuario
+  na revisao do PR #85). Requisitos: REQ-02, REQ-07. Detalha DEC-01; escopo
+  acordado com o usuario na #10.
 - Decisao: `SchedulingPolicy.select(view)` recebe uma `PolicyView` e devolve uma
   `PolicyDecision`. A visao tem `clock`, `cpuCount` e as candidatas; cada
   candidata traz o job, a definicao da tarefa e `previousCpu` (CPU que o possuia
@@ -296,10 +297,12 @@ anterior. Data inicial dos registros: 2026-10-12.
   `buildPolicyView` copia somente os jobs elegiveis indicados pelo motor e
   congela a copia inteira; rejeita job inexistente, concluido, suspenso ou
   repetido.
-- Decisao: `selected` e um conjunto sem ordem de exatamente
-  min(`cpuCount`, candidatas) jobs, ou desse total menos as vagas de um
-  empate residual relatado em `tie` (DEC-27); atribuir CPUs cabe ao despacho
-  (DEC-07).
+- Decisao: `selected` traz exatamente min(`cpuCount`, candidatas) jobs, ou
+  desse total menos as vagas de um empate residual relatado em `tie`
+  (DEC-27), em ordem decrescente de prioridade (a ordem dos criterios da
+  politica). Atribuir CPUs cabe ao despacho (DEC-07), que usa essa ordem para
+  preencher as CPUs livres. A ordem nao e desempate: jobs empatados que
+  cruzam o corte vao para `tie`, nao sao ordenados (DEC-27).
   O motor executa `checkDecision` e trata qualquer problema (job fora das
   candidatas, repetido ou quantidade errada) como erro da politica. Sem
   problemas, o motor guarda somente `selectedRefs(decision)`, copias
@@ -323,15 +326,20 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Q-04 e Q-07 decididas na #18 (DEC-16, DEC-17) sem mudar o contrato: os
       campos usados ja estao na visao (`job.absoluteDeadline`,
       `job.activation`, `task.duration`, `task.period`).
-- Justificativa: conjunto selecionado basta ao despacho e so exige sorteio
-  quando o empate cruza o corte; copia congelada garante, tambem em tempo de
-  execucao, o invariante "Politicas nao modificam estado".
+- Justificativa: a selecao basta ao despacho e so exige sorteio quando o
+  empate cruza o corte; copia congelada garante, tambem em tempo de execucao,
+  o invariante "Politicas nao modificam estado". A ordem da selecao e
+  contratual (revisao de 2026-10-27) porque DEC-07 ja preenche as CPUs livres
+  "na ordem da selecao": sem ela, a CPU de cada job dependeria de um detalhe
+  de implementacao da politica (REQ-07, REQ-02).
 - Consequencia: custo de copiar as candidatas a cada selecao, pequeno frente
   ao snapshot completo por passo. `freezeCopy` (em `helpers/`) e
   reutilizada.
-- Alternativas descartadas: ordenacao completa das candidatas (forca sorteios
-  sem efeito alem do corte) e visao apenas tipada sobre o estado vivo (um cast
-  permitiria mutar o motor).
+- Alternativas descartadas: ordenacao completa das candidatas, inclusive dos
+  empates fora do corte (forca sorteios sem efeito alem do corte); visao
+  apenas tipada sobre o estado vivo (um cast permitiria mutar o motor);
+  `selected` sem ordem (versao de 2026-10-16), revista porque o despacho e os
+  testes de varias CPUs dependem da ordem.
 
 ### DEC-14: Construcao e passo transacionais do Simulator
 
@@ -727,7 +735,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 ### DEC-27: Sorteio do empate residual pelo motor
 
 - Estado: aceita em 2026-10-24 (decidida pelo usuario na #20). Requisitos:
-  REQ-07, REQ-04 (A.4.3). Detalha DEC-06, DEC-13, DEC-16 e DEC-22.
+  REQ-07, REQ-04 (A.4.3). Detalha DEC-06, DEC-07, DEC-13, DEC-16 e DEC-22.
 - Decisao:
     1. A politica so relata o empate: `PolicyDecision.tie` traz os jobs
        iguais em prioridade e nos quatro criterios de DEC-16 que cruzam o
@@ -754,9 +762,11 @@ anterior. Data inicial dos registros: 2026-10-12.
   (DEC-14). Restaurar snapshots (#23, #24) repete os sorteios por levar
   `drawState`.
 - Consequencia (acordada com o usuario em 2026-10-27, na revisao do PR #85):
-  os vencedores entram na selecao na ordem sorteada; pela DEC-07, ocupam as
-  CPUs livres nessa ordem, e o primeiro sorteado fica com a CPU livre de menor
-  ID. Coberta em `src/core/scenarios.test.ts` (#21).
+  os vencedores sao acrescentados a selecao depois dos selecionados sem
+  empate, na ordem sorteada. Pela DEC-07, um vencedor que ja executava mantem
+  a CPU, e os demais ocupam as CPUs livres restantes nessa ordem, por ID de
+  CPU. Justificativa: estende a ordem da selecao (DEC-13) ao sorteio, sem novo
+  criterio. Coberta em `src/core/scenarios.test.ts` (#21).
 - Alternativas descartadas:
     - Politica sorteia recebendo o gerador: poe estado mutavel no contrato,
       contra DEC-13.
