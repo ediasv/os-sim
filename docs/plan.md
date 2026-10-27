@@ -219,7 +219,21 @@ Requisito: REQ-07.
   fixado); DEC-28 unica e links locais conferidos. Nao executado: app
   Electron (sem mudanca no renderer).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
-  incluindo o exemplo de quantum vencido de DEC-18.
+  incluindo o exemplo de quantum vencido de DEC-18. Em revisao no PR #85:
+  `src/core/scenarios.test.ts` roda `createSimulator` com RM/EDF reais e
+  confere intervalos e eventos exatos, com `findInconsistencies` vazio no
+  snapshot 0 e apos cada passo. Casos: figura 2.5 (RM, ate t=360) e 2.6 (EDF
+  sem perda; RM perde o prazo de B em t=50 e o conclui em 55, como na
+  figura), com quantum sem vencimento; as mesmas escalas com quantum 1 e 7
+  mudam so eventos `quantum-expired` (opcao C); exemplo da DEC-18 com RM
+  (J [0, 4), K [4, 6)); em RM e EDF, empate que cabe nas CPUs, sorteio no
+  corte com um `tie-break` por vencedor e desempate por ativacao; duas CPUs
+  com distribuicao, preempcao na CPU 2, CPUs desligadas e religadas.
+  Esperados derivados a mao das figuras e decisoes; cada grupo conferido por
+  mutacao do esperado (falha) antes do commit. Nenhuma mudanca no motor.
+  Evidencia (2026-10-27): `npm test` 316/316 em 17 arquivos (18 novos),
+  `npm run lint` e `npm run typecheck` aprovados (Node 24.21.0 local, fora do
+  24.22.1 fixado). Nao executados: CI e app Electron.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
   Decidida pelo usuario em 2026-10-24 (DEC-26): nada e exibido; citacoes
   trazem a ressalva de varias CPUs e de simulacao finita. Registrada em
@@ -365,8 +379,10 @@ Requisito: REQ-10; integracao de todos os anteriores.
   DEC-18 na issue corrigido em 2026-10-27 para J [0, 4), K [4, 6). Quantum e
   janelas das figuras decididos pelo usuario (opcao C, registrada na issue):
   quantum sem vencimento na janela, mais um teste com quantum pequeno que so
-  acrescenta `quantum-expired`; janelas [0, 360) na 2.5 e [0, 55) na 2.6.
-- Proximo passo: #21 (teste da figura 2.5 primeiro); depois #70 (controles e
+  acrescenta `quantum-expired`; janelas [0, 360] na 2.5 e [0, 55] na 2.6,
+  incluindo a conclusao na borda. Testes e gates concluidos (evidencias em
+  E2); PR #85 aguarda revisao.
+- Proximo passo: revisar e integrar o PR #85 (#21); depois #70 (controles e
   mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
   #34.
 - Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
