@@ -26,6 +26,11 @@ implementation status only in the plan. Proposed decisions are not delivered cod
 
 ## Development
 
+Use the Node version declared in `devEngines.runtime` in `package.json`
+(currently 24.22.1). It is the single source for local development, CI and the
+release workflow: both workflows read it through `node-version-file`, so change
+it there and nowhere else. npm warns when another version is in use.
+
 ```sh
 npm install
 npm start          # run the app with hot reload

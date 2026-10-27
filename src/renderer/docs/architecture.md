@@ -1,6 +1,7 @@
-# Arquitetura e entregas do renderer
+﻿# Arquitetura e entregas do renderer
 
-Planejamento atualizado em 2026-10-23, ainda sem implementacao. A
+Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
+preparada na #67, sem implementacao visual das entregas abaixo. A
 [spec de apresentacao](specification.md) registra comportamentos; este
 documento registra responsabilidades, contratos propostos e ordem de codigo.
 O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
@@ -23,10 +24,12 @@ geral; nao inclui alterar regras, documentos, modelo ou API do nucleo.
 - Recomendacao tecnica: manter Vue, TypeScript, Vite e CSS com tokens; nao
   adicionar inicialmente Tailwind, Pinia, Router, microfrontends ou releases
   independentes. O produto continua sendo o aplicativo Electron.
-- Ferramentas propostas: Inter empacotada localmente, Lucide Vue para icones,
-  Vue Test Utils com jsdom para componentes e Playwright para verificacao
+- Ferramentas propostas: Lucide Vue para icones e Playwright para verificacao
   visual/ponta a ponta. Ainda nao instaladas ou declaradas aprovadas apenas
-  porque a organizacao de pastas foi aceita.
+  porque a organizacao de pastas foi aceita. Inter empacotada localmente entrou
+  na #68 (ver [Fundacoes visuais](#fundacoes-visuais-68)).
+  Vue Test Utils e jsdom foram aprovados para testes na #67; suporte e
+  verificacao estao descritos abaixo.
 - Acordado apos esclarecimento: sem tooltip na entrega 1; manter nome
   acessivel de botoes de icone. Reka UI nao entra apenas para tooltip.
   Bibliotecas de dialogos/selecoes podem ser avaliadas na entrega que precisar
@@ -189,11 +192,124 @@ futura conforme FE-10; listas extensas consultaveis sem corte inacessivel.
 Nenhum componente recebe ou modifica o simulador vivo. Suspender, retomar e
 editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
 
+## Testes de componentes (#67)
+
+O [Vitest](../../../vitest.config.mts) usa o plugin Vue existente para
+transformar SFCs, incluindo `<script setup lang="ts">`. O ambiente padrao
+continua `node`: nucleo, auxiliares e composables sem montagem nao recebem
+DOM. Somente os testes do renderer que requerem DOM declaram
+`// @vitest-environment jsdom` no inicio.
+
+As dependencias de desenvolvimento `@vue/test-utils` e `jsdom` permitem
+montar componentes reais e disparar eventos sem iniciar Electron.
+O [teste do ErrorBanner](../components/ErrorBanner.test.ts) verifica ausencia
+inicial, renderizacao reativa, clique em Dismiss e exibicao de novo erro
+apos o descarte. Limpa estado global e mocks e desmonta os componentes
+automaticamente, sem alterar o componente ou a classificacao de DEC-24.
+
+Executar na raiz com a versao de Node declarada em `devEngines.runtime` no
+[package.json](../../../package.json) (24.22.1, fonte unica para desenvolvimento,
+CI e release; #80). Ela esta dentro das engines de Vitest 5 e jsdom 30, que
+excluem o Node 25:
+
+```sh
+npm test -- src/renderer/components/ErrorBanner.test.ts
+npm test
+npm run typecheck
+npm run lint
+```
+
+Os fins de linha dos arquivos de texto sao LF em qualquer sistema, definidos
+em `.gitattributes`; assim `npm run lint` tambem passa em checkout Windows.
+
+jsdom verifica DOM e eventos, nao layout, pixels, foco nativo do Electron ou
+distribuicao. Esta infraestrutura nao implementa componentes, estilos ou
+contratos novos; verificacao visual e pacote continuam fora de F1.
+
+### Evidencia da #67 (2026-10-24)
+
+Verificado sobre `main` em `5dd741f`, com `npm ci` do lockfile, em Node 25.8.0
+(fora das engines de Vitest 5 e jsdom 30; a versao padronizada veio depois, na
+#80):
+
+- Teste focado do ErrorBanner 2/2; `npm test` 242/242 em 14 arquivos (240 do
+  `main` mais 2 do F1); `npm run typecheck` aprovado; `oxlint` do codigo e
+  formato de `package.json`, `vitest.config.mts` e do teste aprovados.
+- Isolamento: teste descartavel no nucleo confirmou `window` e `document`
+  ausentes sem a diretiva jsdom, e o teste do componente a declara
+  explicitamente. O teste descartavel foi removido.
+- `npm run lint` global segue reprovado por formatacao preexistente fora do
+  escopo: o checkout usa CRLF e `oxfmt --check` acusa ate arquivos nao
+  alterados; copias LF dos arquivos alterados passam. Nenhuma normalizacao
+  geral foi feita. A causa foi tratada na #80 (`.gitattributes`).
+- Links locais e IDs deste documento conferidos. Build, aplicativo, verificacao
+  visual e pacote nao executados. F2, #36 e #37 nao foram implementadas.
+
+## Fundacoes visuais (#68)
+
+Primeiro incremento da entrega 1, sem componentes funcionais, sem alterar
+`App`, `ErrorBanner` ou o nucleo.
+
+- [tokens.css](../styles/tokens.css): unica fonte dos valores da pagina
+  [Fundacoes](https://www.figma.com/design/h2kssKC2KiSuN4iAg4K1yU?node-id=60-163)
+  (colecao `os-sim`, **modo escuro**): cores semanticas, espacamento, raio e os
+  11 estilos de texto, com os nomes de codigo do Figma (`--color-bg-app`,
+  `--color-text-primary`, `--spacing-xs`, `--font-body-md`, ...). Os
+  `--font-*` sao o shorthand `font` (peso, tamanho, `normal`, familia). O
+  Figma nao define sombras; nao ha token delas. Cores de tarefa nao tem token:
+  `task/1..4` sao amostras e o "ciclo de quatro cores" do Figma nao vale (REQ-06).
+- [base.css](../styles/base.css): `color-scheme: dark`, corpo com
+  `--font-body-md`, anel de foco, so com `var(--...)`. [index.css](../index.css)
+  importa fonte, tokens e base.
+- Inter via `@fontsource-variable/inter` (OFL-1.1), importada do pacote e
+  emitida pelo Vite no bundle: sem servico externo de fontes. Justificativa: a
+  forma usual de empacotar Inter localmente com Vite, sem copiar binarios para
+  o repositorio. Custo: `wght.css` inclui todos os subconjuntos (cerca de 220 kB
+  de woff2); reduzir a latin/latin-ext se o tamanho do pacote importar.
+- [Teste das fundacoes](../styles/foundations.test.ts): valores iguais aos do
+  Figma, contraste WCAG, ausencia de tokens de cor de tarefa, de valores
+  literais em `base.css` e de URLs externas. O CSS e lido com `?raw`; o
+  `vitest.config.mts` libera o processamento de `.css?raw`, que o Vitest esvazia
+  por padrao.
+
+Desvios do Figma, para corrigir contrastes conhecidos como insuficientes:
+
+| Token                        | Figma        | Aqui      | Motivo                                                      |
+| ---------------------------- | ------------ | --------- | ----------------------------------------------------------- |
+| `--color-text-on-color`      | `#FFFFFF`    | `#171A21` | Branco da 3,23:1 sobre accent e 3,67:1 sobre danger.        |
+| `--color-accent-text`        | (nao existe) | `#6E9FFB` | Accent como texto: 4,35:1 em `bg-raised`, 4,37:1 em subtle. |
+| `--color-status-danger-text` | (nao existe) | `#F27878` | Danger como texto: 4,22:1 em surface, 3,83:1 em raised.     |
+| `--color-focus-ring`         | (nao existe) | `#6E9FFB` | Anel de foco acima de 3:1 em todas as superficies.          |
+
+Os fills `accent-default` e `status-danger` ficam como no Figma; os `-text`
+sao para texto sobre superficies. Outras ressalvas: `border-default` (1,5:1) so
+separador, nao delimita controle; os estilos de 9 a 11 px (`label-xs`,
+`body-sm`, `body-xs`, `badge-*`) existem como no Figma, mas nao devem levar
+texto essencial (o teste exige 12 px ou mais nos estilos essenciais). O texto
+sobre cor de tarefa e o adaptativo preto/branco (FE-DEC-10) ficam para o Gantt;
+`text-on-task` so e o padrao escuro e passa de 4,5:1 nas amostras do Figma.
+
+### Evidencia da #68 (2026-10-25)
+
+Sobre `main` em `5a569db`, worktree `feat/68-renderer-visual-foundations`,
+Node 24.22.1 (via `npm exec --package=node@24`; o Node global e 25.8.0):
+
+- `vitest run` 253/253 em 15 arquivos (11 novos); `vue-tsc` sem erros;
+  `oxlint` sem achados; `oxfmt --check` limpo. Primeira versao dos tokens
+  (valores provisorios, tema claro) foi substituida apos ler o Figma.
+- Valores lidos do Figma pela API do MCP (`get_metadata` da pagina Fundacoes,
+  2026-10-25), somente leitura; o teste fixa cada valor.
+- Build do renderer (`vite build` em pasta temporaria): 7 woff2 da Inter no
+  bundle e nenhuma URL externa no CSS gerado (verificado na primeira versao;
+  `index.css` nao mudou).
+- Nao executados: aplicativo Electron, comparacao visual lado a lado com o
+  Figma, screenshots, pacote no ambiente-alvo.
+
 ## Verificacao e pendencias tecnicas
 
-- Componentes SFC precisam do suporte Vue no Vitest e ambiente DOM somente
-  para os testes do renderer que o requerem. O ambiente Node do nucleo nao
-  deve ser trocado globalmente por jsdom.
+- Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
+  para os testes do renderer que o requerem, conforme a secao de testes.
+  O ambiente Node do nucleo nao deve ser trocado globalmente por jsdom.
 - Projecoes e geometria recebem testes puros; componentes, testes de
   propriedades/eventos e teclado; integracao, testes dos comandos reais.
   Playwright compara estados e viewports, nao uma captura unica para todo o app.
@@ -203,8 +319,9 @@ editar so ganham comportamento na entrega correspondente, sem mocks produtivos.
   disponibilidade completa, escalabilidade/redimensionamento alem dos casos
   iniciais, foco dos dialogos e aprovacao das bibliotecas propostas. Isso nao
   reabre os acordos funcionais ja aceitos na spec.
-- Nenhuma ferramenta foi instalada, nenhum componente foi implementado e
-  nenhum criterio de execucao foi marcado como atendido por este documento.
+- Exceto a infraestrutura de testes da #67 e as fundacoes visuais da #68, as
+  ferramentas e os componentes
+  planejados nao foram implementados nem seus criterios marcados como atendidos.
 - Diferencas entre expectativas da interface e a API disponivel ficam
   registradas como dependencias, sem propor DECs ou alterar documentos do
   nucleo neste escopo. Ajustes futuros de integracao precisam de verificacao

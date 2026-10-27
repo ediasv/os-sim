@@ -292,8 +292,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
   de erros semanticos do parser permanece na #31, que pode usar `lines` do
   resultado.
-- #63 em revisao no PR #64 (iniciada em 2026-10-23); mutacoes e gates
-  registrados em E1. Fecha no merge do PR.
+- #63 concluida no PR #64 (merged); mutacoes e gates registrados em E1.
 - #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
   corpos das issues abertas de #14 a #45
   reescritos no template, revisados pelo usuario fase a fase; titulos vagos
@@ -306,17 +305,47 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
   planejamento da apresentacao e suas expectativas de integracao, sem alterar
   os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
-  #35 (2026-10-24): DEC-08 aceita e Q-05 resolvida no PR #76 (merged,
-  `5dd741f`); #38 segue DEC-08 e #39 nao muda de escopo.
+  #35 concluida no PR #76 (merged, `5dd741f`, 2026-10-24): DEC-08 aceita e
+  Q-05 resolvida; #38 segue DEC-08 e #39 nao muda de escopo. Apenas
+  documentacao; links e IDs conferidos, sem build.
 - #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
   politicas por algoritmo (DEC-25); evidencias em E2.
 - #20 em revisao no PR #75 (iniciada em 2026-10-24): desempates, sorteio pelo
   motor e evento (DEC-27); evidencias em E2. Fecha no merge do PR.
-- #22 concluida no PR #77 (merged, `da52d14`): sem testes de
-  escalonabilidade (DEC-26); mudanca so documental, evidencias em E2.
-- Proximo passo: revisar e integrar o PR #75 (#20); depois #21 e a #68. Manter
-  os diagnosticos de DEC-19 nos escopos de #31 e #34.
-- Pendencias: Q-02 e Q-06 conforme fase; Q-05 resolvida e DEC-08 aceita na
+- #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
+  `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
+  do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
+  Lint global reprovado por CRLF preexistente na epoca; causa tratada na #80.
+- #22 concluida no PR #77 (merged, `da52d14`; DEC-26, sem testes de
+  escalonabilidade); mudanca so documental, evidencias em E2.
+- #80 (E6, ambiente) concluida no PR #81 (merged, `5a569db`), escopo ampliado para
+  incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
+  24.22.1 em `devEngines.runtime` no `package.json`, lido pelos workflows CI e
+  release (`node-version-file`), e `.gitattributes` com `* text=auto eol=lf`.
+  Verificado no Windows (`core.autocrlf=true`), com `npm ci` limpo do lockfile
+  em Node 24.22.1, no worktree e em clone novo: `npm test` 242/242 em 14
+  arquivos, `npm run lint` e `npm run typecheck` aprovados, `git diff --check`
+  limpo, lockfile inalterado. Causa confirmada: antes, `oxfmt --check` acusava
+  59 arquivos, todos CRLF; clone LF passava. Normalizacao dos arquivos
+  rastreados: 0 (indice ja em LF). Limitacoes: workflows e Linux real nao
+  executados (sem push; clone LF equivale ao checkout Linux), release nao
+  exercitado. Checkouts Windows anteriores ao `.gitattributes` mantem CRLF
+  ate um refresh unico dos arquivos (ou novo clone).
+- #68 (F2, fundacoes visuais do renderer) concluida no PR #82 (merged,
+  `700a178`, 2026-10-25), com o gate da #35 ja em `main`: tokens, estilos base e
+  Inter empacotada (`@fontsource-variable/inter`, OFL-1.1). Valores lidos da
+  pagina Fundacoes do Figma (tema escuro), com 4 desvios de contraste
+  documentados; `npm test` 253/253, typecheck e lint aprovados, CI verde.
+  Revisao do PR: links da doc e heranca de cor do botao Dismiss corrigidos.
+  Nao executados: app Electron e comparacao visual lado a lado com o Figma
+  (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
+  Detalhes e evidencia em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
+- Proximo passo: integrar o PR #75 (#20); depois #70 (controles e mensagens
+  do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
+  #34.
+- Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: nenhum.
 
