@@ -164,6 +164,20 @@ export function validateConfig(input: SystemConfig): ConfigResult {
     };
 }
 
+/**
+ * Returns the validated copy or throws `ConfigValidationError` with every
+ * issue. It is the only place a rejected configuration becomes that error, so
+ * the Simulator constructor and the factory report the same error before any
+ * policy error (DEC-15, DEC-28).
+ */
+export function requireValidConfig(input: SystemConfig): SystemConfig {
+    const result = validateConfig(input);
+    if (!result.ok) {
+        throw new ConfigValidationError(result.issues);
+    }
+    return result.config;
+}
+
 /** Pushes an issue unless `value` is an exact integer at or above the field's minimum. */
 function checkInteger(
     issues: ConfigIssue[],

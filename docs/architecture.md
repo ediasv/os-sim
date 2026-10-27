@@ -9,7 +9,8 @@ afirma que os modulos planejados ja existem.
 - [Dominio](../src/core/domain.ts): tipos de configuracao, TCB, job, CPU,
   intervalos, eventos e snapshot (DEC-12).
 - [Configuracao](../src/core/config.ts): `validateConfig` com as regras de DEC-10
-  e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15).
+  e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15);
+  `requireValidConfig` e o unico ponto que lanca esse erro (DEC-28).
 - [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
   e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
@@ -672,8 +673,9 @@ anterior. Data inicial dos registros: 2026-10-12.
        recebido na criacao (DEC-23): em producao o padrao, nos testes um
        registro proprio.
     4. Configuracao invalida tem precedencia e gera `ConfigValidationError`
-       (DEC-15), mesmo quando o algoritmo nao tem politica. Registro sem a
-       chave do algoritmo e erro inesperado (DEC-24).
+       (DEC-15), mesmo quando o algoritmo nao tem politica, pela mesma funcao
+       que o construtor usa (DEC-28). Registro sem a chave do algoritmo e erro
+       inesperado (DEC-24).
 - Justificativa: o algoritmo executado em producao e sempre o configurado
   (A.4.1); o motor e os testes do motor ficam intactos, e REQ-07 continua
   testavel com politicas de teste injetadas diretamente.
@@ -759,6 +761,31 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Evento com `winners[]`: muda o tipo do evento sem ganho para o Gantt.
     - Registrar so quando o vencedor (re)comeca: um sorteio que mantem o job
       na CPU ficaria sem marca.
+
+### DEC-28: Validacao da configuracao em fonte unica
+
+- Estado: aceita em 2026-10-27 (escolha do usuario na #79). Requisitos:
+  REQ-05, REQ-07. Detalha DEC-15 e DEC-25; erros seguem DEC-24.
+- Decisao:
+    1. `requireValidConfig(config)`, em [config.ts](../src/core/config.ts),
+       devolve a copia validada de `validateConfig` ou lanca
+       `ConfigValidationError` com todos os problemas. E o unico ponto que
+       converte configuracao rejeitada nesse erro.
+    2. O construtor do `Simulator` e a fabrica `createSimulator`, quando o
+       algoritmo nao tem politica no registro, chamam essa funcao antes de
+       qualquer erro de politica. A fabrica nao valida no caminho de
+       sucesso; o construtor continua validando (DEC-15).
+- Justificativa: achado 7 da revisao do PR #75. A regra "configuracao
+  invalida antes de politica ausente" vivia em dois lugares; se a validacao
+  ou a classificacao do erro mudasse so em um, a fabrica podia relatar um
+  erro diferente do `Simulator`.
+- Alternativas descartadas:
+    - Manter a duplicacao entre o construtor e a fabrica (estado antes
+      desta decisao).
+    - Registro ou resolvedor no `Simulator`: reabre DEC-01 e DEC-25 e muda
+      os testes do motor.
+    - Validar somente na fabrica e construir o `Simulator` sem revalidar:
+      enfraquece a garantia de DEC-15 no construtor publico.
 
 ## Fluxo de um passo
 

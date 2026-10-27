@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig, type ConfigIssue } from './config';
+import {
+    ConfigValidationError,
+    requireValidConfig,
+    validateConfig,
+    type ConfigIssue,
+} from './config';
 import {
     DEFAULT_CONFIG,
     type SystemConfig,
@@ -229,5 +234,31 @@ describe('validateConfig: result', () => {
         expect(Object.isFrozen(result.config)).toBe(true);
         expect(Object.isFrozen(result.config.tasks)).toBe(true);
         expect(Object.isFrozen(result.config.tasks[0])).toBe(true);
+    });
+});
+
+describe('requireValidConfig', () => {
+    it('returns the normalized configuration from validateConfig', () => {
+        const input = config({ tasks: [task({ color: 'f0e0d0' })] });
+        const result = requireValidConfig(input);
+
+        expect(result).not.toBe(input);
+        expect(result.tasks[0].color).toBe('F0E0D0');
+        expect(Object.isFrozen(result)).toBe(true);
+    });
+
+    it('throws ConfigValidationError with the issues of validateConfig (DEC-15, DEC-28)', () => {
+        const input = config({ quantum: 0, tasks: [task({ duration: 0 })] });
+        let error: unknown;
+        try {
+            requireValidConfig(input);
+        } catch (caught) {
+            error = caught;
+        }
+
+        expect(error).toBeInstanceOf(ConfigValidationError);
+        expect((error as ConfigValidationError).issues).toEqual(
+            issuesOf(input),
+        );
     });
 });
