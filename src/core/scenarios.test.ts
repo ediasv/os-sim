@@ -522,8 +522,10 @@ describe('RM tie by deadline (#21, DEC-16)', () => {
 describe('RM priority of an aperiodic task (#21, DEC-17)', () => {
     it('runs the aperiodic job only after the periodic one', () => {
         // Period zero ranks below every periodic task, as if the period were
-        // infinite; reading it as the smallest period, or falling back to the
-        // lower ID, would run the aperiodic task first. Its single job is the
+        // infinite. Its deadline (8) is earlier than the periodic job's (10),
+        // so a priority tie would let DEC-16 criterion (2) run the aperiodic
+        // job first, and so would reading period zero as the smallest
+        // period. Finishing at 5, it still meets its deadline. Its single job is the
         // last one, so its completion is followed by `task-finished` (DEC-09,
         // DEC-22).
         const s = simulate(
@@ -532,7 +534,7 @@ describe('RM priority of an aperiodic task (#21, DEC-17)', () => {
                 quantum: 10,
                 cpuCount: 1,
                 tasks: [
-                    aperiodic(1, { duration: 2, deadline: 20 }),
+                    aperiodic(1, { duration: 2, deadline: 8 }),
                     periodic(2, { duration: 3, period: 10 }),
                 ],
             },
