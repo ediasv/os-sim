@@ -22,11 +22,11 @@ e nao declara resolvidas suas questoes abertas.
   e referencia visual, nao autoridade para resolver conflitos com o enunciado
   ou escolhas que ainda nao foram acordadas.
 - Escopo: apresentacao do Projeto A, RM e EDF, respeitando os contratos
-  vigentes. REQ-03, DEC-09 e DEC-17 aceitam aperiodicas; A.4.4 manda
-  ignora-las com aviso. O recorte somente periodico discutido anteriormente
-  nao substituiu essas decisoes. A reconciliacao permanece em PEND-02;
-  nao excluir tarefas aceitas pelo nucleo nem implementar um filtro de tipo
-  no renderer. Conversoes e reabertura por conversao nao ganharam contrato
+  vigentes. DEC-29 (#87) reconciliou A.4.4: periodo zero ou ausente no
+  arquivo recebe o periodo padrao (15) com aviso; telas partem desse padrao e
+  rejeitam periodo zero com o motivo. O nucleo continua aceitando periodo
+  zero (DEC-09, DEC-17). O renderer exibe os avisos da carga e nao implementa
+  filtro ou conversao de tipo proprios nem exclui tarefas. Conversoes e reabertura por conversao nao ganharam contrato
   aprovado nesta discussao e nao devem ser implementadas por inferencia.
 - A interface nao exibe testes de escalonabilidade (utilizacao, limites de
   RM/EDF); texto de ajuda que os citar traz a ressalva de DEC-26.
@@ -488,7 +488,7 @@ permanecem dependencias externas. Os documentos gerais nao sao alterados.
 | Alterar CPUs refaz selecao global, permite migracao e conserva trabalho e raias historicas.                         | FE-16                                         | Acordado; nao escolher quem para pelo ID da CPU retirada.                                                   |
 | Gantt por tarefa, CPU e job nos trechos, eventos, faixas de CPU, zoom e rolagem.                                    | FE-17; FE-DEC-12; DEC-08                      | Acordado na #35; detalhes de escala em PEND-04.                                                             |
 | SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                      | FE-18; FE-DEC-06                              | Acordado (DEC-08); gravacao pela infraestrutura.                                                            |
-| Recorte somente periodico discutido apos consultar A.4.4.                                                           | Escopo; PEND-02                               | Reconciliacao pendente; nao substitui DEC-09/DEC-17 nem autoriza filtro na UI.                              |
+| Recorte somente periodico discutido apos consultar A.4.4.                                                           | Escopo; DEC-29                                | Reconciliado na #87: periodo padrao e aviso na carga (#89); UI exibe o aviso e rejeita periodo zero.        |
 | ID pode mudar sem colidir; criterio de geracao e reutilizacao ainda precisa ser definido.                           | FE-19; PEND-01                                | Experiencia planejada; identidade historica e validacao dependem do nucleo.                                 |
 | Cor aceita recolore todo o historico valido.                                                                        | FE-19; FE-DEC-07                              | Acordado; nao mutar snapshots antigos.                                                                      |
 | Ingresso pode mudar antes da primeira ativacao, para o tick atual ou futuro; depois, preservar o fato ocorrido.     | FE-19                                         | Experiencia planejada; apresentar permissoes e rejeicoes do nucleo, sem prescrever seu contrato.            |
@@ -522,16 +522,16 @@ alterar os documentos gerais ou declarar funcionalidades prontas para fechar
 essas dependencias. Conferir compatibilidade antes da integracao, sem perder
 o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 
-| Dependencia             | O que a apresentacao precisa receber                                                                                                                  | Referencias                        |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Historico e edicao      | Cursor, limite valido, snapshots restauraveis, comandos atomicos, resultado e diagnosticos; estado do sorteio preservado.                             | E3, #23 a #26; DEC-06, DEC-14      |
-| Parametros por ativacao | Valores efetivos dos jobs, previa de ativacoes e possibilidades de edicao, sem prescrever a representacao do dominio.                                 | Q-02, #25/#26; FE-12               |
-| Intervencoes            | Resultados e registros observaveis de suspensao, retomada, progresso, inclusao/remocao e troca de ID, conforme a API que vier a estar disponivel.     | Q-02, #25/#26; FE-13 a FE-19       |
-| Execucao completa       | Andamento, snapshot de resultado e motivo de interrupcao, com jobs envolvidos quando aplicavel.                                                       | Q-06, #27; FE-07 e FE-08           |
-| Arquivos                | Dialogos autorizados, configuracao analisada e diagnosticos de conteudo/acesso; gravacao com resultado ou cancelamento.                               | E4, #33/#34, #39; DEC-19           |
-| Reconciliacao de escopo | Posicao explicita sobre A.4.4 versus REQ-03/DEC-09/DEC-17. Ate substituicao aprovada, preservar contratos vigentes e nao filtrar tarefas no renderer. | PEND-02; especificacao geral       |
-| CPU desligada           | Intervalos e totais obtidos pela consulta publica do nucleo, sem rederivar sequencias no renderer.                                                    | DEC-21; #15 concluida              |
-| Comandos e erros        | Usar load/tick e CommandResult existentes; reconciliar inicializacao em t=0 com preparacao antes de integrar FE-02/FE-04.                             | DEC-23, DEC-24; #17/#65 concluidas |
+| Dependencia             | O que a apresentacao precisa receber                                                                                                              | Referencias                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Historico e edicao      | Cursor, limite valido, snapshots restauraveis, comandos atomicos, resultado e diagnosticos; estado do sorteio preservado.                         | E3, #23 a #26; DEC-06, DEC-14      |
+| Parametros por ativacao | Valores efetivos dos jobs, previa de ativacoes e possibilidades de edicao, sem prescrever a representacao do dominio.                             | Q-02, #25/#26; FE-12               |
+| Intervencoes            | Resultados e registros observaveis de suspensao, retomada, progresso, inclusao/remocao e troca de ID, conforme a API que vier a estar disponivel. | Q-02, #25/#26; FE-13 a FE-19       |
+| Execucao completa       | Andamento, snapshot de resultado e motivo de interrupcao, com jobs envolvidos quando aplicavel.                                                   | Q-06, #27; FE-07 e FE-08           |
+| Arquivos                | Dialogos autorizados, configuracao analisada e diagnosticos de conteudo/acesso; gravacao com resultado ou cancelamento.                           | E4, #33/#34, #39; DEC-19           |
+| Aperiodicas (A.4.4)     | Avisos de periodo padrao aplicado no resultado da carga, com ID, linha e motivo, para exibicao; o renderer nao filtra nem converte tarefas.       | DEC-29; #89, #33/#36               |
+| CPU desligada           | Intervalos e totais obtidos pela consulta publica do nucleo, sem rederivar sequencias no renderer.                                                | DEC-21; #15 concluida              |
+| Comandos e erros        | Usar load/tick e CommandResult existentes; reconciliar inicializacao em t=0 com preparacao antes de integrar FE-02/FE-04.                         | DEC-23, DEC-24; #17/#65 concluidas |
 
 - PEND-01 (parcial): ID editavel, recoloracao e ingresso definidos em FE-19.
   Ainda falta definir criterio de geracao automatica e reutilizacao de ID de
@@ -543,8 +543,8 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
   cancelamento/bloqueio com as capacidades e contratos reais do nucleo quando
   estiverem disponiveis. Este planejamento nao formaliza nem encerra Q-02/Q-06
   e nao propoe DECs ou mudancas nos documentos gerais.
-  Reconciliar tambem A.4.4 com REQ-03, DEC-09 e DEC-17, sem declarar a exclusao
-  de aperiodicas como decisao substituta ja aprovada.
+  A reconciliacao de A.4.4 com REQ-03, DEC-09 e DEC-17 saiu desta pendencia:
+  resolvida por DEC-29 na #87 (2026-10-28), implementacao na #89.
 - PEND-03 (resolvida na apresentacao): comportamento de selecao futura em
   FE-10/FE-DEC-08. Integracao e testes ainda nao executados.
 - PEND-04 (parcial): empilhamento e texto adaptativo acordados em FE-17.
