@@ -32,6 +32,12 @@ describe('loadConfig', () => {
 
     it.each([
         [
+            'an unknown algorithm',
+            'XX;5;1\n1;FFFFFF;0;1;0;1',
+            { line: 1, field: 'algoritmo_escalonamento', value: 'XX' },
+            'O campo algoritmo_escalonamento deve ser RM ou EDF; valor recebido: "XX".',
+        ],
+        [
             'a quantum below 1',
             'RM;0;1\n1;FFFFFF;0;1;0;1',
             { line: 1, field: 'quantum', value: '0' },
@@ -116,6 +122,12 @@ describe('loadConfig', () => {
         expect(issues[0].message).toBe(
             `Linha ${expected.line}, campo ${expected.field} (valor ${expected.value}): ${coreMessage}`,
         );
+    });
+
+    it('reports only the syntax issue when the algorithm is also invalid', () => {
+        expect(issuesOf('XX;5;1\n1;FFFFFF;x;1;0;1').map(where)).toEqual([
+            { line: 2, field: 'ingresso', value: 'x' },
+        ]);
     });
 
     it.each([

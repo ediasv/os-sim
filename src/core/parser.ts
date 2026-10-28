@@ -1,5 +1,10 @@
-import { FILE_LABELS, type ConfigField, type FileFieldLabel } from './config';
-import type { AlgorithmId, SystemConfig, TaskDefinition } from './domain';
+import {
+    FILE_LABELS,
+    type ConfigField,
+    type ConfigInput,
+    type FileFieldLabel,
+} from './config';
+import type { TaskDefinition } from './domain';
 
 const HEADER_FIELDS = [
     'algorithm',
@@ -27,8 +32,6 @@ const TASK_FORMAT = [
     EVENTS_LABEL,
 ].join(';');
 
-const ALGORITHMS: readonly AlgorithmId[] = ['RM', 'EDF'];
-
 /** Field an issue points at: a file field, or the missing header or task line. */
 export type ConfigParseField = FileFieldLabel | 'cabecalho' | 'tarefa';
 
@@ -50,7 +53,7 @@ export interface ConfigSourceLines {
 export type ConfigParseResult =
     | {
           readonly ok: true;
-          readonly config: SystemConfig;
+          readonly config: ConfigInput;
           readonly lines: ConfigSourceLines;
       }
     | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
@@ -63,7 +66,7 @@ export type ConfigFieldTexts = Readonly<Partial<Record<ConfigField, string>>>;
  * issues can be placed on it (DEC-19).
  */
 export interface ConfigDraft {
-    readonly config: SystemConfig;
+    readonly config: ConfigInput;
     readonly lines: ConfigSourceLines;
     /** Texts received for the header fields. */
     readonly headerTexts: ConfigFieldTexts;
@@ -168,7 +171,7 @@ export function analyzeConfig(text: string): ConfigAnalysis {
 }
 
 interface ParsedHeader {
-    readonly config: Omit<SystemConfig, 'tasks'>;
+    readonly config: Omit<ConfigInput, 'tasks'>;
     readonly texts: ConfigFieldTexts;
 }
 
@@ -191,7 +194,7 @@ function parseHeader(
     }
 
     const countReason = `campo obrigatório ausente; esperados ${HEADER_FIELDS.length} campos (formato: ${HEADER_FORMAT}) e recebidos ${fields.length}.`;
-    let algorithm: AlgorithmId | undefined;
+    let algorithm: string | undefined;
     const numbers: Partial<Record<'quantum' | 'cpuCount', number>> = {};
 
     HEADER_FIELDS.forEach((field, index) => {
@@ -204,17 +207,10 @@ function parseHeader(
         );
         if (value === null) return;
 
+        // Kept as written: the core decides if the algorithm is valid and
+        // uppercases it, so its message shows the received text (DEC-19).
         if (field === 'algorithm') {
-            algorithm = ALGORITHMS.find((name) => name === value.toUpperCase());
-            if (algorithm === undefined) {
-                addIssue(
-                    issues,
-                    line.number,
-                    FILE_LABELS[field],
-                    value,
-                    'esperado RM ou EDF.',
-                );
-            }
+            algorithm = value;
             return;
         }
 

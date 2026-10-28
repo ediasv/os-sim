@@ -32,6 +32,14 @@ export interface ConfigIssue {
     readonly message: string;
 }
 
+/**
+ * What `validateConfig` checks: a configuration whose algorithm is still the
+ * text as written, so the core alone decides if it names a policy (DEC-19).
+ */
+export type ConfigInput = Omit<SystemConfig, 'algorithm'> & {
+    readonly algorithm: string;
+};
+
 export type ConfigResult =
     | { readonly ok: true; readonly config: SystemConfig }
     | { readonly ok: false; readonly issues: readonly ConfigIssue[] };
@@ -88,13 +96,18 @@ const MINIMUMS = {
 
 /**
  * Checks every rule of DEC-10 and reports all issues at once, so the user can
- * fix a file in one pass. On success returns a frozen copy with colors in
- * uppercase; the input is never mutated.
+ * fix a file in one pass. Algorithm and colors are compared regardless of
+ * case; on success returns a frozen copy with both in uppercase. The input is
+ * never mutated.
  */
-export function validateConfig(input: SystemConfig): ConfigResult {
+export function validateConfig(input: ConfigInput): ConfigResult {
     const issues: ConfigIssue[] = [];
 
-    if (!ALGORITHMS.includes(input.algorithm)) {
+    const algorithm =
+        typeof input.algorithm === 'string'
+            ? ALGORITHMS.find((name) => name === input.algorithm.toUpperCase())
+            : undefined;
+    if (algorithm === undefined) {
         issues.push({
             field: 'algorithm',
             message: `O campo ${FILE_LABELS.algorithm} deve ser RM ou EDF; valor recebido: ${describe(input.algorithm)}.`,
@@ -151,14 +164,14 @@ export function validateConfig(input: SystemConfig): ConfigResult {
         }
     });
 
-    if (issues.length > 0) {
+    if (issues.length > 0 || algorithm === undefined) {
         return { ok: false, issues };
     }
 
     return {
         ok: true,
         config: Object.freeze({
-            algorithm: input.algorithm,
+            algorithm,
             quantum: input.quantum,
             cpuCount: input.cpuCount,
             tasks: Object.freeze(
@@ -176,7 +189,7 @@ export function validateConfig(input: SystemConfig): ConfigResult {
  * the Simulator constructor and the factory report the same error before any
  * policy error (DEC-15, DEC-28).
  */
-export function requireValidConfig(input: SystemConfig): SystemConfig {
+export function requireValidConfig(input: ConfigInput): SystemConfig {
     const result = validateConfig(input);
     if (!result.ok) {
         throw new ConfigValidationError(result.issues);
