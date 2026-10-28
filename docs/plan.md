@@ -358,8 +358,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
-  valido (DEC-19 e DEC-10 revistas). Em revisao no PR #95 (branch
-  `feat/94-algoritmo-no-nucleo`): `validateConfig` aceita `ConfigInput` (nome
+  valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
+  `4a1ca21`, 2026-10-28): `validateConfig` aceita `ConfigInput` (nome
   como texto), compara sem caixa e devolve RM/EDF; o parser entrega o nome
   como escrito; algoritmo invalido gera um diagnostico do nucleo com linha,
   campo e valor, e so aparece sem erro de sintaxe no arquivo.
@@ -367,7 +367,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   e `npm run typecheck` aprovados; testes novos de caixa no nucleo, nome
   cru no parser e diagnosticos do loader falharam antes da mudanca; o de
   algoritmo ausente no nucleo passou de primeira (protege a nova chamada a
-  `toUpperCase`). Falta revisao e integracao pelo usuario.
+  `toUpperCase`). Revisao independente sem achados criticos ou importantes;
+  pendencias menores registradas no PR #95.
 
 ### E5: Interface e Gantt
 
@@ -465,13 +466,11 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31 e #87 concluidas; #94 em revisao;
+  E3 nao iniciada. E4: #29, #30, #31, #87 e #94 concluidas;
   #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
   implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- #94 em revisao no PR #95 (branch `feat/94-algoritmo-no-nucleo`):
-  codigo, testes e DEC-19/DEC-10 prontos (evidencia em E4); falta
-  integracao pelo usuario.
-- Proximo passo: integrar a #94; depois #70
+- Nenhum trabalho em andamento; #94 concluida no PR #95 (evidencia em E4).
+- Proximo passo: #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
