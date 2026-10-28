@@ -425,7 +425,7 @@ Requisito: REQ-10; integracao de todos os anteriores.
   e gates concluidos (evidencias em E2); falta a revisao e integracao do PR
   pelo usuario.
 - #87 em andamento (iniciada em 2026-10-28, branch
-  `worktree-issue-87-aperiodicas-a44`): DEC-29 aceita pelo usuario (periodo
+  `worktree-issue-87-aperiodicas-a44`, PR #90): DEC-29 aceita pelo usuario (periodo
   padrao com aviso na carga, nucleo inalterado); documentos atualizados e #89
   aberta para a implementacao. Falta revisao e integracao do PR pelo usuario.
 - Proximo passo: revisar e integrar o PR #85 (#21) e o da #87; depois #70
