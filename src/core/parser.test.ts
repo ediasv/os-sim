@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseConfig } from './parser';
+import { analyzeConfig, parseConfig } from './parser';
 
 const standardFile = ['RM;5;2', '1;abcdef;0;2;5;7;ML1:3;MU1:4'].join('\n');
 
@@ -66,11 +66,11 @@ describe('parseConfig', () => {
         ]);
     });
 
-    it('normalizes whitespace, blank lines, case, and optional final semicolons', () => {
+    it('normalizes whitespace, blank lines, algorithm case, and optional final semicolons', () => {
         const variant = [
             '  rM ; 5 ; 2 ; ',
             '',
-            ' 1 ; AbCdEf ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
+            ' 1 ; abcdef ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
             ' ',
         ].join('\r\n');
 
@@ -82,7 +82,7 @@ describe('parseConfig', () => {
             tasks: [
                 {
                     id: 1,
-                    color: 'ABCDEF',
+                    color: 'abcdef',
                     arrival: 0,
                     duration: 2,
                     period: 5,
@@ -91,6 +91,12 @@ describe('parseConfig', () => {
                 },
             ],
         });
+    });
+
+    it('keeps the color as written, for the core to compare and uppercase (DEC-19)', () => {
+        expect(parsedConfig('RM;5;1\n1;AbCdEf;0;1;0;1').tasks[0].color).toBe(
+            'AbCdEf',
+        );
     });
 
     it.each([
@@ -299,5 +305,57 @@ describe('parseConfig', () => {
         expect(
             parsedConfig(['RM;1;1', ...tasks].join('\n')).tasks,
         ).toHaveLength(tasks.length);
+    });
+});
+
+describe('analyzeConfig', () => {
+    it('returns the lines and received texts of a structurally valid file', () => {
+        const analysis = analyzeConfig('rm; 5;1\n\n2; abcdef ;0;1;0;1;E1');
+
+        expect(analysis.ok).toBe(true);
+        if (!analysis.ok) return;
+        expect(analysis.draft.lines).toEqual({ header: 1, tasks: [3] });
+        expect(analysis.draft.headerTexts).toMatchObject({
+            algorithm: 'rm',
+            quantum: '5',
+        });
+        expect(analysis.draft.taskTexts).toEqual([
+            {
+                id: '2',
+                color: 'abcdef',
+                arrival: '0',
+                duration: '1',
+                period: '0',
+                deadline: '1',
+            },
+        ]);
+    });
+
+    it.each([
+        'rm; 5;1\n\n1;abc;x;1;0;1\n2;abcdef;0;1;0;1',
+        'RM;bad;1\n1;FFFFFF;0;1;0;1',
+        '1;FFFFFF;0;1;0;1',
+    ])(
+        'returns only the syntax issues, the same as parseConfig, for %j',
+        (text) => {
+            const analysis = analyzeConfig(text);
+            const parsed = parseConfig(text);
+
+            expect(analysis.ok).toBe(false);
+            expect(analysis).not.toHaveProperty('draft');
+            expect(parsed.ok).toBe(false);
+            if (analysis.ok || parsed.ok) return;
+            expect(analysis.issues).toEqual(parsed.issues);
+        },
+    );
+
+    it('agrees with parseConfig on a valid file', () => {
+        const analysis = analyzeConfig(standardFile);
+        const parsed = parseConfig(standardFile);
+
+        expect(analysis.ok && parsed.ok).toBe(true);
+        if (!analysis.ok || !parsed.ok) return;
+        expect(parsed.config).toEqual(analysis.draft.config);
+        expect(parsed.lines).toEqual(analysis.draft.lines);
     });
 });

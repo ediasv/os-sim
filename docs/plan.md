@@ -309,7 +309,28 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
   `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
-  Em andamento no PR #84 (aberto, branch `feat/31-validacao-parser`).
+  Em revisao no PR #84 (aberto, branch `feat/31-validacao-parser`, rebaseada
+  sobre `main` em 2026-10-28). `loadConfig` (`src/core/loadConfig.ts`) envia
+  ao `validateConfig` somente arquivo sem erro de sintaxe e associa `taskIndex`
+  a linha, campo e texto recebido pelo mapa do parser (`analyzeConfig`), no
+  formato de DEC-19. Ajustes da revisao (2026-10-28, DEC-19 revista): com erro
+  de sintaxe, so erros de sintaxe sao reportados, para que os ordinais do
+  nucleo ("1a tarefa") correspondam ao arquivo e conflitos com a linha
+  quebrada nao fiquem ocultos; o estouro do prazo da ultima ativacao vem do
+  nucleo com `combined` e sai sem valor recebido. Mantido o formato de DEC-19
+  (`(valor v)` no nucleo, `valor "v"` na sintaxe). Revisao independente
+  (2026-10-28): o parser entrega a cor como foi escrita e o nucleo a normaliza,
+  para que a mensagem do nucleo mostre o valor recebido (DEC-19 revista; a cor
+  sem caixa da #30 vale para `loadConfig`); `analyzeConfig` devolve o rascunho
+  so sem erro de sintaxe, sem configuracao parcial; testes de cor minuscula,
+  arquivo so com cabecalho e mensagem completa em varias linhas. Itens
+  independentes viraram #92, #93 e #94.
+  Evidencia (2026-10-28, Node 24.22.1): `npm test` 368/368, `npm run lint` e
+  `npm run typecheck` aprovados; os testes de comportamento novo falharam
+  antes da mudanca (o da cor como escrita, revertendo a linha); os do loader
+  para arquivo sem tarefa, mensagem completa e cor repetida cobrem
+  comportamento existente e passaram de primeira.
+  Nao executado: interface (#36).
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
@@ -332,6 +353,12 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   da #37 em 2026-10-28.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
+  depende do merge do PR #84; resolver antes de a #36 consumir o diagnostico.
+- #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
+  nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
+- #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
+  nucleo. Aberta (decisao); depende do merge do PR #84.
 
 ### E5: Interface e Gantt
 
@@ -411,20 +438,8 @@ Issues `[Docs]`, sem fase no Project.
   aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
   deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
   executados. O template esta em `main` desde o merge.
-- #88 Sincronizar plano e Project com o estado pos-E2. Em andamento (branch
-  `docs/88-sincronizar-plano`); detalhes em "Trabalho atual".
-
-## Trabalho atual
-
-- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em andamento; #32, #33,
-  #34 e #89 abertas. E5: #35, #67 e #68 concluidas; implementacao visual
-  (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- #31 em andamento no PR #84 (aberto, branch `feat/31-validacao-parser`);
-  falta revisao e integracao pelo usuario. A associacao de erros semanticos
-  do parser usa `lines` do resultado da #30.
-- #88 em andamento (iniciada em 2026-10-28, branch
-  `docs/88-sincronizar-plano`): plano sincronizado com o GitHub (estados
+- #88 Sincronizar plano e Project com o estado pos-E2. Concluida no PR #91
+  (merged, `31a3212`, 2026-10-28): plano sincronizado com o GitHub (estados
   desatualizados de #20, #21, #35 e #63 corrigidos; itens concluidos movidos
   de "Trabalho atual" para suas entregas; #67 a #73 em E5, #80 em E6);
   `Fase` preenchida no Project para #51 (E1), #79 (E2), #67 a #73 (E5) e #80
@@ -436,9 +451,18 @@ Issues `[Docs]`, sem fase no Project.
   cada issue do plano (E1 a E6 e documentacao) conferido por script contra o
   GitHub, sem divergencia nem issue ausente; Project sem `Fase` apenas em #55
   e #88; `npm run lint` aprovado. `npm test` e `npm run typecheck` nao
-  aplicaveis (sem mudanca de codigo). Falta revisao e integracao do PR pelo
-  usuario.
-- Proximo passo: revisar e integrar o PR #84 (#31) e o da #88; depois #70
+  aplicaveis (sem mudanca de codigo).
+
+## Trabalho atual
+
+- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
+  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em revisao; #32, #33,
+  #34, #89, #92, #93 e #94 abertas. E5: #35, #67 e #68 concluidas;
+  implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
+- #31 em revisao no PR #84 (aberto, branch `feat/31-validacao-parser`):
+  ajustes das revisoes do autor e independente aplicados em 2026-10-28
+  (evidencia em E4); falta integracao pelo usuario.
+- Proximo passo: integrar o PR #84 (#31); depois #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 nos escopos de #31 e #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem

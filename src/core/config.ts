@@ -1,7 +1,8 @@
 /**
  * Semantic validation of a whole configuration (DEC-10). The core validates
  * before anything is applied, so a rejected configuration never leaves partial
- * changes behind (REQ-05). The file parser (E4) only maps `taskIndex` to a line.
+ * changes behind (REQ-05). The file loader (`loadConfig`) only places issues on
+ * lines, by `taskIndex`.
  */
 import {
     MAX_PERIODIC_JOBS,
@@ -23,6 +24,11 @@ export interface ConfigIssue {
     readonly field: ConfigField;
     /** Position of the task in `tasks`; absent for system fields. */
     readonly taskIndex?: number;
+    /**
+     * Set when several fields together cause the problem (named in `message`),
+     * so no single received text explains it; `field` is where it shows.
+     */
+    readonly combined?: true;
     readonly message: string;
 }
 
@@ -32,8 +38,8 @@ export type ConfigResult =
 
 /**
  * Rejection of a whole configuration (DEC-15). Keeps every issue with its
- * field and task index, so the file parser (E4) can point at a line without
- * validating again; `message` joins the issue messages for plain display.
+ * field and task index, the same issues `validateConfig` returns and the file
+ * loader places on lines; `message` joins the issue messages for plain display.
  */
 export class ConfigValidationError extends Error {
     readonly issues: readonly ConfigIssue[];
@@ -220,6 +226,7 @@ function checkLastDeadline(
     issues.push({
         field: 'deadline',
         taskIndex,
+        combined: true,
         message: `O prazo da última ativação (${formula}) ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`,
     });
 }
