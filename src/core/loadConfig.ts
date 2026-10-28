@@ -1,7 +1,7 @@
 /**
- * Loads configuration text: syntax by the parser, semantics by the core
- * validator, one report for both (DEC-19). The semantic rules stay in
- * `validateConfig`; this module only places its problems on the file.
+ * Loads configuration text: syntax by the parser, then semantics by the core
+ * validator (DEC-19). The semantic rules stay in `validateConfig`; this module
+ * only places its problems on the file.
  */
 import { FILE_LABELS, validateConfig, type ConfigIssue } from './config';
 import type { SystemConfig } from './domain';
@@ -22,34 +22,31 @@ export type ConfigLoadResult =
     | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
 
 /**
- * Parses and validates the text. Syntax issues and core problems are reported
- * together whenever the header and some tasks parsed; without a header nothing
- * is validated, so no semantic diagnostic is made up (DEC-19).
+ * Parses and validates the text. The core sees the file only when it has no
+ * syntax issue: the core names other tasks by position ("1ª tarefa"), so a
+ * dropped line would shift those ordinals and hide conflicts with it (DEC-19).
  */
 export function loadConfig(text: string): ConfigLoadResult {
     const { issues, draft } = analyzeConfig(text);
-    if (draft === null) {
+    if (draft === null || issues.length > 0) {
         return { ok: false, issues };
     }
 
     const validation = validateConfig(draft.config);
-    if (validation.ok && issues.length === 0) {
+    if (validation.ok) {
         return { ok: true, config: validation.config, lines: draft.lines };
     }
-
-    const semantic = validation.ok
-        ? []
-        : validation.issues.map((issue) => placeOnFile(issue, draft));
-    // Stable sort: on one line, syntax issues stay ahead of core problems.
     return {
         ok: false,
-        issues: [...issues, ...semantic].sort((a, b) => a.line - b.line),
+        issues: validation.issues.map((issue) => placeOnFile(issue, draft)),
     };
 }
 
 /**
  * Adds the line, field and received text to a core message without changing
  * the message. References to other tasks keep the core's ordinals (DEC-19).
+ * A combined issue gets no received text: the field's own text would point
+ * at a value that may be valid.
  */
 function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
     const { taskIndex } = issue;
@@ -62,7 +59,7 @@ function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
             ? draft.headerTexts
             : draft.taskTexts[taskIndex];
     const field = FILE_LABELS[issue.field];
-    const value = texts[issue.field] ?? null;
+    const value = issue.combined ? null : (texts[issue.field] ?? null);
     const received = value === null ? '' : ` (valor ${value})`;
 
     return {

@@ -174,6 +174,7 @@ describe('validateConfig: task fields', () => {
         const period = Math.floor(Number.MAX_SAFE_INTEGER / 9);
         const issues = taskIssues({ period, deadline: period });
         expect(issues.map((i) => i.field)).toEqual(['deadline']);
+        expect(issues[0].combined).toBe(true);
     });
 
     it('accepts a periodic task whose last absolute deadline is exactly representable', () => {
@@ -188,6 +189,13 @@ describe('validateConfig: task fields', () => {
             deadline: 1,
         });
         expect(issues.map((i) => i.field)).toEqual(['deadline']);
+        expect(issues[0].combined).toBe(true);
+    });
+
+    it('does not mark an issue about a single field as combined', () => {
+        const issues = taskIssues({ deadline: 0 });
+        expect(issues).toHaveLength(1);
+        expect(issues[0]).not.toHaveProperty('combined');
     });
 });
 

@@ -23,6 +23,11 @@ export interface ConfigIssue {
     readonly field: ConfigField;
     /** Position of the task in `tasks`; absent for system fields. */
     readonly taskIndex?: number;
+    /**
+     * Set when several fields together cause the problem (named in `message`),
+     * so no single received text explains it; `field` is where it shows.
+     */
+    readonly combined?: true;
     readonly message: string;
 }
 
@@ -220,6 +225,7 @@ function checkLastDeadline(
     issues.push({
         field: 'deadline',
         taskIndex,
+        combined: true,
         message: `O prazo da última ativação (${formula}) ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`,
     });
 }

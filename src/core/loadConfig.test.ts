@@ -97,12 +97,6 @@ describe('loadConfig', () => {
             { line: 2, field: 'duracao', value: '2.50' },
             'O campo duracao deve ser um número inteiro maior ou igual a 1; valor recebido: 2.5.',
         ],
-        [
-            'a last deadline beyond the exact integer range',
-            'RM;5;1\n1;FFFFFF;0;1;2000000000000000;1',
-            { line: 2, field: 'prazo', value: '1' },
-            'O prazo da última ativação (ingresso + 9 × periodo + prazo) ultrapassa o maior inteiro exato suportado (9007199254740991).',
-        ],
     ])('reports %s', (_name, text, expected, coreMessage) => {
         const issues = issuesOf(text);
 
@@ -111,6 +105,31 @@ describe('loadConfig', () => {
             `Linha ${expected.line}, campo ${expected.field} (valor ${expected.value}): ${coreMessage}`,
         );
     });
+
+    it.each([
+        [
+            'a periodic',
+            'RM;5;1\n1;FFFFFF;0;1;2000000000000000;1',
+            'ingresso + 9 × periodo + prazo',
+        ],
+        [
+            'an aperiodic',
+            'RM;5;1\n1;FFFFFF;9007199254740990;1;0;5',
+            'ingresso + prazo',
+        ],
+    ])(
+        'shows no single received value for %s last deadline beyond the exact range',
+        (_name, text, formula) => {
+            const issues = issuesOf(text);
+
+            expect(issues.map(where)).toEqual([
+                { line: 2, field: 'prazo', value: null },
+            ]);
+            expect(issues[0].message).toBe(
+                `Linha 2, campo prazo: O prazo da última ativação (${formula}) ultrapassa o maior inteiro exato suportado (9007199254740991).`,
+            );
+        },
+    );
 
     it('reports every problem of several lines, in file order', () => {
         const issues = issuesOf(
@@ -133,7 +152,7 @@ describe('loadConfig', () => {
         ]);
     });
 
-    it('reports syntax errors together with core problems of the other lines', () => {
+    it('reports only syntax errors while a task line is broken', () => {
         const issues = issuesOf(
             [
                 'RM;5;1',
@@ -146,28 +165,47 @@ describe('loadConfig', () => {
 
         expect(issues.map(where)).toEqual([
             { line: 2, field: 'ingresso', value: 'x' },
-            { line: 4, field: 'cor', value: 'FFFFFF' },
-            { line: 5, field: 'cor', value: 'GGG' },
         ]);
         expect(issues[0].message).toBe(
             'Linha 2, campo ingresso, valor "x": esperado um número.',
         );
     });
 
-    it('keeps each core problem on its own line when another task was skipped', () => {
+    it('reports core problems with file ordinals once the syntax is fixed', () => {
         const issues = issuesOf(
             [
                 'RM;5;1',
-                '1;FFFFFF;x;1;0;1',
-                '2;000000;0;1;0;1',
-                '3;111111;0;0;0;1',
+                '1;FFFFFF;0;1;0;1',
+                '2;FFFFFF;0;1;0;1',
+                '3;FFFFFF;0;1;0;1',
+                '4;GGG;0;1;0;1',
             ].join('\n'),
         );
 
         expect(issues.map(where)).toEqual([
-            { line: 2, field: 'ingresso', value: 'x' },
-            { line: 4, field: 'duracao', value: '0' },
+            { line: 3, field: 'cor', value: 'FFFFFF' },
+            { line: 4, field: 'cor', value: 'FFFFFF' },
+            { line: 5, field: 'cor', value: 'GGG' },
         ]);
+        expect(issues[0].message).toMatch(
+            /já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente\.$/,
+        );
+    });
+
+    it('reports a conflict with a previously broken line only after it is fixed', () => {
+        const broken = issuesOf('RM;5;1\n1;FFFFFF;x;1;0;1\n1;FFFFFF;0;1;0;1');
+        expect(broken.map(where)).toEqual([
+            { line: 2, field: 'ingresso', value: 'x' },
+        ]);
+
+        const fixed = issuesOf('RM;5;1\n1;FFFFFF;0;1;0;1\n1;FFFFFF;0;1;0;1');
+        expect(fixed.map(where)).toEqual([
+            { line: 3, field: 'id', value: '1' },
+            { line: 3, field: 'cor', value: 'FFFFFF' },
+        ]);
+        for (const { message } of fixed) {
+            expect(message).toContain('pela 1ª tarefa');
+        }
     });
 
     it('does not invent semantic diagnostics when the header cannot be formed', () => {
@@ -186,12 +224,14 @@ describe('loadConfig', () => {
         const core = validateConfig(parsed.config);
         if (core.ok) throw new Error('expected core issues');
 
-        // The context ends at the first "): "; what follows is the core text.
-        const messages = issuesOf(text).map(({ message }) =>
-            message.slice(message.indexOf('): ') + 3),
-        );
+        const issues = issuesOf(text);
 
-        expect(messages).toEqual(core.issues.map(({ message }) => message));
+        expect(issues).toHaveLength(core.issues.length);
+        issues.forEach(({ message }, index) => {
+            expect(message.endsWith(`: ${core.issues[index].message}`)).toBe(
+                true,
+            );
+        });
     });
 
     it('returns the configuration the core validated for a valid file', () => {

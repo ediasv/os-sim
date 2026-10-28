@@ -96,9 +96,9 @@ export function parseConfig(text: string): ConfigParseResult {
 }
 
 /**
- * Like `parseConfig`, but also returns the partial configuration when syntax
- * issues exist, so the loader can add the core's problems to the same report
- * (DEC-19). The caller must not apply a draft that comes with issues.
+ * Like `parseConfig`, but also returns the received texts, so the loader can
+ * show them in the core's problems (DEC-19). With syntax issues the draft is
+ * partial: the caller must neither validate nor apply it.
  */
 export function analyzeConfig(text: string): ConfigAnalysis {
     const issues: ConfigParseIssue[] = [];

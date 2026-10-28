@@ -15,9 +15,10 @@ afirma que os modulos planejados ja existem.
   e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
   `analyzeConfig` devolve, junto dos erros, a configuracao parcial com linhas e
   textos recebidos; `parseConfig` a descarta quando ha erros.
-- [Carregamento](../src/core/loadConfig.ts): `loadConfig` junta o parser e
-  `validateConfig` num so relatorio, com linha, campo e valor recebido nos
-  problemas do nucleo (DEC-19); nao repete regras semanticas.
+- [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
+  `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
+  campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
+  semanticas.
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
@@ -484,8 +485,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-19: Diagnosticos do parser de configuracao
 
-- Estado: aceita em 2026-10-17 e revista em 2026-10-18 pelo usuario. Requisitos:
-  REQ-06, REQ-10. Resolve Q-03; detalha DEC-10, DEC-12 e DEC-15.
+- Estado: aceita em 2026-10-17 e revista em 2026-10-18 e em 2026-10-28 (revisao
+  do PR #84, #31) pelo usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
+  detalha DEC-10, DEC-12 e DEC-15.
 - Decisao:
     1. Diagnosticos de conteudo identificam linha original (base 1), campo,
        valor recebido e motivo. Valor ausente e indicado como tal. Para linha
@@ -497,16 +499,22 @@ anterior. Data inicial dos registros: 2026-10-12.
     2. Linhas em branco sao ignoradas na interpretacao, mas contam na
        numeracao, que sempre corresponde ao arquivo original.
     3. Conferir o arquivo inteiro e reunir todos os erros de sintaxe que
-       possam ser recuperados, em vez de parar no primeiro. Quando houver
-       estrutura suficiente para montar uma configuracao sem inventar valores,
-       incluir tambem todos os problemas retornados pelo nucleo; nao repetir
-       suas regras semanticas. Acrescentar ao texto original de cada mensagem
-       do nucleo o contexto da linha e do campo (e o valor recebido quando
-       disponivel), sem alterar nem reescrever a mensagem. Em particular,
+       possam ser recuperados, em vez de parar no primeiro. Quando o
+       cabecalho e todas as linhas de tarefa forem lidos sem erro de sintaxe,
+       incluir todos os problemas retornados pelo nucleo; havendo erro de
+       sintaxe, reportar somente os erros de sintaxe (revisao de 2026-10-28).
+       Nao repetir as regras semanticas do nucleo. Acrescentar ao texto
+       original de cada mensagem do nucleo o contexto da linha e do campo (e
+       o valor recebido quando disponivel), sem alterar nem reescrever a
+       mensagem. Em particular,
        referencias ordinais a outras tarefas permanecem como o nucleo as
        produziu; nao sao substituidas pela linha original da tarefa referida.
        A linha e o campo adicionados correspondem a tarefa que tem o problema,
-       associados pelo indice da tarefa (DEC-10, DEC-15).
+       associados pelo indice da tarefa (DEC-10, DEC-15). Problema causado
+       por varios campos juntos (o nucleo o marca como `combined`, por
+       exemplo o prazo da ultima ativacao) recebe linha e campo, sem valor
+       recebido, porque o texto de um so campo apontaria um valor que pode
+       ser valido.
     4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
        conteudo: informar caminho e motivo do sistema quando disponiveis, sem
        linha nem campo.
@@ -521,13 +529,15 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Justificativa: linhas originais permitem localizar erros mesmo quando o
   parser ignora linhas em branco; acumular problemas reduz ciclos de correcao.
   Preservar a mensagem do nucleo mantem a explicacao semantica aprovada e evita
-  alterar referencias ordinais. Falhas de acesso nao pertencem ao conteudo e
-  nao podem ser localizadas por linha/campo; cancelar a escolha e uma acao
-  voluntaria, nao uma falha.
-- Consequencia: sintaxe recuperavel e validacao semantica aparecem juntas
-  quando a configuracao parcial pode ser formada sem valores inventados. Se a
-  estrutura invalida impedir essa formacao, reportar os erros de sintaxe sem
-  produzir diagnosticos semanticos artificiais. O parser preserva o texto
+  alterar referencias ordinais. O nucleo numera as tarefas pela posicao na
+  lista que recebe; validar sem uma linha descartada deslocaria esses
+  ordinais e esconderia conflitos com ela, entao uma segunda rodada de
+  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28). Falhas
+  de acesso nao pertencem ao conteudo e nao podem ser localizadas por
+  linha/campo; cancelar a escolha e uma acao voluntaria, nao uma falha.
+- Consequencia: problemas do nucleo so aparecem para arquivo sem erros de
+  sintaxe; com erro de sintaxe, o relatorio traz todos os erros de sintaxe
+  recuperaveis e nenhum diagnostico semantico. O parser preserva o texto
   recebido para os diagnosticos e associa tarefas analisadas as linhas
   originais. O contexto acrescentado envolve a mensagem sem modifica-la.
 
