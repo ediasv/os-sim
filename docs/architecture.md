@@ -195,6 +195,9 @@ anterior. Data inicial dos registros: 2026-10-12.
   vez no momento da sua criacao"; interpretacao de "executar dez vezes" como
   dez jobs drenados foi decidida pelo usuario.
 - Substitui: regra anterior de REQ-03 que ignorava aperiodicas com aviso.
+  Revista por DEC-29 (2026-10-28): no Projeto A, periodo zero ou ausente
+  recebe o periodo padrao com aviso na carga (A.4.4); o comportamento acima
+  continua sendo o do nucleo.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
   de ativacao. Prioridade RM para periodo zero definida por DEC-17.
 
@@ -208,7 +211,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
 - Campos ausentes: somente periodo pode faltar e equivale a zero; demais campos
-  obrigatorios ausentes sao erro. Lista de eventos e opcional, armazenada e
+  obrigatorios ausentes sao erro. No Projeto A, periodo ausente ou zero recebe
+  o periodo padrao 15 com aviso (DEC-29). Lista de eventos e opcional, armazenada e
   nunca executada no Projeto A.
 - Limites numericos: rejeitar valores e tempos derivados (por exemplo
   ingresso + 9 * periodo + prazo) fora da faixa de inteiros exatos, com mensagem
@@ -430,7 +434,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: sob carga, o job aperiodico espera os periodicos; termina
   porque cada tarefa periodica gera no maximo dez jobs (DEC-09), e eventual
   perda de prazo e registrada (REQ-08). EDF nao e afetado: ordena por prazo
-  absoluto do job.
+  absoluto do job. No Projeto A, periodo zero nao chega ao simulador
+  (DEC-29); esta regra vale para o nucleo e seus testes.
 
 ### DEC-18: Quantum vencido e primeiro desempate
 
@@ -800,6 +805,50 @@ anterior. Data inicial dos registros: 2026-10-12.
       os testes do motor.
     - Validar somente na fabrica e construir o `Simulator` sem revalidar:
       enfraquece a garantia de DEC-15 no construtor publico.
+
+### DEC-29: Periodo padrao com aviso para aperiodicas no Projeto A
+
+- Estado: aceita em 2026-10-28 (escolhas do usuario na #87, que tambem
+  resolveram Q-08). Requisitos: REQ-03, REQ-06, REQ-10. Revisa DEC-09 na
+  parte que substituia A.4.4 e DEC-10 quanto ao periodo ausente; mantem
+  DEC-17 no nucleo. Confirmacao do professor sobre A.4.4 nao obtida.
+- Decisao:
+    1. Periodo padrao de tarefa no Projeto A: 15 ticks.
+    2. Carga de configuracao (arquivo): tarefa com periodo ausente (campo
+       vazio, DEC-10) ou zero explicito, que A.3.3 define como aperiodica,
+       recebe o periodo padrao e passa a ser periodica (DEC-09: ate dez
+       jobs). Cada caso gera um aviso, nao um erro: identifica a tarefa (ID
+       e linha, DEC-19), diz que toda tarefa precisa de periodo maior que
+       zero e que a tarefa usara o periodo padrao. A carga prossegue e as
+       demais validacoes da tarefa seguem normalmente.
+    3. Telas (A.3.2): tarefa criada parte do periodo padrao; periodo zero
+       informado pelo usuario e rejeitado com o motivo, sem alterar o
+       estado (REQ-10).
+    4. A conversao fica na fronteira de carga e na validacao das telas, nao
+       no nucleo nem como filtro do renderer. O nucleo continua aceitando
+       periodo zero com um unico job (DEC-09) e a menor prioridade RM
+       (DEC-17), base para o Projeto B; no Projeto A nenhuma configuracao do
+       usuario chega a ele com periodo zero.
+- Justificativa: A.4.4 manda que aperiodicas no Projeto A sejam "ignoradas e
+  essa situacao deve ser reportada ao usuario de forma clara"; A.3.3 define o
+  formato do arquivo, comum aos dois projetos, e o significado de periodo
+  zero, nao que o Projeto A o execute. DEC-09 invocava A.3.3 sem discutir
+  A.4.4 (achado da revisao pos-E2). O usuario escolheu ignorar a
+  aperiodicidade, e nao a tarefa: a tarefa do arquivo continua demonstravel
+  como periodica e o aviso cumpre o reporte claro exigido. Esta leitura se
+  afasta da letra de A.4.4 ("ignoradas"), registrada aqui como divergencia
+  consciente a confirmar com o professor.
+- Alternativas descartadas:
+    - Manter DEC-09/DEC-17 para o Projeto A: contraria A.4.4.
+    - Descartar a tarefa aperiodica com aviso, com erro de "nenhuma tarefa"
+      se todas fossem aperiodicas: proposta inicial desta decisao, trocada
+      pelo usuario pelo periodo padrao.
+    - Remover periodo zero do nucleo: reescreve DEC-09, DEC-17 e testes que o
+      Projeto B precisara restaurar.
+- Consequencia: o aviso faz parte do resultado da carga e precisa chegar a
+  interface (#33, #36); periodo ausente deixa de indicar aperiodica no
+  resultado da carga (#32). Implementacao da carga e do padrao na #89; a
+  rejeicao nas telas segue com #36/#37.
 
 ## Fluxo de um passo
 

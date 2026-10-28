@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-27. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-28. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -307,7 +307,21 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
-  continua nesta issue.
+  continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
+  padrao com aviso na carga pela #89.
+- #87 Reconciliar A.4.4 (ignorar aperiodicas com aviso) com REQ-03, DEC-09 e
+  DEC-17. Decisoes do usuario em 2026-10-28 (DEC-29, Q-08 resolvida):
+  periodo padrao 15; periodo zero ou ausente no arquivo recebe o padrao com
+  aviso; telas rejeitam periodo zero; nucleo mantem periodo zero. Divergencia
+  da letra de A.4.4 ("ignoradas") registrada na DEC-29. REQ-03, REQ-06,
+  REQ-07, DEC-09, DEC-10, DEC-17 e PEND-02 atualizadas; corpos da #32 e da
+  #89 alinhados. Confirmacao do professor nao obtida. Verificacao
+  (2026-10-28): links locais e ancoras dos documentos alterados conferidos (0
+  quebrados), IDs DEC-29, Q-08, #87 e #89 cruzados; `npm run lint` aprovado;
+  `npm test` e `npm run typecheck` nao aplicaveis (sem mudanca de codigo).
+  Texto de A.3.3/A.4.4 conferido pela citacao da issue, nao pelo PDF.
+- #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
+  (DEC-29).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
@@ -410,11 +424,15 @@ Requisito: REQ-10; integracao de todos os anteriores.
   simultanea, DEC-13 revista (ordem de `selected`) e DEC-27 precisada. Testes
   e gates concluidos (evidencias em E2); falta a revisao e integracao do PR
   pelo usuario.
-- Proximo passo: revisar e integrar o PR #85 (#21); depois #70 (controles e
-  mensagens do renderer). Manter os diagnosticos de DEC-19 nos escopos de #31 e
-  #34.
-- Pendencias: Q-02 e Q-06 conforme fase. Q-05 resolvida e DEC-08 aceita na
-  #35.
+- #87 em andamento (iniciada em 2026-10-28, branch
+  `worktree-issue-87-aperiodicas-a44`): DEC-29 aceita pelo usuario (periodo
+  padrao com aviso na carga, nucleo inalterado); documentos atualizados e #89
+  aberta para a implementacao. Falta revisao e integracao do PR pelo usuario.
+- Proximo passo: revisar e integrar o PR #85 (#21) e o da #87; depois #70
+  (controles e mensagens do renderer). Manter os diagnosticos de DEC-19 nos
+  escopos de #31 e #34.
+- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29. Q-05 resolvida e DEC-08
+  aceita na #35.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega

@@ -131,7 +131,8 @@ Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
 substituem o nucleo na aplicacao ou habilitam comandos ficticios. Cada entrega
 deve deixar claro o que e visual, o que esta integrado e o que depende de
 contrato ainda ausente. A etapa 4 exige o tratamento de arquivos ja acordado,
-sem aplicar um filtro de aperiodicas como solucao para PEND-02.
+exibindo os avisos de periodo padrao aplicado na carga (DEC-29), sem filtro
+ou conversao proprios no renderer.
 As referencias a issues do nucleo indicam dependencias de consumo: nenhuma
 delas passa a fazer parte deste PR. Planejar um componente isolado com dados
 de exemplo nao exige concluir o nucleo nem autoriza modifica-lo para atender

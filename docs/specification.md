@@ -3,7 +3,8 @@
 ## Escopo e fontes
 
 Implementar um simulador preemptivo de tempo compartilhado com tarefas
-periodicas e aperiodicas de ativacao unica, multiplas CPUs, RM e EDF. Comecar
+periodicas, multiplas CPUs, RM e EDF; tarefa sem periodo positivo recebe o
+periodo padrao com aviso (A.4.4, DEC-29). Comecar
 pelo nucleo e testes; construir a interface depois. Projeto B, DM, mutex, E/S e comunicacao nao fazem parte desta
 entrega.
 
@@ -41,12 +42,14 @@ Fonte: gerais 2; A.1.2.
 
 ### REQ-03: Tarefas, ativacoes e termino
 
-Fonte: A.1.3, A.1.4, A.4.4.
+Fonte: A.1.3, A.1.4; A.4.4 para aperiodicas no Projeto A.
 
 - Um TCB por tarefa concentra suas caracteristicas e registros de ativacoes.
 - Cada ativacao e um job separado, com identidade, progresso e prazo proprios.
-- Tarefa periodica gera no maximo dez jobs; tarefa aperiodica (periodo zero ou
-  ausente) gera um unico job no ingresso. Ver DEC-09.
+- Tarefa periodica gera no maximo dez jobs. No nucleo, tarefa aperiodica
+  (periodo zero ou ausente) gera um unico job no ingresso (DEC-09); no
+  Projeto A ela recebe o periodo padrao na carga, com aviso ao usuario, e
+  telas rejeitam periodo zero (A.4.4, DEC-29).
 - Todo job executa ate completar a duracao, mesmo com prazo perdido; a tarefa
   termina quando seu ultimo job conclui.
 - Aceitacao: ativar conforme ingresso e periodo, mantendo jobs anteriores intactos
@@ -91,8 +94,10 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
   (DEC-20).
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
   conteudo interno do campo de eventos indiscriminadamente.
-- Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica.
-  Faixas dos demais campos e campos opcionais em DEC-10.
+- Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica,
+  que no Projeto A recebe o periodo padrao (15) com aviso claro, sem impedir
+  a carga (A.4.4, DEC-29). Faixas dos demais campos e campos opcionais em
+  DEC-10.
 - Carregar arquivo de qualquer nome/caminho escolhido pelo usuario.
 - Cancelar a escolha do arquivo nao e erro (DEC-19).
 - Preservar lista de eventos sem executa-la no Projeto A (A.3.3.5).
@@ -105,7 +110,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 Fonte: A.4 a A.4.3.
 
 - Implementar RM preemptivo (menor periodo) e EDF preemptivo (menor prazo absoluto).
-  No RM, tarefa aperiodica tem a menor prioridade (DEC-17).
+  No RM, tarefa aperiodica tem a menor prioridade no nucleo (DEC-17); no
+  Projeto A ela nao chega ao simulador (DEC-29).
 - Politica substituivel, sem reescrever o ciclo de simulacao.
 - Em empate de prioridade: quem executava antes da selecao, prazo, ingresso,
   menor duracao e sorteio, nessa ordem; prazo e ingresso do job, duracao da
@@ -179,6 +185,10 @@ Fonte: gerais 5 e 6; A.5.
   nem ignorar futuras ativacoes quando todas as CPUs estiverem desligadas.
 - Q-07: resolvida em 2026-10-17 por DEC-17 (aperiodica tem a menor prioridade
   RM; aperiodicas empatam entre si).
+- Q-08: resolvida em 2026-10-28 por DEC-29 (periodo padrao 15; periodo zero
+  ou ausente no arquivo recebe o padrao com aviso e segue validado; telas
+  rejeitam periodo zero; sem descarte de tarefas, logo sem caso de arquivo
+  so com aperiodicas).
 
 ## Invariantes do nucleo
 
