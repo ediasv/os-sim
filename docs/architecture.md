@@ -126,7 +126,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: registrar intervalos e totais; nao simular energia ou latencia.
   Intervalos e totais sao derivados dos eventos de cada snapshot (DEC-21).
 - Limitacao: recursos reais e representacao numerica continuam finitos; tratar
-  falhas claramente, sem prometer capacidade infinita.
+  falhas claramente, sem prometer capacidade infinita. Limite pratico do
+  comprimento da simulacao, com medicoes, em DEC-30.
 
 ### DEC-06: Historico restauravel e sorteio reproduzivel
 
@@ -221,6 +222,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   aplicacao parcial; o parser (E4) apenas acrescenta linha e campo ao erro,
   a partir dos problemas carregados pelo erro do construtor (DEC-15).
 - Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
+  O custo de memoria de simulacoes longas fica registrado em DEC-30.
 
 ### DEC-11: Passo de um tick e snapshot inicial
 
@@ -367,7 +369,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   (`executed > duration`) e corrompia o historico (REQ-04).
 - Consequencia:
     - Uma copia extra O(estado) por tick, da mesma ordem do snapshot; rever na
-      #23 junto com DEC-12.
+      #23 junto com DEC-12. Efeito medido na memoria do historico em DEC-30.
     - `findInconsistencies` tambem rejeita `executed > duration`.
     - `deepCopy` compartilha subarvores congeladas (a configuracao) em vez de
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
@@ -851,6 +853,48 @@ anterior. Data inicial dos registros: 2026-10-12.
   na #89; padrao em tarefa nova, recusa de periodo zero e exibicao dos
   avisos na #36 (configuracao inicial); recusa em edicao e inclusao durante
   a simulacao na #37.
+
+### DEC-30: Limite pratico do comprimento da simulacao
+
+- Estado: aceita em 2026-10-28 (escolha do usuario na #88). Requisitos:
+  REQ-04, REQ-09. Complementa DEC-05, DEC-10 e DEC-14; nao muda contrato nem
+  comportamento.
+- Decisao: simulacoes longas nao sao suportadas na pratica e o custo de
+  memoria do historico nao sera otimizado. Nenhum limite e imposto no codigo:
+  "sem teto arbitrario" (DEC-05, DEC-10, A.2.4) continua valendo como
+  ausencia de corte artificial, e o limite real e o recurso da maquina,
+  ja previsto na limitacao de DEC-05.
+- Causa: cada tick guarda um snapshot completo (REQ-04, DEC-11) e o passo
+  trabalha sobre uma copia (DEC-14). Eventos e trechos de execucao acumulam
+  no estado, entao cada snapshot cresce com o comprimento da simulacao e a
+  memoria do historico cresce de forma aproximadamente quadratica.
+- Medicoes (heap apos a simulacao, RM, 2 CPUs, 3 tarefas):
+
+    | ticks  | revisao pos-E2 (Node 24.21.0) | reproducao #88 (Node 24.22.1) |
+    | ------ | ----------------------------- | ----------------------------- |
+    | 1.000  | 0,2 s, 99 MB                  | 0,1 s, 39 MB                  |
+    | 4.000  | 1,9 s, 454 MB                 | 1,1 s, 254 MB                 |
+    | 10.000 | 10 s, 2,2 GB                  | 5,7 s, 1,3 GB                 |
+    | 20.000 | abortado por falta de memoria | nao executado                 |
+
+    A revisao pos-E2 (2026-10-27) nao registrou as tarefas usadas. A
+    reproducao de 2026-10-28 usou tarefas com ingresso 0 e (duracao, periodo =
+    prazo) de (300, 1000), (500, 1500) e (800, 2500), `createSimulator` e
+    `tick()` repetido, heap medido apos `gc()`; script fora do repositorio. As
+    duas series diferem em valor absoluto, mas crescem do mesmo modo.
+
+- Justificativa: o Gantt exportado (REQ-09, DEC-08) fica ilegivel acima de
+  cerca de 30 ticks, entao cenarios realistas de demonstracao ficam ordens
+  de grandeza abaixo da faixa problematica. Otimizar o historico (snapshots
+  incrementais, compartilhamento estrutural) custaria complexidade em REQ-04
+  sem beneficio para esses cenarios.
+- Alternativas descartadas:
+    - Reduzir a memoria do historico agora: fora do escopo acordado na #88.
+    - Impor teto de ticks no codigo: seria o teto arbitrario que DEC-05 e
+      DEC-10 rejeitam.
+- Consequencia: falta de memoria em simulacao muito longa e limitacao
+  conhecida, nao defeito. Rever esta decisao se a #23 (estrutura do
+  historico) ou a #27 (execucao completa) exigir simulacoes longas.
 
 ## Fluxo de um passo
 

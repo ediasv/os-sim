@@ -10,6 +10,8 @@ Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
   e `Fase`. Issue fechada ou `Done` exige evidencia de verificacao registrada.
   O corpo da issue segue o [template](../.github/ISSUE_TEMPLATE/item-de-trabalho.md);
   este plano guarda estado e evidencias, nao repete a descricao.
+- Issues `[Docs]` nao pertencem a uma fase e ficam sem `Fase` no Project
+  (decidido pelo usuario na #88); aparecem em "Itens de documentacao".
 - Base existente e E0 mantem `[x]` como historico: entregue com evidencia.
 - Trabalho parcial continua desmarcado e aparece em "Trabalho atual".
 - Registrar bloqueios explicitamente; nao marcar uma fase inteira por ter
@@ -138,7 +140,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   ultimo snapshot valido preservado e continuacao (DEC-14). Nao executado:
   iniciar o app e clicar no botao de tick.
 - #63 Conferir CPUs ocupadas contra elegibilidade independente do motor.
-  Aberta na revisao do PR #62; depende de #16. Em revisao no PR #64.
+  Aberta na revisao do PR #62; depende de #16. Concluida no PR #64 (merged, `8459443`, 2026-10-23).
   `eligibleJobKeys` (teste do Simulator) rederiva DEC-02 dos estados dos
   jobs no snapshot, sem `findEligibleJobs`: job `ready` ou `running` cujos
   jobs anteriores da tarefa estao todos concluidos. `expectMultiCpuInvariants`
@@ -186,8 +188,8 @@ Requisito: REQ-07.
   #20. Limite resolvido pela #20 (DEC-27). Evidencia (2026-10-24): `npm test` 240/240, `npm run lint` e
   `npm run typecheck` aprovados.
 - #20 Implementar desempates completos, sorteio com estado e evento correspondente
-  (DEC-16, DEC-18). Em revisao no PR #75 (DEC-27, decidida pelo usuario em
-  2026-10-24): RM e EDF aplicam DEC-16/DEC-18 e relatam o empate residual em
+  (DEC-16, DEC-18). Concluida no PR #75 (merged, `f22281d`, 2026-10-27;
+  DEC-27, decidida pelo usuario em 2026-10-24): RM e EDF aplicam DEC-16/DEC-18 e relatam o empate residual em
   `tie`; o motor sorteia com semente fixa, guarda `drawState` no snapshot e
   registra um `tie-break` por vencedor. Arquivos: `draw.ts`, `policy.ts`,
   `policies.ts`, `simulator.ts`, `domain.ts`, `snapshot.ts` e testes.
@@ -220,7 +222,8 @@ Requisito: REQ-07.
   Electron (sem mudanca no renderer). Concluida no PR #86 (merged,
   `a92fd58`, 2026-10-27).
 - #21 Testar exemplos das figuras 2.5/2.6 e casos de empate/multiplas CPUs,
-  incluindo o exemplo de quantum vencido de DEC-18. No PR #85:
+  incluindo o exemplo de quantum vencido de DEC-18. Concluida no PR #85
+  (merged, `ef2427a`, 2026-10-27):
   `src/core/scenarios.test.ts` roda `createSimulator` com RM/EDF reais, com
   `findInconsistencies` vazio no snapshot 0 e apos cada passo. Figuras com
   quantum igual a maior duracao, sem vencimento na janela, e janelas
@@ -261,6 +264,7 @@ Requisito: REQ-07.
     - duas CPUs: distribuicao, preempcao na CPU 2 e, no caso espelhado, na
       CPU 1, duas preempcoes no mesmo instante, CPUs desligadas e religadas.
 - #22 Decidir se o simulador exibe testes de escalonabilidade e com que ressalva.
+  Concluida no PR #77 (merged, `da52d14`).
   Decidida pelo usuario em 2026-10-24 (DEC-26): nada e exibido; citacoes
   trazem a ressalva de varias CPUs e de simulacao finita. Registrada em
   REQ-07 e no escopo da [spec do frontend](../src/renderer/docs/specification.md).
@@ -305,6 +309,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
   `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
+  Em andamento no PR #84 (aberto, branch `feat/31-validacao-parser`).
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
@@ -320,6 +325,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   quebrados), IDs DEC-29, Q-08, #87 e #89 cruzados; `npm run lint` aprovado;
   `npm test` e `npm run typecheck` nao aplicaveis (sem mudanca de codigo).
   Texto de A.3.3/A.4.4 conferido pela citacao da issue, nao pelo PDF.
+  Concluida no PR #90 (merged, `5b67474`, 2026-10-28).
 - #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
   (DEC-29). A parte de interface da DEC-29 (padrao 15 em tarefa nova, recusa
   de periodo zero, exibicao dos avisos) foi acrescentada aos corpos da #36 e
@@ -334,7 +340,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 - #35 Resolver Q-05 e avaliar DEC-08 antes da implementacao visual.
   Decisao registrada em 2026-10-24, aceita pelo usuario: DEC-08 aceita e Q-05
   resolvida (rotulo de job, vazio para nao ativada/terminada, termino de job e
-  de tarefa, SVG). Issue segue aberta ate revisao do registro.
+  de tarefa, SVG). Concluida no PR #76 (merged, `5dd741f`, 2026-10-24);
+  apenas documentacao, links e IDs conferidos, sem build.
 - #36 Implementar controles de configuracao, execucao e navegacao no historico.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
@@ -342,6 +349,31 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
+- Planejamento do frontend (#35 a #40, PR #61):
+  [spec de apresentacao](../src/renderer/docs/specification.md) e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
+  planejamento da apresentacao e suas expectativas de integracao, sem alterar
+  os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
+  #38 segue DEC-08 e #39 nao muda de escopo (#35).
+- #67 Preparar a infraestrutura de testes do renderer (F1). Concluida no
+  PR #78 (merged, `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
+  do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
+  Lint global reprovado por CRLF preexistente na epoca; causa tratada na #80.
+- #68 Estabelecer as fundacoes visuais do renderer (F2). Concluida no
+  PR #82 (merged, `700a178`, 2026-10-25), com o gate da #35 ja em `main`: tokens, estilos base e
+  Inter empacotada (`@fontsource-variable/inter`, OFL-1.1). Valores lidos da
+  pagina Fundacoes do Figma (tema escuro), com 4 desvios de contraste
+  documentados; `npm test` 253/253, typecheck e lint aprovados, CI verde.
+  Revisao do PR: links da doc e heranca de cor do botao Dismiss corrigidos.
+  Nao executados: app Electron e comparacao visual lado a lado com o Figma
+  (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
+  Detalhes e evidencia em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
+- #69 Preparar os dados de apresentacao para a inspecao.
+- #70 Implementar controles e mensagens reutilizaveis do renderer.
+- #71 Apresentar tarefas e jobs com selecao independente do tempo.
+- #72 Compor a area de trabalho vazia em preparacao.
+- #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
 ### E6: Entrega e demonstracao
 
@@ -352,45 +384,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
-
-## Trabalho atual
-
-- Estado: E0, #9 (PR #46), #10 (PR #48), #11, #12 (PR #49), #13 (PR #50),
-  #51 (PR #52), #18 (PR #54), #55 (PR #56), #29 (PR #57), #14 (PR #58), #30
-  (PR #60), #15 (PR #59) e #16 (PR #62) concluidos; evidencias registradas acima. Associacao
-  de erros semanticos do parser permanece na #31, que pode usar `lines` do
-  resultado.
-- #63 concluida no PR #64 (merged); mutacoes e gates registrados em E1.
-- #55 (descricoes das issues), concluida no PR #56 (merged, `26020cc`):
-  corpos das issues abertas de #14 a #45
-  reescritos no template, revisados pelo usuario fase a fase; titulos vagos
-  ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
-  repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
-  aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
-  deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
-  executados. O template esta em `main` desde o merge.
-- Frontend (#35 a #40, PR #61): [spec de apresentacao](../src/renderer/docs/specification.md)
-  e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
-  planejamento da apresentacao e suas expectativas de integracao, sem alterar
-  os contratos ou o andamento do nucleo. Implementacao ainda nao iniciada.
-  #35 concluida no PR #76 (merged, `5dd741f`, 2026-10-24): DEC-08 aceita e
-  Q-05 resolvida; #38 segue DEC-08 e #39 nao muda de escopo. Apenas
-  documentacao; links e IDs conferidos, sem build.
-- #19 concluida no PR #74 (merged, `cf139aa`): RM, EDF e registro de
-  politicas por algoritmo (DEC-25); evidencias em E2.
-- #20 concluida no PR #75 (merged, `f22281d`, 2026-10-27): desempates,
-  sorteio pelo motor e evento (DEC-27); evidencias em E2.
-- #79 concluida no PR #86 (merged, `a92fd58`, 2026-10-27):
-  `requireValidConfig` compartilhada pelo construtor do `Simulator` e pela
-  fabrica (DEC-28); evidencias em E2.
-- #67 (F1, infraestrutura de testes do renderer) concluida no PR #78 (merged,
-  `cb37e00`): Vue Test Utils e jsdom, ambiente Node mantido por padrao e teste
-  do ErrorBanner; `npm test` 242/242 e typecheck aprovados; evidencia e comandos em
-  [arquitetura do renderer](../src/renderer/docs/architecture.md#testes-de-componentes-67).
-  Lint global reprovado por CRLF preexistente na epoca; causa tratada na #80.
-- #22 concluida no PR #77 (merged, `da52d14`; DEC-26, sem testes de
-  escalonabilidade); mudanca so documental, evidencias em E2.
-- #80 (E6, ambiente) concluida no PR #81 (merged, `5a569db`), escopo ampliado para
+- #80 Padronizar a versao do Node entre desenvolvimento, CI e release.
+  Concluida no PR #81 (merged, `5a569db`), escopo ampliado para
   incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
   24.22.1 em `devEngines.runtime` no `package.json`, lido pelos workflows CI e
   release (`node-version-file`), e `.gitattributes` com `* text=auto eol=lf`.
@@ -403,38 +398,52 @@ Requisito: REQ-10; integracao de todos os anteriores.
   executados (sem push; clone LF equivale ao checkout Linux), release nao
   exercitado. Checkouts Windows anteriores ao `.gitattributes` mantem CRLF
   ate um refresh unico dos arquivos (ou novo clone).
-- #68 (F2, fundacoes visuais do renderer) concluida no PR #82 (merged,
-  `700a178`, 2026-10-25), com o gate da #35 ja em `main`: tokens, estilos base e
-  Inter empacotada (`@fontsource-variable/inter`, OFL-1.1). Valores lidos da
-  pagina Fundacoes do Figma (tema escuro), com 4 desvios de contraste
-  documentados; `npm test` 253/253, typecheck e lint aprovados, CI verde.
-  Revisao do PR: links da doc e heranca de cor do botao Dismiss corrigidos.
-  Nao executados: app Electron e comparacao visual lado a lado com o Figma
-  (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
-  Detalhes e evidencia em
-  [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- #21 em andamento (iniciada em 2026-10-27, branch
-  `issue-21-figuras-empates-multicpu`, PR #85): testes de simulacao
-  completa para as figuras 2.5/2.6, empates por algoritmo, varias CPUs, o
-  exemplo de DEC-18 e a prioridade RM de aperiodicas, com `findInconsistencies`
-  vazio a cada passo. Exemplo de DEC-18 na issue corrigido em 2026-10-27 para
-  J [0, 4), K [4, 6). Revisao do PR aplicada em 2026-10-27: rebase sobre
-  `main`, quantum com instantes conferidos, casos novos de DEC-16 (2) e (4),
-  DEC-17 e preempcao na CPU 1, ordem sorteada nas CPUs registrada na DEC-27.
-  Segunda revisao aplicada em 2026-10-27: cobertura real do criterio (4),
-  DEC-17 com prazo menor, vencimentos exatos, eventos do sorteio, preempcao
-  simultanea, DEC-13 revista (ordem de `selected`) e DEC-27 precisada. Testes
-  e gates concluidos (evidencias em E2); falta a revisao e integracao do PR
-  pelo usuario.
-- #87 em andamento (iniciada em 2026-10-28, branch
-  `worktree-issue-87-aperiodicas-a44`, PR #90): DEC-29 aceita pelo usuario (periodo
-  padrao com aviso na carga, nucleo inalterado); documentos atualizados e #89
-  aberta para a implementacao. Falta revisao e integracao do PR pelo usuario.
-- Proximo passo: revisar e integrar o PR #85 (#21) e o da #87; depois #70
-  (controles e mensagens do renderer). Manter os diagnosticos de DEC-19 nos
-  escopos de #31 e #34.
-- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29. Q-05 resolvida e DEC-08
-  aceita na #35.
+
+### Itens de documentacao
+
+Issues `[Docs]`, sem fase no Project.
+
+- #55 Padronizar descricoes das issues abertas. Concluida no PR #56
+  (merged, `26020cc`): corpos das issues abertas de #14 a #45
+  reescritos no template, revisados pelo usuario fase a fase; titulos vagos
+  ajustados (#17, #22, #30, #33, #36, #37, #38); template e convencoes no
+  repositorio. Verificacao (2026-10-17): corpos publicados iguais aos rascunhos
+  aprovados; IDs (#N, REQ, DEC, Q), ancoras e links locais conferidos; titulos
+  deste plano iguais aos do GitHub. Sem mudanca de codigo, testes nao
+  executados. O template esta em `main` desde o merge.
+- #88 Sincronizar plano e Project com o estado pos-E2. Em andamento (branch
+  `docs/88-sincronizar-plano`); detalhes em "Trabalho atual".
+
+## Trabalho atual
+
+- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
+  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em andamento; #32, #33,
+  #34 e #89 abertas. E5: #35, #67 e #68 concluidas; implementacao visual
+  (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
+- #31 em andamento no PR #84 (aberto, branch `feat/31-validacao-parser`);
+  falta revisao e integracao pelo usuario. A associacao de erros semanticos
+  do parser usa `lines` do resultado da #30.
+- #88 em andamento (iniciada em 2026-10-28, branch
+  `docs/88-sincronizar-plano`): plano sincronizado com o GitHub (estados
+  desatualizados de #20, #21, #35 e #63 corrigidos; itens concluidos movidos
+  de "Trabalho atual" para suas entregas; #67 a #73 em E5, #80 em E6);
+  `Fase` preenchida no Project para #51 (E1), #79 (E2), #67 a #73 (E5) e #80
+  (E6, que tambem foi adicionada ao Project); issues `[Docs]` seguem sem
+  fase. DEC-30 registra o limite pratico do comprimento da simulacao, com as
+  medicoes da revisao e uma reproducao em Node 24.22.1. Verificacao
+  (2026-10-28): links locais e ancoras dos documentos e do README (0
+  quebrados); DEC-01 a DEC-30 unicas e sem referencia indefinida; estado de
+  cada issue do plano (E1 a E6 e documentacao) conferido por script contra o
+  GitHub, sem divergencia nem issue ausente; Project sem `Fase` apenas em #55
+  e #88; `npm run lint` aprovado. `npm test` e `npm run typecheck` nao
+  aplicaveis (sem mudanca de codigo). Falta revisao e integracao do PR pelo
+  usuario.
+- Proximo passo: revisar e integrar o PR #84 (#31) e o da #88; depois #70
+  (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
+  carga, DEC-29). Manter os diagnosticos de DEC-19 nos escopos de #31 e #34.
+- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
+  confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
+  #35.
 - Bloqueios: nenhum.
 
 ## Como registrar uma entrega
