@@ -847,8 +847,10 @@ anterior. Data inicial dos registros: 2026-10-12.
       Projeto B precisara restaurar.
 - Consequencia: o aviso faz parte do resultado da carga e precisa chegar a
   interface (#33, #36); periodo ausente deixa de indicar aperiodica no
-  resultado da carga (#32). Implementacao da carga e do padrao na #89; a
-  rejeicao nas telas segue com #36/#37.
+  resultado da carga (#32). Implementacao: carga com periodo padrao e aviso
+  na #89; padrao em tarefa nova, recusa de periodo zero e exibicao dos
+  avisos na #36 (configuracao inicial); recusa em edicao e inclusao durante
+  a simulacao na #37.
 
 ## Fluxo de um passo
 

@@ -321,7 +321,9 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   `npm test` e `npm run typecheck` nao aplicaveis (sem mudanca de codigo).
   Texto de A.3.3/A.4.4 conferido pela citacao da issue, nao pelo PDF.
 - #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
-  (DEC-29).
+  (DEC-29). A parte de interface da DEC-29 (padrao 15 em tarefa nova, recusa
+  de periodo zero, exibicao dos avisos) foi acrescentada aos corpos da #36 e
+  da #37 em 2026-10-28.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 
