@@ -13,8 +13,8 @@ afirma que os modulos planejados ja existem.
   `requireValidConfig` e o unico ponto que lanca esse erro (DEC-28).
 - [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
   e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
-  `analyzeConfig` devolve, junto dos erros, a configuracao parcial com linhas e
-  textos recebidos; `parseConfig` a descarta quando ha erros.
+  `analyzeConfig` devolve os erros de sintaxe ou, sem eles, a configuracao com
+  linhas e textos recebidos; `parseConfig` descarta os textos.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
   `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
   campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
@@ -210,8 +210,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-10: Valores padrao e limites da configuracao
 
-- Estado: aceita em 2026-10-16. Requisitos: REQ-02, REQ-05, REQ-06. Resolve a
-  parte de Q-03 que afeta o modelo.
+- Estado: aceita em 2026-10-16; texto do item Validacao ajustado em 2026-10-28
+  ao codigo da #31, sem mudar a regra. Requisitos: REQ-02, REQ-05, REQ-06.
+  Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
   maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
@@ -225,8 +226,10 @@ anterior. Data inicial dos registros: 2026-10-12.
   ingresso + 9 * periodo + prazo) fora da faixa de inteiros exatos, com mensagem
   descritiva.
 - Validacao: o nucleo valida a configuracao inteira antes de aplica-la, sem
-  aplicacao parcial; o parser (E4) apenas acrescenta linha e campo ao erro,
-  a partir dos problemas carregados pelo erro do construtor (DEC-15).
+  aplicacao parcial; o carregamento do arquivo (`loadConfig`, E4) apenas
+  acrescenta linha e campo ao erro, a partir dos problemas que
+  `validateConfig` devolve, os mesmos que o erro do construtor carrega
+  (DEC-15).
 - Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
 
@@ -514,7 +517,12 @@ anterior. Data inicial dos registros: 2026-10-12.
        por varios campos juntos (o nucleo o marca como `combined`, por
        exemplo o prazo da ultima ativacao) recebe linha e campo, sem valor
        recebido, porque o texto de um so campo apontaria um valor que pode
-       ser valido.
+       ser valido. O parser entrega a cor como foi escrita; compara-la sem
+       caixa e converte-la para maiusculas fica com o nucleo, para que a
+       mensagem de cor invalida mostre o valor recebido; a de cor repetida
+       cita a cor em maiusculas (revisao de 2026-10-28).
+       A cor sem distincao de caixa exigida pela #30 vale para a
+       configuracao carregada (`loadConfig`).
     4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
        conteudo: informar caminho e motivo do sistema quando disponiveis, sem
        linha nem campo.

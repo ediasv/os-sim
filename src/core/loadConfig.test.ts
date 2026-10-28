@@ -68,6 +68,18 @@ describe('loadConfig', () => {
             'A cor ABCDEF já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
         ],
         [
+            'a lowercase color that is not six hex digits',
+            'RM;5;1\n1;#ffffff;0;1;0;1',
+            { line: 2, field: 'cor', value: '#ffffff' },
+            'O campo cor deve ter 6 dígitos hexadecimais RGB, sem "#" (por exemplo F0E0D0); valor recebido: "#ffffff".',
+        ],
+        [
+            'a lowercase color repeating an uppercase one',
+            'RM;5;1\n1;ABCDEF;0;1;0;1\n2;abcdef;0;1;0;1',
+            { line: 3, field: 'cor', value: 'abcdef' },
+            'A cor ABCDEF já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
+        ],
+        [
             'a negative arrival',
             'RM;5;1\n1;FFFFFF;-1;1;0;1',
             { line: 2, field: 'ingresso', value: '-1' },
@@ -150,6 +162,20 @@ describe('loadConfig', () => {
             { line: 5, field: 'prazo', value: '0' },
             { line: 5, field: 'id', value: '1' },
         ]);
+        expect(issues[5].message).toBe(
+            'Linha 5, campo id (valor 1): O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+        );
+    });
+
+    it('reports only the missing task line for a file with a header alone', () => {
+        const issues = issuesOf('RM;5;1');
+
+        expect(issues.map(where)).toEqual([
+            { line: 2, field: 'tarefa', value: null },
+        ]);
+        expect(issues[0].message).toBe(
+            'Linha 2, campo tarefa, valor ausente: nenhuma linha de tarefa encontrada; esperada pelo menos uma (formato: id;cor;ingresso;duracao;periodo;prazo;lista_eventos).',
+        );
     });
 
     it('reports only syntax errors while a task line is broken', () => {
@@ -232,6 +258,24 @@ describe('loadConfig', () => {
                 true,
             );
         });
+    });
+
+    it('loads every case variant of a file as the same configuration', () => {
+        const standardFile = 'RM;5;2\n1;abcdef;0;2;5;7;ML1:3;MU1:4';
+        const variant = [
+            '  rM ; 5 ; 2 ; ',
+            '',
+            ' 1 ; AbCdEf ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
+            ' ',
+        ].join('\r\n');
+
+        const loaded = loadConfig(variant);
+        const standard = loadConfig(standardFile);
+
+        expect(loaded.ok && standard.ok).toBe(true);
+        if (!loaded.ok || !standard.ok) return;
+        expect(loaded.config).toEqual(standard.config);
+        expect(loaded.config.tasks[0].color).toBe('ABCDEF');
     });
 
     it('returns the configuration the core validated for a valid file', () => {

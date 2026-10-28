@@ -27,11 +27,10 @@ export type ConfigLoadResult =
  * dropped line would shift those ordinals and hide conflicts with it (DEC-19).
  */
 export function loadConfig(text: string): ConfigLoadResult {
-    const { issues, draft } = analyzeConfig(text);
-    if (draft === null || issues.length > 0) {
-        return { ok: false, issues };
-    }
+    const analysis = analyzeConfig(text);
+    if (!analysis.ok) return analysis;
 
+    const { draft } = analysis;
     const validation = validateConfig(draft.config);
     if (validation.ok) {
         return { ok: true, config: validation.config, lines: draft.lines };

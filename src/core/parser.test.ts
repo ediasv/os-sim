@@ -66,11 +66,11 @@ describe('parseConfig', () => {
         ]);
     });
 
-    it('normalizes whitespace, blank lines, case, and optional final semicolons', () => {
+    it('normalizes whitespace, blank lines, algorithm case, and optional final semicolons', () => {
         const variant = [
             '  rM ; 5 ; 2 ; ',
             '',
-            ' 1 ; AbCdEf ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
+            ' 1 ; abcdef ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
             ' ',
         ].join('\r\n');
 
@@ -82,7 +82,7 @@ describe('parseConfig', () => {
             tasks: [
                 {
                     id: 1,
-                    color: 'ABCDEF',
+                    color: 'abcdef',
                     arrival: 0,
                     duration: 2,
                     period: 5,
@@ -91,6 +91,12 @@ describe('parseConfig', () => {
                 },
             ],
         });
+    });
+
+    it('keeps the color as written, for the core to compare and uppercase (DEC-19)', () => {
+        expect(parsedConfig('RM;5;1\n1;AbCdEf;0;1;0;1').tasks[0].color).toBe(
+            'AbCdEf',
+        );
     });
 
     it.each([
@@ -303,21 +309,17 @@ describe('parseConfig', () => {
 });
 
 describe('analyzeConfig', () => {
-    it('keeps the tasks that parsed, with their lines and received texts, next to the syntax issues', () => {
-        const { issues, draft } = analyzeConfig(
-            'rm; 5;1\n\n1;abc;x;1;0;1\n2; abcdef ;0;1;0;1;E1',
-        );
+    it('returns the lines and received texts of a structurally valid file', () => {
+        const analysis = analyzeConfig('rm; 5;1\n\n2; abcdef ;0;1;0;1;E1');
 
-        expect(issues.map(({ line, field }) => ({ line, field }))).toEqual([
-            { line: 3, field: 'ingresso' },
-        ]);
-        expect(draft?.config.tasks.map((task) => task.id)).toEqual([2]);
-        expect(draft?.lines).toEqual({ header: 1, tasks: [4] });
-        expect(draft?.headerTexts).toMatchObject({
+        expect(analysis.ok).toBe(true);
+        if (!analysis.ok) return;
+        expect(analysis.draft.lines).toEqual({ header: 1, tasks: [3] });
+        expect(analysis.draft.headerTexts).toMatchObject({
             algorithm: 'rm',
             quantum: '5',
         });
-        expect(draft?.taskTexts).toEqual([
+        expect(analysis.draft.taskTexts).toEqual([
             {
                 id: '2',
                 color: 'abcdef',
@@ -329,16 +331,31 @@ describe('analyzeConfig', () => {
         ]);
     });
 
-    it('has no draft when the header cannot be formed', () => {
-        expect(analyzeConfig('RM;bad;1\n1;FFFFFF;0;1;0;1').draft).toBeNull();
-        expect(analyzeConfig('1;FFFFFF;0;1;0;1').draft).toBeNull();
-    });
+    it.each([
+        'rm; 5;1\n\n1;abc;x;1;0;1\n2;abcdef;0;1;0;1',
+        'RM;bad;1\n1;FFFFFF;0;1;0;1',
+        '1;FFFFFF;0;1;0;1',
+    ])(
+        'returns only the syntax issues, the same as parseConfig, for %j',
+        (text) => {
+            const analysis = analyzeConfig(text);
+            const parsed = parseConfig(text);
+
+            expect(analysis.ok).toBe(false);
+            expect(analysis).not.toHaveProperty('draft');
+            expect(parsed.ok).toBe(false);
+            if (analysis.ok || parsed.ok) return;
+            expect(analysis.issues).toEqual(parsed.issues);
+        },
+    );
 
     it('agrees with parseConfig on a valid file', () => {
         const analysis = analyzeConfig(standardFile);
         const parsed = parseConfig(standardFile);
 
-        expect(analysis.issues).toEqual([]);
-        expect(parsed.ok && parsed.config).toEqual(analysis.draft?.config);
+        expect(analysis.ok && parsed.ok).toBe(true);
+        if (!analysis.ok || !parsed.ok) return;
+        expect(parsed.config).toEqual(analysis.draft.config);
+        expect(parsed.lines).toEqual(analysis.draft.lines);
     });
 });

@@ -318,10 +318,18 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   nucleo ("1a tarefa") correspondam ao arquivo e conflitos com a linha
   quebrada nao fiquem ocultos; o estouro do prazo da ultima ativacao vem do
   nucleo com `combined` e sai sem valor recebido. Mantido o formato de DEC-19
-  (`(valor v)` no nucleo, `valor "v"` na sintaxe). Adiados: tipo proprio para
-  o rascunho de `analyzeConfig` e origem (sintaxe/nucleo) no diagnostico.
-  Evidencia (2026-10-28, Node 24.22.1): `npm test` 361/361, `npm run lint` e
-  `npm run typecheck` aprovados; teste da regra nova falhou antes da mudanca.
+  (`(valor v)` no nucleo, `valor "v"` na sintaxe). Revisao independente
+  (2026-10-28): o parser entrega a cor como foi escrita e o nucleo a normaliza,
+  para que a mensagem do nucleo mostre o valor recebido (DEC-19 revista; a cor
+  sem caixa da #30 vale para `loadConfig`); `analyzeConfig` devolve o rascunho
+  so sem erro de sintaxe, sem configuracao parcial; testes de cor minuscula,
+  arquivo so com cabecalho e mensagem completa em varias linhas. Itens
+  independentes viraram #92, #93 e #94.
+  Evidencia (2026-10-28, Node 24.22.1): `npm test` 368/368, `npm run lint` e
+  `npm run typecheck` aprovados; os testes de comportamento novo falharam
+  antes da mudanca (o da cor como escrita, revertendo a linha); os do loader
+  para arquivo sem tarefa, mensagem completa e cor repetida cobrem
+  comportamento existente e passaram de primeira.
   Nao executado: interface (#36).
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
@@ -345,6 +353,12 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   da #37 em 2026-10-28.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
+  depende do merge do PR #84; resolver antes de a #36 consumir o diagnostico.
+- #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
+  nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
+- #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
+  nucleo. Aberta (decisao); depende do merge do PR #84.
 
 ### E5: Interface e Gantt
 
@@ -442,12 +456,12 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em andamento; #32, #33,
-  #34 e #89 abertas. E5: #35, #67 e #68 concluidas; implementacao visual
-  (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
+  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em revisao; #32, #33,
+  #34, #89, #92, #93 e #94 abertas. E5: #35, #67 e #68 concluidas;
+  implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
 - #31 em revisao no PR #84 (aberto, branch `feat/31-validacao-parser`):
-  ajustes da revisao aplicados em 2026-10-28 (evidencia em E4); falta
-  integracao pelo usuario.
+  ajustes das revisoes do autor e independente aplicados em 2026-10-28
+  (evidencia em E4); falta integracao pelo usuario.
 - Proximo passo: integrar o PR #84 (#31); depois #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 nos escopos de #31 e #34.

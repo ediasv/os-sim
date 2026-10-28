@@ -59,8 +59,8 @@ export type ConfigParseResult =
 export type ConfigFieldTexts = Readonly<Partial<Record<ConfigField, string>>>;
 
 /**
- * What could be formed from the file despite syntax issues: the header and the
- * tasks that parsed, with where and how each was written (DEC-19).
+ * A structurally valid file, with where and how each part was written, so core
+ * issues can be placed on it (DEC-19).
  */
 export interface ConfigDraft {
     readonly config: SystemConfig;
@@ -71,12 +71,13 @@ export interface ConfigDraft {
     readonly taskTexts: readonly ConfigFieldTexts[];
 }
 
-export interface ConfigAnalysis {
-    /** Every syntax issue found; empty when the file is structurally valid. */
-    readonly issues: readonly ConfigParseIssue[];
-    /** Null when the header cannot be formed without inventing values. */
-    readonly draft: ConfigDraft | null;
-}
+/**
+ * Either the draft or every syntax issue, never both: with a syntax issue the
+ * tasks that parsed are not the file, so the core must not see them (DEC-19).
+ */
+export type ConfigAnalysis =
+    | { readonly ok: true; readonly draft: ConfigDraft }
+    | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
 
 interface SourceLine {
     readonly number: number;
@@ -88,17 +89,15 @@ interface SourceLine {
  * core validator (DEC-10). Source line numbers are retained for diagnostics.
  */
 export function parseConfig(text: string): ConfigParseResult {
-    const { issues, draft } = analyzeConfig(text);
-    if (issues.length > 0 || draft === null) {
-        return { ok: false, issues };
-    }
-    return { ok: true, config: draft.config, lines: draft.lines };
+    const analysis = analyzeConfig(text);
+    if (!analysis.ok) return analysis;
+    const { config, lines } = analysis.draft;
+    return { ok: true, config, lines };
 }
 
 /**
  * Like `parseConfig`, but also returns the received texts, so the loader can
- * show them in the core's problems (DEC-19). With syntax issues the draft is
- * partial: the caller must neither validate nor apply it.
+ * show them in the core's problems (DEC-19).
  */
 export function analyzeConfig(text: string): ConfigAnalysis {
     const issues: ConfigParseIssue[] = [];
@@ -153,12 +152,12 @@ export function analyzeConfig(text: string): ConfigAnalysis {
         }
     }
 
-    if (!header || !headerLine) {
-        return { issues, draft: null };
+    if (!header || !headerLine || issues.length > 0) {
+        return { ok: false, issues };
     }
 
     return {
-        issues,
+        ok: true,
         draft: {
             config: { ...header.config, tasks },
             lines: { header: headerLine.number, tasks: taskLineNumbers },
@@ -271,8 +270,10 @@ function parseTask(
         );
         if (value === null) return;
 
+        // Kept as written: the core compares and uppercases colors, so its
+        // message shows the received text (DEC-19).
         if (field === 'color') {
-            color = value.toUpperCase();
+            color = value;
             return;
         }
 

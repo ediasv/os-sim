@@ -1,7 +1,8 @@
 /**
  * Semantic validation of a whole configuration (DEC-10). The core validates
  * before anything is applied, so a rejected configuration never leaves partial
- * changes behind (REQ-05). The file parser (E4) only maps `taskIndex` to a line.
+ * changes behind (REQ-05). The file loader (`loadConfig`) only places issues on
+ * lines, by `taskIndex`.
  */
 import {
     MAX_PERIODIC_JOBS,
@@ -37,8 +38,8 @@ export type ConfigResult =
 
 /**
  * Rejection of a whole configuration (DEC-15). Keeps every issue with its
- * field and task index, so the file parser (E4) can point at a line without
- * validating again; `message` joins the issue messages for plain display.
+ * field and task index, the same issues `validateConfig` returns and the file
+ * loader places on lines; `message` joins the issue messages for plain display.
  */
 export class ConfigValidationError extends Error {
     readonly issues: readonly ConfigIssue[];
