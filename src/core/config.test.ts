@@ -3,13 +3,10 @@ import {
     ConfigValidationError,
     requireValidConfig,
     validateConfig,
+    type ConfigInput,
     type ConfigIssue,
 } from './config';
-import {
-    DEFAULT_CONFIG,
-    type SystemConfig,
-    type TaskDefinition,
-} from './domain';
+import { DEFAULT_CONFIG, type TaskDefinition } from './domain';
 
 function task(overrides: Partial<TaskDefinition> = {}): TaskDefinition {
     return {
@@ -24,11 +21,11 @@ function task(overrides: Partial<TaskDefinition> = {}): TaskDefinition {
     };
 }
 
-function config(overrides: Partial<SystemConfig> = {}): SystemConfig {
+function config(overrides: Partial<ConfigInput> = {}): ConfigInput {
     return { ...DEFAULT_CONFIG, tasks: [task()], ...overrides };
 }
 
-function issuesOf(input: SystemConfig): readonly ConfigIssue[] {
+function issuesOf(input: ConfigInput): readonly ConfigIssue[] {
     const result = validateConfig(input);
     return result.ok ? [] : result.issues;
 }
@@ -48,12 +45,29 @@ describe('validateConfig: system fields', () => {
         expect(validateConfig(config({ algorithm: 'EDF' })).ok).toBe(true);
     });
 
+    it.each([
+        ['rm', 'RM'],
+        ['Edf', 'EDF'],
+    ])('accepts the algorithm %j regardless of case, as %j', (written, id) => {
+        const result = validateConfig(config({ algorithm: written }));
+        expect(result.ok && result.config.algorithm).toBe(id);
+    });
+
     it('rejects an unknown algorithm', () => {
-        const issues = issuesOf(config({ algorithm: 'FIFO' as 'RM' }));
+        const issues = issuesOf(config({ algorithm: 'FIFO' }));
         expect(issues).toHaveLength(1);
         expect(issues[0].field).toBe('algorithm');
         expect(issues[0].taskIndex).toBeUndefined();
-        expect(issues[0].message).toContain('algoritmo_escalonamento');
+        expect(issues[0].message).toBe(
+            'O campo algoritmo_escalonamento deve ser RM ou EDF; valor recebido: "FIFO".',
+        );
+    });
+
+    it('rejects a missing algorithm as an issue, not an exception', () => {
+        const issues = issuesOf(
+            config({ algorithm: undefined as unknown as string }),
+        );
+        expect(issues.map((issue) => issue.field)).toEqual(['algorithm']);
     });
 
     it('accepts 1 CPU and many CPUs, with no ceiling of 16', () => {

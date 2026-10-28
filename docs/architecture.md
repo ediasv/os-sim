@@ -12,7 +12,8 @@ afirma que os modulos planejados ja existem.
   e `ConfigValidationError`, que carrega os problemas encontrados (DEC-15);
   `requireValidConfig` e o unico ponto que lanca esse erro (DEC-28).
 - [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
-  e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20).
+  e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20);
+  entrega algoritmo e cor como escritos, para o nucleo valida-los.
   `analyzeConfig` devolve os erros de sintaxe ou, sem eles, a configuracao com
   linhas e textos recebidos; `parseConfig` descarta os textos.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
@@ -211,7 +212,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 ### DEC-10: Valores padrao e limites da configuracao
 
 - Estado: aceita em 2026-10-16; texto do item Validacao ajustado em 2026-10-28
-  ao codigo da #31, sem mudar a regra. Requisitos: REQ-02, REQ-05, REQ-06.
+  ao codigo da #31, sem mudar a regra, e revisto em 2026-10-28 pela #94
+  (algoritmo sem distincao de caixa no nucleo). Requisitos: REQ-02, REQ-05, REQ-06.
   Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
@@ -226,7 +228,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   ingresso + 9 * periodo + prazo) fora da faixa de inteiros exatos, com mensagem
   descritiva.
 - Validacao: o nucleo valida a configuracao inteira antes de aplica-la, sem
-  aplicacao parcial; o carregamento do arquivo (`loadConfig`, E4) apenas
+  aplicacao parcial; aceita o nome do algoritmo (RM ou EDF) sem distincao de
+  caixa e o devolve em maiusculas (DEC-19, #94); o carregamento do arquivo (`loadConfig`, E4) apenas
   acrescenta linha e campo ao erro, a partir dos problemas que
   `validateConfig` devolve, os mesmos que o erro do construtor carrega
   (DEC-15).
@@ -489,7 +492,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 ### DEC-19: Diagnosticos do parser de configuracao
 
 - Estado: aceita em 2026-10-17 e revista em 2026-10-18 e em 2026-10-28 (revisao
-  do PR #84, #31) pelo usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
+  do PR #84, #31, e decisao da #94) pelo usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
   detalha DEC-10, DEC-12 e DEC-15.
 - Decisao:
     1. Diagnosticos de conteudo identificam linha original (base 1), campo,
@@ -522,7 +525,11 @@ anterior. Data inicial dos registros: 2026-10-12.
        mensagem de cor invalida mostre o valor recebido; a de cor repetida
        cita a cor em maiusculas (revisao de 2026-10-28).
        A cor sem distincao de caixa exigida pela #30 vale para a
-       configuracao carregada (`loadConfig`).
+       configuracao carregada (`loadConfig`). Do mesmo modo, o parser
+       entrega o nome do algoritmo como escrito e so exige que o campo
+       exista; decidir se e RM ou EDF, sem distincao de caixa, e
+       converte-lo para maiusculas fica com o nucleo (decisao da #94,
+       2026-10-28).
     4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
        conteudo: informar caminho e motivo do sistema quando disponiveis, sem
        linha nem campo.
@@ -540,12 +547,16 @@ anterior. Data inicial dos registros: 2026-10-12.
   alterar referencias ordinais. O nucleo numera as tarefas pela posicao na
   lista que recebe; validar sem uma linha descartada deslocaria esses
   ordinais e esconderia conflitos com ela, entao uma segunda rodada de
-  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28). Falhas
+  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28). O
+  algoritmo valido e uma regra semantica (DEC-10, DEC-15): checa-lo no parser
+  duplicava a regra com outra mensagem e tornava inalcancavel a do nucleo
+  para arquivos; com a cor, ficou uma so regra e uma so mensagem (#94). Falhas
   de acesso nao pertencem ao conteudo e nao podem ser localizadas por
   linha/campo; cancelar a escolha e uma acao voluntaria, nao uma falha.
 - Consequencia: problemas do nucleo so aparecem para arquivo sem erros de
   sintaxe; com erro de sintaxe, o relatorio traz todos os erros de sintaxe
-  recuperaveis e nenhum diagnostico semantico. O parser preserva o texto
+  recuperaveis e nenhum diagnostico semantico. Assim, algoritmo invalido so
+  e reportado quando o arquivo nao tem erro de sintaxe (#94). O parser preserva o texto
   recebido para os diagnosticos e associa tarefas analisadas as linhas
   originais. O contexto acrescentado envolve a mensagem sem modifica-la.
 

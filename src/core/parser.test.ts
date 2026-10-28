@@ -54,10 +54,14 @@ describe('parseConfig', () => {
         ).toBe(rawEvents);
     });
 
-    it('accepts a byte order mark, CRLF endings and a lowercase algorithm', () => {
+    it('accepts a byte order mark and CRLF endings', () => {
         expect(parsedConfig('﻿edf;5;1\r\n1;FFFFFF;0;1;0;1\r\n').algorithm).toBe(
-            'EDF',
+            'edf',
         );
+    });
+
+    it('keeps the algorithm as written; the core decides if it is valid', () => {
+        expect(parsedConfig('XX;5;1\n1;FFFFFF;0;1;0;1').algorithm).toBe('XX');
     });
 
     it('treats a doubled final semicolon in the header as an extra field', () => {
@@ -66,9 +70,9 @@ describe('parseConfig', () => {
         ]);
     });
 
-    it('normalizes whitespace, blank lines, algorithm case, and optional final semicolons', () => {
+    it('normalizes whitespace, blank lines, and optional final semicolons', () => {
         const variant = [
-            '  rM ; 5 ; 2 ; ',
+            '  RM ; 5 ; 2 ; ',
             '',
             ' 1 ; abcdef ; 0 ; 2 ; 5 ; 7 ; ML1:3;MU1:4 ; ',
             ' ',
@@ -265,10 +269,6 @@ describe('parseConfig', () => {
         [
             'RM;5;1\n1;FFFFFF;x;1;0;1',
             'Linha 2, campo ingresso, valor "x": esperado um número.',
-        ],
-        [
-            'XX;5;1\n1;FFFFFF;0;1;0;1',
-            'Linha 1, campo algoritmo_escalonamento, valor "XX": esperado RM ou EDF.',
         ],
         [
             '1;FFFFFF;0;1;0;1',

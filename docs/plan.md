@@ -309,8 +309,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Evidencia local (2026-10-19): `npm test` (186 testes), `npm run lint` e
   `npm run typecheck` aprovados; o CI executa somente `npm test`.
 - #31 Validar IDs, cores, tempos e parametros com diagnosticos precisos.
-  Em revisao no PR #84 (aberto, branch `feat/31-validacao-parser`, rebaseada
-  sobre `main` em 2026-10-28). `loadConfig` (`src/core/loadConfig.ts`) envia
+  Concluida no PR #84 (merged, `37ab733`, 2026-10-28). `loadConfig` (`src/core/loadConfig.ts`) envia
   ao `validateConfig` somente arquivo sem erro de sintaxe e associa `taskIndex`
   a linha, campo e texto recebido pelo mapa do parser (`analyzeConfig`), no
   formato de DEC-19. Ajustes da revisao (2026-10-28, DEC-19 revista): com erro
@@ -358,7 +357,17 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
   nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
-  nucleo. Aberta (decisao); depende do merge do PR #84.
+  nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
+  valido (DEC-19 e DEC-10 revistas). Em andamento na branch
+  `feat/94-algoritmo-no-nucleo`: `validateConfig` aceita `ConfigInput` (nome
+  como texto), compara sem caixa e devolve RM/EDF; o parser entrega o nome
+  como escrito; algoritmo invalido gera um diagnostico do nucleo com linha,
+  campo e valor, e so aparece sem erro de sintaxe no arquivo.
+  Evidencia (2026-10-28, Node 24.22.1): `npm test` 373/373, `npm run lint`
+  e `npm run typecheck` aprovados; testes novos de caixa no nucleo, nome
+  cru no parser e diagnosticos do loader falharam antes da mudanca; o de
+  algoritmo ausente no nucleo passou de primeira (protege a nova chamada a
+  `toUpperCase`). Falta revisao e integracao pelo usuario.
 
 ### E5: Interface e Gantt
 
@@ -456,15 +465,15 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30 e #87 concluidas; #31 em revisao; #32, #33,
-  #34, #89, #92, #93 e #94 abertas. E5: #35, #67 e #68 concluidas;
+  E3 nao iniciada. E4: #29, #30, #31 e #87 concluidas; #94 em andamento;
+  #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
   implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- #31 em revisao no PR #84 (aberto, branch `feat/31-validacao-parser`):
-  ajustes das revisoes do autor e independente aplicados em 2026-10-28
-  (evidencia em E4); falta integracao pelo usuario.
-- Proximo passo: integrar o PR #84 (#31); depois #70
+- #94 em andamento na branch `feat/94-algoritmo-no-nucleo` (sem commit):
+  codigo, testes e DEC-19/DEC-10 prontos (evidencia em E4); falta revisao,
+  commit/PR e integracao pelo usuario.
+- Proximo passo: integrar a #94; depois #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
-  carga, DEC-29). Manter os diagnosticos de DEC-19 nos escopos de #31 e #34.
+  carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
