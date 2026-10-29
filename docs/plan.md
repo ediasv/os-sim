@@ -333,7 +333,19 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
-  padrao com aviso na carga pela #89.
+  padrao com aviso na carga pela #89. Implementada (2026-10-29) na branch
+  `feat/32-periodo-ausente`, sem commit nem PR: `parseTask` entrega periodo
+  vazio ou so com espacos como zero; linha com menos de seis campos continua
+  erro (DEC-31, definicao aceita pelo usuario). Testes novos: periodo
+  vazio, em branco e antes de eventos no parser; carga igual ao zero
+  explicito, lista de 5000 eventos preservada e simulacao de 30 ticks igual
+  com e sem eventos. Evidencia (2026-10-29, Node 24.22.1): `npm test`
+  380/380, `npm run lint` e `npm run typecheck` aprovados. Os testes do
+  parser e o de carga com periodo vazio falharam antes da mudanca; os de
+  lista longa e de simulacao igual cobrem comportamento da DEC-20 e passaram
+  de primeira (o de lista longa falha se os espacos internos forem
+  removidos). Revisao independente sem achados criticos. Nao executado:
+  interface (#36); periodo padrao com aviso (#89).
 - #87 Reconciliar A.4.4 (ignorar aperiodicas com aviso) com REQ-03, DEC-09 e
   DEC-17. Decisoes do usuario em 2026-10-28 (DEC-29, Q-08 resolvida):
   periodo padrao 15; periodo zero ou ausente no arquivo recebe o padrao com
@@ -469,8 +481,16 @@ Issues `[Docs]`, sem fase no Project.
   E3 nao iniciada. E4: #29, #30, #31, #87 e #94 concluidas;
   #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
   implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- Nenhum trabalho em andamento; #94 concluida no PR #95 (evidencia em E4).
-- Proximo passo: #70
+- Em andamento (2026-10-29): #32, branch `feat/32-periodo-ausente`.
+  Objetivo: periodo ausente (campo vazio ou so espacos na sua posicao)
+  equivale a zero no parser, como o zero explicito; linha com menos de seis
+  campos continua erro (definicao aceita pelo usuario em 2026-10-29). Escopo:
+  `parseTask` em `src/core/parser.ts`, testes de lista longa de eventos e de
+  simulacao igual com e sem eventos, DEC-31 vinculada a REQ-06. Codigo,
+  testes, documentacao e gates concluidos (evidencia em E4). Proximo passo:
+  commit, PR com `Closes #32` e merge, a pedido do usuario. Fora: periodo
+  padrao 15 com aviso (#89).
+- Proximo passo apos a #32: #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
