@@ -408,7 +408,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
 - #69 Preparar os dados de apresentacao para a inspecao.
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Em
-  andamento em `feat/70-controles-mensagens`, sem PR: `UiIcon` (SVGs do Figma
+  andamento em `feat/70-controles-mensagens`, PR #97: `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
   `UiAlert`, em portugues e so com tokens. `npm test` 405/405, lint e
   typecheck aprovados; app Electron e comparacao visual nao executados.
