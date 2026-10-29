@@ -1,28 +1,25 @@
 <script setup lang="ts">
 import { currentError, dismissError } from '../errors';
+import UiAlert from './UiAlert.vue';
+
+// Global banner for unexpected failures only (DEC-24); correctable errors are
+// shown where the user acted. Lives beside App in Root so it survives App.
 </script>
 
 <template>
-    <div v-if="currentError" class="error-banner" role="alert">
-        <span
-            ><strong>Error:</strong> {{ currentError }} (details in
-            console)</span
-        >
-        <button type="button" @click="dismissError">Dismiss</button>
+    <div v-if="currentError" class="error-banner">
+        <UiAlert
+            tone="danger"
+            title="Erro inesperado (detalhes no console)"
+            :message="currentError"
+            @dismiss="dismissError"
+        />
     </div>
 </template>
 
 <style scoped>
+/* Figma alert region above the workspace. */
 .error-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border: 1px solid #c0392b;
-    border-radius: 4px;
-    background: #fdecea;
-    color: #7a1f16;
+    padding: var(--spacing-sm) var(--spacing-lg);
 }
 </style>

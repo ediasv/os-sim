@@ -306,6 +306,86 @@ Node 24.22.1 (via `npm exec --package=node@24`; o Node global e 25.8.0):
 - Nao executados: aplicativo Electron, comparacao visual lado a lado com o
   Figma, screenshots, pacote no ambiente-alvo.
 
+## Elementos basicos (#70)
+
+Segundo incremento da entrega 1. Componentes genericos em
+[components](../components/), estilizados so com `var(--...)` de
+[tokens.css](../styles/tokens.css), sem importar `core/` nem `errors.ts`
+(FE-01). Valores da pagina Componentes do Figma (nos `50:14`, `89:49`,
+`81:33`, `92:93` e `81:28`).
+
+- [UiIcon](../components/UiIcon.vue): `name` entre `alert`, `warning`,
+  `check`, `info` e `close` ([icons.ts](../components/icons.ts)); decorativo
+  (`aria-hidden`), 16 px. Os SVGs de [assets/icons](../assets/icons/) sao os
+  exportados do Figma, sem edicao, aplicados como mascara CSS sobre
+  `currentColor`: o controle ao redor define a cor. Decisao desta issue: sem
+  biblioteca de icones, pois o Figma ja define os cinco glifos necessarios.
+- [UiButton](../components/UiButton.vue): `variant` (`primary`,
+  `secondary` padrao, `accent`, `danger`), `disabled`, slot do rotulo e slot
+  `icon` opcional (oculto de tecnologia assistiva); emite `click`. Usa o
+  `disabled` nativo, que bloqueia mouse e teclado. Nao decide disponibilidade:
+  a composicao passa `disabled` conforme a capacidade real da sessao.
+- [UiIconButton](../components/UiIconButton.vue): `label` obrigatorio vira o
+  `aria-label`; icone no slot, oculto de tecnologia assistiva; sem `title` nem
+  tooltip (FE-DEC-11). Mesmo contrato de `disabled` e `click`.
+- [UiAlert](../components/UiAlert.vue): `tone` (`danger`, `warning`,
+  `success`, `info`), `title` opcional e `message`; emite `dismiss`. Texto por
+  interpolacao, nunca `v-html`, com espacos e quebras preservados
+  (`pre-wrap`). `role="alert"` em danger/warning e `role="status"` em
+  success/info, como as regras de uso do Figma. Nao move foco e nao some
+  sozinho: quem o exibe o remove ao receber `dismiss`.
+- [ErrorBanner](../components/ErrorBanner.vue): `UiAlert` em tom danger com
+  titulo "Erro inesperado (detalhes no console)" e a mensagem de
+  `currentError`; continua irmao de `App` em `Root.vue` e reservado a falhas
+  inesperadas (DEC-24). Texto passou do ingles para o portugues, como o resto
+  da interface.
+
+Desvios e lacunas do Figma:
+
+- Foco: o Figma desenha borda de 2 px `accent-default` no Icon button e no
+  Dismiss. Usa-se o anel global de [base.css](../styles/base.css)
+  (`outline` com `--color-focus-ring`): mesma intencao, nao muda a caixa nem
+  desloca o layout e mantem o contraste de #68.
+- Bordas: todo estado de um componente tem a mesma largura de borda (Primary
+  e Danger com 1 px transparente), para nenhuma troca de estado mudar o tamanho.
+- Accent: texto em `--color-accent-text`, nao `accent-default` (contraste, #68).
+- Button sem estado hover: o Figma nao define; nao foi inventado.
+- Foco apos dispensar: o botao focado sai do DOM e o foco volta ao `body`.
+  Devolver o foco ao controle de origem cabe a composicao (#36, #37), que sabe
+  qual e; `UiAlert` nao recebe essa responsabilidade.
+
+### Evidencia da #70 (2026-10-29)
+
+Worktree `feat/70-controles-mensagens` sobre `main` em `8ab4c5d`, Node 24.22.1:
+
+- Testes novos: [UiIcon](../components/UiIcon.test.ts),
+  [UiButton](../components/UiButton.test.ts),
+  [UiIconButton](../components/UiIconButton.test.ts),
+  [UiAlert](../components/UiAlert.test.ts), [Root](../Root.test.ts) e
+  [ErrorBanner](../components/ErrorBanner.test.ts) atualizado: variantes,
+  clique e bloqueio quando desabilitado, foco por teclado, nome acessivel sem
+  `title`, texto com HTML/espacos exibido literalmente, papeis por tom e banner
+  visivel e dispensavel com `App` lancando no `setup()`. O teste de `Root` usa
+  `createApp` como `renderer.ts`, porque `@vue/test-utils` relanca erros do
+  `mount`.
+- `npm test` 405/405 em 23 arquivos (linha de base 373/373 em 18);
+  `npm run lint` e `npm run typecheck` sem achados, como na linha de base.
+- Busca sem resultado por cor hexadecimal nos componentes e por import de
+  `core/` ou `errors` nos `Ui*`.
+- SVGs baixados do Figma via MCP (`get_design_context`) em 2026-10-29.
+- Icones no build: os SVGs ficam abaixo do `assetsInlineLimit` do Vite e viram
+  data URLs com aspas simples no build (e no Vitest), mas URLs de arquivo no
+  `npm start`. Por isso `UiIcon` usa `url("...")` com aspas; sem elas a mascara
+  e invalida e o icone vira um quadrado. Revisao final achou o defeito; teste
+  do `UiIcon` exige a URL entre aspas, e `vite build` do renderer (pasta
+  temporaria) confirmou data URLs so com aspas simples.
+- Desabilitado: os testes cobrem clique; Enter/Espaco dependem da semantica
+  nativa de `disabled`, sem teste proprio.
+- Nao executados: aplicativo Electron (inclusive a conferencia visual dos
+  icones no pacote, pendente antes de fechar a #70), comparacao visual com o
+  Figma, screenshots (pertencem ao incremento Composicao), pacote no
+  ambiente-alvo.
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
