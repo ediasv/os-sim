@@ -333,8 +333,9 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
-  padrao com aviso na carga pela #89. Implementada (2026-10-29) na branch
-  `feat/32-periodo-ausente`, sem commit nem PR: `parseTask` entrega periodo
+  padrao com aviso na carga pela #89. Implementada (2026-10-29) no PR #96
+  (aberto, check `test` do CI aprovado; branch `feat/32-periodo-ausente`):
+  `parseTask` entrega periodo
   vazio ou so com espacos como zero; linha com menos de seis campos continua
   erro (DEC-31, definicao aceita pelo usuario). Testes novos: periodo
   vazio, em branco e antes de eventos no parser; carga igual ao zero
@@ -487,9 +488,10 @@ Issues `[Docs]`, sem fase no Project.
   campos continua erro (definicao aceita pelo usuario em 2026-10-29). Escopo:
   `parseTask` em `src/core/parser.ts`, testes de lista longa de eventos e de
   simulacao igual com e sem eventos, DEC-31 vinculada a REQ-06. Codigo,
-  testes, documentacao e gates concluidos (evidencia em E4). Proximo passo:
-  commit, PR com `Closes #32` e merge, a pedido do usuario. Fora: periodo
-  padrao 15 com aviso (#89).
+  testes, documentacao e gates concluidos (evidencia em E4); PR #96 aberto
+  com `Closes #32` e check `test` do CI aprovado. Proximo passo: merge por
+  squash, depois registrar o commit do merge aqui e mover a #32 para Done.
+  Fora: periodo padrao 15 com aviso (#89).
 - Proximo passo apos a #32: #70
   (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
