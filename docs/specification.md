@@ -94,7 +94,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
   (DEC-20).
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
   conteudo interno do campo de eventos indiscriminadamente.
-- Periodo negativo e erro; periodo zero ou ausente indica tarefa aperiodica,
+- Periodo negativo e erro; periodo zero ou ausente (campo vazio na sua
+  posicao, DEC-31) indica tarefa aperiodica,
   que no Projeto A recebe o periodo padrao (15) com aviso claro, sem impedir
   a carga (A.4.4, DEC-29). Faixas dos demais campos e campos opcionais em
   DEC-10.

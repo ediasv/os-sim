@@ -13,7 +13,8 @@ afirma que os modulos planejados ja existem.
   `requireValidConfig` e o unico ponto que lanca esse erro (DEC-28).
 - [Parser](../src/core/parser.ts): converte a estrutura do arquivo em configuracao
   e diagnostica erros sintaticos com as linhas originais (DEC-19, DEC-20);
-  entrega algoritmo e cor como escritos, para o nucleo valida-los.
+  entrega algoritmo e cor como escritos, para o nucleo valida-los, e periodo
+  vazio como zero (DEC-31).
   `analyzeConfig` devolve os erros de sintaxe ou, sem eles, a configuracao com
   linhas e textos recebidos; `parseConfig` descarta os textos.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
@@ -220,7 +221,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
-- Campos ausentes: somente periodo pode faltar e equivale a zero; demais campos
+- Campos ausentes: somente periodo pode faltar (campo vazio na sua posicao,
+  DEC-31) e equivale a zero; demais campos
   obrigatorios ausentes sao erro. No Projeto A, periodo ausente ou zero recebe
   o periodo padrao 15 com aviso (DEC-29). Lista de eventos e opcional, armazenada e
   nunca executada no Projeto A.
@@ -929,6 +931,25 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: falta de memoria em simulacao muito longa e limitacao
   conhecida, nao defeito. Rever esta decisao se a #23 (estrutura do
   historico) ou a #27 (execucao completa) exigir simulacoes longas.
+
+### DEC-31: Periodo ausente na linha da tarefa
+
+- Estado: aceita em 2026-10-29 pelo usuario (#32). Requisitos: REQ-06,
+  REQ-03. Detalha DEC-10 (somente periodo pode faltar e equivale a zero) e
+  DEC-20 (campos por posicao).
+- Decisao:
+    1. Periodo ausente e o campo vazio, ou so com espacos, na sua posicao
+       (`1;F0E0D0;0;5;;10`). O parser o entrega como zero, igual ao zero
+       explicito, e os eventos apos o prazo continuam valendo
+       (`1;F0E0D0;0;5;;10;ML1:3`).
+    2. Linha com menos de seis campos continua erro de campo obrigatorio
+       ausente (DEC-19), mesmo quando so o periodo poderia faltar.
+- Justificativa: a posicao e o unico sinal sem ambiguidade. Em
+  `1;F0E0D0;0;5;10` nao se sabe se faltou o periodo ou o prazo; adivinhar
+  criaria uma tarefa diferente da pretendida sem aviso.
+- Consequencia: o texto recebido do periodo no mapa do parser
+  (`taskTexts`) fica vazio para essa tarefa. Periodo zero, ausente ou
+  explicito, recebe o periodo padrao com aviso na carga pela #89 (DEC-29).
 
 ## Fluxo de um passo
 

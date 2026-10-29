@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from './config';
+import { createSimulator } from './createSimulator';
 import { loadConfig } from './loadConfig';
 import { parseConfig } from './parser';
 
@@ -299,5 +300,55 @@ describe('loadConfig', () => {
         expect(core?.ok && loaded.ok).toBe(true);
         if (!core?.ok || !loaded.ok) return;
         expect(loaded.config).toEqual(core.config);
+    });
+
+    it('loads an empty period as the same configuration as an explicit zero', () => {
+        const empty = loadConfig('RM;5;1\n1;F0E0D0;0;5;;10');
+        const zero = loadConfig('RM;5;1\n1;F0E0D0;0;5;0;10');
+
+        expect(empty.ok && zero.ok).toBe(true);
+        if (!empty.ok || !zero.ok) return;
+        expect(empty.config).toEqual(zero.config);
+        expect(empty.config.tasks[0].period).toBe(0);
+    });
+
+    it('keeps a long event list exactly as written', () => {
+        const rawEvents = Array.from(
+            { length: 5000 },
+            (_, i) => `ML${i}:${i} ; mu${i}:1`,
+        ).join(';');
+        const loaded = loadConfig(`RM;5;1\n1;F0E0D0;0;5;10;10;${rawEvents}`);
+
+        expect(loaded.ok && loaded.config.tasks[0].rawEvents).toBe(rawEvents);
+    });
+
+    it('simulates the same schedule with and without event lists', () => {
+        // Everything the engine produced; the configuration itself differs
+        // only in rawEvents, which the core never reads (A.3.3.5).
+        const run = (text: string) => {
+            const loaded = loadConfig(text);
+            if (!loaded.ok) throw new Error('expected a valid file');
+            const sim = createSimulator(loaded.config);
+            for (let step = 0; step < 30; step++) sim.tick();
+            const { clock, cpus, executions, events, drawState, tasks } =
+                sim.getLatestSnapshot();
+            return {
+                clock,
+                cpus,
+                executions,
+                events,
+                drawState,
+                jobs: tasks.map((task) => task.jobs),
+            };
+        };
+        const tasks = (events: string) =>
+            [
+                'RM;2;2',
+                '1;F00000;0;3;6;6',
+                `2;00F000;1;2;4;4${events}`,
+                '3;0000F0;0;2;;5',
+            ].join('\n');
+
+        expect(run(tasks(';ML1:3;MU1:4'))).toEqual(run(tasks('')));
     });
 });

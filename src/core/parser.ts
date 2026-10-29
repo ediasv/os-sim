@@ -257,6 +257,14 @@ function parseTask(
     > = {};
 
     TASK_FIELDS.forEach((field, index) => {
+        // DEC-10, DEC-31: an empty period in its own position equals zero;
+        // a line that ends before it still reports the missing field. The
+        // default period with a warning belongs to loading (DEC-29, #89).
+        if (field === 'period' && fields[index] === '') {
+            numbers.period = 0;
+            return;
+        }
+
         const value = requiredField(
             line,
             field,
