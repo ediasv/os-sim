@@ -501,8 +501,9 @@ Issues `[Docs]`, sem fase no Project.
   `validateConfig` e devolve `warnings` no sucesso; `DEFAULT_TASK_PERIOD` em
   `src/core/domain.ts`. Fora: exibir avisos na interface (#36, #37); nucleo,
   parser e DEC-17 sem mudanca. Codigo, testes, documentacao e gates
-  concluidos (evidencia em E4). Proximo passo: revisao, commit e PR com
-  `Closes #89`, a pedido do usuario.
+  concluidos (evidencia em E4); PR #98 aberto com `Closes #89`. Proximo
+  passo: merge, depois registrar o commit do merge aqui e mover a #89 para
+  Done.
 - Depois da #89: #70 (controles e mensagens do renderer) e #92. Manter os
   diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
