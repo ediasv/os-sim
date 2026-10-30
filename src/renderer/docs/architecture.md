@@ -318,8 +318,8 @@ Segundo incremento da entrega 1. Componentes genericos em
   `check`, `info` e `close` ([icons.ts](../components/icons.ts)); decorativo
   (`aria-hidden`), 16 px. Os SVGs de [assets/icons](../assets/icons/) sao os
   exportados do Figma, sem edicao, aplicados como mascara CSS sobre
-  `currentColor`: o controle ao redor define a cor. Decisao desta issue: sem
-  biblioteca de icones, pois o Figma ja define os cinco glifos necessarios.
+  `currentColor`: o controle ao redor define a cor. Sem biblioteca de icones,
+  pois o Figma ja define os cinco glifos necessarios (FE-DEC-13).
 - [UiButton](../components/UiButton.vue): `variant` (`primary`,
   `secondary` padrao, `accent`, `danger`), `disabled`, slot do rotulo e slot
   `icon` opcional (oculto de tecnologia assistiva); emite `click`. Usa o
@@ -329,7 +329,10 @@ Segundo incremento da entrega 1. Componentes genericos em
   `aria-label`; icone no slot, oculto de tecnologia assistiva; sem `title` nem
   tooltip (FE-DEC-11). Mesmo contrato de `disabled` e `click`.
 - [UiAlert](../components/UiAlert.vue): `tone` (`danger`, `warning`,
-  `success`, `info`), `title` opcional e `message`; emite `dismiss`. Texto por
+  `success`, `info`), `title` opcional, `message` e `dismissible` (padrao
+  `true`); emite `dismiss`. Com `dismissible` falso nao ha botao de fechar:
+  serve a mensagem sobre condicao ainda valida, como erro corrigivel
+  (DEC-24), que a composicao remove quando o estado muda. Texto por
   interpolacao, nunca `v-html`, com espacos e quebras preservados
   (`pre-wrap`). `role="alert"` em danger/warning e `role="status"` em
   success/info, como as regras de uso do Figma. Nao move foco e nao some
@@ -340,7 +343,8 @@ Segundo incremento da entrega 1. Componentes genericos em
   inesperadas (DEC-24). Texto passou do ingles para o portugues, como o resto
   da interface.
 
-Desvios e lacunas do Figma:
+Desvios e lacunas do Figma, registrados em FE-DEC-13 na
+[spec do renderer](specification.md#decisoes-de-apresentacao-registradas):
 
 - Foco: o Figma desenha borda de 2 px `accent-default` no Icon button e no
   Dismiss. Usa-se o anel global de [base.css](../styles/base.css)
@@ -354,9 +358,10 @@ Desvios e lacunas do Figma:
   Devolver o foco ao controle de origem cabe a composicao (#36, #37), que sabe
   qual e; `UiAlert` nao recebe essa responsabilidade.
 
-### Evidencia da #70 (2026-10-29)
+### Evidencia da #70 (2026-10-30)
 
-Worktree `feat/70-controles-mensagens` sobre `main` em `8ab4c5d`, Node 24.22.1:
+Worktree `feat/70-controles-mensagens` com `main` mesclada em `00ee0f1`,
+Node 24.22.1:
 
 - Testes novos: [UiIcon](../components/UiIcon.test.ts),
   [UiButton](../components/UiButton.test.ts),
@@ -364,11 +369,13 @@ Worktree `feat/70-controles-mensagens` sobre `main` em `8ab4c5d`, Node 24.22.1:
   [UiAlert](../components/UiAlert.test.ts), [Root](../Root.test.ts) e
   [ErrorBanner](../components/ErrorBanner.test.ts) atualizado: variantes,
   clique e bloqueio quando desabilitado, foco por teclado, nome acessivel sem
-  `title`, texto com HTML/espacos exibido literalmente, papeis por tom e banner
+  `title`, texto com HTML/espacos exibido literalmente, papeis por tom,
+  alerta nao dispensavel sem botao de fechar e banner
   visivel e dispensavel com `App` lancando no `setup()`. O teste de `Root` usa
   `createApp` como `renderer.ts`, porque `@vue/test-utils` relanca erros do
   `mount`.
-- `npm test` 405/405 em 23 arquivos (linha de base 373/373 em 18);
+- `npm test` 414/414 em 23 arquivos (linha de base 380 em 18: os mesmos
+  arquivos sem os testes novos desta issue);
   `npm run lint` e `npm run typecheck` sem achados, como na linha de base.
 - Busca sem resultado por cor hexadecimal nos componentes e por import de
   `core/` ou `errors` nos `Ui*`.

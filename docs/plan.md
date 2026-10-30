@@ -423,7 +423,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Em
   andamento em `feat/70-controles-mensagens`, PR #97: `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
-  `UiAlert`, em portugues e so com tokens. `npm test` 405/405, lint e
+  `UiAlert` (com `dismissible`), em portugues e so com tokens; decisoes em
+  FE-DEC-13. `npm test` 414/414, lint e
   typecheck aprovados; app Electron e comparacao visual nao executados.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
