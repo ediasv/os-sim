@@ -371,9 +371,13 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
   15, `-0`/`+0`/`0.0`); linha "aperiodica" do teste de prazo combinado
   passou a esperar a formula periodica. `npm test` 388/388, `npm run lint` e
-  `npm run typecheck` aprovados (2026-10-29). Nao verificado: exibicao na
-  interface (#36); texto da formula aperiodica (`ingresso + prazo`) deixou de
-  ter assercao, pois so o nucleo a produz.
+  `npm run typecheck` aprovados (2026-10-29). Revisao do PR (2026-10-30):
+  texto da formula aperiodica (`ingresso + prazo`) voltou a ter assercao em
+  `src/core/config.test.ts`, e os testes da carga usam o literal 15 em vez
+  de `DEFAULT_TASK_PERIOD`; mutacoes temporarias confirmaram que os testes
+  falham; `npm test` 388/388, lint e typecheck aprovados. Falha de carga sem
+  aviso da conversao ficou na #92. Nao verificado: exibicao na interface
+  (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;

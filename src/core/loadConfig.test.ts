@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from './config';
 import { createSimulator } from './createSimulator';
-import { DEFAULT_TASK_PERIOD } from './domain';
 import { loadConfig } from './loadConfig';
 import { parseConfig } from './parser';
 
@@ -310,7 +309,7 @@ describe('loadConfig', () => {
         expect(empty.ok && zero.ok).toBe(true);
         if (!empty.ok || !zero.ok) return;
         expect(empty.config).toEqual(zero.config);
-        expect(empty.config.tasks[0].period).toBe(DEFAULT_TASK_PERIOD);
+        expect(empty.config.tasks[0].period).toBe(15);
     });
 
     it('keeps a long event list exactly as written', () => {
