@@ -333,9 +333,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
-  padrao com aviso na carga pela #89. Implementada (2026-10-29) no PR #96
-  (aberto, check `test` do CI aprovado; branch `feat/32-periodo-ausente`):
-  `parseTask` entrega periodo
+  padrao com aviso na carga pela #89. Concluida no PR #96 (merged,
+  `00ee0f1`, 2026-10-29): `parseTask` entrega periodo
   vazio ou so com espacos como zero; linha com menos de seis campos continua
   erro (DEC-31, definicao aceita pelo usuario). Testes novos: periodo
   vazio, em branco e antes de eventos no parser; carga igual ao zero
@@ -362,8 +361,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
   (DEC-29). A parte de interface da DEC-29 (padrao 15 em tarefa nova, recusa
   de periodo zero, exibicao dos avisos) foi acrescentada aos corpos da #36 e
-  da #37 em 2026-10-28. Implementada (2026-10-29) na branch
-  `feat/89-periodo-padrao`: `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
+  da #37 em 2026-10-28. Concluida no PR #98 (merged, `d43962b`,
+  2026-10-30): `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
   antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
   sucesso. Evidencia: bloco `default period (DEC-29)` em
   `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
@@ -381,7 +380,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
-  depende do merge do PR #84; resolver antes de a #36 consumir o diagnostico.
+  resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
+  PR #98, a falha de carga que perde o aviso do periodo padrao (DEC-29).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
   nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
@@ -503,22 +503,14 @@ Issues `[Docs]`, sem fase no Project.
 
 - Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #89, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
+  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
   demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
   E6: #80 concluida; demais abertas.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
-- Em andamento (2026-10-29): #89, branch `feat/89-periodo-padrao`.
-  Objetivo: na carga, tarefa com periodo ausente ou zero recebe o periodo
-  padrao 15 e um aviso, separado dos erros e sem impedir a carga (DEC-29).
-  Escopo: `loadConfig` em `src/core/loadConfig.ts` converte antes de
-  `validateConfig` e devolve `warnings` no sucesso; `DEFAULT_TASK_PERIOD` em
-  `src/core/domain.ts`. Fora: exibir avisos na interface (#36, #37); nucleo,
-  parser e DEC-17 sem mudanca. Codigo, testes, documentacao e gates
-  concluidos (evidencia em E4); PR #98 aberto com `Closes #89`. Proximo
-  passo: merge, depois registrar o commit do merge aqui e mover a #89 para
-  Done.
-- Depois da #89: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
+- #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
+- Em andamento: nenhum item.
+- Proximo passo: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
