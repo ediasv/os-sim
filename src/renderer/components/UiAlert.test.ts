@@ -76,6 +76,15 @@ describe('UiAlert', () => {
         },
     );
 
+    it('renders no close button and nothing focusable when not dismissible', () => {
+        const wrapper = mount(UiAlert, {
+            props: { tone: 'danger', message: 'Mensagem', dismissible: false },
+        });
+
+        expect(wrapper.find('button').exists()).toBe(false);
+        expect(wrapper.find('.ui-alert__message').text()).toBe('Mensagem');
+    });
+
     it('does not move focus when mounted', () => {
         mount(UiAlert, {
             props: { tone: 'danger', message: 'Mensagem' },

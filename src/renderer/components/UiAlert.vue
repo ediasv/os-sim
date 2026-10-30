@@ -7,12 +7,18 @@ export type AlertTone = 'danger' | 'warning' | 'success' | 'info';
 
 // Presents text it receives; who writes it (banner, form, diagnostics) and
 // what it means stays with the caller. Never moves focus or hides itself:
-// the caller removes it on `dismiss`.
-const props = defineProps<{
-    tone: AlertTone;
-    title?: string;
-    message: string;
-}>();
+// the caller removes it on `dismiss`. A message about a condition that still
+// holds, such as a correctable error (DEC-24), passes `dismissible: false`
+// and is removed by the caller when the state changes.
+const props = withDefaults(
+    defineProps<{
+        tone: AlertTone;
+        title?: string;
+        message: string;
+        dismissible?: boolean;
+    }>(),
+    { dismissible: true },
+);
 
 const emit = defineEmits<{ dismiss: [] }>();
 
@@ -43,6 +49,7 @@ const dismissLabel = computed(() =>
             <p class="ui-alert__message">{{ message }}</p>
         </div>
         <button
+            v-if="dismissible"
             type="button"
             class="ui-alert__dismiss"
             :aria-label="dismissLabel"
