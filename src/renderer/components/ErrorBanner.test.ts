@@ -28,8 +28,22 @@ describe('ErrorBanner', () => {
         await nextTick();
 
         expect(wrapper.get('[role="alert"]').text()).toContain(error.message);
-        expect(wrapper.get('button').text()).toBe('Dismiss');
+        expect(wrapper.get('button').attributes('aria-label')).toBe(
+            'Fechar mensagem de erro',
+        );
         expect(console.error).toHaveBeenCalledWith(error);
+    });
+
+    it('shows the error message unchanged', async () => {
+        const wrapper = mount(ErrorBanner);
+        const error = new Error('  falha <b>inesperada</b>\n  no tick 3 ');
+
+        reportError(error);
+        await nextTick();
+
+        expect(wrapper.get('.ui-alert__message').element.textContent).toBe(
+            error.message,
+        );
     });
 
     it('dismisses an error by clicking and displays a subsequent error', async () => {

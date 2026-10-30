@@ -435,7 +435,15 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
 - #69 Preparar os dados de apresentacao para a inspecao.
-- #70 Implementar controles e mensagens reutilizaveis do renderer.
+- #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
+  no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
+  por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
+  `UiAlert` (com `dismissible`), em portugues e so com tokens; decisoes em
+  FE-DEC-13. `npm test` 414/414, lint e typecheck aprovados; icones `alert`
+  e `close` conferidos no app (`npm start`, 2026-10-30); pacote e comparacao
+  visual com o Figma nao executados.
+  Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
 - #71 Apresentar tarefas e jobs com selecao independente do tempo.
 - #72 Compor a area de trabalho vazia em preparacao.
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
@@ -493,11 +501,13 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
+- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
-  implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
+  #33, #34, #89, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
+  demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  E6: #80 concluida; demais abertas.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
+- #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - Em andamento (2026-10-29): #89, branch `feat/89-periodo-padrao`.
   Objetivo: na carga, tarefa com periodo ausente ou zero recebe o periodo
   padrao 15 e um aviso, separado dos erros e sem impedir a carga (DEC-29).
@@ -508,8 +518,7 @@ Issues `[Docs]`, sem fase no Project.
   concluidos (evidencia em E4); PR #98 aberto com `Closes #89`. Proximo
   passo: merge, depois registrar o commit do merge aqui e mover a #89 para
   Done.
-- Depois da #89: #70 (controles e mensagens do renderer) e #92. Manter os
-  diagnosticos de DEC-19 no escopo da #34.
+- Depois da #89: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
