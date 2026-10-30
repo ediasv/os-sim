@@ -54,6 +54,22 @@ describe('parseConfig', () => {
         ).toBe(rawEvents);
     });
 
+    it.each([
+        ['an empty', '1;F0E0D0;0;5;;10'],
+        ['a blank', '1;F0E0D0;0;5; \t ;10'],
+        ['an empty, before events,', '1;F0E0D0;0;5;;10;ML1:3'],
+    ])('reads %s period as an explicit zero', (_name, task) => {
+        const zero = parsedConfig('RM;5;1\n1;F0E0D0;0;5;0;10').tasks[0];
+        const parsed = parsedConfig(`RM;5;1\n${task}`).tasks[0];
+        expect({ ...parsed, rawEvents: '' }).toEqual(zero);
+    });
+
+    it('keeps the events after an empty period', () => {
+        expect(
+            parsedConfig('RM;5;1\n1;F0E0D0;0;5;;10;ML1:3').tasks[0].rawEvents,
+        ).toBe('ML1:3');
+    });
+
     it('accepts a byte order mark and CRLF endings', () => {
         expect(parsedConfig('﻿edf;5;1\r\n1;FFFFFF;0;1;0;1\r\n').algorithm).toBe(
             'edf',

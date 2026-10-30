@@ -333,7 +333,20 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #32 Preservar eventos sem executa-los; tratar periodo ausente como aperiodica.
   O fim da lista de eventos ficou definido na DEC-20 (PR #60); periodo ausente
   continua nesta issue e, por DEC-29, a tarefa resultante recebe o periodo
-  padrao com aviso na carga pela #89.
+  padrao com aviso na carga pela #89. Implementada (2026-10-29) no PR #96
+  (aberto, check `test` do CI aprovado; branch `feat/32-periodo-ausente`):
+  `parseTask` entrega periodo
+  vazio ou so com espacos como zero; linha com menos de seis campos continua
+  erro (DEC-31, definicao aceita pelo usuario). Testes novos: periodo
+  vazio, em branco e antes de eventos no parser; carga igual ao zero
+  explicito, lista de 5000 eventos preservada e simulacao de 30 ticks igual
+  com e sem eventos. Evidencia (2026-10-29, Node 24.22.1): `npm test`
+  380/380, `npm run lint` e `npm run typecheck` aprovados. Os testes do
+  parser e o de carga com periodo vazio falharam antes da mudanca; os de
+  lista longa e de simulacao igual cobrem comportamento da DEC-20 e passaram
+  de primeira (o de lista longa falha se os espacos internos forem
+  removidos). Revisao independente sem achados criticos. Nao executado:
+  interface (#36); periodo padrao com aviso (#89).
 - #87 Reconciliar A.4.4 (ignorar aperiodicas com aviso) com REQ-03, DEC-09 e
   DEC-17. Decisoes do usuario em 2026-10-28 (DEC-29, Q-08 resolvida):
   periodo padrao 15; periodo zero ou ausente no arquivo recebe o padrao com
@@ -471,12 +484,15 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #87 e #94 concluidas;
-  #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
-  implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
+- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
+  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
+  #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas; #70 em
+  andamento; demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  E6: #80 concluida; demais abertas.
 - Em andamento (2026-10-29): #70 (controles e mensagens do renderer), branch
-  `feat/70-controles-mensagens`. #94 concluida no PR #95 (evidencia em E4).
+  `feat/70-controles-mensagens`, PR #97. Falta a conferencia visual dos
+  icones no app Electron antes de fechar.
+- #32 concluida no PR #96 (`00ee0f1`), evidencia em E4.
 - Proximo passo: concluir #70; depois #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
