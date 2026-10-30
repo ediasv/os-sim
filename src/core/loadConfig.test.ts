@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from './config';
 import { createSimulator } from './createSimulator';
+import { DEFAULT_TASK_PERIOD } from './domain';
 import { loadConfig } from './loadConfig';
 import { parseConfig } from './parser';
 
@@ -138,9 +139,9 @@ describe('loadConfig', () => {
             'ingresso + 9 × periodo + prazo',
         ],
         [
-            'an aperiodic',
+            'a default-period',
             'RM;5;1\n1;FFFFFF;9007199254740990;1;0;5',
-            'ingresso + prazo',
+            'ingresso + 9 × periodo + prazo',
         ],
     ])(
         'shows no single received value for %s last deadline beyond the exact range',
@@ -292,7 +293,7 @@ describe('loadConfig', () => {
     });
 
     it('returns the configuration the core validated for a valid file', () => {
-        const text = 'edf;3;4\n1;00000a;0;2;0;3;\n2;000002;1;1;4;2;A;B';
+        const text = 'edf;3;4\n1;00000a;0;2;6;3;\n2;000002;1;1;4;2;A;B';
         const parsed = parseConfig(text);
         const core = parsed.ok ? validateConfig(parsed.config) : null;
         const loaded = loadConfig(text);
@@ -309,7 +310,7 @@ describe('loadConfig', () => {
         expect(empty.ok && zero.ok).toBe(true);
         if (!empty.ok || !zero.ok) return;
         expect(empty.config).toEqual(zero.config);
-        expect(empty.config.tasks[0].period).toBe(0);
+        expect(empty.config.tasks[0].period).toBe(DEFAULT_TASK_PERIOD);
     });
 
     it('keeps a long event list exactly as written', () => {
@@ -350,5 +351,108 @@ describe('loadConfig', () => {
             ].join('\n');
 
         expect(run(tasks(';ML1:3;MU1:4'))).toEqual(run(tasks('')));
+    });
+});
+
+describe('default period (DEC-29)', () => {
+    function loaded(text: string) {
+        const result = loadConfig(text);
+        if (!result.ok) throw new Error('expected a valid file');
+        return result;
+    }
+
+    it('loads a missing and a zero period as the default period, with one warning each', () => {
+        const result = loaded('RM;5;1\n1;F0E0D0;0;5;;10\n\n2;0A0B0C;0;2;0;8');
+
+        expect(result.config.tasks.map((task) => task.period)).toEqual([
+            15, 15,
+        ]);
+        expect(result.warnings).toEqual([
+            {
+                line: 2,
+                field: 'periodo',
+                value: null,
+                taskId: 1,
+                message:
+                    'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
+            },
+            {
+                line: 4,
+                field: 'periodo',
+                value: '0',
+                taskId: 2,
+                message:
+                    'Linha 4, campo periodo (valor 0): toda tarefa precisa de período maior que zero; a tarefa 2 usará o período padrão de 15 ticks.',
+            },
+        ]);
+    });
+
+    it('returns no warnings when every period is positive', () => {
+        const result = loaded('RM;5;1\n1;F0E0D0;0;5;10;10');
+
+        expect(result.warnings).toEqual([]);
+        expect(result.config.tasks[0].period).toBe(10);
+    });
+
+    it('simulates a converted task as a task of period 15', () => {
+        const jobsOf = (text: string) => {
+            const sim = createSimulator(loaded(text).config);
+            for (let step = 0; step < 150; step++) sim.tick();
+            return sim.getLatestSnapshot().tasks[0].jobs;
+        };
+        const converted = jobsOf('RM;5;1\n1;F0E0D0;0;2;0;3');
+
+        expect(converted).toEqual(jobsOf('RM;5;1\n1;F0E0D0;0;2;15;3'));
+        expect(converted.map((job) => job.activation)).toEqual(
+            Array.from({ length: 10 }, (_, i) => i * 15),
+        );
+    });
+
+    it('still reports another invalid field of a converted task, without warnings', () => {
+        const result = loadConfig('RM;5;1\n1;F0E0D0;0;0;0;10');
+
+        expect(result.ok).toBe(false);
+        expect(result).not.toHaveProperty('warnings');
+        expect(issuesOf('RM;5;1\n1;F0E0D0;0;0;0;10').map(where)).toEqual([
+            { line: 2, field: 'duracao', value: '0' },
+        ]);
+    });
+
+    it('validates the derived deadline with the default period', () => {
+        const arrival = Number.MAX_SAFE_INTEGER - 100;
+        const unconverted = {
+            algorithm: 'RM',
+            quantum: 5,
+            cpuCount: 1,
+            tasks: [
+                {
+                    id: 1,
+                    color: 'F0E0D0',
+                    arrival,
+                    duration: 1,
+                    period: 0,
+                    deadline: 10,
+                    rawEvents: '',
+                },
+            ],
+        };
+        // Control: with period 0 the same task fits the integer limit.
+        expect(validateConfig(unconverted).ok).toBe(true);
+
+        const issues = issuesOf(`RM;5;1\n1;F0E0D0;${arrival};1;0;10`);
+
+        expect(issues.map(where)).toEqual([
+            { line: 2, field: 'prazo', value: null },
+        ]);
+        expect(issues[0].message).toContain('ingresso + 9 × periodo + prazo');
+    });
+
+    it.each(['-0', '+0', '0.0'])('converts a period written as %s', (text) => {
+        const result = loaded(`RM;5;1\n1;F0E0D0;0;5;${text};10`);
+
+        expect(result.config.tasks[0].period).toBe(15);
+        expect(result.warnings).toHaveLength(1);
+        expect(result.warnings[0].value).toBe(text);
+        expect(result.warnings[0].message).toContain(`(valor ${text})`);
     });
 });
