@@ -46,6 +46,13 @@ export const DEFAULT_CONFIG: SystemConfig = Object.freeze({
     tasks: Object.freeze([]),
 });
 
+/**
+ * Period given to a task loaded with a missing or zero period in Project A
+ * (DEC-29). Applied only at the loading boundary: the core still accepts 0 as
+ * aperiodic (DEC-09, DEC-17), which Project B keeps.
+ */
+export const DEFAULT_TASK_PERIOD = 15;
+
 /** A periodic task stops after this many jobs so the simulation ends (A.4.4, DEC-09). */
 export const MAX_PERIODIC_JOBS = 10;
 

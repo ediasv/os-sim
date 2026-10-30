@@ -204,6 +204,7 @@ describe('validateConfig: task fields', () => {
         });
         expect(issues.map((i) => i.field)).toEqual(['deadline']);
         expect(issues[0].combined).toBe(true);
+        expect(issues[0].message).toContain('(ingresso + prazo)');
     });
 
     it('does not mark an issue about a single field as combined', () => {

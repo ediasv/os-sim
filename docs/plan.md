@@ -362,7 +362,22 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
   (DEC-29). A parte de interface da DEC-29 (padrao 15 em tarefa nova, recusa
   de periodo zero, exibicao dos avisos) foi acrescentada aos corpos da #36 e
-  da #37 em 2026-10-28.
+  da #37 em 2026-10-28. Implementada (2026-10-29) na branch
+  `feat/89-periodo-padrao`: `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
+  antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
+  sucesso. Evidencia: bloco `default period (DEC-29)` em
+  `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
+  avisos com periodo positivo, simulacao igual a periodo 15 com dez
+  ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
+  15, `-0`/`+0`/`0.0`); linha "aperiodica" do teste de prazo combinado
+  passou a esperar a formula periodica. `npm test` 388/388, `npm run lint` e
+  `npm run typecheck` aprovados (2026-10-29). Revisao do PR (2026-10-30):
+  texto da formula aperiodica (`ingresso + prazo`) voltou a ter assercao em
+  `src/core/config.test.ts`, e os testes da carga usam o literal 15 em vez
+  de `DEFAULT_TASK_PERIOD`; mutacoes temporarias confirmaram que os testes
+  falham; `npm test` 388/388, lint e typecheck aprovados. Falha de carga sem
+  aviso da conversao ficou na #92. Nao verificado: exibicao na interface
+  (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
@@ -420,8 +435,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
 - #69 Preparar os dados de apresentacao para a inspecao.
-- #70 Implementar controles e mensagens reutilizaveis do renderer. Em
-  andamento em `feat/70-controles-mensagens`, PR #97: `UiIcon` (SVGs do Figma
+- #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
+  no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
   `UiAlert` (com `dismissible`), em portugues e so com tokens; decisoes em
   FE-DEC-13. `npm test` 414/414, lint e typecheck aprovados; icones `alert`
@@ -488,15 +503,22 @@ Issues `[Docs]`, sem fase no Project.
 
 - Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas; #70 em
-  andamento; demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  #33, #34, #89, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
+  demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
   E6: #80 concluida; demais abertas.
-- Em andamento (2026-10-29): #70 (controles e mensagens do renderer), branch
-  `feat/70-controles-mensagens`, PR #97 com `Closes #70`; conferencia dos
-  icones no app feita em 2026-10-30. Falta o merge.
-- #32 concluida no PR #96 (`00ee0f1`), evidencia em E4.
-- Proximo passo: concluir #70; depois #89 (periodo padrao com aviso na
-  carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
+- #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
+- #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
+- Em andamento (2026-10-29): #89, branch `feat/89-periodo-padrao`.
+  Objetivo: na carga, tarefa com periodo ausente ou zero recebe o periodo
+  padrao 15 e um aviso, separado dos erros e sem impedir a carga (DEC-29).
+  Escopo: `loadConfig` em `src/core/loadConfig.ts` converte antes de
+  `validateConfig` e devolve `warnings` no sucesso; `DEFAULT_TASK_PERIOD` em
+  `src/core/domain.ts`. Fora: exibir avisos na interface (#36, #37); nucleo,
+  parser e DEC-17 sem mudanca. Codigo, testes, documentacao e gates
+  concluidos (evidencia em E4); PR #98 aberto com `Closes #89`. Proximo
+  passo: merge, depois registrar o commit do merge aqui e mover a #89 para
+  Done.
+- Depois da #89: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
