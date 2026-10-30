@@ -388,10 +388,15 @@ Node 24.22.1:
   temporaria) confirmou data URLs so com aspas simples.
 - Desabilitado: os testes cobrem clique; Enter/Espaco dependem da semantica
   nativa de `disabled`, sem teste proprio.
-- Nao executados: aplicativo Electron (inclusive a conferencia visual dos
-  icones no pacote, pendente antes de fechar a #70), comparacao visual com o
-  Figma, screenshots (pertencem ao incremento Composicao), pacote no
-  ambiente-alvo.
+- Conferencia no app Electron (2026-10-30, `npm start`, pelo usuario):
+  erro lancado no console do DevTools exibiu o `ErrorBanner`; os icones
+  `alert` e `close` aparecem como glifos, sem quadrado solido, e o fechar
+  remove o banner. No `npm start` os icones sao URLs de arquivo; o caminho de
+  data URL do build fica coberto pela inspecao do `vite build` acima.
+  `warning`, `check` e `info` ainda nao sao montados no app; conferir no
+  incremento Composicao.
+- Nao executados: pacote do Electron e pacote no ambiente-alvo, comparacao
+  visual com o Figma, screenshots (pertencem ao incremento Composicao).
 
 ## Verificacao e pendencias tecnicas
 
