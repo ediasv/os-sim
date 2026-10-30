@@ -362,7 +362,18 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #89 Aplicar periodo padrao com aviso a tarefas sem periodo positivo
   (DEC-29). A parte de interface da DEC-29 (padrao 15 em tarefa nova, recusa
   de periodo zero, exibicao dos avisos) foi acrescentada aos corpos da #36 e
-  da #37 em 2026-10-28.
+  da #37 em 2026-10-28. Implementada (2026-10-29) na branch
+  `feat/89-periodo-padrao`: `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
+  antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
+  sucesso. Evidencia: bloco `default period (DEC-29)` em
+  `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
+  avisos com periodo positivo, simulacao igual a periodo 15 com dez
+  ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
+  15, `-0`/`+0`/`0.0`); linha "aperiodica" do teste de prazo combinado
+  passou a esperar a formula periodica. `npm test` 388/388, `npm run lint` e
+  `npm run typecheck` aprovados (2026-10-29). Nao verificado: exibicao na
+  interface (#36); texto da formula aperiodica (`ingresso + prazo`) deixou de
+  ter assercao, pois so o nucleo a produz.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
@@ -479,22 +490,21 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #87 e #94 concluidas;
-  #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
+  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
+  #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
   implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- Em andamento (2026-10-29): #32, branch `feat/32-periodo-ausente`.
-  Objetivo: periodo ausente (campo vazio ou so espacos na sua posicao)
-  equivale a zero no parser, como o zero explicito; linha com menos de seis
-  campos continua erro (definicao aceita pelo usuario em 2026-10-29). Escopo:
-  `parseTask` em `src/core/parser.ts`, testes de lista longa de eventos e de
-  simulacao igual com e sem eventos, DEC-31 vinculada a REQ-06. Codigo,
-  testes, documentacao e gates concluidos (evidencia em E4); PR #96 aberto
-  com `Closes #32` e check `test` do CI aprovado. Proximo passo: merge por
-  squash, depois registrar o commit do merge aqui e mover a #32 para Done.
-  Fora: periodo padrao 15 com aviso (#89).
-- Proximo passo apos a #32: #70
-  (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
-  carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
+- #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
+- Em andamento (2026-10-29): #89, branch `feat/89-periodo-padrao`.
+  Objetivo: na carga, tarefa com periodo ausente ou zero recebe o periodo
+  padrao 15 e um aviso, separado dos erros e sem impedir a carga (DEC-29).
+  Escopo: `loadConfig` em `src/core/loadConfig.ts` converte antes de
+  `validateConfig` e devolve `warnings` no sucesso; `DEFAULT_TASK_PERIOD` em
+  `src/core/domain.ts`. Fora: exibir avisos na interface (#36, #37); nucleo,
+  parser e DEC-17 sem mudanca. Codigo, testes, documentacao e gates
+  concluidos (evidencia em E4). Proximo passo: revisao, commit e PR com
+  `Closes #89`, a pedido do usuario.
+- Depois da #89: #70 (controles e mensagens do renderer) e #92. Manter os
+  diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

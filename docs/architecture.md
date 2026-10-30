@@ -20,7 +20,8 @@ afirma que os modulos planejados ja existem.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
   `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
   campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
-  semanticas.
+  semanticas. Antes do `validateConfig`, aplica o periodo padrao a tarefa com
+  periodo zero e devolve `warnings` no sucesso (DEC-29).
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
@@ -888,7 +889,12 @@ anterior. Data inicial dos registros: 2026-10-12.
   resultado da carga (#32). Implementacao: carga com periodo padrao e aviso
   na #89; padrao em tarefa nova, recusa de periodo zero e exibicao dos
   avisos na #36 (configuracao inicial); recusa em edicao e inclusao durante
-  a simulacao na #37.
+  a simulacao na #37. Detalhe de implementacao da #89, sem nova decisao:
+  `DEFAULT_TASK_PERIOD` em `domain.ts`; a conversao ocorre antes do
+  `validateConfig`, que valida a tarefa ja com periodo 15 (inclusive o prazo
+  da ultima ativacao); avisos `ConfigLoadWarning` (`taskId`, `line`, `field`,
+  `value`, `message`) so no resultado de sucesso, pois so a configuracao
+  carregada usa o padrao.
 
 ### DEC-30: Limite pratico do comprimento da simulacao
 
