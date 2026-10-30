@@ -420,7 +420,15 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
 - #69 Preparar os dados de apresentacao para a inspecao.
-- #70 Implementar controles e mensagens reutilizaveis do renderer.
+- #70 Implementar controles e mensagens reutilizaveis do renderer. Em
+  andamento em `feat/70-controles-mensagens`, PR #97: `UiIcon` (SVGs do Figma
+  por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
+  `UiAlert` (com `dismissible`), em portugues e so com tokens; decisoes em
+  FE-DEC-13. `npm test` 414/414, lint e typecheck aprovados; icones `alert`
+  e `close` conferidos no app (`npm start`, 2026-10-30); pacote e comparacao
+  visual com o Figma nao executados.
+  Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
 - #71 Apresentar tarefas e jobs com selecao independente do tempo.
 - #72 Compor a area de trabalho vazia em preparacao.
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
@@ -478,22 +486,16 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-28): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #87 e #94 concluidas;
-  #32, #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas;
-  implementacao visual (#36 a #40, #69 a #73) nao iniciada. E6: #80 concluida; demais abertas.
-- Em andamento (2026-10-29): #32, branch `feat/32-periodo-ausente`.
-  Objetivo: periodo ausente (campo vazio ou so espacos na sua posicao)
-  equivale a zero no parser, como o zero explicito; linha com menos de seis
-  campos continua erro (definicao aceita pelo usuario em 2026-10-29). Escopo:
-  `parseTask` em `src/core/parser.ts`, testes de lista longa de eventos e de
-  simulacao igual com e sem eventos, DEC-31 vinculada a REQ-06. Codigo,
-  testes, documentacao e gates concluidos (evidencia em E4); PR #96 aberto
-  com `Closes #32` e check `test` do CI aprovado. Proximo passo: merge por
-  squash, depois registrar o commit do merge aqui e mover a #32 para Done.
-  Fora: periodo padrao 15 com aviso (#89).
-- Proximo passo apos a #32: #70
-  (controles e mensagens do renderer) e #89 (periodo padrao com aviso na
+- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
+  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
+  #33, #34, #89, #92 e #93 abertas. E5: #35, #67 e #68 concluidas; #70 em
+  andamento; demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  E6: #80 concluida; demais abertas.
+- Em andamento (2026-10-29): #70 (controles e mensagens do renderer), branch
+  `feat/70-controles-mensagens`, PR #97 com `Closes #70`; conferencia dos
+  icones no app feita em 2026-10-30. Falta o merge.
+- #32 concluida no PR #96 (`00ee0f1`), evidencia em E4.
+- Proximo passo: concluir #70; depois #89 (periodo padrao com aviso na
   carga, DEC-29). Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
