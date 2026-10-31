@@ -535,7 +535,8 @@ anterior. Data inicial dos registros: 2026-10-12.
        2026-10-28).
     4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
        conteudo: informar caminho e motivo do sistema quando disponiveis, sem
-       linha nem campo.
+       linha nem campo. Conteudo que nao esta em UTF-8 tambem e erro de
+       leitura (DEC-32).
     5. Cancelar a escolha do arquivo no dialogo nao e erro: nao gera diagnostico
        de conteudo nem de leitura, conforme #33.
 - Exemplos:
@@ -956,6 +957,36 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: o texto recebido do periodo no mapa do parser
   (`taskTexts`) fica vazio para essa tarefa. Periodo zero, ausente ou
   explicito, recebe o periodo padrao com aviso na carga pela #89 (DEC-29).
+
+### DEC-32: Codificacao do arquivo de configuracao
+
+- Estado: aceita em 2026-10-31 pelo usuario (#33). Requisitos: REQ-06,
+  REQ-10. Detalha DEC-19 (item 4, falhas de leitura) e DEC-20 (item 3, BOM).
+- Decisao:
+    1. O arquivo de configuracao precisa estar em UTF-8. Texto so ASCII e
+       UTF-8 valido. A marca BOM inicial continua aceita (DEC-20).
+    2. A decodificacao e estrita: qualquer sequencia de bytes que nao seja
+       UTF-8 valido rejeita o arquivo inteiro. Nenhum byte e trocado por
+       `�` e nenhuma outra codificacao e tentada; arquivo em Latin-1,
+       Windows-1252 ou UTF-16 e rejeitado.
+    3. A rejeicao e erro de leitura (DEC-19, item 4), nao de conteudo: informa
+       o caminho e que o arquivo nao esta em UTF-8, sem linha nem campo, e o
+       parser nao recebe texto. Exemplo: `Nao foi possivel ler o arquivo
+       "<caminho>": o conteudo nao esta em UTF-8. Salve o arquivo como UTF-8
+       e tente novamente.`
+- Justificativa: A.3.3.6 exige mostrar o motivo da falha de carga. Decodificar
+  com substituicao deixaria `�` em diagnosticos de conteudo (por exemplo,
+  em cores ou eventos) e o usuario veria um erro de sintaxe que nao explica
+  a causa real. Rejeitar indica a correcao direta: salvar em UTF-8.
+- Alternativas descartadas:
+    - Decodificar com substituicao (`�`): esconde a causa e pode carregar
+      um arquivo diferente do que o usuario escreveu.
+    - Detectar e converter outras codificacoes: heuristica sujeita a erro e
+      exigiria dependencia extra, sem pedido no enunciado.
+- Consequencia: o processo principal le os bytes e decodifica com um
+  decodificador estrito (por exemplo, `TextDecoder('utf-8', { fatal: true })`);
+  a interface recebe so o texto ou o motivo da falha. Arquivo vazio e UTF-8
+  valido e segue para o parser.
 
 ## Fluxo de um passo
 
