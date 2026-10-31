@@ -394,8 +394,12 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   de UTF-8 falham. `npm test` 442/442, `npm run lint` e `npm run typecheck`
   aprovados; `npm run package` gera o app, e nele a pagina ve
   `window.configFile` so com `openConfigFile` e `require`/`process`
-  indefinidos (consulta por CDP). Nao executado ainda: verificacao manual do
-  dialogo no aplicativo (diretorios diferentes, nomes com espaco e acento).
+  indefinidos (consulta por CDP). Verificacao manual no aplicativo
+  (`npm start`, macOS, 2026-10-31) executada pelo usuario, que relatou todos
+  os casos como esperados, sem copiar a saida: `pasta ç/config ação.txt` e
+  `outra pasta/sem extensao` carregados, cancelamento como `canceled`,
+  arquivo Latin-1 como `not-utf8` e arquivo sem permissao como
+  `permission-denied`. Nao verificado: disco externo e outras plataformas.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
   resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
@@ -528,9 +532,9 @@ Issues `[Docs]`, sem fase no Project.
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
 - Em andamento: #33 (carregar arquivo escolhido pelo usuario), PR #99.
-  Feito: DEC-32, API com testes, gates e pacote (evidencia em E4). Pendente:
-  verificacao manual do dialogo no aplicativo e aceite de DEC-33.
-- Proximo passo: verificacao manual da #33 e revisao do PR #99; depois #92.
+  Feito: DEC-32, API com testes, gates, pacote e verificacao manual
+  (evidencia em E4). Pendente: aceite de DEC-33 e revisao do PR #99.
+- Proximo passo: revisao do PR #99 e aceite de DEC-33; depois #92.
   Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
