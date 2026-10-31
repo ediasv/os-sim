@@ -509,8 +509,15 @@ Issues `[Docs]`, sem fase no Project.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: nenhum item.
-- Proximo passo: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
+- Em andamento (2026-10-31): #25, decisao so documental. Objetivo: responder
+  Q-02 com o usuario e registrar uma DEC ligada a REQ-05 com a matriz de
+  edicao (progresso, duracao, periodo, ingresso, prazo, estado,
+  inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
+  atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
+  #26/#38. Passos pendentes: acordar a matriz, registrar a DEC, resolver Q-02,
+  atualizar DEC-12 e as issues #26, #37 e #38 se mudarem, conferir links e IDs.
+- Proximo passo: acordar a matriz da #25. Depois, #92; manter os diagnosticos
+  de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
