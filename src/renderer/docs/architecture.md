@@ -398,6 +398,141 @@ Node 24.22.1:
 - Nao executados: pacote do Electron e pacote no ambiente-alvo, comparacao
   visual com o Figma, screenshots (pertencem ao incremento Composicao).
 
+## Composicao (#72)
+
+Terceiro incremento da entrega 1: `App` compoe a area de trabalho vazia em
+preparacao (FE-02, FE-DEC-14) com componentes em [components](../components/),
+so com `var(--...)` de [tokens.css](../styles/tokens.css) e sem importar
+`core/` nem `errors.ts` (FE-01). Somente [App](../App.vue) importa
+`DEFAULT_CONFIG` de `core/domain`, e repassa RM, quantum e CPUs por props.
+`App` nao chama `useSimulation()` nem cria simulador: a #36 decide quando
+criar e reconcilia a preparacao com o adaptador de DEC-23, que parte de
+`DEFAULT_CONFIG` em t=0. `useSimulation.ts` nao foi alterado.
+
+Valores do quadro `99:3895` do Figma (arquivo `h2kssKC2KiSuN4iAg4K1yU`).
+
+### Divisao em cinco componentes
+
+A arquitetura previa tres (`WorkspaceLayout`, `SimulationToolbar`,
+`EmptyWorkspace`). Os paineis foram separados para a #37 (lista de tarefas) e
+a #38 (Gantt) os reutilizarem sem reabrir a composicao; e escolha de
+implementacao, nao decisao do usuario.
+
+- [WorkspaceLayout](../components/WorkspaceLayout.vue): grade com slots
+  `toolbar`, `sidebar` e o padrao (area principal); so posiciona. Barra nas
+  duas colunas, painel de 320 px, area principal com `min-width: 0` para um
+  Gantt largo nao esticar a janela. Dono do padding de regiao `--spacing-lg` e
+  do `gap` `--spacing-sm` da coluna: os paineis nao aplicam padding proprio.
+- [SimulationToolbar](../components/SimulationToolbar.vue): props `clock`
+  (`number | null`), `algorithm`, `cpuCount`, `quantum` e `available`
+  (`ReadonlySet<WorkspaceAction>`, padrao vazio); emite `action`. Titulo
+  `os-sim`, seis botoes e quatro chips. `clock` nulo mostra `–` (U+2013). O
+  quantum sempre aparece: vale para RM e EDF (DEC-03), entao a nota do chip do
+  Figma (usar "—" quando o parametro nao se aplica) nao se aplica ao Projeto A.
+- [TaskPanel](../components/TaskPanel.vue): prop `available`; emite `action`.
+  Titulo, texto de estado vazio e "Adicionar tarefa" em largura total. A #71
+  poe a lista entre o cabecalho e o botao.
+- [GanttPanel](../components/GanttPanel.vue): prop `available`; emite
+  `action`; slot padrao para o corpo (a #38 poe o grafico). Cabecalho com
+  zoom (`Diminuir zoom`, `Aumentar zoom`) e "Exportar SVG". A leitura `100%` e
+  texto estatico: nao ha estado de zoom antes do grafico.
+- [EmptyWorkspace](../components/EmptyWorkspace.vue): props `algorithm`,
+  `quantum`, `cpuCount` e `available`; emite `action`. Pasta de 32 px, titulo,
+  texto com os valores recebidos (`1 CPU`, `2 CPUs`) e tres botoes. Sem
+  "(DEC-10)" na tela (FE-DEC-14).
+- [workspaceActions.ts](../components/workspaceActions.ts): tipo
+  `WorkspaceAction` (`load-config`, `configure-system`, `add-task`,
+  `step-back`, `step-forward`, `restart`, `run-all`, `zoom-out`, `zoom-in`,
+  `export-svg`). Os componentes so emitem intencoes; quem os usa decide a
+  disponibilidade e o efeito. Treze botoes na tela mapeiam para dez intencoes
+  (Carregar configuracao, Adicionar tarefa e Sistema aparecem duas vezes).
+
+`available` vazio por padrao faz um uso ainda nao ligado renderizar tudo com
+`disabled` nativo, em vez de clicavel e inerte. `App` passa o conjunto vazio:
+nenhuma acao existe ate as #36 a #38. Clicar em desabilitado nao emite nada.
+
+### Icones e `UiIcon`
+
+`UiIcon` ganhou a prop `size` (`16` padrao ou `32`): a pasta do estado vazio
+tem 32 px no Figma. Nove SVGs novos em [assets/icons](../assets/icons/),
+exportados sem edicao da pagina Componentes via `get_design_context` em
+2026-10-31 e registrados em [icons.ts](../components/icons.ts):
+
+| Icone        | No Figma | Uso                                         |
+| ------------ | -------- | ------------------------------------------- |
+| folder       | `49:5`   | Carregar configuracao; estado vazio (32 px) |
+| settings     | `86:87`  | Sistema                                     |
+| step-back    | `49:9`   | Voltar tick                                 |
+| step-forward | `49:13`  | Avancar tick                                |
+| restart      | `49:17`  | Reiniciar                                   |
+| run-all      | `49:21`  | Executar tudo                               |
+| plus         | `86:38`  | Adicionar tarefa; zoom +                    |
+| minus        | `86:43`  | Zoom -                                      |
+| download     | `49:26`  | Exportar SVG                                |
+
+### Desvios e lacunas
+
+Registrados em FE-DEC-14 na
+[spec do renderer](specification.md#decisoes-de-apresentacao-registradas)
+quando mudam comportamento; os demais sao so de implementacao:
+
+- Texto do Figma com "(DEC-10)" e chip com `—` condicional: ver FE-DEC-14 e
+  o quantum acima.
+- Barra: o Figma a desenha com 64 px a 1440 px. O conteudo ocupa cerca de
+  1230 px mais o padding horizontal, entao a barra quebra em segunda linha
+  (`flex-wrap`) abaixo de cerca de 1270 px; os 64 px viram `min-height` e
+  `padding-block: var(--spacing-sm)` evita que a linha quebrada encoste na
+  borda da janela e corte o anel de foco. Sem quebra o conteudo se
+  sobreporia ou geraria rolagem horizontal.
+- Banner de erro: `Root.vue` o renderiza acima de `App`, em fluxo normal.
+  `#app` (em `base.css`) e uma coluna flex de `100vh` e `.workspace` usa
+  `flex: 1; min-height: 0`, de modo que o banner reduz a area de trabalho em
+  vez de tornar a pagina mais alta que a janela.
+- Testes que leem o CSS de um `.vue` usam `import ... from '...?raw'` do Vite:
+  `readFileSync` falha sob jsdom e o lint proibe `node:fs` no renderer. O
+  helper de teste `components/cssRule.ts` (`ruleBody(source, seletor)`)
+  extrai o corpo de uma regra, para as assercoes valerem para o seletor certo
+  e nao para qualquer ocorrencia no arquivo.
+- Foco e estados dos botoes seguem [Elementos basicos](#elementos-basicos-70).
+  Botoes de accent desabilitados aparecem mais apagados que no Figma, que
+  mostra Carregar configuracao e Sistema habilitados.
+
+### Evidencia da #72 (2026-10-31)
+
+Worktree `feat/72-area-trabalho-vazia`, Node 24.22.1:
+
+- Testes novos de componente: icones e `UiIcon` (tamanho), barra, layout,
+  paineis, estado vazio e `App` (nenhum simulador criado na montagem, cada
+  botao desabilitado nao emite `action`, `2 CPUs` no plural, sem "DEC-" na
+  tela); `Root.test.ts` inalterado e verde (banner com `App` lancando).
+- `npm test` 460/460 em 29 arquivos (linha de base 422 em 23);
+  `npm run lint` e `npm run typecheck` sem achados.
+- Buscas sem resultado: cor hexadecimal em `components/*.vue` e `core/` em
+  `components/*.vue` e `components/*.ts`.
+- Conferencia no app Electron (`npm start`, `--remote-debugging-port`, medicao
+  e captura por CDP, sem redimensionar a janela nativa: tamanho emulado com
+  `Emulation.setDeviceMetricsOverride`). A 1440 x 924: barra de 64 px, sem
+  rolagem horizontal, 13 botoes, todos desabilitados; leiaute equivalente ao
+  quadro `99:3895` (captura do Figma via MCP). A 1024 x 768: barra com 112 px
+  (duas linhas, chips na segunda), sem rolagem horizontal
+  (`scrollWidth` 1024), sem sobreposicao. Icones: 27 elementos de icone,
+  todos com mascara `url("data:image/svg+xml...")` e a pasta do estado vazio
+  com 32 x 32; nas capturas todos aparecem como glifos, sem quadrado solido.
+- Achado visual (corrigido nesta issue): a 1024 px a barra nao tinha
+  espacamento vertical e a linha dos botoes encostava no topo da janela
+  (`actionsTop` 0 px, barra de 88 px). Com `padding-block: var(--spacing-sm)`
+  a 1024 x 768 o primeiro botao fica a 12 px do topo e a barra mede 112 px;
+  a 1440 x 924 a barra continua com 64 px. Com um bloco de 48 px simulando o
+  banner acima de `App`, `scrollHeight` segue igual a `clientHeight` (768).
+  Remedicao por CDP no app em execucao (HMR) em 2026-10-31; capturas locais.
+- Diferencas conhecidas contra o Figma: botoes accent desabilitados mais
+  apagados; texto do painel lateral quebra em outro ponto; texto do estado
+  vazio em duas linhas (Figma: tres, por conter "(DEC-10)").
+- Nao executados: navegacao por Tab (com todos os botoes desabilitados o foco
+  nao entra em nenhum, confirmado so com um Tab a partir do `body`),
+  redimensionamento real da janela nativa, pacote do Electron e pacote no
+  ambiente-alvo.
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente

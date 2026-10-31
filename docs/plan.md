@@ -445,7 +445,16 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
 - #71 Apresentar tarefas e jobs com selecao independente do tempo.
-- #72 Compor a area de trabalho vazia em preparacao.
+- #72 Compor a area de trabalho vazia em preparacao. Em andamento (PR #100,
+  rascunho): `App` mostra a preparacao estatica (barra, painel de tarefas e
+  Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
+  componentes novos, nove icones do Figma e `size` no `UiIcon`; decisoes em
+  FE-DEC-14. `npm test` 460/460 em 29 arquivos, lint e typecheck aprovados;
+  app conferido por CDP a 1440 x 924 e 1024 x 768; pacote, redimensionamento
+  real da janela e navegacao por Tab nao executados. Achado de espacamento
+  vertical da barra a 1024 px corrigido (`padding-block`), junto com a altura
+  da pagina com o banner de erro. Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
 ### E6: Entrega e demonstracao
@@ -501,22 +510,26 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
+- Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
-  demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas; #72
+  em andamento; demais itens visuais (#36 a #40, #69, #71 e #73) nao
+  iniciados.
   E6: #80 concluida; demais abertas.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
 - Em andamento: #72 (iniciada em 2026-10-31, branch
-  `feat/72-area-trabalho-vazia`). Objetivo: compor a area de trabalho em
-  preparacao (`WorkspaceLayout`, `SimulationToolbar`, `EmptyWorkspace`),
-  entrega 1 do renderer, sem iniciar o motor nem snapshot zero ficticio.
-  Escopo e criterios na issue; fora: formularios, comandos funcionais (#36),
-  paineis (#37), Gantt (#38). Verificado ate agora: linha de base
-  `npm test` 422/422 em 23 arquivos. Proximo passo: definir as decisoes em
-  aberto da composicao e implementar com testes de componente.
+  `feat/72-area-trabalho-vazia`, PR #100 em rascunho, issue em In Progress ate
+  o merge). Objetivo: compor a area de trabalho vazia em preparacao
+  (`WorkspaceLayout`, `SimulationToolbar`, `TaskPanel`, `GanttPanel`,
+  `EmptyWorkspace`), sem iniciar o motor nem snapshot zero ficticio. Fora:
+  formularios, comandos funcionais (#36), lista de tarefas (#71/#37), Gantt
+  (#38). Verificado: `npm test` 460/460 em 29 arquivos (linha de base 422 em
+  23), `npm run lint` e `npm run typecheck` sem achados, buscas de cor
+  hexadecimal e de `core/` sem resultado, conferencia no Electron por CDP.
+  Nao executado: pacote, janela redimensionada de fato, Tab. Proximo passo:
+  publicar o corpo da PR, revisao e merge.
 - Depois da #72: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
