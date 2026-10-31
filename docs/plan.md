@@ -280,6 +280,8 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
+  Em andamento no PR #101 (rascunho, so o registro de inicio ate
+  2026-10-31); matriz ainda nao acordada com o usuario.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -555,7 +557,7 @@ Issues `[Docs]`, sem fase no Project.
   (#72; so o registro de inicio).
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
-  paralelo. Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no
+  paralelo a ela, nessa ordem (a #24 depende da #23). Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no
   escopo da #34. Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
