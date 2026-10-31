@@ -18,6 +18,15 @@ export type InspectionTaskStatus =
     | 'awaiting-next-activation'
     | 'completed';
 
+export const inspectionTaskStatusLabels: Readonly<
+    Record<InspectionTaskStatus, string>
+> = {
+    'awaiting-activation': 'Aguardando ativação',
+    active: 'Ativa',
+    'awaiting-next-activation': 'Aguardando próxima ativação',
+    completed: 'Terminada',
+};
+
 export interface InspectionTaskDefinition {
     readonly id: TaskId;
     readonly color: string;

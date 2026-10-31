@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import JobTable from './JobTable.vue';
 import TaskDetails from './TaskDetails.vue';
 import TaskList from './TaskList.vue';
@@ -11,6 +11,48 @@ const selectedTaskId = ref<TaskId | null>(
     props.data.tasks[0]?.definition.id ?? null,
 );
 const selectedJobRef = ref<JobRef | null>(null);
+
+function hasJob(data: InspectionData, refToFind: JobRef): boolean {
+    const task = data.tasks.find(
+        (candidate) => candidate.definition.id === refToFind.taskId,
+    );
+    return (
+        (task?.jobs.some(
+            (job) =>
+                job.ref.taskId === refToFind.taskId &&
+                job.ref.index === refToFind.index,
+        ) ??
+            false) ||
+        data.futureJobs.some(
+            (job) =>
+                job.ref.taskId === refToFind.taskId &&
+                job.ref.index === refToFind.index,
+        )
+    );
+}
+
+watch(
+    () => props.data,
+    (data) => {
+        if (
+            selectedTaskId.value !== null &&
+            data.tasks.some(
+                (task) => task.definition.id === selectedTaskId.value,
+            )
+        ) {
+            if (
+                selectedJobRef.value !== null &&
+                !hasJob(data, selectedJobRef.value)
+            ) {
+                selectedJobRef.value = null;
+            }
+            return;
+        }
+
+        selectedTaskId.value = data.tasks[0]?.definition.id ?? null;
+        selectedJobRef.value = null;
+    },
+);
 
 const selectedTask = computed(
     () =>

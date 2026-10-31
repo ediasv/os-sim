@@ -1,20 +1,13 @@
 <script setup lang="ts">
-import type { InspectionTask } from './inspection';
+import { inspectionTaskStatusLabels, type InspectionTask } from './inspection';
 
 defineProps<{
     task: InspectionTask | null;
     inspectedTick: number;
 }>();
 
-const statusLabels = {
-    'awaiting-activation': 'Aguardando ativação',
-    active: 'Ativa',
-    'awaiting-next-activation': 'Aguardando próxima ativação',
-    completed: 'Terminada',
-} as const;
-
 function statusLabel(status: InspectionTask['status']): string {
-    return statusLabels[status];
+    return inspectionTaskStatusLabels[status];
 }
 </script>
 
