@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-28. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-31. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -443,7 +443,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- #69 Preparar os dados de apresentacao para a inspecao.
+- #69 Preparar os dados de apresentacao para a inspecao. Implementacao local
+  iniciada em `src/renderer/features/inspection/inspection.ts`, com projecoes
+  puras para tick, tarefas, jobs, estados, elegibilidade, perda de prazo,
+  tarefas aguardando/terminadas e CPU desligada; jobs futuros sao referencias
+  de apresentacao sem progresso ou estado atual. Teste focado e parte da suite
+  completa passam; revisao em [PR #103](https://github.com/ediasv/os-sim/pull/103).
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
   no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
@@ -453,7 +458,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   visual com o Figma nao executados.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
-- #71 Apresentar tarefas e jobs com selecao independente do tempo.
+- #71 Apresentar tarefas e jobs com selecao independente do tempo. Componentes
+  isolados em `src/renderer/features/inspection/` mantem selecao independente
+  do tick e cobrem teclado, estados separados e job futuro sem restaurar o
+  tempo. Teste focado e parte da suite completa passam; integracao com
+  historico/cursor real permanece dependencia de #36/#23/#24; revisao em
+  [PR #103](https://github.com/ediasv/os-sim/pull/103).
 - #72 Compor a area de trabalho vazia em preparacao.
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
@@ -510,20 +520,24 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
+- Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
   #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
-  demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  #69 e #71 implementadas com testes, aguardando revisao no PR #103; demais
+  itens visuais (#36 a #40, #72, #73) nao iniciados.
   E6: #80 concluida; demais abertas.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: nenhum item.
-- Proximo passo: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
+- Em andamento: #69 e #71, nesta ordem de dependencia. Abrir primeiro o PR
+  da #69 e depois o PR da #71, sem misturar a composicao da #72.
+- Proximo passo: revisar o PR #103 e manter os diagnosticos de DEC-19 no
+  escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
-- Bloqueios: nenhum.
+- Bloqueios: a integracao de selecao futura com historico/cursor real depende
+  de #36/#23/#24; a apresentacao isolada com dados tipados foi verificada.
 
 ## Como registrar uma entrega
 
