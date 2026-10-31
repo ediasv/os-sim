@@ -638,12 +638,16 @@ Issues `[Docs]`, sem fase no Project.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
 - #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
-- Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
-  suspensao/retomada; so o registro de inicio).
-- Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
-  destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
-  paralelo a ela, nessa ordem (a #24 depende da #23). Aceitar ou rever
-  DEC-34 (#92).
+- Em andamento (2026-10-31): #25, decisao so documental. Objetivo: responder
+  Q-02 com o usuario e registrar uma DEC ligada a REQ-05 com a matriz de
+  edicao (progresso, duracao, periodo, ingresso, prazo, estado,
+  inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
+  atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
+  #26/#38. Passos pendentes: acordar a matriz, registrar a DEC, resolver Q-02,
+  atualizar DEC-12 e as issues #26, #37 e #38 se mudarem, conferir links e IDs.
+- Proximo passo: acordar a matriz da #25, pois ela destrava #26 e o Gantt
+  (#38); #23 e #24 nao dependem dela e podem seguir em paralelo a ela, nessa
+  ordem (a #24 depende da #23). Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
