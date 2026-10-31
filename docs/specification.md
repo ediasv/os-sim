@@ -101,6 +101,8 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
   DEC-10.
 - Carregar arquivo de qualquer nome/caminho escolhido pelo usuario.
 - Cancelar a escolha do arquivo nao e erro (DEC-19).
+- Arquivo em UTF-8, com ou sem BOM; outra codificacao e rejeitada como falha
+  de leitura (DEC-32).
 - Preservar lista de eventos sem executa-la no Projeto A (A.3.3.5).
 - Aceitacao: variantes validas produzem configuracao equivalente; erros indicam
   linha/campo/valor/motivo conforme DEC-19, e falhas de acesso explicam o

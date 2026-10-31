@@ -51,8 +51,16 @@ afirma que os modulos planejados ja existem.
   `tick`, que devolvem resultado (DEC-23).
 - [Erros da interface](../src/renderer/errors.ts): banner global e
   `commandFailure`, que classifica erros dos comandos (DEC-24).
-- [Processo principal](../src/main/main.ts): janela Electron.
-- [Preload](../src/preload/preload.ts): ainda sem API de arquivos.
+- [Processo principal](../src/main/main.ts): janela Electron e canal IPC que
+  abre o dialogo nativo da configuracao, sem filtro de extensao (DEC-33).
+- [Leitura do arquivo](../src/main/configFile.ts): le o arquivo escolhido,
+  decodifica UTF-8 estrito e converte cancelamento e falhas de leitura em
+  resultado, sem lancar (DEC-19, DEC-32, DEC-33).
+- [Preload](../src/preload/preload.ts) e
+  [API de arquivo](../src/preload/configFileApi.ts): expoem somente
+  `window.configFile.openConfigFile()`, sem argumentos (DEC-33).
+- [Contrato compartilhado](../src/shared/configFile.ts): canal e tipos do
+  resultado da carga, usados por main, preload e interface (DEC-33).
 
 ## Modulos planejados
 
@@ -535,7 +543,8 @@ anterior. Data inicial dos registros: 2026-10-12.
        2026-10-28).
     4. Falhas ao acessar ou ler o arquivo sao erros de leitura, nao erros de
        conteudo: informar caminho e motivo do sistema quando disponiveis, sem
-       linha nem campo.
+       linha nem campo. Conteudo que nao esta em UTF-8 tambem e erro de
+       leitura (DEC-32).
     5. Cancelar a escolha do arquivo no dialogo nao e erro: nao gera diagnostico
        de conteudo nem de leitura, conforme #33.
 - Exemplos:
@@ -956,6 +965,71 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: o texto recebido do periodo no mapa do parser
   (`taskTexts`) fica vazio para essa tarefa. Periodo zero, ausente ou
   explicito, recebe o periodo padrao com aviso na carga pela #89 (DEC-29).
+
+### DEC-32: Codificacao do arquivo de configuracao
+
+- Estado: aceita em 2026-10-31 pelo usuario (#33). Requisitos: REQ-06,
+  REQ-10. Detalha DEC-19 (item 4, falhas de leitura) e DEC-20 (item 3, BOM).
+- Decisao:
+    1. O arquivo de configuracao precisa estar em UTF-8. Texto so ASCII e
+       UTF-8 valido. A marca BOM inicial continua aceita (DEC-20).
+    2. A decodificacao e estrita: qualquer sequencia de bytes que nao seja
+       UTF-8 valido rejeita o arquivo inteiro. Nenhum byte e trocado por
+       `�` e nenhuma outra codificacao e tentada; arquivo em Latin-1,
+       Windows-1252 ou UTF-16 e rejeitado.
+    3. A rejeicao e erro de leitura (DEC-19, item 4), nao de conteudo: informa
+       o caminho e que o arquivo nao esta em UTF-8, sem linha nem campo, e o
+       parser nao recebe texto. Exemplo: `Nao foi possivel ler o arquivo
+       "<caminho>": o conteudo nao esta em UTF-8. Salve o arquivo como UTF-8
+       e tente novamente.`
+- Justificativa: A.3.3.6 exige mostrar o motivo da falha de carga. Decodificar
+  com substituicao deixaria `�` em diagnosticos de conteudo (por exemplo,
+  em cores ou eventos) e o usuario veria um erro de sintaxe que nao explica
+  a causa real. Rejeitar indica a correcao direta: salvar em UTF-8.
+- Alternativas descartadas:
+    - Decodificar com substituicao (`�`): esconde a causa e pode carregar
+      um arquivo diferente do que o usuario escreveu.
+    - Detectar e converter outras codificacoes: heuristica sujeita a erro e
+      exigiria dependencia extra, sem pedido no enunciado.
+- Consequencia: o processo principal le os bytes e decodifica com um
+  decodificador estrito (por exemplo, `TextDecoder('utf-8', { fatal: true })`);
+  a interface recebe so o texto ou o motivo da falha. Arquivo vazio e UTF-8
+  valido e segue para o parser.
+
+### DEC-33: API de carga do arquivo de configuracao
+
+- Estado: proposta no PR #99 (#33), aguardando aceite do usuario. Requisitos:
+  REQ-06, REQ-10. Detalha DEC-19 (itens 4 e 5), DEC-24 e DEC-32.
+- Decisao:
+    1. A interface recebe somente `window.configFile.openConfigFile()`, sem
+       argumentos. O preload invoca o canal `config-file:open` sem argumentos
+       e o processo principal nao le argumento do renderer: a interface so
+       alcanca o arquivo escolhido no dialogo.
+    2. O dialogo nativo aceita qualquer nome, sem filtro de extensao
+       (A.3.3.4), e tem como pai a janela que pediu.
+    3. O resultado (`ConfigFileResult` em `src/shared/configFile.ts`) e
+       `loaded` (caminho e texto, sem BOM), `canceled` (cancelar, ou dialogo
+       sem caminho) ou `failed` (caminho, motivo e mensagem pronta para
+       exibir). A carga nunca rejeita por falha de leitura.
+    4. Motivos e mensagens de `failed` (`<p>` e o caminho escolhido):
+
+        | motivo              | causa             | mensagem                                                                                                            |
+        | ------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+        | `not-found`         | `ENOENT`          | `Não foi possível abrir o arquivo "<p>": o arquivo não foi encontrado.`                                             |
+        | `permission-denied` | `EACCES`, `EPERM` | `Não foi possível abrir o arquivo "<p>": permissão negada.`                                                         |
+        | `is-directory`      | `EISDIR`          | `Não foi possível abrir o arquivo "<p>": o caminho é um diretório, não um arquivo.`                                 |
+        | `not-utf8`          | UTF-8 invalido    | `Não foi possível ler o arquivo "<p>": o conteúdo não está em UTF-8. Salve o arquivo como UTF-8 e tente novamente.` |
+        | `unknown`           | outro erro        | `Não foi possível ler o arquivo "<p>": <motivo do sistema>.`, ou `erro desconhecido` sem motivo                     |
+
+    5. Falha do proprio dialogo (rejeicao de `showOpenDialog`) nao e falha de
+       leitura: nao ha caminho, e o erro chega a interface como inesperado
+       (DEC-24).
+- Justificativa: sem caminho vindo da interface, um renderer comprometido nao
+  le arquivos arbitrarios. A mensagem pronta mantem as frases de DEC-19 num
+  so lugar, e o motivo em codigo permite a #36 tratar casos sem analisar
+  texto. Cancelar como resultado proprio evita confundir com erro.
+- Consequencia: o texto carregado segue para `loadConfig`; a #36 exibe
+  `message` das falhas e ignora `canceled`.
 
 ## Fluxo de um passo
 

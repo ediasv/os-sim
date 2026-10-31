@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-28. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-31. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -378,6 +378,24 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   aviso da conversao ficou na #92. Nao verificado: exibicao na interface
   (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
+  Em andamento (2026-10-31, PR #99 rascunho). Codificacao decidida pelo
+  usuario: UTF-8 com ou sem BOM; conteudo que nao e UTF-8 valido e rejeitado
+  como falha de leitura (DEC-32). API proposta em DEC-33 (aguarda aceite):
+  `src/shared/configFile.ts` (canal e tipos), `src/main/configFile.ts`
+  (leitura, sem lancar), `src/preload/configFileApi.ts` (unica funcao, sem
+  argumentos) e o canal IPC em `src/main/main.ts`; lint impede `shared/` de
+  importar Node, Electron, Vue ou outras camadas. Evidencia (2026-10-31):
+  testes novos em `src/main/configFile.test.ts` (sucesso com espaco e acento,
+  BOM, arquivo vazio, inexistente, diretorio, `EACCES`/`EPERM`, Latin-1,
+  UTF-16, erro do sistema, erro sem mensagem, cancelamento, dialogo sem
+  caminho, arquivo removido apos a escolha) e
+  `src/preload/configFileApi.test.ts` (canal sem argumentos, argumento do renderer
+  ignorado, so `openConfigFile` exposta); com `fatal: false` os dois testes
+  de UTF-8 falham. `npm test` 442/442, `npm run lint` e `npm run typecheck`
+  aprovados; `npm run package` gera o app, e nele a pagina ve
+  `window.configFile` so com `openConfigFile` e `require`/`process`
+  indefinidos (consulta por CDP). Nao executado ainda: verificacao manual do
+  dialogo no aplicativo (diretorios diferentes, nomes com espaco e acento).
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
   resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
@@ -501,7 +519,7 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-30): E0, E1 e E2 concluidas, com evidencias nas entregas.
+- Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
   #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
   demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
@@ -509,8 +527,11 @@ Issues `[Docs]`, sem fase no Project.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: nenhum item.
-- Proximo passo: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
+- Em andamento: #33 (carregar arquivo escolhido pelo usuario), PR #99.
+  Feito: DEC-32, API com testes, gates e pacote (evidencia em E4). Pendente:
+  verificacao manual do dialogo no aplicativo e aceite de DEC-33.
+- Proximo passo: verificacao manual da #33 e revisao do PR #99; depois #92.
+  Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
