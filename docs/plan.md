@@ -509,8 +509,15 @@ Issues `[Docs]`, sem fase no Project.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: nenhum item.
-- Proximo passo: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
+- Em andamento: #72 (iniciada em 2026-10-31, branch
+  `feat/72-area-trabalho-vazia`). Objetivo: compor a area de trabalho em
+  preparacao (`WorkspaceLayout`, `SimulationToolbar`, `EmptyWorkspace`),
+  entrega 1 do renderer, sem iniciar o motor nem snapshot zero ficticio.
+  Escopo e criterios na issue; fora: formularios, comandos funcionais (#36),
+  paineis (#37), Gantt (#38). Verificado ate agora: linha de base
+  `npm test` 422/422 em 23 arquivos. Proximo passo: definir as decisoes em
+  aberto da composicao e implementar com testes de componente.
+- Depois da #72: #92. Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
