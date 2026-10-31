@@ -130,7 +130,8 @@
                                 "group": [
                                     "**/main/**",
                                     "**/preload/**",
-                                    "**/renderer/**"
+                                    "**/renderer/**",
+                                    "**/shared/**"
                                 ],
                                 "message": "core must not import other layers"
                             }

@@ -1,13 +1,21 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
 import { CONFIG_FILE_CHANNEL } from '../shared/configFile';
-import { openConfigFile } from './configFile';
+import { openConfigFile, shareInFlight } from './configFile';
+import { isAppUrl } from './trustedSender';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
     app.quit();
 }
+
+const indexHtml = path.join(
+    __dirname,
+    `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
+);
+const appUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL || pathToFileURL(indexHtml).href;
 
 const createWindow = () => {
     // Create the browser window.
@@ -23,12 +31,7 @@ const createWindow = () => {
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
-        mainWindow.loadFile(
-            path.join(
-                __dirname,
-                `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
-            ),
-        );
+        mainWindow.loadFile(indexHtml);
     }
 };
 
@@ -38,17 +41,27 @@ const createWindow = () => {
 app.whenReady().then(() => {
     // The handler reads no renderer argument, so the renderer reaches only
     // the file picked here. No extension filter: any name is valid (A.3.3.4).
-    ipcMain.handle(CONFIG_FILE_CHANNEL, (event) => {
-        const options: Electron.OpenDialogOptions = {
-            title: 'Abrir configuração',
-            properties: ['openFile'],
-        };
-        const window = BrowserWindow.fromWebContents(event.sender);
-        return openConfigFile(() =>
-            window
-                ? dialog.showOpenDialog(window, options)
+    // Only the app's own top-level page may ask; a request while the
+    // dialog is open shares its result instead of opening another.
+    const options: Electron.OpenDialogOptions = {
+        title: 'Abrir configuração',
+        properties: ['openFile'],
+    };
+    let parent: BrowserWindow | null = null;
+    const open = shareInFlight(() =>
+        openConfigFile(() =>
+            parent
+                ? dialog.showOpenDialog(parent, options)
                 : dialog.showOpenDialog(options),
-        );
+        ),
+    );
+    ipcMain.handle(CONFIG_FILE_CHANNEL, (event) => {
+        const frame = event.senderFrame;
+        if (!frame || frame.parent || !isAppUrl(frame.url, appUrl)) {
+            throw new Error('Pedido de arquivo de origem não confiável.');
+        }
+        parent = BrowserWindow.fromWebContents(event.sender);
+        return open();
     });
 
     createWindow();

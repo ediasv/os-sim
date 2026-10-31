@@ -11,6 +11,7 @@ export type ConfigFileFailure =
     | 'not-found'
     | 'permission-denied'
     | 'is-directory'
+    | 'too-large'
     | 'not-utf8'
     | 'unknown';
 

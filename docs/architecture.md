@@ -978,7 +978,10 @@ anterior. Data inicial dos registros: 2026-10-12.
     2. A decodificacao e estrita: qualquer sequencia de bytes que nao seja
        UTF-8 valido rejeita o arquivo inteiro. Nenhum byte e trocado por
        `�` e nenhuma outra codificacao e tentada; arquivo em Latin-1,
-       Windows-1252 ou UTF-16 e rejeitado.
+       Windows-1252 ou UTF-16 e rejeitado. UTF-16 sem BOM so com caracteres
+       ASCII forma bytes UTF-8 validos; por isso um byte NUL, que nunca
+       aparece numa configuracao, tambem rejeita o arquivo (revisao da
+       PR #99).
     3. A rejeicao e erro de leitura (DEC-19, item 4), nao de conteudo: informa
        o caminho e que o arquivo nao esta em UTF-8, sem linha nem campo, e o
        parser nao recebe texto. Exemplo: `Nao foi possivel ler o arquivo
@@ -1006,7 +1009,11 @@ anterior. Data inicial dos registros: 2026-10-12.
     1. A interface recebe somente `window.configFile.openConfigFile()`, sem
        argumentos. O preload invoca o canal `config-file:open` sem argumentos
        e o processo principal nao le argumento do renderer: a interface so
-       alcanca o arquivo escolhido no dialogo.
+       alcanca o arquivo escolhido no dialogo. O processo principal so atende
+       o quadro principal da pagina do proprio app (servidor de
+       desenvolvimento pela origem, pacote pelo `index.html` exato) e rejeita
+       outros remetentes. Um pedido com o dialogo ainda aberto recebe o mesmo
+       resultado, sem abrir outro dialogo (revisao da PR #99).
     2. O dialogo nativo aceita qualquer nome, sem filtro de extensao
        (A.3.3.4), e tem como pai a janela que pediu.
     3. O resultado (`ConfigFileResult` em `src/shared/configFile.ts`) e
@@ -1020,8 +1027,15 @@ anterior. Data inicial dos registros: 2026-10-12.
         | `not-found`         | `ENOENT`          | `Não foi possível abrir o arquivo "<p>": o arquivo não foi encontrado.`                                             |
         | `permission-denied` | `EACCES`, `EPERM` | `Não foi possível abrir o arquivo "<p>": permissão negada.`                                                         |
         | `is-directory`      | `EISDIR`          | `Não foi possível abrir o arquivo "<p>": o caminho é um diretório, não um arquivo.`                                 |
+        | `too-large`         | mais de 1 MiB     | `Não foi possível abrir o arquivo "<p>": o arquivo tem mais de 1 MiB e não parece ser uma configuração.`            |
         | `not-utf8`          | UTF-8 invalido    | `Não foi possível ler o arquivo "<p>": o conteúdo não está em UTF-8. Salve o arquivo como UTF-8 e tente novamente.` |
         | `unknown`           | outro erro        | `Não foi possível ler o arquivo "<p>": <motivo do sistema>.`, ou `erro desconhecido` sem motivo                     |
+
+        O limite de tamanho e checado antes da leitura e so evita carregar
+        inteiro no processo principal, e enviar pela IPC, um arquivo grande
+        escolhido por engano; uma configuracao real tem poucas linhas. O
+        `<motivo do sistema>` omite o sufixo `, <syscall> '<caminho>'` do Node,
+        pois o caminho ja esta na frase (revisao da PR #99).
 
     5. Falha do proprio dialogo (rejeicao de `showOpenDialog`) nao e falha de
        leitura: nao ha caminho, e o erro chega a interface como inesperado
