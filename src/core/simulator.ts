@@ -19,7 +19,10 @@ import {
 } from './policy';
 import { drawWinners } from './draw';
 import { createInitialState, takeSnapshot } from './snapshot';
+import { SimulationHistory } from './history';
 import { deepCopy } from './helpers/deepCopy';
+import { freezeCopy } from './helpers/freezeCopy';
+import { thawCopy } from './helpers/thawCopy';
 import { key } from './helpers/key';
 
 const NO_WORK_POLICY: SchedulingPolicy = {
@@ -81,7 +84,7 @@ export interface ExecutionGuardResult {
 export class Simulator {
     private state: SimulationState;
     private readonly policy: SchedulingPolicy;
-    private snapshotHistory: SimulationSnapshot[] = [];
+    private readonly history = new SimulationHistory();
 
     constructor(
         config: SystemConfig = DEFAULT_CONFIG,
@@ -124,18 +127,41 @@ export class Simulator {
         return findEligibleJobs(this.state);
     }
 
+    /** Snapshot at the cursor: the newest step, unless the history was moved back by `restore`. */
     public getLatestSnapshot(): SimulationSnapshot {
-        const latestSnapshot = this.snapshotHistory.at(-1);
+        return this.history.current();
+    }
 
-        if (!latestSnapshot) {
-            throw new Error('Snapshot history is empty');
-        }
+    /** Recorded step `index` (REQ-04); throws RangeError when there is none. */
+    public getSnapshot(index: number): SimulationSnapshot {
+        return this.history.at(index);
+    }
 
-        return latestSnapshot;
+    /** Index of the step in use; the newest one unless `restore` moved it back. */
+    public get cursor(): number {
+        return this.history.cursor;
+    }
+
+    public get snapshotCount(): number {
+        return this.history.snapshotCount;
+    }
+
+    /**
+     * Makes step `index` the live state again and moves the cursor to it
+     * (DEC-35). The live state is a fresh copy, so later ticks never change
+     * the recorded step. Rejects a missing step before touching anything.
+     */
+    public restore(index: number): void {
+        const snapshot = this.history.at(index);
+        const live = thawCopy(snapshot) as SimulationState;
+        // The validated configuration is frozen; keep it frozen after restoring (DEC-14).
+        live.config = freezeCopy(live.config);
+        this.state = live;
+        this.history.moveTo(index);
     }
 
     private recordSnapshot(): void {
-        this.snapshotHistory.push(takeSnapshot(this.state));
+        this.history.append(takeSnapshot(this.state));
     }
 
     /** Executes exactly [clock, clock + 1) on each dispatched CPU. */

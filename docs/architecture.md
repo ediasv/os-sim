@@ -25,6 +25,8 @@ afirma que os modulos planejados ja existem.
   (DEC-29, DEC-34).
 
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
+- [Historico](../src/core/history.ts): snapshots publicados e cursor; o
+  `Simulator` restaura a partir dele (DEC-35).
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
 - [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
@@ -981,6 +983,56 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Limite: a decisao cobre a fronteira `loadConfig`; falhas de leitura do
   arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
   exibicao continua fora do escopo da #92 (#36).
+
+### DEC-35: Historico de snapshots com cursor e restauracao
+
+- Estado: proposta em 2026-10-31 na #23, aguardando aceite do usuario.
+  Requisitos: REQ-04, REQ-05. Detalha DEC-06 e DEC-14; mantem a copia integral
+  de DEC-30 e fecha a revisao de custo pedida em DEC-12, DEC-14 e DEC-21.
+- Decisao:
+    1. `SimulationHistory` ([history.ts](../src/core/history.ts)) guarda os
+       snapshots publicados e o cursor, sem conhecer o motor. O `Simulator` o
+       possui e so o altera depois de um passo bem-sucedido ou numa restauracao.
+    2. `Simulator.restore(k)` torna o passo k o estado vivo e move o cursor para
+       k. A copia viva vem de `thawCopy`, sem congelar; a configuracao volta a
+       ser congelada (DEC-10, DEC-14). Indice fora de 0 ate a contagem menos um
+       lanca `RangeError` sem alterar nada.
+    3. Consultas: `getSnapshot(k)`, `cursor` e `snapshotCount`.
+       `getLatestSnapshot()` devolve o passo no cursor, que e o ultimo enquanto
+       nao houver restauracao.
+    4. Um passo com cursor antes do fim recalcula a partir do estado restaurado
+       e substitui os passos posteriores ao cursor somente apos o sucesso
+       (DEC-14). Se o passo falha, cursor, passos e estado ficam iguais.
+    5. Cada passo continua com copia integral congelada (DEC-30). Medicao com
+       `tick()` repetido, RM, 2 CPUs, tarefas (duracao, periodo = prazo) de
+       (300, 1000), (500, 1500) e (800, 2500), ingresso 0, heap apos `gc()`,
+       Node 25.8.0 (diferente do 24.22.1 de DEC-30):
+
+        | ticks | snapshots | tempo | heap   | media por snapshot |
+        | ----- | --------- | ----- | ------ | ------------------ |
+        | 1.000 | 1.001     | 0,5 s | 23 MB  | 23 KB              |
+        | 2.000 | 2.001     | 1,4 s | 49 MB  | 25 KB              |
+        | 4.000 | 4.001     | 4,5 s | 165 MB | 42 KB              |
+
+        O crescimento segue o mesmo padrao de DEC-30: cada snapshot copia os
+        eventos e os trechos acumulados, logo o total cresce perto de
+        quadraticamente. Os valores absolutos diferem da tabela de DEC-30 por
+        maquina e versao do Node.
+- Justificativa: restaurar exige o estado inteiro (REQ-04), e a copia integral
+  ja foi aceita em DEC-30; a medicao confirma o custo sem mudar essa decisao
+  para os cenarios previstos. Recalcular em vez de reutilizar o futuro deixa o
+  reuso para a #24, sem decidi-lo aqui. Falha de passo nao pode apagar o futuro
+  (DEC-14).
+- Consequencia: a #24 pode mover o cursor com `restore` e decide como reusar o
+  futuro. Restaurar copia o estado inteiro, O(estado). Passos gravados antes da
+  restauracao continuam congelados e iguais (`src/core/restore.test.ts`).
+- Alternativas descartadas:
+    - Compartilhamento estrutural entre passos: reabre DEC-30 e adiciona
+      complexidade sem beneficio para os cenarios previstos.
+    - Descartar o futuro ao restaurar: uma falha do passo seguinte o perderia,
+      contra DEC-14.
+    - Recusar passos com cursor antes do fim: bloquearia a edicao do passado
+      sem ganho antes da #24.
 
 ## Fluxo de um passo
 

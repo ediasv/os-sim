@@ -276,6 +276,8 @@ Requisito: REQ-07.
 Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
+  Implementada em branch local, aguardando aceite da DEC-35 e PR; `npm test`
+  (448), `npm run lint` e `npm run typecheck` aprovados; custo de memoria em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
@@ -543,8 +545,8 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
-  iniciadas. E4: #29, #30, #31, #32, #87, #89, #92 e #94 concluidas;
+  E3: #25 iniciada (PR #101, rascunho); #23 implementada, aguarda DEC-35 e
+  PR; #24 e #26 a #28 nao iniciadas. E4: #29, #30, #31, #32, #87, #89, #92 e #94 concluidas;
   #33 em andamento; #34 e #93 abertas. E5: #35, #67, #68, #69, #70 e #71
   concluidas; #72 em andamento; #36 a #40 e #73 nao iniciados.
   E6: #80 concluida; demais abertas.
