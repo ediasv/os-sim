@@ -643,9 +643,12 @@ Issues `[Docs]`, sem fase no Project.
   edicao (progresso, duracao, periodo, ingresso, prazo, estado,
   inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
   atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
-  #26/#38. Passos pendentes: acordar a matriz, registrar a DEC, resolver Q-02,
-  atualizar DEC-12 e as issues #26, #37 e #38 se mudarem, conferir links e IDs.
-- Proximo passo: acordar a matriz da #25, pois ela destrava #26 e o Gantt
+  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-32
+  (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
+  PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
+  verificado com `oxfmt --check`. Pendentes: aceite de DEC-32 e atualizacao
+  das issues #26, #37 e #38.
+- Proximo passo: aceite de DEC-32 na #25, pois ela destrava #26 e o Gantt
   (#38); #23 e #24 nao dependem dela e podem seguir em paralelo a ela, nessa
   ordem (a #24 depende da #23). Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem

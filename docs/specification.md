@@ -169,11 +169,11 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: definir matriz de edicao: progresso, duracao, periodo, ingresso, prazo,
-  estado, inclusao/remocao de tarefas e efeito sobre jobs ja ativados. Nao
-  reescrever retroativamente fatos anteriores a edicao. Incluir os eventos de
-  suspensao e retomada que o Gantt (REQ-09) precisa para exibir trechos
-  suspensos; o modelo atual ainda nao os tem (DEC-12).
+- Q-02: resolvida em 2026-10-31 por DEC-32 (edicoes valem para o futuro sem
+  alterar o historico executado; cor, duracao, periodo, prazo e estado
+  editaveis; ID, ingresso e ticks executados fixos; inclusao e remocao de
+  tarefas; algoritmo, quantum e CPUs editaveis; eventos de suspensao e
+  retomada para o Gantt).
 - Q-03: resolvida em 2026-10-17 por DEC-19. DEC-10 fixou valores padrao, zero,
   campos ausentes, IDs e limites numericos; DEC-19 define diagnosticos do parser,
   numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
