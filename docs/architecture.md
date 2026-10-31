@@ -970,8 +970,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-32: Codificacao do arquivo de configuracao
 
-- Estado: aceita em 2026-10-31 pelo usuario (#33). Requisitos: REQ-06,
-  REQ-10. Detalha DEC-19 (item 4, falhas de leitura) e DEC-20 (item 3, BOM).
+- Estado: aceita em 2026-10-31 pelo usuario (#33); revisao da PR #99 (byte
+  NUL) aceita em 2026-10-31. Requisitos: REQ-06, REQ-10. Detalha DEC-19 (item 4, falhas de leitura) e DEC-20 (item 3, BOM).
 - Decisao:
     1. O arquivo de configuracao precisa estar em UTF-8. Texto so ASCII e
        UTF-8 valido. A marca BOM inicial continua aceita (DEC-20).
@@ -1003,8 +1003,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-33: API de carga do arquivo de configuracao
 
-- Estado: aceita em 2026-10-31 pelo usuario (#33, PR #99). Requisitos:
-  REQ-06, REQ-10. Detalha DEC-19 (itens 4 e 5), DEC-24 e DEC-32.
+- Estado: aceita em 2026-10-31 pelo usuario (#33, PR #99); revisao da PR #99
+  (remetente, dialogo unico, `too-large` com limite de 1 MiB, motivo sem
+  caminho) aceita em 2026-10-31. Requisitos: REQ-06, REQ-10. Detalha DEC-19 (itens 4 e 5), DEC-24 e DEC-32.
 - Decisao:
     1. A interface recebe somente `window.configFile.openConfigFile()`, sem
        argumentos. O preload invoca o canal `config-file:open` sem argumentos
@@ -1019,7 +1020,9 @@ anterior. Data inicial dos registros: 2026-10-12.
     3. O resultado (`ConfigFileResult` em `src/shared/configFile.ts`) e
        `loaded` (caminho e texto, sem BOM), `canceled` (cancelar, ou dialogo
        sem caminho) ou `failed` (caminho, motivo e mensagem pronta para
-       exibir). A carga nunca rejeita por falha de leitura.
+       exibir). A carga nunca rejeita por falha de leitura. Remetente nao
+       confiavel (item 1) rejeita o pedido sem resultado: nao e falha de
+       leitura e nao ocorre com a interface do app.
     4. Motivos e mensagens de `failed` (`<p>` e o caminho escolhido):
 
         | motivo              | causa             | mensagem                                                                                                            |
