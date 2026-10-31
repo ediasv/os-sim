@@ -13,6 +13,7 @@ import {
 import { DEFAULT_TASK_PERIOD, type SystemConfig } from './domain';
 import {
     analyzeConfig,
+    type ConfigDiagnosticValueKind,
     type ConfigDraft,
     type ConfigParseIssue,
     type ConfigSourceLines,
@@ -30,7 +31,12 @@ export type ConfigLoadResult =
           /** One per task that received the default period, in file order. */
           readonly warnings: readonly ConfigLoadWarning[];
       }
-    | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
+    | {
+          readonly ok: false;
+          readonly issues: readonly ConfigParseIssue[];
+          /** Warnings produced before core validation rejected the config. */
+          readonly warnings: readonly ConfigLoadWarning[];
+      };
 
 /**
  * Parses and validates the text. The core sees the file only when it has no
@@ -41,7 +47,7 @@ export type ConfigLoadResult =
  */
 export function loadConfig(text: string): ConfigLoadResult {
     const analysis = analyzeConfig(text);
-    if (!analysis.ok) return analysis;
+    if (!analysis.ok) return { ...analysis, warnings: [] };
 
     const { draft } = analysis;
     const { config, warnings } = applyDefaultPeriod(draft);
@@ -57,6 +63,7 @@ export function loadConfig(text: string): ConfigLoadResult {
     return {
         ok: false,
         issues: validation.issues.map((issue) => placeOnFile(issue, draft)),
+        warnings,
     };
 }
 
@@ -81,6 +88,8 @@ function applyDefaultPeriod(draft: ConfigDraft): {
             line,
             field,
             value,
+            valueKind: value === null ? 'missing' : 'received',
+            origin: 'default-period',
             taskId: task.id,
             message: `Linha ${line}, campo ${field}${received}: toda tarefa precisa de período maior que zero; a tarefa ${task.id} usará o período padrão de ${DEFAULT_TASK_PERIOD} ticks.`,
         });
@@ -107,12 +116,19 @@ function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
             : draft.taskTexts[taskIndex];
     const field = FILE_LABELS[issue.field];
     const value = issue.combined ? null : (texts[issue.field] ?? null);
+    const valueKind: ConfigDiagnosticValueKind = issue.combined
+        ? 'combined'
+        : value === null
+          ? 'missing'
+          : 'received';
     const received = value === null ? '' : ` (valor ${value})`;
 
     return {
         line,
         field,
         value,
+        valueKind,
+        origin: 'core',
         message: `Linha ${line}, campo ${field}${received}: ${issue.message}`,
     };
 }
