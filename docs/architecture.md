@@ -998,7 +998,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-33: API de carga do arquivo de configuracao
 
-- Estado: proposta no PR #99 (#33), aguardando aceite do usuario. Requisitos:
+- Estado: aceita em 2026-10-31 pelo usuario (#33, PR #99). Requisitos:
   REQ-06, REQ-10. Detalha DEC-19 (itens 4 e 5), DEC-24 e DEC-32.
 - Decisao:
     1. A interface recebe somente `window.configFile.openConfigFile()`, sem

@@ -380,7 +380,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
   Em andamento (2026-10-31, PR #99 rascunho). Codificacao decidida pelo
   usuario: UTF-8 com ou sem BOM; conteudo que nao e UTF-8 valido e rejeitado
-  como falha de leitura (DEC-32). API proposta em DEC-33 (aguarda aceite):
+  como falha de leitura (DEC-32). API em DEC-33 (aceita pelo usuario em 2026-10-31):
   `src/shared/configFile.ts` (canal e tipos), `src/main/configFile.ts`
   (leitura, sem lancar), `src/preload/configFileApi.ts` (unica funcao, sem
   argumentos) e o canal IPC em `src/main/main.ts`; lint impede `shared/` de
@@ -533,8 +533,8 @@ Issues `[Docs]`, sem fase no Project.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
 - Em andamento: #33 (carregar arquivo escolhido pelo usuario), PR #99.
   Feito: DEC-32, API com testes, gates, pacote e verificacao manual
-  (evidencia em E4). Pendente: aceite de DEC-33 e revisao do PR #99.
-- Proximo passo: revisao do PR #99 e aceite de DEC-33; depois #92.
+  (evidencia em E4). DEC-33 aceita. Pendente: revisao do PR #99.
+- Proximo passo: revisao do PR #99; depois #92.
   Manter os diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
