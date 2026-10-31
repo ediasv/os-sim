@@ -51,8 +51,16 @@ afirma que os modulos planejados ja existem.
   `tick`, que devolvem resultado (DEC-23).
 - [Erros da interface](../src/renderer/errors.ts): banner global e
   `commandFailure`, que classifica erros dos comandos (DEC-24).
-- [Processo principal](../src/main/main.ts): janela Electron.
-- [Preload](../src/preload/preload.ts): ainda sem API de arquivos.
+- [Processo principal](../src/main/main.ts): janela Electron e canal IPC que
+  abre o dialogo nativo da configuracao, sem filtro de extensao (DEC-33).
+- [Leitura do arquivo](../src/main/configFile.ts): le o arquivo escolhido,
+  decodifica UTF-8 estrito e converte cancelamento e falhas de leitura em
+  resultado, sem lancar (DEC-19, DEC-32, DEC-33).
+- [Preload](../src/preload/preload.ts) e
+  [API de arquivo](../src/preload/configFileApi.ts): expoem somente
+  `window.configFile.openConfigFile()`, sem argumentos (DEC-33).
+- [Contrato compartilhado](../src/shared/configFile.ts): canal e tipos do
+  resultado da carga, usados por main, preload e interface (DEC-33).
 
 ## Modulos planejados
 
@@ -987,6 +995,41 @@ anterior. Data inicial dos registros: 2026-10-12.
   decodificador estrito (por exemplo, `TextDecoder('utf-8', { fatal: true })`);
   a interface recebe so o texto ou o motivo da falha. Arquivo vazio e UTF-8
   valido e segue para o parser.
+
+### DEC-33: API de carga do arquivo de configuracao
+
+- Estado: proposta no PR #99 (#33), aguardando aceite do usuario. Requisitos:
+  REQ-06, REQ-10. Detalha DEC-19 (itens 4 e 5), DEC-24 e DEC-32.
+- Decisao:
+    1. A interface recebe somente `window.configFile.openConfigFile()`, sem
+       argumentos. O preload invoca o canal `config-file:open` sem argumentos
+       e o processo principal nao le argumento do renderer: a interface so
+       alcanca o arquivo escolhido no dialogo.
+    2. O dialogo nativo aceita qualquer nome, sem filtro de extensao
+       (A.3.3.4), e tem como pai a janela que pediu.
+    3. O resultado (`ConfigFileResult` em `src/shared/configFile.ts`) e
+       `loaded` (caminho e texto, sem BOM), `canceled` (cancelar, ou dialogo
+       sem caminho) ou `failed` (caminho, motivo e mensagem pronta para
+       exibir). A carga nunca rejeita por falha de leitura.
+    4. Motivos e mensagens de `failed` (`<p>` e o caminho escolhido):
+
+        | motivo              | causa             | mensagem                                                                                                            |
+        | ------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+        | `not-found`         | `ENOENT`          | `Não foi possível abrir o arquivo "<p>": o arquivo não foi encontrado.`                                             |
+        | `permission-denied` | `EACCES`, `EPERM` | `Não foi possível abrir o arquivo "<p>": permissão negada.`                                                         |
+        | `is-directory`      | `EISDIR`          | `Não foi possível abrir o arquivo "<p>": o caminho é um diretório, não um arquivo.`                                 |
+        | `not-utf8`          | UTF-8 invalido    | `Não foi possível ler o arquivo "<p>": o conteúdo não está em UTF-8. Salve o arquivo como UTF-8 e tente novamente.` |
+        | `unknown`           | outro erro        | `Não foi possível ler o arquivo "<p>": <motivo do sistema>.`, ou `erro desconhecido` sem motivo                     |
+
+    5. Falha do proprio dialogo (rejeicao de `showOpenDialog`) nao e falha de
+       leitura: nao ha caminho, e o erro chega a interface como inesperado
+       (DEC-24).
+- Justificativa: sem caminho vindo da interface, um renderer comprometido nao
+  le arquivos arbitrarios. A mensagem pronta mantem as frases de DEC-19 num
+  so lugar, e o motivo em codigo permite a #36 tratar casos sem analisar
+  texto. Cancelar como resultado proprio evita confundir com erro.
+- Consequencia: o texto carregado segue para `loadConfig`; a #36 exibe
+  `message` das falhas e ignora `canceled`.
 
 ## Fluxo de um passo
 
