@@ -280,6 +280,8 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
+  Em andamento no PR #101 (rascunho, so o registro de inicio ate
+  2026-10-31); matriz ainda nao acordada com o usuario.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -379,20 +381,26 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   aviso da conversao ficou na #92. Nao verificado: exibicao na interface
   (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
+  Em andamento no PR #99 (rascunho): `src/shared/configFile.ts`, leitura no
+  main com UTF-8 estrito e falhas de leitura como resultado. DEC-32 (aceita) e
+  DEC-33 (proposta) existem so nesse branch, por isso `main` vai de DEC-31 a
+  DEC-34. Pendentes: verificacao manual do dialogo e aceite da DEC-33.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
-- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Implementacao
-  pronta para revisao neste worktree: `ConfigParseIssue` agora expoe `valueKind` e `origin`, sem
-  alterar `value` nem as mensagens de DEC-19; `loadConfig` preserva
-  `ConfigLoadWarning[]` em falhas semanticas apos aplicar o periodo 15. Teste
-  focado cobre sintaxe com valor ausente, problema `combined` do nucleo e
-  conversao que causa falha no prazo da ultima ativacao. Limitacoes: sem
-  interface (#36), sem ponte main/preload (#33), e sem antecipar edicoes ou
-  suspensao (#25) ou composicao visual (#72). Verificacao concluida: `npm test`
-  432/432, `npm run lint`, `npm run typecheck`, `git diff --check` e links/IDs
-  locais conferidos. DEC-34 permanece proposta. Proximo passo: abrir PR para
-  revisao e decisao, sem fechar a issue ainda.
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
+  no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
+  `ConfigParseIssue` expoe `valueKind` (`received`, `missing`, `combined`) e
+  `origin` (`syntax`, `core`, `default-period`), sem alterar `value` nem as
+  mensagens de DEC-19; `loadConfig` preserva `ConfigLoadWarning[]` em falhas
+  semanticas apos aplicar o periodo 15. Testes cobrem sintaxe com valor
+  ausente, problema `combined` do nucleo e conversao que causa falha no prazo
+  da ultima ativacao. Evidencia (PR #102): `npm test` 432/432, `npm run lint`,
+  `npm run typecheck`, `git diff --check` e links/IDs locais conferidos.
+  Pendente: DEC-34 continua proposta na arquitetura, embora o codigo esteja
+  em `main`; falta o aceite do usuario ou a revisao da decisao. Nao executado:
+  interface (#36) e ponte main/preload (#33).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
-  nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
+  nucleo. Aberta (decisao sobre DEC-19); a dependencia do PR #84 ja foi
+  satisfeita (merged, `37ab733`, 2026-10-28).
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -443,12 +451,14 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- #69 Preparar os dados de apresentacao para a inspecao. Implementacao local
-  iniciada em `src/renderer/features/inspection/inspection.ts`, com projecoes
-  puras para tick, tarefas, jobs, estados, elegibilidade, perda de prazo,
-  tarefas aguardando/terminadas e CPU desligada; jobs futuros sao referencias
-  de apresentacao sem progresso ou estado atual. Teste focado e parte da suite
-  completa passam; revisao em [PR #103](https://github.com/ediasv/os-sim/pull/103).
+- #69 Preparar os dados de apresentacao para a inspecao. Concluida no PR #103
+  (merged, `48cf6d5`, 2026-10-31), com correcoes da revisao no PR #104
+  (merged, `53e3a4c`, 2026-10-31), que fechou a issue.
+  `src/renderer/features/inspection/inspection.ts` projeta tick, tarefas,
+  jobs, estados, elegibilidade, perda de prazo, tarefas aguardando/terminadas
+  e CPU desligada usando `findEligibleJobs` e `summarizeCpuOff`, sem
+  reimplementar regras do nucleo; jobs futuros sao referencias de
+  apresentacao sem progresso ou estado atual. Evidencia em conjunto com a #71.
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
   no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
@@ -458,13 +468,25 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   visual com o Figma nao executados.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
-- #71 Apresentar tarefas e jobs com selecao independente do tempo. Componentes
-  isolados em `src/renderer/features/inspection/` mantem selecao independente
-  do tick e cobrem teclado, estados separados e job futuro sem restaurar o
-  tempo. Teste focado e parte da suite completa passam; integracao com
-  historico/cursor real permanece dependencia de #36/#23/#24; revisao em
-  [PR #103](https://github.com/ediasv/os-sim/pull/103).
-- #72 Compor a area de trabalho vazia em preparacao.
+- #71 Apresentar tarefas e jobs com selecao independente do tempo. Concluida
+  no PR #103 (merged, `48cf6d5`) e PR #104 (merged, `53e3a4c`, 2026-10-31,
+  fechou a issue). `TaskList`, `TaskDetails`, `JobTable` e `InspectionPanel`
+  em `src/renderer/features/inspection/` mantem selecao independente do tick,
+  com teclado (Enter/Espaco), listas rolaveis e job futuro selecionavel sem
+  restaurar o tempo. O PR #104 reutiliza os rotulos em portugues entre lista e
+  detalhes, reconcilia a tarefa selecionada quando os dados mudam e limpa so o
+  job que deixou de existir. Evidencia: PR #103 com `npm test` 429/429,
+  typecheck, `oxlint` e `oxfmt --check` dos arquivos da implementacao, e
+  verificacao visual com fixtures temporarias (1440x924 e 390x844); PR #104
+  com testes focados 8/8, `npm test` 432/432, typecheck, `oxlint`, `oxfmt
+  --check` do escopo alterado e `git diff --check`. `npm run lint` completo
+  nao passou nos worktrees desses PRs por um panic do `oxfmt` em Markdown.
+  Reproduzido em 2026-10-31 num checkout local: o panic vem so de
+  `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
+  nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
+  real, que depende de #36/#23/#24.
+- #72 Compor a area de trabalho vazia em preparacao. Em andamento no PR #100
+  (rascunho, so o registro de inicio ate 2026-10-31).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
 ### E6: Entrega e demonstracao
@@ -521,18 +543,22 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
-  #69 e #71 implementadas com testes; correcoes pos-merge em revisao no PR
-  #104; demais itens visuais (#36 a #40, #72, #73) nao iniciados.
+  E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
+  iniciadas. E4: #29, #30, #31, #32, #87, #89, #92 e #94 concluidas;
+  #33 em andamento; #34 e #93 abertas. E5: #35, #67, #68, #69, #70 e #71
+  concluidas; #72 em andamento; #36 a #40 e #73 nao iniciados.
   E6: #80 concluida; demais abertas.
-- #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
-- #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
-- #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: revisao do PR #104, que corrige os achados pos-merge do PR
-  #103; #69 e #71 seguem vinculadas, sem misturar a composicao da #72.
-- Proximo passo: revisar o PR #104 e manter os diagnosticos de DEC-19 no
-  escopo da #34.
+- #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
+- #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
+  evidencia em E5.
+- Em andamento (rascunhos): PR #101 (#25, matriz de edicao e eventos de
+  suspensao/retomada; so o registro de inicio), PR #99 (#33, carga via main e
+  preload; falta verificacao manual do dialogo e aceite da DEC-33) e PR #100
+  (#72; so o registro de inicio).
+- Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
+  destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
+  paralelo a ela, nessa ordem (a #24 depende da #23). Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no
+  escopo da #34. Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
