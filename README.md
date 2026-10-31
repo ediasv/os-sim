@@ -48,6 +48,7 @@ src/
   preload/    bridge that exposes a small API from main to the renderer
   renderer/   Vue app: components/, composables/
   core/       simulator rules in plain TypeScript
+  shared/     types and constants used by main, preload and renderer
 ```
 
 Import rules, enforced by `npm run lint` and `npm run typecheck`:
@@ -55,10 +56,11 @@ Import rules, enforced by `npm run lint` and `npm run typecheck`:
 - `core/` imports nothing from Vue, Electron, Node or the other folders.
 - `renderer/` may import `core/`, but never `electron`, Node built-ins (`fs`, `os`, `node:*`, …), `main/` or `preload/`.
 - `main/` and `preload/` never import `renderer/`.
+- `shared/` imports nothing from Vue, Electron, Node or the other folders; any process may import it.
 
 The UI never holds simulator objects. `useSimulation` keeps a `Simulator` privately and publishes immutable snapshots through a `shallowRef`.
 
-When main and the renderer first need to share types (for example, the config file API), put them in `src/shared/`.
+Types shared by main and the renderer, such as the config file API, live in `src/shared/`.
 
 ## Contributing
 
