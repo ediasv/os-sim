@@ -21,7 +21,9 @@ afirma que os modulos planejados ja existem.
   `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
   campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
   semanticas. Antes do `validateConfig`, aplica o periodo padrao a tarefa com
-  periodo zero e devolve `warnings` no sucesso (DEC-29).
+  periodo zero e devolve `warnings` no sucesso ou junto dos problemas do nucleo
+  (DEC-29, DEC-34).
+
 - [Snapshot](../src/core/snapshot.ts): estado inicial e copia profunda congelada.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
@@ -1030,6 +1032,29 @@ anterior. Data inicial dos registros: 2026-10-12.
   texto. Cancelar como resultado proprio evita confundir com erro.
 - Consequencia: o texto carregado segue para `loadConfig`; a #36 exibe
   `message` das falhas e ignora `canceled`.
+
+### DEC-34: Diagnosticos tipados na fronteira de carga
+
+- Estado: proposta em 2026-10-31 na #92. Requisitos: REQ-06, REQ-10. Preserva
+  DEC-19 e complementa DEC-29; requer revisao do usuario antes de fechar a
+  issue.
+- Decisao: todo `ConfigParseIssue` expoe `origin` (`syntax`, `core` ou
+  `default-period`) e `valueKind` (`received`, `missing` ou `combined`). O
+  campo `value` permanece `string | null` e as mensagens de DEC-19 nao mudam.
+  `loadConfig` preserva os avisos de conversao para periodo 15 no resultado de
+  falha semantica, junto dos problemas do nucleo; falhas de sintaxe nao geram
+  avisos porque a conversao nao e aplicada.
+- Justificativa: `null` representa tanto valor ausente quanto a ausencia de um
+  unico valor responsavel por um problema combinado. Metadados estruturais
+  evitam que consumidores dependam do texto da mensagem e deixam explicita a
+  origem do diagnostico. Transportar o aviso na falha informa qual periodo o
+  nucleo validou, sem tratar a conversao como erro.
+- Alternativas descartadas: trocar `value` por uma uniao estruturada, o que
+  quebraria consumidores de DEC-19; alterar as mensagens para codificar a
+  distincao; ou descartar avisos quando a validacao falha, como fazia DEC-29.
+- Limite: a decisao cobre a fronteira `loadConfig`; falhas de leitura do
+  arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
+  exibicao continua fora do escopo da #92 (#36).
 
 ## Fluxo de um passo
 

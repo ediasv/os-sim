@@ -280,6 +280,8 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
+  Em andamento no PR #101 (rascunho, so o registro de inicio ate
+  2026-10-31); matriz ainda nao acordada com o usuario.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -364,7 +366,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   da #37 em 2026-10-28. Concluida no PR #98 (merged, `d43962b`,
   2026-10-30): `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
   antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
-  sucesso. Evidencia: bloco `default period (DEC-29)` em
+  sucesso. Desde a #92, tambem preserva os avisos quando a validacao semantica
+  falha. Evidencia: bloco `default period (DEC-29)` em
   `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
   avisos com periodo positivo, simulacao igual a periodo 15 com dez
   ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
@@ -401,11 +404,21 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   arquivo Latin-1 como `not-utf8` e arquivo sem permissao como
   `permission-denied`. Nao verificado: disco externo e outras plataformas.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
-- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
-  resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
-  PR #98, a falha de carga que perde o aviso do periodo padrao (DEC-29).
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
+  no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
+  `ConfigParseIssue` expoe `valueKind` (`received`, `missing`, `combined`) e
+  `origin` (`syntax`, `core`, `default-period`), sem alterar `value` nem as
+  mensagens de DEC-19; `loadConfig` preserva `ConfigLoadWarning[]` em falhas
+  semanticas apos aplicar o periodo 15. Testes cobrem sintaxe com valor
+  ausente, problema `combined` do nucleo e conversao que causa falha no prazo
+  da ultima ativacao. Evidencia (PR #102): `npm test` 432/432, `npm run lint`,
+  `npm run typecheck`, `git diff --check` e links/IDs locais conferidos.
+  Pendente: DEC-34 continua proposta na arquitetura, embora o codigo esteja
+  em `main`; falta o aceite do usuario ou a revisao da decisao. Nao executado:
+  interface (#36) e ponte main/preload (#33).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
-  nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
+  nucleo. Aberta (decisao sobre DEC-19); a dependencia do PR #84 ja foi
+  satisfeita (merged, `37ab733`, 2026-10-28).
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -456,7 +469,14 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- #69 Preparar os dados de apresentacao para a inspecao.
+- #69 Preparar os dados de apresentacao para a inspecao. Concluida no PR #103
+  (merged, `48cf6d5`, 2026-10-31), com correcoes da revisao no PR #104
+  (merged, `53e3a4c`, 2026-10-31), que fechou a issue.
+  `src/renderer/features/inspection/inspection.ts` projeta tick, tarefas,
+  jobs, estados, elegibilidade, perda de prazo, tarefas aguardando/terminadas
+  e CPU desligada usando `findEligibleJobs` e `summarizeCpuOff`, sem
+  reimplementar regras do nucleo; jobs futuros sao referencias de
+  apresentacao sem progresso ou estado atual. Evidencia em conjunto com a #71.
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
   no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
@@ -466,8 +486,25 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   visual com o Figma nao executados.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
-- #71 Apresentar tarefas e jobs com selecao independente do tempo.
-- #72 Compor a area de trabalho vazia em preparacao.
+- #71 Apresentar tarefas e jobs com selecao independente do tempo. Concluida
+  no PR #103 (merged, `48cf6d5`) e PR #104 (merged, `53e3a4c`, 2026-10-31,
+  fechou a issue). `TaskList`, `TaskDetails`, `JobTable` e `InspectionPanel`
+  em `src/renderer/features/inspection/` mantem selecao independente do tick,
+  com teclado (Enter/Espaco), listas rolaveis e job futuro selecionavel sem
+  restaurar o tempo. O PR #104 reutiliza os rotulos em portugues entre lista e
+  detalhes, reconcilia a tarefa selecionada quando os dados mudam e limpa so o
+  job que deixou de existir. Evidencia: PR #103 com `npm test` 429/429,
+  typecheck, `oxlint` e `oxfmt --check` dos arquivos da implementacao, e
+  verificacao visual com fixtures temporarias (1440x924 e 390x844); PR #104
+  com testes focados 8/8, `npm test` 432/432, typecheck, `oxlint`, `oxfmt
+  --check` do escopo alterado e `git diff --check`. `npm run lint` completo
+  nao passou nos worktrees desses PRs por um panic do `oxfmt` em Markdown.
+  Reproduzido em 2026-10-31 num checkout local: o panic vem so de
+  `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
+  nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
+  real, que depende de #36/#23/#24.
+- #72 Compor a area de trabalho vazia em preparacao. Em andamento no PR #100
+  (rascunho, so o registro de inicio ate 2026-10-31).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
 ### E6: Entrega e demonstracao
@@ -524,22 +561,27 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
-  demais itens visuais (#36 a #40, #69, #71 a #73) nao iniciados.
+  E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
+  iniciadas. E4: #29, #30, #31, #32, #87, #89, #92 e #94 concluidas;
+  #33 em andamento; #34 e #93 abertas. E5: #35, #67, #68, #69, #70 e #71
+  concluidas; #72 em andamento; #36 a #40 e #73 nao iniciados.
   E6: #80 concluida; demais abertas.
-- #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
-- #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
-- #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: #33 (carregar arquivo escolhido pelo usuario), PR #99.
-  Feito: DEC-32, API com testes, gates, pacote e verificacao manual
-  (evidencia em E4). DEC-33 aceita. Pendente: revisao do PR #99.
-- Proximo passo: revisao do PR #99; depois #92.
-  Manter os diagnosticos de DEC-19 no escopo da #34.
+- #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
+- #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
+  evidencia em E5.
+- Em andamento (rascunhos): PR #101 (#25, matriz de edicao e eventos de
+  suspensao/retomada; so o registro de inicio), PR #99 (#33, carga via main e
+  preload; verificacao manual feita e DEC-33 aceita, falta revisao) e PR #100
+  (#72; so o registro de inicio).
+- Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
+  destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
+  paralelo a ela, nessa ordem (a #24 depende da #23). Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no
+  escopo da #34. Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
-- Bloqueios: nenhum.
+- Bloqueios: a integracao de selecao futura com historico/cursor real depende
+  de #36/#23/#24; a apresentacao isolada com dados tipados foi verificada.
 
 ## Como registrar uma entrega
 
