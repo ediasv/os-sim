@@ -138,6 +138,19 @@ describe('readConfigFile', () => {
         });
     });
 
+    it('reports an error without message or code as unknown', async () => {
+        const path = '/algum/arquivo.txt';
+
+        expect(
+            await readConfigFile(path, () => Promise.reject(new Error(''))),
+        ).toEqual({
+            status: 'failed',
+            path,
+            reason: 'unknown',
+            message: `Não foi possível ler o arquivo "${path}": erro desconhecido.`,
+        });
+    });
+
     it('reports a thrown non-error as unknown', async () => {
         const path = '/algum/arquivo.txt';
 

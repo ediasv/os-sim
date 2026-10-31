@@ -391,7 +391,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   caminho, arquivo removido apos a escolha) e
   `src/preload/configFileApi.test.ts` (canal sem argumentos, argumento do renderer
   ignorado, so `openConfigFile` exposta); com `fatal: false` os dois testes
-  de UTF-8 falham. `npm test` 441/441, `npm run lint` e `npm run typecheck`
+  de UTF-8 falham. `npm test` 442/442, `npm run lint` e `npm run typecheck`
   aprovados; `npm run package` gera o app, e nele a pagina ve
   `window.configFile` so com `openConfigFile` e `require`/`process`
   indefinidos (consulta por CDP). Nao executado ainda: verificacao manual do
