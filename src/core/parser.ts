@@ -35,10 +35,18 @@ const TASK_FORMAT = [
 /** Field an issue points at: a file field, or the missing header or task line. */
 export type ConfigParseField = FileFieldLabel | 'cabecalho' | 'tarefa';
 
+/** Origin of a diagnostic exposed by the configuration load boundary. */
+export type ConfigDiagnosticOrigin = 'syntax' | 'core' | 'default-period';
+
+/** Whether `value` is an actual field value or intentionally absent. */
+export type ConfigDiagnosticValueKind = 'received' | 'missing' | 'combined';
+
 export interface ConfigParseIssue {
     readonly line: number;
     readonly field: ConfigParseField;
     readonly value: string | null;
+    readonly valueKind: ConfigDiagnosticValueKind;
+    readonly origin: ConfigDiagnosticOrigin;
     readonly message: string;
 }
 
@@ -381,6 +389,8 @@ function addIssue(
         line,
         field,
         value,
+        valueKind: value === null ? 'missing' : 'received',
+        origin: 'syntax',
         message: `Linha ${line}, campo ${field}, ${received}: ${reason}`,
     });
 }

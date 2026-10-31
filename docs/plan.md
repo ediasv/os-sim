@@ -364,7 +364,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   da #37 em 2026-10-28. Concluida no PR #98 (merged, `d43962b`,
   2026-10-30): `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
   antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
-  sucesso. Evidencia: bloco `default period (DEC-29)` em
+  sucesso. Desde a #92, tambem preserva os avisos quando a validacao semantica
+  falha. Evidencia: bloco `default period (DEC-29)` em
   `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
   avisos com periodo positivo, simulacao igual a periodo 15 com dez
   ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
@@ -379,9 +380,17 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
-- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
-  resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
-  PR #98, a falha de carga que perde o aviso do periodo padrao (DEC-29).
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Implementacao
+  pronta para revisao neste worktree: `ConfigParseIssue` agora expoe `valueKind` e `origin`, sem
+  alterar `value` nem as mensagens de DEC-19; `loadConfig` preserva
+  `ConfigLoadWarning[]` em falhas semanticas apos aplicar o periodo 15. Teste
+  focado cobre sintaxe com valor ausente, problema `combined` do nucleo e
+  conversao que causa falha no prazo da ultima ativacao. Limitacoes: sem
+  interface (#36), sem ponte main/preload (#33), e sem antecipar edicoes ou
+  suspensao (#25) ou composicao visual (#72). Verificacao concluida: `npm test`
+  432/432, `npm run lint`, `npm run typecheck`, `git diff --check` e links/IDs
+  locais conferidos. DEC-34 permanece proposta. Proximo passo: abrir PR para
+  revisao e decisao, sem fechar a issue ainda.
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
   nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
