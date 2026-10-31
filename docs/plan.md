@@ -529,10 +529,10 @@ Issues `[Docs]`, sem fase no Project.
 - #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
 - #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
 - #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: #69 e #71, nesta ordem de dependencia. Abrir primeiro o PR
-  da #69 e depois o PR da #71, sem misturar a composicao da #72.
-- Proximo passo: revisar o PR #103 e manter os diagnosticos de DEC-19 no
-  escopo da #34.
+- Em andamento: revisao pos-merge do PR #103 para os ajustes apontados pelo
+  Copilot; #69 e #71 seguem vinculadas, sem misturar a composicao da #72.
+- Proximo passo: abrir um PR corretivo para os achados do review e manter os
+  diagnosticos de DEC-19 no escopo da #34.
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
