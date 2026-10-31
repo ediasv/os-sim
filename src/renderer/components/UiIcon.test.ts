@@ -7,7 +7,22 @@ import UiIcon from './UiIcon.vue';
 
 enableAutoUnmount(afterEach);
 
-const names: IconName[] = ['alert', 'warning', 'check', 'info', 'close'];
+const names: IconName[] = [
+    'alert',
+    'warning',
+    'check',
+    'info',
+    'close',
+    'folder',
+    'settings',
+    'step-back',
+    'step-forward',
+    'restart',
+    'run-all',
+    'plus',
+    'minus',
+    'download',
+];
 
 describe('UiIcon', () => {
     it.each(names)('renders a decorative 16px icon for %s', (name) => {
@@ -16,6 +31,8 @@ describe('UiIcon', () => {
 
         expect(icon.attributes('aria-hidden')).toBe('true');
         expect(icon.text()).toBe('');
+        expect(icon.attributes('style')).toContain('width: 16px');
+        expect(icon.attributes('style')).toContain('height: 16px');
         expect(icon.attributes('style')).toMatch(
             new RegExp(
                 `url\\("([^"]*${name}\\.svg|data:image/svg\\+xml,[^"]+)"\\)`,
@@ -31,5 +48,14 @@ describe('UiIcon', () => {
         expect(wrapper.get('.ui-icon').attributes('style')).toContain(
             '--ui-icon: url("',
         );
+    });
+
+    it('renders at 32px when size is 32', () => {
+        const icon = mount(UiIcon, { props: { name: 'folder', size: 32 } }).get(
+            '.ui-icon',
+        );
+
+        expect(icon.attributes('style')).toContain('width: 32px');
+        expect(icon.attributes('style')).toContain('height: 32px');
     });
 });
