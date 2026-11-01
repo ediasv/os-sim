@@ -460,6 +460,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   de tarefa, SVG). Concluida no PR #76 (merged, `5dd741f`, 2026-10-24);
   apenas documentacao, links e IDs conferidos, sem build.
 - #36 Implementar controles de configuracao, execucao e navegacao no historico.
+  Pendencia herdada da #72: `useSimulation` (adaptador de DEC-23) ficou sem
+  uso em producao desde que `App` deixou de chama-lo; a #36 deve liga-lo ou
+  revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
+  preparacao nao cria simulador.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
   Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
@@ -520,8 +524,21 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
   nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
   real, que depende de #36/#23/#24.
-- #72 Compor a area de trabalho vazia em preparacao. Em andamento no PR #100
-  (rascunho, so o registro de inicio ate 2026-10-31).
+- #72 Compor a area de trabalho vazia em preparacao. Em andamento (PR #100,
+  rascunho): `App` mostra a preparacao estatica (barra, painel de tarefas e
+  Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
+  componentes novos, nove icones do Figma e `size` no `UiIcon`; decisoes em
+  FE-DEC-14. `npm test` 460/460 em 29 arquivos, lint e typecheck aprovados;
+  app conferido por CDP a 1440 x 924 e 1024 x 768; pacote, redimensionamento
+  real da janela e navegacao por Tab nao executados. Achado de espacamento
+  vertical da barra a 1024 px corrigido (`padding-block`), junto com a altura
+  da pagina com o banner de erro. Revisao do PR: tamanho do `UiIcon` por
+  propriedade customizada, altura maxima do banner, rotulos e icones das
+  acoes centralizados (`ACTION_META`, `NO_ACTIONS`), helper de CSS movido
+  para `testing/`; `npm test` 467/467 em 30 arquivos, lint e typecheck
+  aprovados; icones e banner com erro longo conferidos no app pelo usuario.
+  Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
 ### E6: Entrega e demonstracao
@@ -590,7 +607,18 @@ Issues `[Docs]`, sem fase no Project.
   suspensao/retomada; so o registro de inicio), PR #99 (#33, carga via main e
   preload; revisao feita e corrigida, mudancas em DEC-32/DEC-33 aceitas e
   verificadas com `npm start`; falta conferir o app empacotado) e PR #100
-  (#72; so o registro de inicio).
+  (#72, abaixo).
+- Em andamento: #72 (iniciada em 2026-10-31, branch
+  `feat/72-area-trabalho-vazia`, PR #100 em rascunho, issue em In Progress ate
+  o merge). Objetivo: compor a area de trabalho vazia em preparacao
+  (`WorkspaceLayout`, `SimulationToolbar`, `TaskPanel`, `GanttPanel`,
+  `EmptyWorkspace`), sem iniciar o motor nem snapshot zero ficticio. Fora:
+  formularios, comandos funcionais (#36), lista de tarefas (#71/#37), Gantt
+  (#38). Verificado: `npm test` 460/460 em 29 arquivos (linha de base 422 em
+  23), `npm run lint` e `npm run typecheck` sem achados, buscas de cor
+  hexadecimal e de `core/` sem resultado, conferencia no Electron por CDP;
+  achados da revisao do PR corrigidos e conferidos (ver E5). Nao executado:
+  pacote, janela redimensionada de fato, Tab. Proximo passo: merge.
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
   paralelo a ela, nessa ordem (a #24 depende da #23). Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no

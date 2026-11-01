@@ -17,6 +17,13 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Fills the window so a banner above the workspace shrinks it, not the page. */
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
 button,
 input,
 select,
