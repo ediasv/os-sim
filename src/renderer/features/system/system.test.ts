@@ -325,12 +325,15 @@ it('shows the duration each job runs, not the edited task duration (DEC-44)', ()
         ...DEFAULT_CONFIG,
         algorithm: 'EDF',
         cpuCount: 1,
-        tasks: [task(1, 10, 4, 10), { ...task(2, 20, 4, 20), color: '102030' }],
+        tasks: [
+            task('1', 10, 4, 10),
+            { ...task('2', 20, 4, 20), color: '102030' },
+        ],
     });
     sim.tick();
     sim.edit([
-        { kind: 'taskDuration', taskId: 1, duration: 7 },
-        { kind: 'taskDuration', taskId: 2, duration: 7 },
+        { kind: 'taskDuration', taskId: '1', duration: 7 },
+        { kind: 'taskDuration', taskId: '2', duration: 7 },
     ]);
     const snapshot = sim.getCurrentSnapshot();
     expect(snapshot.tasks.map((tcb) => tcb.definition.duration)).toEqual([
@@ -338,10 +341,10 @@ it('shows the duration each job runs, not the edited task duration (DEC-44)', ()
     ]);
 
     const result = projectSystem(snapshot);
-    expect(result.cpus[0]?.job?.ref).toEqual({ taskId: 1, index: 0 });
+    expect(result.cpus[0]?.job?.ref).toEqual({ taskId: '1', index: 0 });
     expect(result.cpus[0]?.job?.duration).toBe(4);
     expect(result.ready.map((job) => [job.ref.taskId, job.duration])).toEqual([
-        [2, 4],
+        ['2', 4],
     ]);
 });
 
