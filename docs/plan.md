@@ -281,7 +281,7 @@ Requisitos: REQ-04, REQ-05.
   `SnapshotHistory` em `src/core/history.ts`, `restore` e cursor em
   `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts`,
   `src/core/history.test.ts` e `src/core/simulator.history.test.ts`;
-  `npm test` 607/607 em 38 arquivos (base: main com 587 em 36),
+  `npm test` 632/632 em 40 arquivos (base: main com 612 em 38),
   `npm run lint` e `npm run typecheck` sem erros. Prova de restauracao em
   dois cenarios (empates residuais; fatia e progresso parciais), conferida
   com mutacoes em `restore`: limpar eventos, semear `drawState`, nao
@@ -585,6 +585,13 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   ambiente-alvo. Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
+  Concluida no PR da #73 (a preencher no merge): `projectSystem` e
+  `SystemInspector` isolados, sem integracao ao `App` (a #36 compoe), conforme
+  o card `96:422` do Figma; FE-DEC-15 a FE-DEC-17. `npm test` 611 aprovados
+  (1 ignorado), lint e typecheck aprovados; conferido a 1440 x 924 e
+  390 x 844 com dados tipados. Nao executados: app Electron e comparacao
+  lado a lado com o Figma (#40). Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#estado-do-sistema-e-das-cpus-73).
 
 ### E6: Entrega e demonstracao
 
@@ -643,8 +650,8 @@ Issues `[Docs]`, sem fase no Project.
   E3: #25 iniciada (PR #101, rascunho) e #23 em revisao no PR #109; #24 e
   #26 a #28 nao iniciadas.
   E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
-  aberta. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
-  a #40 e #73 nao iniciados.
+  aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
+  nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
