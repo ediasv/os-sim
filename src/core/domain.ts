@@ -87,6 +87,8 @@ export interface Job extends JobRef {
     activation: number;
     /** activation + relative deadline; waiting or suspension never pauses it (REQ-08). */
     absoluteDeadline: number;
+    /** Ticks this job needs, copied from the definition at activation (DEC-37). */
+    duration: number;
     /** Ticks already executed; preemption keeps it (REQ-01). */
     executed: number;
     state: JobState;
@@ -109,6 +111,8 @@ export interface TaskControlBlock {
     status: TaskStatus;
     definition: TaskDefinition;
     jobs: Job[];
+    /** Tick of the next due activation; null once the task reached `maxJobs` (DEC-37). */
+    nextActivation: number | null;
 }
 
 /** One logical CPU. Ids run from 1 to cpuCount so they read naturally in the UI. */

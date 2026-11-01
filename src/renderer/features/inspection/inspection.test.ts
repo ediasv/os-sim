@@ -44,12 +44,14 @@ function snapshot(): SimulationState {
                     deadline: 4,
                     rawEvents: '',
                 },
+                nextActivation: 10,
                 jobs: [
                     {
                         taskId: 1,
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 4,
+                        duration: 3,
                         executed: 3,
                         state: 'completed',
                         completedAt: 3,
@@ -60,6 +62,7 @@ function snapshot(): SimulationState {
                         index: 1,
                         activation: 5,
                         absoluteDeadline: 9,
+                        duration: 3,
                         executed: 1,
                         state: 'ready',
                         completedAt: null,
@@ -78,12 +81,14 @@ function snapshot(): SimulationState {
                     deadline: 2,
                     rawEvents: '',
                 },
+                nextActivation: null,
                 jobs: [
                     {
                         taskId: 2,
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 2,
+                        duration: 2,
                         executed: 0,
                         state: 'suspended',
                         completedAt: null,

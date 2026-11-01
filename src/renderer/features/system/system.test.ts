@@ -39,12 +39,14 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t1,
+                nextActivation: 10,
                 jobs: [
                     {
                         taskId: 1,
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 4,
+                        duration: 3,
                         executed: 3,
                         state: 'completed',
                         completedAt: 3,
@@ -55,6 +57,7 @@ function snapshot(): SimulationState {
                         index: 1,
                         activation: 5,
                         absoluteDeadline: 9,
+                        duration: 3,
                         executed: 2,
                         state: 'running',
                         completedAt: null,
@@ -65,12 +68,14 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t2,
+                nextActivation: null,
                 jobs: [
                     {
                         taskId: 2,
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 2,
+                        duration: 2,
                         executed: 0,
                         state: 'ready',
                         completedAt: null,
@@ -81,12 +86,14 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t3,
+                nextActivation: 14,
                 jobs: [
                     {
                         taskId: 3,
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 6,
+                        duration: 2,
                         executed: 1,
                         state: 'suspended',
                         completedAt: null,
@@ -97,6 +104,7 @@ function snapshot(): SimulationState {
                         index: 1,
                         activation: 4,
                         absoluteDeadline: 14,
+                        duration: 2,
                         executed: 0,
                         state: 'ready',
                         completedAt: null,

@@ -36,6 +36,7 @@ function cand(
         index: 0,
         activation: extra.activation ?? 0,
         absoluteDeadline,
+        duration: t.duration,
         executed: extra.executed ?? 0,
         state: 'ready',
         completedAt: null,

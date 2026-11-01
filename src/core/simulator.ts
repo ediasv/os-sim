@@ -8,6 +8,7 @@ import {
     type SimulationState,
     type SystemConfig,
 } from './domain';
+import { activateDueJobs } from './activation';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
 import { requireValidConfig } from './config';
@@ -199,7 +200,7 @@ export class Simulator {
      * dispatch (DEC-11; no slice has run yet, so none expires).
      */
     private startStages(edits: readonly Edit[]): void {
-        this.activateDueJobs();
+        activateDueJobs(this.state);
         this.applyEditStage(edits);
         this.dispatch();
     }
@@ -209,7 +210,7 @@ export class Simulator {
         this.executeTick();
         this.state.clock++;
         this.completeJobsAndRecordDeadlineMisses();
-        this.activateDueJobs();
+        activateDueJobs(this.state);
         this.applyEditStage(edits);
         this.expireSlices();
         this.dispatch();
@@ -380,7 +381,7 @@ export class Simulator {
                 if (
                     job.state !== 'completed' &&
                     job.state !== 'interrupted' &&
-                    job.executed >= tcb.definition.duration
+                    job.executed >= job.duration
                 ) {
                     job.state = 'completed';
                     job.completedAt = this.state.clock;
@@ -725,39 +726,5 @@ export class Simulator {
             );
         }
         return { config: validConfig, resolvePolicy };
-    }
-
-    /**
-     * Adds every activation due at this boundary. Jobs keep their own identity
-     * and deadline; the task's finite activation count comes from DEC-09.
-     */
-    private activateDueJobs(): void {
-        for (const tcb of this.state.tasks) {
-            if (tcb.status === 'concluded') continue;
-            const { arrival, period, deadline } = tcb.definition;
-            while (
-                tcb.jobs.length < maxJobs(tcb.definition) &&
-                arrival + tcb.jobs.length * period <= this.state.clock
-            ) {
-                const index = tcb.jobs.length;
-                const activation = arrival + index * period;
-                const job: Job = {
-                    taskId: tcb.definition.id,
-                    index,
-                    activation,
-                    absoluteDeadline: activation + deadline,
-                    executed: 0,
-                    state: 'ready',
-                    completedAt: null,
-                    deadlineMissed: false,
-                };
-                tcb.jobs.push(job);
-                this.state.events.push({
-                    kind: 'activation',
-                    time: activation,
-                    job: { taskId: job.taskId, index: job.index },
-                });
-            }
-        }
     }
 }

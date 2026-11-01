@@ -284,6 +284,7 @@ describe('CPU count edit', () => {
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
+            duration: 2,
             executed: 1,
             state: 'running' as const,
             completedAt: null,
@@ -312,6 +313,7 @@ describe('CPU count edit', () => {
             state: 'ready',
             executed: 1,
             absoluteDeadline: 5,
+            duration: 2,
         });
         expect(completed.state).toBe('completed');
         expect(state.events).toEqual([

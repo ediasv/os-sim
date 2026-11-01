@@ -44,7 +44,7 @@ function compareCandidates(
         ascending(a.wasRunning ? 0 : 1, b.wasRunning ? 0 : 1) ||
         ascending(a.job.absoluteDeadline, b.job.absoluteDeadline) ||
         ascending(a.job.activation, b.job.activation) ||
-        ascending(a.task.duration, b.task.duration)
+        ascending(a.job.duration, b.job.duration)
     );
 }
 

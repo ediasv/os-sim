@@ -19,6 +19,7 @@ function job(index: number, state: Job['state'], taskId = 1): Job {
         index,
         activation: index,
         absoluteDeadline: index + 2,
+        duration: 2,
         executed: 0,
         state,
         completedAt: state === 'completed' ? index + 1 : null,

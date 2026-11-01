@@ -28,6 +28,7 @@ export function createInitialState(config: SystemConfig): SimulationState {
             definition,
             status: 'ready',
             jobs: [],
+            nextActivation: definition.arrival,
         })),
         cpus: Array.from({ length: config.cpuCount }, (_, i) => ({
             id: i + 1,
@@ -78,6 +79,7 @@ export function restoreState(snapshot: SimulationSnapshot): SimulationState {
             definition: tcb.definition as TaskDefinition,
             status: tcb.status,
             jobs: thaw(tcb.jobs) as Job[],
+            nextActivation: tcb.nextActivation,
         })),
     };
 }
