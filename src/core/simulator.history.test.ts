@@ -144,7 +144,7 @@ describe('Simulator history cursor', () => {
         for (const step of [-1, STEPS + 1, 1.5, NaN]) {
             expect(() => sim.restore(step)).toThrow(RangeError);
             expect(() => sim.restore(step)).toThrow(
-                `Cannot restore step ${step}: recorded steps are 0 to ${STEPS}.`,
+                `Step ${step} is not recorded: recorded steps are 0 to ${STEPS}.`,
             );
             expect(sim.getCursor()).toBe(3);
             expect(sim.getCurrentSnapshot()).toBe(recorded[3]);

@@ -135,14 +135,10 @@ export class Simulator {
      * Makes a recorded step the current one: the live state becomes a mutable
      * copy of that snapshot, so eligibility and later ticks start from it
      * (REQ-04, DEC-06). Recorded snapshots are never changed or dropped. An
-     * unrecorded step is refused before anything is touched.
+     * unrecorded step is refused by the history with a RangeError before the
+     * live state or the cursor is touched, so the check lives in one place.
      */
     public restore(step: number): void {
-        if (!this.history.has(step)) {
-            throw new RangeError(
-                `Cannot restore step ${step}: recorded steps are 0 to ${this.history.latestStep}.`,
-            );
-        }
         this.state = restoreState(this.history.at(step));
         this.history.moveTo(step);
     }

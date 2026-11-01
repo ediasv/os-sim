@@ -1,7 +1,9 @@
 /**
  * Builds the live state and its immutable snapshots. Snapshots are deep,
  * frozen copies so history and UI can keep them while the engine keeps
- * mutating its own state (invariant: snapshots share no mutable data).
+ * mutating its own state (invariant: snapshots share no mutable data). Also
+ * rebuilds a mutable live state from a snapshot when a step is restored
+ * (`restoreState`, REQ-04).
  */
 import type {
     Job,

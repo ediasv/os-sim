@@ -27,6 +27,11 @@ export class SnapshotHistory {
         return this.position < this.latestStep;
     }
 
+    /**
+     * The single definition of a recorded step (an integer from 0 to the
+     * latest step), used by `at` and `moveTo` and, through `at`, by
+     * `Simulator.restore`.
+     */
     has(step: number): boolean {
         return Number.isInteger(step) && step >= 0 && step <= this.latestStep;
     }
