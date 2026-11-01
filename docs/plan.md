@@ -716,15 +716,15 @@ Issues `[Docs]`, sem fase no Project.
   Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
   #26), todos em rascunho:
     1. #114 revisao de DEC-37 (documental);
-    2. etapa de edicao no passo, edicoes por tick no historico, descarte do
+    2. #115 etapa de edicao no passo, edicoes por tick no historico, descarte do
        futuro, recusa atomica por item, algoritmo e quantum;
-    3. quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
+    3. #116 quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
        sem a CPU;
-    4. estado por tarefa (suspensa, forcada, concluida) e seus eventos;
-    5. caracteristicas da tarefa (duracao por job, calendario, periodo,
+    4. #117 estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+    5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
-    6. inclusao e exclusao de tarefas e verificacao final da #26.
-- Proximo passo: plano de implementacao do PR 2 da serie. Fora da #26:
+    6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
+- Proximo passo: plano de implementacao do #115. Fora da #26:
   aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
