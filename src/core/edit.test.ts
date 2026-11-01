@@ -331,3 +331,37 @@ describe('CPU count edit', () => {
         expect(state).toEqual(saved);
     });
 });
+
+describe('edit stage guards', () => {
+    it('refuses an item whose kind cannot be printed instead of crashing', () => {
+        const state = createInitialState(config);
+        const context: EditContext = { state, hasPolicy: () => true };
+        const malformed = {
+            kind: { toString: null },
+        } as unknown as EditItem;
+
+        const result = foldEdit(readTarget(state), [malformed], context);
+
+        expect(result.ok).toBe(false);
+    });
+
+    it('rejects a CPU count that disagrees with the CPUs in the state', () => {
+        const state = createInitialState({ ...config, cpuCount: 3 });
+        state.cpus.pop();
+        const before = readTarget(state);
+
+        expect(() =>
+            applyNetChange(state, before, { ...before, cpuCount: 2 }),
+        ).toThrow(/2 CPUs exist but the edit started from 3/);
+    });
+
+    it('rejects a removed CPU that owns a job that does not exist', () => {
+        const state = createInitialState({ ...config, cpuCount: 2 });
+        state.cpus[1].running = { taskId: 99, index: 0 };
+        const before = readTarget(state);
+
+        expect(() =>
+            applyNetChange(state, before, { ...before, cpuCount: 1 }),
+        ).toThrow(/CPU 2 owns job 99#0, which does not exist/);
+    });
+});

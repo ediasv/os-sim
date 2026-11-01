@@ -98,6 +98,14 @@ export function summarizeCpuOff(
                 `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} is after the snapshot clock ${snapshot.clock}.`,
             );
         }
+        // Validity comes first so a NaN or negative time never reaches the
+        // interval comparisons; regression is checked after them to keep
+        // their more specific messages.
+        if (!Number.isSafeInteger(event.time) || event.time < 0) {
+            throw new CpuEventSequenceError(
+                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} has an invalid time.`,
+            );
+        }
         const last = intervals.at(-1);
         const open = last?.end === null;
         if (event.kind === 'cpu-removed') {
@@ -135,13 +143,9 @@ export function summarizeCpuOff(
                 end: event.time,
             };
         }
-        if (
-            !Number.isSafeInteger(event.time) ||
-            event.time < 0 ||
-            event.time < (lastTime.get(event.cpuId) ?? 0)
-        ) {
+        if (event.time < (lastTime.get(event.cpuId) ?? 0)) {
             throw new CpuEventSequenceError(
-                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} has invalid or regressing time.`,
+                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} has regressing time.`,
             );
         }
         lastTime.set(event.cpuId, event.time);

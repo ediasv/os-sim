@@ -118,7 +118,12 @@ export function findInconsistencies(
             summaries.map((summary) => [summary.cpuId, summary]),
         );
         for (const cpu of state.cpus) {
-            const last = byId.get(cpu.id)?.intervals.at(-1);
+            const summary = byId.get(cpu.id);
+            if (summary === undefined) {
+                issues.push(`CPU ${cpu.id} has no off-summary.`);
+                continue;
+            }
+            const last = summary.intervals.at(-1);
             if (last?.end !== null) {
                 if (cpu.offSince !== null) {
                     issues.push(

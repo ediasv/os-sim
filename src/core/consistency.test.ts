@@ -289,3 +289,33 @@ describe('CPU existence consistency', () => {
         expect(findInconsistencies(state).length).toBeGreaterThan(0);
     });
 });
+
+describe('findInconsistencies: CPU count and IDs', () => {
+    const message =
+        'Current CPU IDs must be 1..cpuCount and match the configured count.';
+
+    it('accepts CPUs 1..cpuCount', () => {
+        expect(findInconsistencies(stateWith())).not.toContain(message);
+    });
+
+    it('reports a length that differs from the configured count', () => {
+        const state = stateWith();
+        state.cpus.pop();
+
+        expect(findInconsistencies(state)).toContain(message);
+    });
+
+    it.each([
+        ['non-contiguous', [1, 3]],
+        ['shuffled', [2, 1]],
+        ['duplicated', [1, 1]],
+    ])('reports %s IDs with the right length', (_name, ids) => {
+        const state = stateWith();
+        state.cpus = state.cpus.map((cpu, index) => ({
+            ...cpu,
+            id: ids[index],
+        }));
+
+        expect(findInconsistencies(state)).toContain(message);
+    });
+});

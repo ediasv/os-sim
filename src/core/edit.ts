@@ -145,17 +145,20 @@ export function foldEdit(
     let current = target;
     edit.forEach((item, index) => {
         const kind: unknown = (item as { kind?: unknown } | null)?.kind;
-        const handler = Object.hasOwn(HANDLERS, String(kind))
-            ? (HANDLERS[kind as EditItem['kind']] as (
-                  target: EditTarget,
-                  item: EditItem,
-                  context: EditContext,
-              ) => ItemResult)
-            : undefined;
+        // A malformed item must be refused, never crash on String().
+        const label = typeof kind === 'string' ? kind : JSON.stringify(kind);
+        const handler =
+            typeof kind === 'string' && Object.hasOwn(HANDLERS, kind)
+                ? (HANDLERS[kind as EditItem['kind']] as (
+                      target: EditTarget,
+                      item: EditItem,
+                      context: EditContext,
+                  ) => ItemResult)
+                : undefined;
         if (handler === undefined) {
             refusals.push({
                 index,
-                kind: String(kind),
+                kind: label ?? 'undefined',
                 reason: `Unknown edit item kind ${JSON.stringify(kind)}.`,
             });
             return;
@@ -198,6 +201,11 @@ export function applyNetChange(
 
     // Only the final target is materialized. Surviving CPUs keep their
     // slice; removed owners lose it without a fictitious preemption (DEC-37).
+    if (state.cpus.length !== before.cpuCount) {
+        throw new Error(
+            `Cannot change the CPU count: ${state.cpus.length} CPUs exist but the edit started from ${before.cpuCount}.`,
+        );
+    }
     if (after.cpuCount < before.cpuCount) {
         const removed = state.cpus.splice(after.cpuCount);
         for (const cpu of removed) {
@@ -206,7 +214,14 @@ export function applyNetChange(
                 const job = state.tasks.find(
                     (t) => t.definition.id === ref.taskId,
                 )?.jobs[ref.index];
-                if (job?.state === 'running') job.state = 'ready';
+                if (job === undefined) {
+                    throw new Error(
+                        `CPU ${cpu.id} owns job ${ref.taskId}#${ref.index}, which does not exist.`,
+                    );
+                }
+                // A job that just completed or missed its deadline keeps its
+                // state; only a running one returns to contention.
+                if (job.state === 'running') job.state = 'ready';
             }
             state.events.push({
                 kind: 'cpu-removed',
@@ -214,7 +229,7 @@ export function applyNetChange(
                 cpuId: cpu.id,
             });
         }
-    } else {
+    } else if (after.cpuCount > before.cpuCount) {
         for (let id = before.cpuCount + 1; id <= after.cpuCount; id++) {
             state.cpus.push({
                 id,
