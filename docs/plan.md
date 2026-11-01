@@ -699,6 +699,11 @@ Requisito: REQ-10; integracao de todos os anteriores.
   funcionou, sem copiar a saida; versao do macOS e do Node, artefato gerado e
   se o app foi aberto com um cenario nao foram registrados. Formato da entrega
   no macOS (so ha o zip, vetado pelo portal) segue em aberto.
+  Reteste pelo usuario (2026-11-01, mesmo notebook Windows): o `Setup.exe` com
+  duplo clique instalou e o app abriu, sem copiar a saida. Ressalva: a pasta
+  `%LOCALAPPDATA%/os_sim` sobrou do teste anterior e ja tinha o ACE de TODOS OS
+  PACOTES DE APLICATIVOS concedido pelo `icacls`, entao a instalacao sem o
+  ajuste num diretorio limpo nao foi exercitada.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
   Parcial (Refs #45, issue aberta): 10 arquivos em
   [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
