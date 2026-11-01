@@ -281,7 +281,30 @@ Requisito: REQ-07.
 Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
+  Concluida no PR #109 (merged, `51dd7bf`, 2026-11-01; issue fechada).
+  Evidencia (2026-11-01, branch `feat/23-historico-snapshots`, antes do
+  merge, com a main integrada): `restoreState` em `src/core/snapshot.ts`,
+  `SnapshotHistory` em `src/core/history.ts`, `restore` e cursor em
+  `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts`,
+  `src/core/history.test.ts` e `src/core/simulator.history.test.ts`;
+  `npm test` 632/632 em 40 arquivos (base: main com 612 em 38),
+  `npm run lint` e `npm run typecheck` sem erros. Prova de restauracao em
+  dois cenarios (empates residuais; fatia e progresso parciais), conferida
+  com mutacoes em `restore`: limpar eventos, semear `drawState`, nao
+  restaurar, zerar `sliceElapsed` e zerar `executed` derrubam a prova.
+  Memoria: copia integral por passo mantida (DEC-30), sem copia extra por
+  passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
+  DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
+  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, PR
+  #112): `Simulator.forward()`/`backward()`, `canForward()` e
+  `SimulationRefusal` (`src/core/refusal.ts`); `useSimulation` com `forward`,
+  `backward` e `next`, publicando o snapshot do cursor; categoria `refused` em
+  `commandFailure`. Contrato em DEC-36. Testes em
+  `src/core/simulator.navigation.test.ts`, `useSimulation.test.ts` e
+  `errors.test.ts`. `npm test` 669/669 em 42 arquivos (base: main com 653 em
+  41), `npm run lint` e `npm run typecheck` sem erros. Botoes ficam na #36 e
+  recusar `tick()` com tudo terminado na #27.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
@@ -563,7 +586,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Reproduzido em 2026-10-31 num checkout local: o panic vem so de
   `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
   nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
-  real, que depende de #36/#23/#24.
+  real, que depende de #36/#24 (#23 concluida).
 - #72 Compor a area de trabalho vazia em preparacao. Concluida no PR #100
   (merged, `2efe280`, 2026-11-01; issue fechada em 2026-11-01): `App` mostra a preparacao estatica (barra, painel de tarefas e
   Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
@@ -583,6 +606,13 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   ambiente-alvo. Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
+  Concluida no PR da #73 (a preencher no merge): `projectSystem` e
+  `SystemInspector` isolados, sem integracao ao `App` (a #36 compoe), conforme
+  o card `96:422` do Figma; FE-DEC-15 a FE-DEC-17. `npm test` 611 aprovados
+  (1 ignorado), lint e typecheck aprovados; conferido a 1440 x 924 e
+  390 x 844 com dados tipados. Nao executados: app Electron e comparacao
+  lado a lado com o Figma (#40). Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#estado-do-sistema-e-das-cpus-73).
 
 ### E6: Entrega e demonstracao
 
@@ -593,6 +623,16 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
+  Parcial (Refs #45, issue aberta): 10 arquivos em
+  [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
+  varias CPUs com CPU desligada e religada, preempcao/quantum/sorteio,
+  aperiodica com periodo padrao e avisos, sobrecarga com perda de prazo,
+  simulacao longa, dois arquivos com erros), cada um com descricao e
+  resultado esperado no README e lido do disco por
+  `src/main/demoConfigs.test.ts` (carga + simulacao; resultados derivados a
+  mao; mutacao conferida no 07). Fora do pacote do aplicativo. Pendentes:
+  conferencia de cada cenario na interface e roteiro de edicao e retrocesso
+  (dependem de E3 e E5, #23 a #28 e #36 a #40).
 - #80 Padronizar a versao do Node entre desenvolvimento, CI e release.
   Concluida no PR #81 (merged, `5a569db`), escopo ampliado para
   incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
@@ -638,10 +678,10 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: so a #25 iniciada (PR #101, em revisao); #23, #24 e #26 a #28 nao
-  iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
-  concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
-  a #40 e #73 nao iniciados.
+  E3: #23 e #24 concluidas; #25 em revisao (PR #101, DEC-37 aceita); #26 a
+  #28 nao iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
+  concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
@@ -649,6 +689,11 @@ Issues `[Docs]`, sem fase no Project.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
 - #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
+- #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
+- #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
+  E3 e contrato em DEC-35.
+- #24 concluida no PR #112 (merged, `ba14179`, 2026-11-01), contrato em
+  DEC-36; registro de evidencia em E3 a sincronizar.
 - Em andamento (2026-10-31): #25, decisao so documental. Objetivo: responder
   Q-02 com o usuario e registrar uma DEC ligada a REQ-05 com a matriz de
   edicao (progresso, duracao, periodo, ingresso, prazo, estado,
@@ -679,14 +724,13 @@ Issues `[Docs]`, sem fase no Project.
   DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
   fechadas de novo. DEC-37 aceita pelo usuario em 2026-11-01; #26, #37 e
   #38 atualizadas com a decisao. Pendente: merge do PR #101.
-- Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
-  seguir em paralelo, nessa ordem (a #24 depende da #23). Aceitar ou rever
-  DEC-34 (#92).
+- Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38).
+  Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
-  de #36/#23/#24; a apresentacao isolada com dados tipados foi verificada.
+  de #36/#24; a apresentacao isolada com dados tipados foi verificada.
 
 ## Como registrar uma entrega
 

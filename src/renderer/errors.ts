@@ -1,5 +1,6 @@
 import { shallowRef, type App } from 'vue';
 import { ConfigValidationError, type ConfigIssue } from '../core/config';
+import { SimulationRefusal } from '../core/refusal';
 
 /** Latest uncaught error, as display text. `null` when nothing to show. */
 export const currentError = shallowRef<string | null>(null);
@@ -41,7 +42,9 @@ export function dismissError(): void {
 
 /**
  * Why a command failed (DEC-24). `config` is correctable by the user and
- * keeps the issues for display next to the fields; `unexpected` is a bug.
+ * keeps the issues for display next to the fields; `refused` is a request
+ * the current step cannot honour, such as going back from step 0, shown
+ * where the user acted (DEC-36); `unexpected` is a bug.
  */
 export type AppError =
     | {
@@ -49,6 +52,7 @@ export type AppError =
           readonly message: string;
           readonly issues: readonly ConfigIssue[];
       }
+    | { readonly kind: 'refused'; readonly message: string }
     | { readonly kind: 'unexpected'; readonly message: string };
 
 /** Outcome of an adapter command; a failure leaves the state unchanged (DEC-24). */
@@ -67,6 +71,9 @@ export function commandFailure(err: unknown): CommandResult {
             ok: false,
             error: { kind: 'config', message: err.message, issues: err.issues },
         };
+    }
+    if (err instanceof SimulationRefusal) {
+        return { ok: false, error: { kind: 'refused', message: err.message } };
     }
     reportError(err);
     return {

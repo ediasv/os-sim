@@ -18,7 +18,9 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
-import { createInitialState, takeSnapshot } from './snapshot';
+import { createInitialState, restoreState, takeSnapshot } from './snapshot';
+import { SnapshotHistory } from './history';
+import { SimulationRefusal } from './refusal';
 import { deepCopy } from './helpers/deepCopy';
 import { key } from './helpers/key';
 
@@ -67,10 +69,10 @@ function copyTie(raw: unknown): PolicyTie {
     return { candidates, slots };
 }
 
-export interface ExecutionGuardResult {
-    ready: boolean;
-    reason?: string;
-}
+/** Whether tick() may run; a refusal always carries its reason (DEC-36). */
+export type ExecutionGuardResult =
+    | { ready: true }
+    | { ready: false; reason: string };
 
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
@@ -81,7 +83,8 @@ export interface ExecutionGuardResult {
 export class Simulator {
     private state: SimulationState;
     private readonly policy: SchedulingPolicy;
-    private snapshotHistory: SimulationSnapshot[] = [];
+    /** Recorded steps and the cursor; the live state shows the cursor's step. */
+    private readonly history = new SnapshotHistory();
 
     constructor(
         config: SystemConfig = DEFAULT_CONFIG,
@@ -98,7 +101,7 @@ export class Simulator {
     public tick(): void {
         const guardResult = this.executionGuard();
         if (!guardResult.ready) {
-            throw new Error(guardResult.reason);
+            throw new SimulationRefusal(guardResult.reason);
         }
 
         // DEC-14: mutate a working copy and commit it only if the whole step
@@ -124,18 +127,70 @@ export class Simulator {
         return findEligibleJobs(this.state);
     }
 
+    /** Newest recorded step, wherever the cursor is. */
     public getLatestSnapshot(): SimulationSnapshot {
-        const latestSnapshot = this.snapshotHistory.at(-1);
+        return this.history.latest();
+    }
 
-        if (!latestSnapshot) {
-            throw new Error('Snapshot history is empty');
+    /**
+     * Makes a recorded step the current one: the live state becomes a mutable
+     * copy of that snapshot, so eligibility and later ticks start from it
+     * (REQ-04, DEC-06). Recorded snapshots are never changed or dropped. An
+     * unrecorded step is refused by the history with a RangeError before the
+     * live state or the cursor is touched, so the check lives in one place.
+     * `forward` and `backward` are the user-facing moves built on it.
+     */
+    public restore(step: number): void {
+        this.state = restoreState(this.history.at(step));
+        this.history.moveTo(step);
+    }
+
+    /**
+     * Moves to the next recorded step, reusing its snapshot as computed: the
+     * policy and the draw are not consulted, so results and draw state are
+     * exactly the recorded ones (REQ-04, DEC-06, DEC-36). Computing a new step
+     * is tick()'s job, so at the latest step this is refused.
+     */
+    public forward(): void {
+        const cursor = this.history.cursor;
+        if (!this.canForward()) {
+            throw new SimulationRefusal(
+                `Step ${cursor} is the latest recorded step; use tick() to compute step ${cursor + 1}.`,
+            );
         }
+        this.restore(cursor + 1);
+    }
 
-        return latestSnapshot;
+    /** Moves to the previous recorded step; refused at step 0 (REQ-10, DEC-36). */
+    public backward(): void {
+        const cursor = this.history.cursor;
+        if (cursor === 0) {
+            throw new SimulationRefusal(
+                'Step 0 is the first recorded step; there is no earlier step to go back to.',
+            );
+        }
+        this.restore(cursor - 1);
+    }
+
+    /**
+     * True when a recorded step lies ahead of the cursor, so forward() would
+     * reuse it; false at the latest step, where only tick() advances.
+     */
+    public canForward(): boolean {
+        return this.history.isBehind;
+    }
+
+    public getCursor(): number {
+        return this.history.cursor;
+    }
+
+    /** Snapshot of the step the cursor points at. */
+    public getCurrentSnapshot(): SimulationSnapshot {
+        return this.history.current();
     }
 
     private recordSnapshot(): void {
-        this.snapshotHistory.push(takeSnapshot(this.state));
+        this.history.append(takeSnapshot(this.state));
     }
 
     /** Executes exactly [clock, clock + 1) on each dispatched CPU. */
@@ -441,7 +496,18 @@ export class Simulator {
             ?.jobs[ref.index];
     }
 
+    /**
+     * Refuses tick() while the cursor is behind the latest recorded step, so a
+     * recorded step is never overwritten: the recorded future is reached with
+     * forward() (DEC-36), and discarding it is #26.
+     */
     private executionGuard(): ExecutionGuardResult {
+        if (this.history.isBehind) {
+            return {
+                ready: false,
+                reason: `Step ${this.history.cursor + 1} is already computed; use forward() instead of tick().`,
+            };
+        }
         return { ready: true };
     }
 

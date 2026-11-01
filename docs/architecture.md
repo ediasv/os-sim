@@ -41,16 +41,23 @@ afirma que os modulos planejados ja existem.
   sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
+- [Historico](../src/core/history.ts): `SnapshotHistory` guarda os snapshots
+  congelados (passo k no indice k) e o cursor; so acrescenta com o cursor no
+  ultimo passo e nunca altera nem descarta um passo (DEC-35).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
   sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
-  (DEC-15).
+  (DEC-15); mantem cursor sobre o historico e restaura passos registrados
+  (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35); navega por eles sem
+  recalcular (`forward`, `backward`, `canForward`) e recusa pedido impossivel com
+  `SimulationRefusal` (DEC-36).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
-  privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
-  `tick`, que devolvem resultado (DEC-23).
+  privada, publica o snapshot do cursor via `shallowRef` e oferece os comandos
+  `load`, `tick`, `forward`, `backward` e `next`, que devolvem resultado
+  (DEC-23, DEC-36).
 - [Erros da interface](../src/renderer/errors.ts): banner global e
   `commandFailure`, que classifica erros dos comandos (DEC-24).
 - [Processo principal](../src/main/main.ts): janela Electron e canal IPC que
@@ -188,7 +195,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   avancar no historico restaura, editar invalida o futuro.
 - Consequencia: validar edicao antes de mutar/descartar historico. Nao sortear
   dentro de comparadores de ordenacao; sortear somente no empate residual e
-  registrar resultado. Definir estruturas concretas na entrega do historico.
+  registrar resultado. Estruturas concretas do historico (cursor e restauracao)
+  definidas na #23, em DEC-35.
 - Alternativa descartada: usar sorteio nao restauravel a cada revisita do tick.
 
 ### DEC-07: Reavaliacao preemptiva e estabilidade de CPU
@@ -335,7 +343,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 - Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
   conflito com DEC-10) e `scheduler.ts` foram removidos; o contrato de politica
   e criado na #10. Copia integral por passo custa O(tamanho do estado); rever
-  na #23 se o historico ficar grande.
+  na #23 se o historico ficar grande (revisto na #23: mantida, DEC-30 e
+  DEC-35).
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
   `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
@@ -441,7 +450,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   (`executed > duration`) e corrompia o historico (REQ-04).
 - Consequencia:
     - Uma copia extra O(estado) por tick, da mesma ordem do snapshot; rever na
-      #23 junto com DEC-12. Efeito medido na memoria do historico em DEC-30.
+      #23 junto com DEC-12 (revisto na #23: mantida, DEC-30 e DEC-35). Efeito
+      medido na memoria do historico em DEC-30.
     - `findInconsistencies` tambem rejeita `executed > duration`.
     - `deepCopy` compartilha subarvores congeladas (a configuracao) em vez de
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
@@ -761,6 +771,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
         - corrigivel pelo usuario: configuracao invalida
           (`ConfigValidationError` com `issues`); diagnosticos do parser,
           falhas de leitura e edicoes rejeitadas entram nas #31, #33 e #26;
+        - recusa: pedido impossivel no passo atual (`SimulationRefusal`,
+          categoria `refused`), mostrado onde o usuario agiu, fora do banner
+          (DEC-36);
         - inesperado: decisao invalida da politica, inconsistencia, politica
           ausente e qualquer outra excecao.
         - Cancelar a escolha do arquivo nao e erro (DEC-19).
@@ -1133,6 +1146,103 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
   exibicao continua fora do escopo da #92 (#36).
 
+### DEC-35: Historico com cursor e restauracao
+
+- Estado: aceita em 2026-10-31 (acordado com o usuario na #23). Requisitos:
+  REQ-04. Complementa DEC-06, DEC-11, DEC-12 e DEC-14.
+- Decisao: o `Simulator` mantem privado um `SnapshotHistory`
+  (`src/core/history.ts`) com os snapshots e o cursor, cujo indice e o
+  relogio do snapshot (DEC-11). O historico so acrescenta passo com o cursor
+  no ultimo e nunca altera nem descarta um passo; a classe nao conhece o
+  motor, para que #24 e #26 mudem o historico num so lugar. `restore(step)`
+  torna o estado vivo
+  uma copia mutavel do snapshot (`restoreState`), sem alterar snapshots;
+  passo nao registrado (nao inteiro, negativo ou alem do ultimo) e recusado
+  com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
+  posicao; `getLatestSnapshot()` fica inalterado.
+- Avanco: `tick()` com o cursor atras do ultimo passo e recusado; desde a #24
+  a recusa e `SimulationRefusal` com a mensagem `Step ${cursor + 1} is already
+  computed; use forward() instead of tick().` e o futuro registrado e
+  reutilizado por `forward()` (DEC-36). Descartar o futuro fica na #26; a #23
+  nao conhece edicoes.
+- Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
+  novo cujo historico termina em k (`continueFrom`, acesso privado so no
+  teste), avanca e compara com o k+1 registrado, inclusive eventos e
+  `drawState`. Copiar o estado vivo, e nao recalcula-lo do snapshot, deixa a
+  prova sensivel ao que `restore` instala. Roda em dois cenarios: empates
+  residuais (muda `drawState` e registra `tie-break`) e progresso parcial
+  (quantum 2, 2 CPUs, 4 tarefas: fatia e execucao parciais, preempcao,
+  expiracao de quantum e perda de prazo). Mutacoes em `restore` conferidas:
+  limpar eventos, semear `drawState`, nao restaurar, zerar `sliceElapsed` e
+  zerar `executed` de jobs incompletos; todas derrubam a prova. A cobertura
+  vale para os campos que esses cenarios exercitam.
+- Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
+  copias por passo (restaurar copia uma vez por chamada). `restoreState`
+  compartilha a `config` e cada `definition` congeladas, em vez de usar
+  `deepCopy`, que devolve valores congelados sem copiar. Medicao no branch
+  da #23 (2026-11-01, Node 24.22.1 de `devEngines`), com a carga de DEC-30
+  (RM, quantum 5, 2 CPUs, ingresso 0, (duracao, periodo = prazo) de
+  (300, 1000), (500, 1500) e (800, 2500)), `createSimulator` e `tick()`
+  repetido, heap apos `gc()`; script fora do repositorio:
+
+    | ticks | tempo | heap   | media por snapshot |
+    | ----- | ----- | ------ | ------------------ |
+    | 30    | 0,0 s | 0,4 MB | 14 KB              |
+    | 1.000 | 0,1 s | 24 MB  | 24 KB              |
+    | 2.000 | 0,3 s | 75 MB  | 38 KB              |
+    | 4.000 | 1,1 s | 248 MB | 62 KB              |
+
+    Em 4.000 ticks o valor fica proximo dos 254 MB de DEC-30 (mesmas tarefas e
+    versao); a media cresce com o comprimento, como DEC-30 descreve. Nas
+    cerca de 30 ticks de uso realista o historico ocupa menos de 1 MB, o que
+    mantem a decisao. A tabela do PR #106 (Node 25.8.0, codigo de outra
+    abordagem, tarefas nao registradas) foi substituida por esta, por nao ser
+    reproduzivel nas condicoes de `devEngines`.
+
+- Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
+  escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
+  cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
+  passo do cursor; descartado por antecipar a #26, poder apagar passos
+  registrados por um `tick()` e mudar o contrato usado pelo renderer. Dele
+  foi aproveitada a classe de historico separada.
+
+### DEC-36: Navegacao no historico e recusas
+
+- Estado: aceita em 2026-11-01 (acordado com o usuario na #24). Requisitos:
+  REQ-04, REQ-10. Complementa DEC-06, DEC-11, DEC-24 e DEC-35.
+- Decisao: navegar e calcular sao comandos separados no `Simulator`.
+  `forward()` move o cursor ao proximo passo registrado e `backward()` ao
+  anterior, ambos por `restore` (DEC-35), reutilizando o snapshot gravado sem
+  consultar a politica nem o sorteio. `canForward()` diz se ha passo
+  registrado a frente do cursor. `tick()` so calcula a partir do ultimo
+  passo (DEC-11).
+- Recusas: pedido impossivel lanca `SimulationRefusal`
+  (`src/core/refusal.ts`) antes de mudar qualquer coisa, com as mensagens:
+    - `backward()` no passo 0: `Step 0 is the first recorded step; there is
+      no earlier step to go back to.`;
+    - `forward()` no ultimo passo k: `Step ${k} is the latest recorded step;
+      use tick() to compute step ${k + 1}.`;
+    - `tick()` com o cursor k atras: `Step ${k + 1} is already computed; use
+      forward() instead of tick().`.
+- Interface: `AppError` ganha a categoria `refused` (DEC-24), que fica so no
+  resultado do comando, fora do banner. `useSimulation` expoe `forward`,
+  `backward` e `next`, que chama `forward` quando `canForward()` e `tick` no
+  ultimo passo, para um unico botao "proximo" na #36; `view` e
+  sempre o snapshot do cursor (`getCurrentSnapshot`).
+- Fora: recusar `tick()` quando todas as tarefas terminaram (#27); botoes e
+  atalhos (#36).
+- Prova: `src/core/simulator.navigation.test.ts` retrocede ate 0 e avanca ate
+  o fim no cenario de empates residuais, conferindo o mesmo objeto de cada
+  passo, relogio igual ao cursor, nenhuma consulta a politica e snapshots
+  iguais a copias tiradas antes (eventos `tie-break` e `drawState`); `tick()`
+  apos navegar iguala uma execucao direta. Recusas testadas sem mudanca de
+  cursor ou snapshot, inclusive repetidas e no simulador vazio.
+  `useSimulation.test.ts` e `errors.test.ts` cobrem `next`, `refused` fora do
+  banner, `load` apos retroceder e falha de `next` no ultimo passo.
+- Alternativas descartadas: um unico "avancar" no nucleo que calcula no fim
+  (o usuario separou navegar de calcular); ir direto a um passo k (nao
+  necessario); recusa como `unexpected` (o banner e reservado a bugs).
+
 ### DEC-37: Edicao durante a simulacao
 
 - Estado: aceita em 2026-11-01 pelo usuario no PR #101. Proposta em
@@ -1366,7 +1476,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
-- No historico (#23/#24), a lista de edicoes aceitas de cada tick.
+- No historico (#23/#24, DEC-35), a lista de edicoes aceitas de cada tick.
 
 #### Revisoes de outras decisoes
 
@@ -1374,6 +1484,10 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   libera nem paraleliza os jobs pendentes.
 - DEC-09: periodo editado recalcula as ativacoes restantes (item 4 das
   caracteristicas); termino tambem por encerramento.
+- DEC-35 e DEC-36: o historico passa a guardar a lista de edicoes de cada
+  tick e a descartar os passos e edicoes posteriores a uma edicao em tick
+  anterior ao ultimo (#26, como DEC-35 ja previa); `forward()`/`backward()`
+  continuam reutilizando snapshots sem recalcular.
 - DEC-07 e DEC-13: jobs forcados recebem CPU antes da politica, que decide
   para as CPUs restantes; job cuja CPU foi removida continua com o primeiro
   desempate, e a visao precisa representa-lo mesmo sem a CPU.
