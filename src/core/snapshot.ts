@@ -4,9 +4,11 @@
  * mutating its own state (invariant: snapshots share no mutable data).
  */
 import type {
+    Job,
     SimulationSnapshot,
     SimulationState,
     SystemConfig,
+    TaskDefinition,
 } from './domain';
 import { DRAW_SEED } from './draw';
 import { freezeCopy } from './helpers/freezeCopy';
@@ -36,4 +38,39 @@ export function createInitialState(config: SystemConfig): SimulationState {
 /** Deep, frozen copy of the live state. */
 export function takeSnapshot(state: SimulationState): SimulationSnapshot {
     return freezeCopy(state);
+}
+
+/** Recursive copy that is always mutable, even when the source is frozen. */
+function thaw<T>(value: T): T {
+    if (value === null || typeof value !== 'object') {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(thaw) as T;
+    }
+    const copy: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(value)) {
+        copy[key] = thaw(field);
+    }
+    return copy as T;
+}
+
+/**
+ * Rebuilds a mutable live state from a recorded snapshot, so the engine can
+ * keep running from a past step while the snapshot stays untouched (REQ-04,
+ * DEC-06, DEC-12). Everything is copied except the configuration and each
+ * task definition: they are frozen, the engine never mutates them, and
+ * sharing keeps them frozen. `deepCopy` cannot be used here because it hands
+ * frozen values back unchanged, which would return the snapshot itself.
+ */
+export function restoreState(snapshot: SimulationSnapshot): SimulationState {
+    const { config, tasks, ...rest } = snapshot;
+    return {
+        ...(thaw(rest) as Omit<SimulationState, 'config' | 'tasks'>),
+        config: config as SystemConfig,
+        tasks: tasks.map((tcb) => ({
+            definition: tcb.definition as TaskDefinition,
+            jobs: thaw(tcb.jobs) as Job[],
+        })),
+    };
 }

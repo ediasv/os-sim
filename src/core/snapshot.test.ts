@@ -7,7 +7,9 @@ import {
     type TaskDefinition,
 } from './domain';
 import { DRAW_SEED } from './draw';
-import { createInitialState, takeSnapshot } from './snapshot';
+import { rmPolicy } from './policies';
+import { Simulator } from './simulator';
+import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 
 const periodic: TaskDefinition = {
     id: 1,
@@ -137,5 +139,58 @@ describe('takeSnapshot', () => {
         expect(snapshot.tasks[0].jobs[0]).not.toBe(state.tasks[0].jobs[0]);
         expect(snapshot.cpus[0].running).not.toBe(state.cpus[0].running);
         expect(snapshot.events[0]).not.toBe(state.events[0]);
+    });
+});
+
+describe('restoreState', () => {
+    const tied = (id: number, color: string): TaskDefinition => ({
+        ...periodic,
+        id,
+        color,
+        duration: 2,
+        period: 4,
+        deadline: 4,
+    });
+    function runSnapshot() {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 1,
+                tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC')],
+            },
+            rmPolicy,
+        );
+        for (let i = 0; i < 6; i++) sim.tick();
+        return sim.getLatestSnapshot();
+    }
+
+    it('returns a mutable copy equal to the snapshot (DEC-06)', () => {
+        const snapshot = runSnapshot();
+        const restored = restoreState(snapshot);
+        expect(restored).toEqual(snapshot);
+        expect(Object.isFrozen(restored)).toBe(false);
+        expect(Object.isFrozen(restored.tasks[0].jobs)).toBe(false);
+        expect(Object.isFrozen(restored.tasks[0].jobs[0])).toBe(false);
+        expect(Object.isFrozen(restored.cpus[0])).toBe(false);
+        expect(Object.isFrozen(restored.executions)).toBe(false);
+        expect(Object.isFrozen(restored.events)).toBe(false);
+    });
+
+    it('shares nothing mutable with the snapshot', () => {
+        const snapshot = runSnapshot();
+        const before = JSON.parse(JSON.stringify(snapshot));
+        const restored = restoreState(snapshot);
+        restored.tasks[0].jobs[0].executed += 1;
+        restored.cpus[0].sliceElapsed += 1;
+        restored.executions.push(restored.executions[0]);
+        restored.events.push(restored.events[0]);
+        expect(snapshot).toEqual(before);
+    });
+
+    it('keeps the frozen configuration shared', () => {
+        const snapshot = runSnapshot();
+        const restored = restoreState(snapshot);
+        expect(restored.config).toBe(snapshot.config);
+        expect(Object.isFrozen(restored.config)).toBe(true);
     });
 });

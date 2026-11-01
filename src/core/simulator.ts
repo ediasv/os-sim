@@ -18,7 +18,7 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
-import { createInitialState, takeSnapshot } from './snapshot';
+import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 import { deepCopy } from './helpers/deepCopy';
 import { key } from './helpers/key';
 
@@ -82,6 +82,11 @@ export class Simulator {
     private state: SimulationState;
     private readonly policy: SchedulingPolicy;
     private snapshotHistory: SimulationSnapshot[] = [];
+    /**
+     * Index into `snapshotHistory` of the step the live state shows. It equals
+     * that snapshot's clock (DEC-11) and trails the latest step after `restore`.
+     */
+    private cursor = 0;
 
     constructor(
         config: SystemConfig = DEFAULT_CONFIG,
@@ -134,8 +139,35 @@ export class Simulator {
         return latestSnapshot;
     }
 
+    /**
+     * Makes a recorded step the current one: the live state becomes a mutable
+     * copy of that snapshot, so eligibility and later ticks start from it
+     * (REQ-04, DEC-06). Recorded snapshots are never changed or dropped. An
+     * unrecorded step is refused before anything is touched.
+     */
+    public restore(step: number): void {
+        const latest = this.snapshotHistory.length - 1;
+        if (!Number.isInteger(step) || step < 0 || step > latest) {
+            throw new RangeError(
+                `Cannot restore step ${step}: recorded steps are 0 to ${latest}.`,
+            );
+        }
+        this.state = restoreState(this.snapshotHistory[step]);
+        this.cursor = step;
+    }
+
+    public getCursor(): number {
+        return this.cursor;
+    }
+
+    /** Snapshot of the step the cursor points at. */
+    public getCurrentSnapshot(): SimulationSnapshot {
+        return this.snapshotHistory[this.cursor];
+    }
+
     private recordSnapshot(): void {
         this.snapshotHistory.push(takeSnapshot(this.state));
+        this.cursor = this.snapshotHistory.length - 1;
     }
 
     /** Executes exactly [clock, clock + 1) on each dispatched CPU. */
@@ -441,7 +473,18 @@ export class Simulator {
             ?.jobs[ref.index];
     }
 
+    /**
+     * Refuses tick() while the cursor is behind the latest recorded step, so a
+     * recorded step is never overwritten. Reusing the computed future is #24
+     * and discarding it is #26; until then navigation is the only way back.
+     */
     private executionGuard(): ExecutionGuardResult {
+        if (this.cursor < this.snapshotHistory.length - 1) {
+            return {
+                ready: false,
+                reason: `Step ${this.cursor + 1} is already computed; use snapshot navigation instead of tick().`,
+            };
+        }
         return { ready: true };
     }
 

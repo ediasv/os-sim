@@ -47,7 +47,8 @@ afirma que os modulos planejados ja existem.
   sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
-  (DEC-15).
+  (DEC-15); mantem cursor sobre o historico e restaura passos registrados
+  (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
   `tick`, que devolvem resultado (DEC-23).
@@ -155,7 +156,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   avancar no historico restaura, editar invalida o futuro.
 - Consequencia: validar edicao antes de mutar/descartar historico. Nao sortear
   dentro de comparadores de ordenacao; sortear somente no empate residual e
-  registrar resultado. Definir estruturas concretas na entrega do historico.
+  registrar resultado. Estruturas concretas do historico (cursor e restauracao)
+  definidas na #23, em DEC-35.
 - Alternativa descartada: usar sorteio nao restauravel a cada revisita do tick.
 
 ### DEC-07: Reavaliacao preemptiva e estabilidade de CPU
@@ -292,7 +294,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
   conflito com DEC-10) e `scheduler.ts` foram removidos; o contrato de politica
   e criado na #10. Copia integral por passo custa O(tamanho do estado); rever
-  na #23 se o historico ficar grande.
+  na #23 se o historico ficar grande (revisto na #23: mantida, DEC-30 e
+  DEC-35).
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
   `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
@@ -394,7 +397,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   (`executed > duration`) e corrompia o historico (REQ-04).
 - Consequencia:
     - Uma copia extra O(estado) por tick, da mesma ordem do snapshot; rever na
-      #23 junto com DEC-12. Efeito medido na memoria do historico em DEC-30.
+      #23 junto com DEC-12 (revisto na #23: mantida, DEC-30 e DEC-35). Efeito
+      medido na memoria do historico em DEC-30.
     - `findInconsistencies` tambem rejeita `executed > duration`.
     - `deepCopy` compartilha subarvores congeladas (a configuracao) em vez de
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
@@ -1072,6 +1076,30 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Limite: a decisao cobre a fronteira `loadConfig`; falhas de leitura do
   arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
   exibicao continua fora do escopo da #92 (#36).
+
+### DEC-35: Historico com cursor e restauracao
+
+- Estado: aceita em 2026-10-31 (acordado com o usuario na #23). Requisitos:
+  REQ-04. Complementa DEC-06, DEC-11, DEC-12 e DEC-14.
+- Decisao: o `Simulator` mantem `snapshotHistory` e um `cursor` privado, cujo
+  indice e o relogio do snapshot (DEC-11). `restore(step)` torna o estado vivo
+  uma copia mutavel do snapshot (`restoreState`), sem alterar snapshots;
+  passo nao registrado (nao inteiro, negativo ou alem do ultimo) e recusado
+  com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
+  posicao; `getLatestSnapshot()` fica inalterado.
+- Avanco: `tick()` com o cursor atras do ultimo passo e recusado com a
+  mensagem `Step ${cursor + 1} is already computed; use snapshot navigation
+  instead of tick().`. Reusar o futuro ainda valido fica na #24 e descartar o
+  futuro na #26; a #23 nao conhece edicoes.
+- Prova: teste recalcula k+1 a partir de k restaurado num simulador novo
+  (`continueFrom`, acesso privado so no teste) e compara com o registrado,
+  inclusive eventos e `drawState`.
+- Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
+  copias por passo (restaurar copia uma vez por chamada). `restoreState`
+  compartilha a `config` e cada `definition` congeladas, em vez de usar
+  `deepCopy`, que devolve valores congelados sem copiar.
+- Alternativa descartada: expor recalculo/descarte publico na #23 (fora do
+  escopo; pertence a #24/#26).
 
 ## Fluxo de um passo
 
