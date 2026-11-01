@@ -8,7 +8,6 @@ import {
     type SimulationState,
     type SystemConfig,
 } from './domain';
-import { activateDueJobs } from './activation';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
 import { requireValidConfig } from './config';
@@ -21,6 +20,7 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
+import { activateDueJobs } from './activation';
 import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 import { SnapshotHistory } from './history';
 import { EditRefusal, SimulationRefusal } from './refusal';

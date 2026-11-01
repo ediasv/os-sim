@@ -39,6 +39,14 @@ export function findInconsistencies(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
     }
+    if (
+        !Number.isSafeInteger(state.maxTaskId) ||
+        state.tasks.some((tcb) => tcb.definition.id > state.maxTaskId)
+    ) {
+        issues.push(
+            `The highest used task ID (${state.maxTaskId}) must be an integer not below any task ID.`,
+        );
+    }
     const statuses: readonly string[] = [
         'ready',
         'forced',

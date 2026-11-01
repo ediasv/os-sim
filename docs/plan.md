@@ -862,6 +862,16 @@ Issues `[Docs]`, sem fase no Project.
        novas (#131; refactors do `edit.ts`); Project e corpo do PR
        #118 a atualizar com o aceite do usuario;
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
+       #118 mergeado na `main` (`1559d97`). Implementacao local sobre ela,
+       dividida em duas etapas: este PR traz a inclusao (DEC-46, proposta:
+       item `addTask`, `maxTaskId` no estado, cor padrao deterministica,
+       ativacao na etapa de edicao); a exclusao (`removeTask`, DEC-47) vem
+       depois do merge deste, num PR que fecha a #26 com a conferencia final
+       dos criterios contra os PRs 2 a 6. Testes em
+       `simulator.addTask.test.ts`, `defaultColor.test.ts` e
+       `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
+       lista de inclusoes na validacao, TCB provisorio) derrubam testes.
+       Interface e pacote nao verificados.
 - #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
   do sistema mostra a duracao de cada job a partir de `Job.duration`
   (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
@@ -877,8 +887,8 @@ Issues `[Docs]`, sem fase no Project.
 - #117 em implementacao local: estado por tarefa, suspensao, forcamento,
   encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
-- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao e exclusao
-  de tarefas, fecha a #26). DEC-34 segue pendente de aceite.
+- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao; a exclusao
+  fecha a #26 num PR seguinte). DEC-34 segue pendente de aceite.
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

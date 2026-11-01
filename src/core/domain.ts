@@ -229,13 +229,19 @@ export type SimulationEvent =
 export interface SimulationState {
     clock: number;
     config: SystemConfig;
-    /** One TCB per configured task, in configuration order. */
+    /** One TCB per task, in configuration order; inclusions append (DEC-46). */
     tasks: TaskControlBlock[];
     cpus: CpuState[];
     executions: ExecutionSlice[];
     events: SimulationEvent[];
     /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-27). */
     drawState: number;
+    /**
+     * Highest task ID ever used up to this snapshot; the next included task
+     * gets this plus one. Kept in the state so discarding the future discards
+     * the IDs generated in it (DEC-46).
+     */
+    maxTaskId: number;
 }
 
 /** Recursively read-only view, used so snapshot consumers cannot mutate them. */

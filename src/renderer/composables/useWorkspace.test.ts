@@ -9,6 +9,9 @@ import { useWorkspace } from './useWorkspace';
 const refuse = vi.hoisted(() => ({
     next: false,
     kind: 'refused' as 'refused' | 'unexpected',
+    // Makes the snapshot hold one task more than its configuration lists, as
+    // after an inclusion (the edit command itself only arrives with #37).
+    extraTask: false,
 }));
 vi.mock('./useSimulation', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./useSimulation')>();
@@ -18,6 +21,17 @@ vi.mock('./useSimulation', async (importOriginal) => {
             const sim = actual.useSimulation();
             return {
                 ...sim,
+                view: {
+                    get value() {
+                        const snapshot = sim.view.value;
+                        return refuse.extraTask && snapshot
+                            ? {
+                                  ...snapshot,
+                                  tasks: [...snapshot.tasks, snapshot.tasks[0]],
+                              }
+                            : snapshot;
+                    },
+                } as typeof sim.view,
                 next: () =>
                     refuse.next
                         ? {
@@ -62,6 +76,7 @@ beforeEach(dismissError);
 afterEach(() => {
     refuse.next = false;
     refuse.kind = 'refused';
+    refuse.extraTask = false;
     vi.unstubAllGlobals();
     dismissError();
 });
@@ -88,6 +103,16 @@ describe('useWorkspace', () => {
         expect(workspace.taskCount.value).toBe(2);
         expect(workspace.available.value.has('step-forward')).toBe(true);
         expect(workspace.available.value.has('restart')).toBe(false);
+    });
+
+    it('counts the tasks of the running snapshot, not the configuration it started from', async () => {
+        const workspace = await prepared();
+        refuse.extraTask = true;
+
+        workspace.handle('step-forward');
+
+        expect(workspace.config.value.tasks).toHaveLength(2);
+        expect(workspace.taskCount.value).toBe(3);
     });
 
     it('the first step publishes snapshot zero without running a tick', async () => {
