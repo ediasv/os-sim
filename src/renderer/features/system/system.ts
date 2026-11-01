@@ -28,6 +28,10 @@ export interface SystemJob {
     readonly absoluteDeadline: number;
     /** Ticks of progress of this job (REQ-01), not of the current slice. */
     readonly executed: number;
+    /**
+     * Duration this job runs, copied at activation (DEC-44). It can differ from
+     * the task duration after an edit, which only reaches later jobs.
+     */
     readonly duration: number;
     /** Task color without `#`, as the Gantt paints the job. */
     readonly color: string;
@@ -68,12 +72,13 @@ export interface SystemData {
 }
 
 function projectJob(
-    definition: DeepReadonly<{ color: string; duration: number }>,
+    definition: DeepReadonly<{ color: string }>,
     job: DeepReadonly<{
         taskId: number;
         index: number;
         activation: number;
         absoluteDeadline: number;
+        duration: number;
         executed: number;
         state: JobState;
         deadlineMissed: boolean;
@@ -84,7 +89,7 @@ function projectJob(
         activation: job.activation,
         absoluteDeadline: job.absoluteDeadline,
         executed: job.executed,
-        duration: definition.duration,
+        duration: job.duration,
         color: definition.color,
         state: job.state,
         deadlineMissed: job.deadlineMissed,
