@@ -51,8 +51,8 @@ describe('task duration and deadline edit in the engine', () => {
         });
         sim.tick();
         sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 2 }]);
-        // Executed passes the lowered duration (2) at the third tick; a job
-        // judged by the definition would complete there, not at 5.
+        // The lowered duration (2) would be reached at clock 2; a job judged
+        // by the definition would complete there, but it keeps its own 5.
         for (let step = 0; step < 2; step++) sim.tick();
         const midway = sim.getCurrentSnapshot().tasks[0].jobs[0];
         expect(midway.executed).toBe(3);
@@ -599,5 +599,39 @@ describe('characteristic edits together (DEC-37, DEC-39)', () => {
             ).toBe(true);
             expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
         });
+    });
+});
+
+describe('edits to one task across submissions of the same tick (DEC-44)', () => {
+    it('judges jobs by the state before the tick and activates once from the net definition', () => {
+        // A: the first submission brings the arrival to the current tick, the
+        // second moves it away again; the net arrival is 6, so no job exists.
+        const arrival = createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [task(1, { arrival: 5, period: 20, deadline: 20 })],
+        });
+        for (let step = 0; step < 3; step++) arrival.tick();
+        arrival.edit([{ kind: 'taskArrival', taskId: 1, arrival: 3 }]);
+        expect(arrival.getCurrentSnapshot().tasks[0].jobs).toHaveLength(1);
+        arrival.edit([{ kind: 'taskArrival', taskId: 1, arrival: 6 }]);
+        const moved = arrival.getCurrentSnapshot().tasks[0];
+        expect(moved.jobs).toHaveLength(0);
+        expect(moved.nextActivation).toBe(6);
+
+        // B: the first submission makes job 2 activate now; the second
+        // raises the duration and is accepted, so that job takes the net 3.
+        const period = createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [task(1, { duration: 1, period: 5, deadline: 20 })],
+        });
+        for (let step = 0; step < 7; step++) period.tick();
+        period.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        expect(
+            period.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
+        ).toEqual([1, 1, 1]);
+        period.edit([{ kind: 'taskDuration', taskId: 1, duration: 3 }]);
+        expect(
+            period.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
+        ).toEqual([1, 1, 3]);
     });
 });

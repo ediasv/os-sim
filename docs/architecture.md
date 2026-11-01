@@ -307,7 +307,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
 - Revista por DEC-37: na edicao, periodo zero e recusado e os
   tempos derivados sao conferidos sobre as ativacoes restantes, com os
-  valores editados.
+  valores editados. Forma na DEC-44.
 
 ### DEC-11: Passo de um tick e snapshot inicial
 
@@ -524,7 +524,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
   ou ordem das candidatas (DEC-13).
 - Revista por DEC-37: o criterio (4) usa a duracao do proprio
-  job, que pode diferir da duracao vigente da tarefa depois de uma edicao.
+  job, que pode diferir da duracao vigente da tarefa depois de uma edicao
+  (DEC-44).
 
 ### DEC-17: Prioridade RM de tarefas aperiodicas
 
@@ -1917,8 +1918,10 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   DEC-37 item 4). Nao ha caso aperiodico: periodo 0 e recusado na edicao e
   a edicao de tarefa aperiodica fica fora do Projeto A (DEC-29).
 - Recusas (em portugues, citando o item): tarefa inexistente ou ID nao
-  inteiro; tarefa concluida (so a cor, inclusive no mesmo envio que a
-  conclui); ingresso de tarefa que ja ingressou ou menor que o tick atual;
+  inteiro; tarefa concluida (so a cor), tambem a concluida por
+  item anterior do mesmo tick: `[concluir, periodo]` e recusado e
+  `[periodo, concluir]` e aceito (validacao em ordem; o resultado equivale a
+  so concluir, e a tarefa concluida nao ativa mais); ingresso de tarefa que ja ingressou ou menor que o tick atual;
   duracao e prazo de tarefa sem ativacoes restantes; periodo menor que 1;
   prazo da ultima ativacao restante fora do inteiro exato (DEC-10),
   calculado sobre o alvo liquido (ingresso e periodo pendentes do mesmo
@@ -1932,6 +1935,19 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   tarefas diferentes seguem a ordem das tarefas.
 - Revisoes: DEC-09 (calendario guardado em `nextActivation`, nao derivado);
   DEC-16 (criterio 4 usa `Job.duration`, ja anotado em DEC-37).
+- Semantica entre envios do mesmo tick (PONTO ABERTO: sinalizar ao usuario
+  no aceite da DEC-44): cada tratador julga os jobs pelo estado ANTES das
+  edicoes do tick, e a ativacao causada por edicao e criada uma unica vez,
+  depois de todas as edicoes, a partir da definicao liquida do tick. Assim
+  (A) um envio leva o ingresso a `t` (o job 0 aparece no snapshot `t`) e um
+  segundo envio no mesmo tick leva o ingresso a 6 e e aceito: o job 0
+  desaparece; (B) um envio muda o periodo e o job 2 ativa em `t` com duracao
+  1, e um segundo envio muda a duracao para 3 e e aceito: o job 2 passa a ter
+  duracao 3. Concorda com DEC-37 item 5 (o snapshot `t` depende so de `t-1` e
+  do estado final, nao de como as edicoes foram divididas), mas tensiona os
+  itens 2 (recusa "ja ingressou"), 3 (job ativado mantem a duracao) e 4 de
+  "Caracteristicas da tarefa", lidos pelo estado visto no snapshot `t`. Fixado
+  em `simulator.taskEdits.test.ts` (bloco "across submissions").
 - Lacuna conhecida (decisao do usuario, O3): so um ponto do renderer
   mostra a duracao de um JOB lida da definicao: `projectJob` em
   `src/renderer/features/system/system.ts` (linha 87, `duration:

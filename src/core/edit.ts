@@ -80,7 +80,8 @@ export type Edit = readonly EditItem[];
 /**
  * What the user asked for at the edit stage: the editable subset of the
  * configuration (tied to `SystemConfig` so a field cannot drift from it) plus
- * the chosen status of each task. Only the system fields are in
+ * the chosen status of each task (`taskStates`) and the wanted definition of
+ * each task (`definitions`, DEC-44). Only the system fields are in
  * `TARGET_FIELDS`; task states are applied per task by `applyNetChange` and
  * must never be copied into the configuration.
  */
@@ -263,8 +264,8 @@ export function remainingActivations(
 }
 
 /**
- * A new duration or deadline only reaches the activations not yet made, so
- * only those bound the value (DEC-10): the last of them has the absolute
+ * A new duration, deadline, arrival or period only reaches the activations not
+ * yet made, so only those bound the value (DEC-10): the last of them has the absolute
  * deadline `nextActivation + (remaining - 1) * period + deadline`, which must
  * stay an exact integer. Returns the reason, or null when it does.
  */
@@ -293,7 +294,7 @@ export function checkRemainingLimit(
  * period differs from the live one. The target definition replaces the live
  * one for the same reason.
  */
-function withPendingArrival(
+function asNetScheduled(
     tcb: DeepReadonly<TaskControlBlock>,
     target: EditTarget,
     clock: number,
@@ -363,7 +364,7 @@ function editCharacteristic(
     const checked = checkTaskField(target, context, taskId, field, value);
     if (!checked.ok) return checked;
     const tooFar = checkRemainingLimit(
-        withPendingArrival(tcb, target, context.state.clock),
+        asNetScheduled(tcb, target, context.state.clock),
         checked.definition,
     );
     if (tooFar !== null) return { ok: false, reason: tooFar };
@@ -464,7 +465,7 @@ const HANDLERS: Handlers = {
         // it changes the RM priority alone, so there is nothing to bound.
         if (remainingActivations(tcb) > 0) {
             const tooFar = checkRemainingLimit(
-                withPendingArrival(tcb, next, context.state.clock),
+                asNetScheduled(tcb, next, context.state.clock),
                 checked.definition,
             );
             if (tooFar !== null) return { ok: false, reason: tooFar };
@@ -734,7 +735,9 @@ export function foldEdit(
  * order, with their events (`suspension`, `resumption`, `forced`, `unforced`,
  * `task-finished`; DEC-43); CPU events come after (DEC-22). The configuration
  * is replaced, never mutated, because snapshots and restored states share it
- * (DEC-35). Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
+ * (DEC-35); task definitions are replaced by the net ones, never mutated
+ * (DEC-44), and a changed arrival or period reschedules `nextActivation` and
+ * activates what is due at the clock. Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
  * the highest IDs or appends the next ones, recording `cpu-removed` or
  * `cpu-added` in ascending ID order (DEC-40).
  */
@@ -779,8 +782,10 @@ export function applyNetChange(
             before.taskStates[taskId],
             after.taskStates[taskId],
         );
-        // An arrival moved to the current tick activates here, after the
-        // task's status events and before any CPU event (DEC-37, DEC-22).
+        // An arrival moved to the current tick, or a period whose new next
+        // activation is already due, activates here, once, from the net
+        // definition: after the task's status events and before any CPU
+        // event (DEC-37, DEC-22, DEC-44).
         if (rescheduled) activateTask(state, tcb);
     }
 
@@ -795,66 +800,65 @@ function applyStatusChange(
     next: TaskStatus,
 ): void {
     const taskId = tcb.definition.id;
-    {
-        if (previous === next) return;
-        tcb.status = next;
-        const owner = state.cpus.find((cpu) => cpu.running?.taskId === taskId);
-        if (next === 'concluded') {
-            const interrupted: JobRef[] = [];
-            for (const job of tcb.jobs) {
-                if (job.state === 'completed' || job.state === 'interrupted')
-                    continue;
-                job.state = 'interrupted';
-                interrupted.push({ taskId, index: job.index });
-            }
-            if (owner !== undefined) {
-                owner.running = null;
-                owner.sliceElapsed = 0;
-            }
-            // A task that already finished naturally has its task-finished event (possibly logged at this same tick, before the edit stage per DEC-22); concluding it must not log a second one (DEC-43).
-            if (
-                !state.events.some(
-                    (event) =>
-                        event.kind === 'task-finished' &&
-                        event.taskId === taskId,
-                )
-            ) {
-                state.events.push({
-                    kind: 'task-finished',
-                    time: state.clock,
-                    taskId,
-                    interrupted,
-                });
-            }
-            return;
+    if (previous === next) return;
+    tcb.status = next;
+    const owner = state.cpus.find((cpu) => cpu.running?.taskId === taskId);
+    if (next === 'concluded') {
+        const interrupted: JobRef[] = [];
+        for (const job of tcb.jobs) {
+            if (job.state === 'completed' || job.state === 'interrupted')
+                continue;
+            job.state = 'interrupted';
+            interrupted.push({ taskId, index: job.index });
         }
-        if (previous === 'forced') {
-            state.events.push({ kind: 'unforced', time: state.clock, taskId });
-            if (owner !== undefined) owner.sliceElapsed = 0;
+        if (owner !== undefined) {
+            owner.running = null;
+            owner.sliceElapsed = 0;
         }
-        if (next === 'suspended') {
+        // A task that already finished naturally has its task-finished
+        // event (possibly logged at this same tick, before the edit stage
+        // per DEC-22); concluding it must not log a second one (DEC-43).
+        if (
+            !state.events.some(
+                (event) =>
+                    event.kind === 'task-finished' && event.taskId === taskId,
+            )
+        ) {
             state.events.push({
-                kind: 'suspension',
+                kind: 'task-finished',
                 time: state.clock,
                 taskId,
-                cpuId: owner?.id ?? null,
-            });
-            if (owner !== undefined && owner.running !== null) {
-                const job = tcb.jobs[owner.running.index];
-                if (job.state === 'running') job.state = 'ready';
-                owner.running = null;
-                owner.sliceElapsed = 0;
-            }
-        } else if (previous === 'suspended') {
-            state.events.push({
-                kind: 'resumption',
-                time: state.clock,
-                taskId,
+                interrupted,
             });
         }
-        if (next === 'forced') {
-            state.events.push({ kind: 'forced', time: state.clock, taskId });
+        return;
+    }
+    if (previous === 'forced') {
+        state.events.push({ kind: 'unforced', time: state.clock, taskId });
+        if (owner !== undefined) owner.sliceElapsed = 0;
+    }
+    if (next === 'suspended') {
+        state.events.push({
+            kind: 'suspension',
+            time: state.clock,
+            taskId,
+            cpuId: owner?.id ?? null,
+        });
+        if (owner !== undefined && owner.running !== null) {
+            const job = tcb.jobs[owner.running.index];
+            if (job.state === 'running') job.state = 'ready';
+            owner.running = null;
+            owner.sliceElapsed = 0;
         }
+    } else if (previous === 'suspended') {
+        state.events.push({
+            kind: 'resumption',
+            time: state.clock,
+            taskId,
+        });
+    }
+    if (next === 'forced') {
+        state.events.push({ kind: 'forced', time: state.clock, taskId });
     }
 }
 

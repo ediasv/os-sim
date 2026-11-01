@@ -8,6 +8,7 @@
 import {
     maxJobs,
     type DeepReadonly,
+    type Job,
     type SimulationState,
     type TaskControlBlock,
 } from './domain';
@@ -35,14 +36,14 @@ export function activateTask(
         tcb.nextActivation <= state.clock
     ) {
         const activation = tcb.nextActivation;
-        const job = {
+        const job: Job = {
             taskId: definition.id,
             index: tcb.jobs.length,
             activation,
             absoluteDeadline: activation + definition.deadline,
             duration: definition.duration,
             executed: 0,
-            state: 'ready' as const,
+            state: 'ready',
             completedAt: null,
             deadlineMissed: false,
         };
