@@ -403,3 +403,60 @@ describe('read failures and cancel', () => {
         expect(read).not.toHaveBeenCalled();
     });
 });
+
+describe('any name and location (A.3.3.4)', () => {
+    it.each([
+        'config',
+        'CONFIG.CFG',
+        '.oculto',
+        'meu.arquivo.de.teste.txt',
+        'a/b/c/d/profundo.conf',
+        'nome com espaço e ção.dat',
+    ])('loads the same configuration from the name %j', async (name) => {
+        const path = await fileWith(name, CANONICAL);
+
+        const { read, load } = await loadFromDisk(path);
+
+        expect(read).toMatchObject({ status: 'loaded', path });
+        expect(load?.ok).toBe(true);
+        if (!load || !load.ok) return;
+        expect(load.config).toEqual(EXPECTED);
+    });
+
+    it('loads files from two unrelated temp folders', async () => {
+        const other = await mkdtemp(join(tmpdir(), 'os-sim-'));
+        try {
+            const first = await fileWith('config.txt', CANONICAL);
+            const second = join(other, 'config.txt');
+            await writeFile(second, CANONICAL);
+
+            const a = await loadFromDisk(first);
+            const b = await loadFromDisk(second);
+
+            expect(a.read).toMatchObject({ status: 'loaded', path: first });
+            expect(b.read).toMatchObject({ status: 'loaded', path: second });
+            expect(a.load?.ok && b.load?.ok).toBe(true);
+            if (!a.load?.ok || !b.load?.ok) return;
+            expect(a.load.config).toEqual(EXPECTED);
+            expect(b.load.config).toEqual(a.load.config);
+        } finally {
+            await rm(other, { recursive: true, force: true });
+        }
+    });
+
+    it('reads only the path the dialog returns', async () => {
+        const otherText = 'RM;5;1\n1;FFFFFF;0;1;0;1\n';
+        const first = await fileWith('um.txt', CANONICAL);
+        const second = await fileWith('sub/dois.cfg', otherText);
+
+        const a = await openConfigFile(() =>
+            Promise.resolve({ canceled: false, filePaths: [first] }),
+        );
+        const b = await openConfigFile(() =>
+            Promise.resolve({ canceled: false, filePaths: [second] }),
+        );
+
+        expect(a).toEqual({ status: 'loaded', path: first, text: CANONICAL });
+        expect(b).toEqual({ status: 'loaded', path: second, text: otherText });
+    });
+});
