@@ -40,20 +40,28 @@ afirma que os modulos planejados ja existem.
 - [Sorteio](../src/core/draw.ts): gerador pseudoaleatorio com semente fixa e
   sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
-  resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
+  confere que o registro tem `config.algorithm` e constroi o `Simulator` com o
+  registro inteiro (DEC-25, DEC-39).
 - [Historico](../src/core/history.ts): `SnapshotHistory` guarda os snapshots
-  congelados (passo k no indice k) e o cursor; so acrescenta com o cursor no
-  ultimo passo e nunca altera nem descarta um passo (DEC-35).
+  congelados (passo k no indice k), a lista de edicoes de cada passo e o
+  cursor; so acrescenta com o cursor no ultimo passo, e `rewrite` troca um
+  passo editado e descarta os seguintes com suas edicoes (DEC-35, DEC-39).
+- [Edicao](../src/core/edit.ts): tipos de item (algoritmo e quantum na
+  #115), dobra em ordem sobre o alvo pedido, validacao por item e aplicacao
+  da mudanca liquida do tick (DEC-37, DEC-39).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
-  (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
+  (ordem dos eventos em DEC-22) e faz despacho global pela politica do
+  algoritmo vigente (DEC-39),
   sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
   (DEC-15); mantem cursor sobre o historico e restaura passos registrados
   (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35); navega por eles sem
   recalcular (`forward`, `backward`, `canForward`) e recusa pedido impossivel com
-  `SimulationRefusal` (DEC-36).
+  `SimulationRefusal` (DEC-36); edita o tick do cursor recalculando-o a
+  partir de `t-1` (`edit`, `getEdits`) e recusa edicao invalida com
+  `EditRefusal`, um motivo por item (DEC-37, DEC-39).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica o snapshot do cursor via `shallowRef` e oferece os comandos
   `load`, `tick`, `forward`, `backward` e `next`, que devolvem resultado
@@ -457,6 +465,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
 - Alternativa descartada: bloquear o simulador apos um erro, o que perde um
   estado valido que poderia continuar.
+- Revista por DEC-39: `edit` tambem e transacional; recusa ou falha no
+  recalculo deixam estado, cursor e historico inalterados.
 
 ### DEC-15: Rejeicao de configuracao e consultas do Simulator
 
@@ -734,6 +744,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   da lista de tarefas e depois das CPUs (revisao de 2026-11-01), e a etapa de
   fatias vencidas passa a vir depois das ativacoes; o despacho
   passa a incluir a `preemption` causada por job forcado.
+- Revista por DEC-39: a ordem ativacoes, etapa de edicao e fatias vencidas
+  esta implementada desde a #115 (a `preemption` por job forcado fica para a
+  #117).
 
 ### DEC-23: Contrato do adaptador Vue
 
@@ -831,6 +844,12 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       a fabrica concentra a resolucao e vira resolvedor na #26.
     - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
       sorteio de DEC-27 (#20); nao cai mais na ordem do arquivo.
+- Revista por DEC-39: o item 2 muda. A fabrica passa o registro inteiro
+  (`{ policies }`) e o `Simulator` busca a politica pelo algoritmo vigente a
+  cada despacho; a alternativa "resolvedor no motor" foi adotada, porque a
+  troca de algoritmo durante a simulacao passou a existir. O motor continua
+  sem ramificar pelo nome (DEC-01), e a politica unica injetada continua
+  valendo para os testes do motor.
 
 ### DEC-26: Sem testes de escalonabilidade
 
@@ -1200,6 +1219,10 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
     abordagem, tarefas nao registradas) foi substituida por esta, por nao ser
     reproduzivel nas condicoes de `devEngines`.
 
+- Revista por DEC-39: o historico guarda a lista de edicoes de cada passo e
+  descarta passos so por `rewrite`, que troca o passo editado e apaga os
+  seguintes com suas edicoes; "descartar o futuro fica na #26" foi feito na
+  #115. `append` continua recusado com o cursor atras do ultimo passo.
 - Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
   escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
   cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
@@ -1578,6 +1601,83 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   contado dessa ativacao adiada.
 - Motivo da retirada e alternativa registrados em DEC-02; texto original no
   PR #101 (commit `37f80fa`). Reabriu e depois fechou de novo #11 e #12.
+
+### DEC-39: Caminho da edicao no nucleo
+
+- Estado: proposta em 2026-11-01 no PR #115 (#26, 2 de 6), para aceite do
+  usuario na revisao. Requisitos: REQ-04, REQ-05, REQ-07. Detalha DEC-37;
+  revisa DEC-14, DEC-22, DEC-25 e DEC-35.
+- Contexto: DEC-37 define o que cada edicao faz, mas nao a forma no nucleo.
+  A #26 sai em varios PRs; este cria o caminho geral, provado com algoritmo
+  e quantum, para que os seguintes so acrescentem tipos de item.
+- Decisao:
+    1. API: `Simulator.edit(items)` edita o tick do cursor; `getEdits(step)`
+       devolve as edicoes aceitas no passo, congeladas, na ordem em que foram
+       aceitas (`RangeError` para passo nao registrado, como `restore`).
+       `EditItem` (`src/core/edit.ts`) e uma uniao por `kind`; a #115 cria
+       `algorithm` e `quantum`. Um tipo novo e um membro da uniao, um campo
+       de `EditTarget` e um tratador em `HANDLERS`, cujo tipo exige um
+       tratador por tipo, entao o compilador acusa o que faltar.
+    2. Recalculo: `edit` recalcula o passo `t-1 -> t` a partir do snapshot
+       `t-1` (no tick 0, do estado inicial da configuracao validada no
+       construtor) com todas as edicoes de `t` mais a nova. `tick()`, o
+       construtor e `edit` compartilham as etapas do Fluxo de um passo, com a
+       etapa de edicao entre as ativacoes e as fatias vencidas (DEC-37).
+    3. Mudanca liquida: os itens sao dobrados sobre um `EditTarget` (o que o
+       usuario pediu), validados em ordem sobre o estado da etapa de edicao;
+       a etapa aplica so a diferenca entre o alvo antes e depois das edicoes
+       do tick (DEC-37 item 5). Item recusado nao entra na dobra, e os
+       seguintes sao julgados sem ele, para que todos os recusados recebam
+       motivo de uma vez (escolha do autor). Algoritmo e quantum trocam a
+       `config` por um objeto novo congelado, nunca a mutam, pois snapshots e
+       estados restaurados a compartilham (DEC-35); nao registram evento.
+    4. Recusa: qualquer item recusado recusa a edicao inteira com
+       `EditRefusal` (`src/core/refusal.ts`), subclasse de
+       `SimulationRefusal` com `items` (`index` a partir de 0, `kind`,
+       `reason`) e mensagem com uma linha por item, `Item ${index + 1}
+       (${kind}): ${reason}`. Regra da configuracao (quantum, algoritmo) e
+       julgada por `validateConfig`, e o motivo e a mensagem dele (fonte
+       unica, DEC-28; escolha do usuario na #115). Motivos sem regra da
+       configuracao ficam em ingles: `No scheduling policy is registered for
+       algorithm ${algorithm}.`, `Unknown edit item kind ...`. Edicao vazia e
+       recusada com `SimulationRefusal('An edit needs at least one item.')`.
+       Edicao ja registrada recusada ao ser refeita e defeito do motor
+       (`Error`), pois o recalculo e deterministico.
+    5. Atomicidade: `edit` e transacional como `tick()` (DEC-14): recusa ou
+       falha da politica deixam estado, cursor e historico identicos.
+    6. Historico: `SnapshotHistory.rewrite(step, snapshot, edits)` troca o
+       passo, guarda copia congelada da lista de edicoes e descarta os passos
+       seguintes com suas edicoes; `append` registra passo sem edicoes. Toda
+       edicao aceita descarta o futuro, mesmo com mudanca liquida nula
+       (DEC-37 item 1, escolha do autor); o cursor fica no passo editado.
+    7. Politica: o construtor recebe `SchedulingPolicy` ou `{ policies }`
+       (`PolicySource`); a fabrica passa o registro inteiro. O motor busca a
+       politica pelo `config.algorithm` vigente a cada despacho, sem guardar
+       em cache, entao um passo restaurado usa o proprio algoritmo. Politica
+       unica injetada (testes do motor) vale para qualquer algoritmo. Sem
+       candidatas e sem politica para o algoritmo, usa a politica que nao
+       seleciona nada. DEC-01 continua: o motor busca pelo nome, nao ramifica
+       por ele.
+- Nota para a #116: "executou em [t-1, t)" (primeiro desempate, DEC-18) ja e
+  derivavel de `executions`, pelo trecho do job com `end === clock` que a
+  execucao do passo recalculado escreve antes da etapa de edicao; nao e
+  preciso guardar fato novo quando a CPU for removida.
+- Justificativa: um caminho unico de edicao, com tipos de item isolados em
+  tratadores, deixa os PRs seguintes da #26 sem mexer no recalculo, no
+  historico nem na recusa. Dobrar sobre o alvo, e nao sobre o estado, e o
+  que torna o snapshot `t` dependente so de `t-1` e do estado final pedido.
+- Alternativas descartadas:
+    - Registro direto como segundo argumento do construtor: `{}` ficaria
+      ambiguo entre registro vazio e politica sem `select`, que DEC-14 manda
+      rejeitar.
+    - Guardar a politica escolhida no estado: duplicaria `config.algorithm`.
+    - Parar a validacao no primeiro item recusado: a mensagem nao citaria
+      cada item recusado (DEC-37 item 4).
+    - Mensagens de recusa em ingles para as regras da configuracao:
+      duplicariam o texto de `validateConfig` (DEC-28).
+- Evidencia: `src/core/edit.test.ts`, `src/core/history.test.ts`,
+  `src/core/simulator.edit.test.ts` e o bloco `policy source` de
+  `src/core/simulator.test.ts`.
 
 ## Fluxo de um passo
 

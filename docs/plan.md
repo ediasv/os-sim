@@ -718,7 +718,26 @@ Issues `[Docs]`, sem fase no Project.
        um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
        `oxfmt --check` ok e CI `test` aprovado);
     2. #115 (rascunho, em andamento) etapa de edicao no passo, edicoes por tick no historico, descarte do
-       futuro, recusa atomica por item, algoritmo e quantum;
+       futuro, recusa atomica por item, algoritmo e quantum. Implementacao
+       iniciada em 2026-11-01 sobre `1075b0a` (baseline `npm test` 669/669,
+       lint e typecheck sem erros); escopo e criterios no corpo do PR;
+       motivo da recusa de regra da configuracao vem de `validateConfig`
+       (escolha do usuario). Codigo implementado, ainda sem commit:
+       `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
+       liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
+       passo em `history.ts`, `Simulator.edit`/`getEdits` com recalculo a
+       partir de `t-1` e politica pelo algoritmo vigente, fatias vencidas
+       depois das ativacoes (DEC-22). Forma registrada em DEC-39
+       (proposta); DEC-14, DEC-22, DEC-25 e DEC-35 revistas. Evidencia
+       (2026-11-01): `npm test` 711/711 em 44 arquivos, `npm run lint` e
+       `npm run typecheck` sem erros; testes em `edit.test.ts`,
+       `history.test.ts`, `simulator.edit.test.ts` e bloco `policy source`
+       de `simulator.test.ts`. Testes que passaram de primeira (recusa
+       atomica, mudanca liquida, descarte do futuro) conferidos com
+       mutacoes: nao restaurar o estado na falha, sorteio de `t` em vez de
+       `t-1`, `rewrite` que mantem passos seguintes e recalculo a partir de
+       `t`; todas derrubam testes. Nao verificado: interface (comando
+       `edit` fica na #37) e pacote. Proximo passo: revisao do PR e #116;
     3. #116 (rascunho) quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
        sem a CPU;
     4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
