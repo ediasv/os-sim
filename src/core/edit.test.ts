@@ -66,6 +66,7 @@ describe('edit fold', () => {
             quantum: 5,
             cpuCount: 1,
             taskStates: { 1: 'ready' },
+            definitions: { 1: config.tasks[0] },
         });
     });
 
@@ -79,6 +80,7 @@ describe('edit fold', () => {
                 quantum: 4,
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
+                definitions: { 1: config.tasks[0] },
             },
         });
         expect(foldEdit(base, [algorithm('EDF'), quantum(2)], context)).toEqual(
@@ -89,6 +91,7 @@ describe('edit fold', () => {
                     quantum: 2,
                     cpuCount: 1,
                     taskStates: { 1: 'ready' },
+                    definitions: { 1: config.tasks[0] },
                 },
             },
         );
@@ -105,6 +108,7 @@ describe('edit fold', () => {
                 quantum: 5,
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
+                definitions: { 1: config.tasks[0] },
             },
         });
     });
@@ -272,6 +276,7 @@ describe('CPU count edit', () => {
                 quantum: 5,
                 cpuCount: 17,
                 taskStates: { 1: 'ready' },
+                definitions: { 1: config.tasks[0] },
             },
         });
     });
@@ -503,6 +508,106 @@ it('refuses an unknown task state with an accurate reason', () => {
                 reason: 'Estado de tarefa inválido: "sleeping".',
             },
         ],
+    });
+});
+
+describe('task color edit', () => {
+    const color = (taskId: number, value: unknown): EditItem =>
+        ({ kind: 'taskColor', taskId, color: value }) as EditItem;
+    const fixture = () => {
+        const state = createInitialState({
+            ...config,
+            tasks: [
+                config.tasks[0],
+                { ...config.tasks[0], id: 2, color: '112233' },
+            ],
+        });
+        return { state, hasPolicy: both };
+    };
+    const refusal = (reason: unknown) => ({
+        ok: false,
+        refusals: [{ index: 0, kind: 'taskColor', reason }],
+    });
+
+    it('stores a valid color in uppercase', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        const result = foldEdit(base, [color(1, 'aabbcc')], context);
+        expect(result).toMatchObject({ ok: true });
+        if (!result.ok) return;
+        expect(result.target.definitions[1].color).toBe('AABBCC');
+        expect(Object.isFrozen(result.target.definitions[1])).toBe(true);
+        expect(result.target.definitions[2]).toBe(base.definitions[2]);
+    });
+    it('accepts an identity edit without changing the color', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        const result = foldEdit(base, [color(1, 'f0e0d0')], context);
+        expect(result).toMatchObject({ ok: true });
+        if (!result.ok) return;
+        expect(result.target.definitions[1].color).toBe('F0E0D0');
+    });
+    it.each(['#aabbcc', 'xyz', 123456 as unknown])(
+        'refuses the invalid color %j',
+        (value) => {
+            const context = fixture();
+            expect(
+                foldEdit(readTarget(context.state), [color(1, value)], context),
+            ).toMatchObject(refusal(expect.stringContaining('cor')));
+        },
+    );
+    it('refuses a color used by another task, ignoring case', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        expect(foldEdit(base, [color(1, '112233')], context)).toMatchObject(
+            refusal(expect.stringContaining('cor')),
+        );
+        expect(foldEdit(base, [color(2, 'f0e0d0')], context)).toMatchObject(
+            refusal(expect.stringContaining('cor')),
+        );
+    });
+    it('refuses a color used by a concluded task', () => {
+        const context = fixture();
+        context.state.tasks[1].status = 'concluded';
+        expect(
+            foldEdit(readTarget(context.state), [color(1, '112233')], context),
+        ).toMatchObject(refusal(expect.stringContaining('cor')));
+    });
+    it('accepts the color of a concluded task', () => {
+        const context = fixture();
+        context.state.tasks[0].status = 'concluded';
+        const result = foldEdit(
+            readTarget(context.state),
+            [color(1, 'aabbcc')],
+            context,
+        );
+        expect(result).toMatchObject({ ok: true });
+    });
+    it('refuses unknown and non-integer task identifiers', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        expect(foldEdit(base, [color(9, 'aabbcc')], context)).toMatchObject(
+            refusal('Não existe a tarefa 9.'),
+        );
+        expect(foldEdit(base, [color(1.5, 'aabbcc')], context)).toMatchObject(
+            refusal(
+                expect.stringContaining(
+                    'O identificador da tarefa deve ser um número inteiro',
+                ),
+            ),
+        );
+    });
+    it('judges later items over the result of earlier ones', () => {
+        const context = fixture();
+        const result = foldEdit(
+            readTarget(context.state),
+            [color(1, 'aabbcc'), color(2, 'aabbcc')],
+            context,
+        );
+        expect(result).toMatchObject({
+            ok: false,
+            refusals: [{ index: 1, kind: 'taskColor' }],
+        });
     });
 });
 

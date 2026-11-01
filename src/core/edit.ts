@@ -9,13 +9,13 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-43) also needs its slice of the target
+ * A task-level kind (`taskState`, DEC-43; `taskColor`) also needs its slice of the target
  * filled by `readTarget` and applied by `applyNetChange`, which the compiler
  * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
-import { validateConfig, type ConfigField } from './config';
+import { validateConfig, type ConfigField, type ConfigInput } from './config';
 import { maxJobs } from './domain';
 import type {
     AlgorithmId,
@@ -23,6 +23,7 @@ import type {
     JobRef,
     SimulationState,
     SystemConfig,
+    TaskDefinition,
     TaskId,
     TaskStatus,
 } from './domain';
@@ -37,6 +38,11 @@ export type EditItem =
           readonly kind: 'taskState';
           readonly taskId: TaskId;
           readonly state: TaskStatus;
+      }
+    | {
+          readonly kind: 'taskColor';
+          readonly taskId: TaskId;
+          readonly color: string;
       };
 
 /** One edit (one form submission): its items, in order. */
@@ -51,11 +57,18 @@ export type Edit = readonly EditItem[];
  */
 export type EditTarget = Readonly<
     Pick<SystemConfig, 'algorithm' | 'quantum' | 'cpuCount'>
-> & { readonly taskStates: Readonly<Record<TaskId, TaskStatus>> };
+> & {
+    readonly taskStates: Readonly<Record<TaskId, TaskStatus>>;
+    /**
+     * The definition each task is wanted to have. Replaced by a new frozen
+     * object on each edit, never mutated, because snapshots share definitions.
+     */
+    readonly definitions: Readonly<Record<TaskId, TaskDefinition>>;
+};
 
 /** System fields of the target; task states must never leak into configuration. */
 const TARGET_FIELDS: Readonly<
-    Record<keyof Omit<EditTarget, 'taskStates'>, true>
+    Record<keyof Omit<EditTarget, 'taskStates' | 'definitions'>, true>
 > = {
     algorithm: true,
     quantum: true,
@@ -112,6 +125,82 @@ function checkSystemField<F extends 'algorithm' | 'quantum' | 'cpuCount'>(
     return { ok: true, value: result.config[field] };
 }
 
+/** Definition fields a task-level edit can change. */
+type TaskField = 'color' | 'arrival' | 'duration' | 'period' | 'deadline';
+
+/**
+ * Checks one task field with `validateConfig`, the single source of its rule
+ * and wording (DEC-28), over the live definitions (concluded tasks included,
+ * so their colors stay taken) with the target's wanted definitions on top.
+ * Only the issues of this task and field are reported: the others were
+ * already valid, and `combined` ones are replaced by the specific checks of
+ * each characteristic. The edited task is validated last because
+ * `validateConfig` blames the later of two duplicates, and the blame must
+ * fall on the task being edited.
+ */
+function checkTaskField(
+    target: EditTarget,
+    context: EditContext,
+    taskId: TaskId,
+    field: TaskField,
+    value: unknown,
+): { ok: true; definition: TaskDefinition } | { ok: false; reason: string } {
+    const live = context.state.tasks.map(
+        (tcb) => target.definitions[tcb.definition.id] ?? tcb.definition,
+    );
+    const edited = { ...target.definitions[taskId], [field]: value };
+    const tasks = [...live.filter((d) => d.id !== taskId), edited];
+    const result = validateConfig({
+        ...context.state.config,
+        ...target,
+        tasks,
+    } as unknown as ConfigInput);
+    if (!result.ok) {
+        const editedIndex = tasks.length - 1;
+        const own = result.issues.filter(
+            (issue) => issue.taskIndex === editedIndex && issue.field === field,
+        );
+        const stray = result.issues.filter(
+            (issue) => issue.combined !== true && !own.includes(issue),
+        );
+        if (stray.length > 0) {
+            throw new Error(
+                `The configuration at the edit stage is invalid:\n${stray.map((issue) => issue.message).join('\n')}`,
+            );
+        }
+        const reported = own.filter((issue) => issue.combined !== true);
+        if (reported.length > 0) {
+            return {
+                ok: false,
+                reason: reported.map((issue) => issue.message).join(' '),
+            };
+        }
+    }
+    const definition = Object.freeze({
+        ...edited,
+        ...(field === 'color' ? { color: String(value).toUpperCase() } : {}),
+    }) as TaskDefinition;
+    return { ok: true, definition };
+}
+
+/**
+ * Concluded tasks keep only their color editable (DEC-43); handlers of the
+ * other characteristics call this first. `characteristic` names the caller
+ * for readers and tests; the reason is the same for all of them.
+ */
+export function refuseIfConcluded(
+    context: EditContext,
+    taskId: TaskId,
+    _characteristic: string,
+): { ok: false; reason: string } | undefined {
+    const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
+    if (tcb?.status !== 'concluded') return undefined;
+    return {
+        ok: false,
+        reason: `A tarefa ${taskId} está concluída; só a cor pode ser alterada.`,
+    };
+}
+
 /** Accepted transitions, including identity edits, from DEC-37. */
 const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
     ready: ['ready', 'forced', 'suspended', 'concluded'],
@@ -152,6 +241,35 @@ function hasFinished(
 }
 
 const HANDLERS: Handlers = {
+    taskColor: (target, item, context) => {
+        if (!Number.isInteger(item.taskId)) {
+            return {
+                ok: false,
+                reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
+            };
+        }
+        if (!Object.hasOwn(target.definitions, item.taskId)) {
+            return { ok: false, reason: `Não existe a tarefa ${item.taskId}.` };
+        }
+        const checked = checkTaskField(
+            target,
+            context,
+            item.taskId,
+            'color',
+            item.color,
+        );
+        if (!checked.ok) return checked;
+        return {
+            ok: true,
+            target: {
+                ...target,
+                definitions: {
+                    ...target.definitions,
+                    [item.taskId]: checked.definition,
+                },
+            },
+        };
+    },
     taskState: (target, item, context) => {
         // hasOwn coerces its key, so '1' or [1] would silently name task 1.
         if (!Number.isInteger(item.taskId)) {
@@ -262,6 +380,9 @@ export function readTarget(state: DeepReadonly<SimulationState>): EditTarget {
         taskStates: Object.fromEntries(
             state.tasks.map((tcb) => [tcb.definition.id, tcb.status]),
         ),
+        definitions: Object.fromEntries(
+            state.tasks.map((tcb) => [tcb.definition.id, tcb.definition]),
+        ),
     };
 }
 
@@ -338,6 +459,9 @@ export function applyNetChange(
     // Task order is observable in the event log; all task changes precede CPUs.
     for (const tcb of state.tasks) {
         const taskId = tcb.definition.id;
+        if (after.definitions[taskId] !== before.definitions[taskId]) {
+            tcb.definition = after.definitions[taskId];
+        }
         const previous = before.taskStates[taskId];
         const next = after.taskStates[taskId];
         if (previous === next) continue;
