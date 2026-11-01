@@ -291,6 +291,15 @@ Requisitos: REQ-04, REQ-05.
   passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
   DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
+  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, sem PR
+  ainda): `Simulator.forward()`/`backward()` e `SimulationRefusal`
+  (`src/core/refusal.ts`); `useSimulation` com `forward`, `backward` e
+  `next`, publicando o snapshot do cursor; categoria `refused` em
+  `commandFailure`. Contrato em DEC-36. Testes em
+  `src/core/simulator.navigation.test.ts`, `useSimulation.test.ts` e
+  `errors.test.ts`. `npm test` 668/668 em 42 arquivos (base: main com 653 em
+  41), `npm run lint` e `npm run typecheck` sem erros. Botoes ficam na #36 e
+  recusar `tick()` com tudo terminado na #27.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
@@ -658,8 +667,8 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23 concluida; #25 iniciada (PR #101, rascunho); #24 e #26 a #28 nao
-  iniciadas.
+  E3: #23 concluida; #25 iniciada (PR #101, rascunho); #24 iniciada
+  (branch `feat/24-navegacao-historico`); #26 a #28 nao iniciadas.
   E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
   aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
   nao iniciados.
@@ -675,10 +684,15 @@ Issues `[Docs]`, sem fase no Project.
   suspensao/retomada; so o registro de inicio).
 - #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
   E3 e contrato em DEC-35.
+- Em andamento: #24 (navegacao no historico). Objetivo: `forward()` e
+  `backward()` no `Simulator` reutilizando snapshots registrados, recusas
+  com tipo proprio (`SimulationRefusal`, categoria `refused` no adaptador) e
+  adaptador com `forward`, `backward` e `next`, publicando o snapshot do
+  cursor. Escopo acordado com o usuario em 2026-11-01: nucleo e adaptador;
+  botoes na #36; recusar `tick()` com tudo terminado na #27; sem ir direto a
+  um passo k. Passos: nucleo e testes, adaptador e testes, DEC-36 e gates.
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
-  destrava #26 e o Gantt (#38); a #24 nao depende dela e, com a #23
-  integrada, pode seguir em paralelo a ela. Aceitar ou rever
-  DEC-34 (#92).
+  destrava #26 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
