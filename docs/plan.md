@@ -54,6 +54,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
+  Reaberta em 2026-11-01 pela #25 para registrar DEC-38 (uma ativacao por
+  vez) e fechada de novo no mesmo dia: DEC-38 foi retirada do PR #101, e
+  DEC-09 e DEC-02 continuam valendo (justificativa em DEC-02).
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   Concluida no PR #49 (merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
@@ -61,7 +64,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
-  aprovados. Lacunas da revisao seguem na #51.
+  aprovados. Lacunas da revisao seguem na #51. Reaberta e fechada de novo em
+  2026-11-01: DEC-38 foi retirada, e o codigo e os testes atuais continuam
+  corretos.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
   valida a decisao, despacha globalmente, executa cada tick, registra
@@ -291,8 +296,8 @@ Requisitos: REQ-04, REQ-05.
   passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
   DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
-  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, PR
-  #112): `Simulator.forward()`/`backward()`, `canForward()` e
+  Concluida no PR #112 (merged, `ba14179`, 2026-11-01; issue fechada).
+  Evidencia (branch `feat/24-navegacao-historico`, antes do merge): `Simulator.forward()`/`backward()`, `canForward()` e
   `SimulationRefusal` (`src/core/refusal.ts`); `useSimulation` com `forward`,
   `backward` e `next`, publicando o snapshot do cursor; categoria `refused` em
   `commandFailure`. Contrato em DEC-36. Testes em
@@ -303,10 +308,23 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  Em andamento no PR #101 (rascunho, so o registro de inicio ate
-  2026-10-31); matriz ainda nao acordada com o usuario.
+  Concluida no PR #101 (squash merge `110e4ec`, 2026-11-01; issue fechada).
+  DEC-37 aceita pelo usuario (edicao durante a simulacao: recalculo do tick
+  a partir de `t-1` com a lista de edicoes do tick, estado por tarefa
+  aplicado ao job mais antigo incompleto, caracteristicas, inclusao e
+  exclusao, parametros do sistema e eventos de suspensao, retomada,
+  forcamento e CPUs). DEC-38 (uma ativacao por vez) retirada antes do
+  aceite; DEC-02 ganhou a justificativa completa e DEC-09 continua valendo.
+  A matriz foi numerada DEC-32 e DEC-35 durante o PR; DEC-37 desde o merge
+  com a `main` (#23 e #24 ocuparam DEC-35 e DEC-36). #11 e #12 reabertas e
+  fechadas de novo; #26, #37 e #38 atualizadas. Verificacao: mudanca so
+  documental; links locais e IDs DEC conferidos por script (DEC-01 a
+  DEC-38, sem lacunas nem duplicatas), `oxfmt --check` ok e CI `test`
+  aprovado no PR. Testes, lint e typecheck locais nao aplicaveis.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
-  Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
+  Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
+  `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
+  suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
@@ -520,9 +538,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fluxo-da-area-de-trabalho-36-parte-1).
   Faltam Executar tudo (#27), Sistema, Adicionar tarefa e confirmacao de FE-04.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
+  Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
+  issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
-  trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
+  Depende dos eventos de DEC-37 registrados pela #26: trechos suspensos e
+  forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
+  em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
@@ -670,11 +691,9 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23 concluida; #25 iniciada (PR #101, rascunho); #24 iniciada
-  (branch `feat/24-navegacao-historico`); #26 a #28 nao iniciadas.
-  E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
-  aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
-  nao iniciados.
+  E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
+  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
@@ -683,26 +702,41 @@ Issues `[Docs]`, sem fase no Project.
 - #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
-- Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
-  suspensao/retomada; so o registro de inicio).
 - #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
   E3 e contrato em DEC-35.
-- Em andamento: #24 (navegacao no historico). Objetivo: `forward()` e
-  `backward()` no `Simulator` reutilizando snapshots registrados, recusas
-  com tipo proprio (`SimulationRefusal`, categoria `refused` no adaptador) e
-  adaptador com `forward`, `backward` e `next`, publicando o snapshot do
-  cursor. Escopo acordado com o usuario em 2026-11-01: nucleo e adaptador;
-  botoes na #36; recusar `tick()` com tudo terminado na #27; sem ir direto a
-  um passo k. Passos: nucleo e testes, adaptador e testes, DEC-36 e gates.
-- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis); a
-  issue continua aberta (Refs #36).
-- Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
-  destrava #26 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
-- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
-  confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
+- #24 concluida no PR #112 (merged, `ba14179`, 2026-11-01), contrato em
+  DEC-36; evidencia em E3.
+- #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
+  em E3 e decisao em DEC-37.
+- #26 em andamento (iniciada 2026-11-01, branch `feat/26-edicoes-atomicas`):
+  aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
+  do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
+  eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
+  PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
+  adaptador fica na #37. Primeiro PR (#114, so documental): revisao de
+  DEC-37, em que so o resultado final das edicoes de um tick conta. Nada
+  implementado ainda; baseline `npm test` 669/669.
+  Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
+  #26), todos em rascunho:
+    1. #114 revisao de DEC-37 (documental);
+    2. #115 etapa de edicao no passo, edicoes por tick no historico, descarte do
+       futuro, recusa atomica por item, algoritmo e quantum;
+    3. #116 quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
+       sem a CPU;
+    4. #117 estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+    5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
+       ingresso, cor);
+    6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
+- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
+  a issue continua aberta (Refs #36).
+- Proximo passo: plano de implementacao do #115. Fora da #26:
+  aceitar ou rever DEC-34 (#92).
+- Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
+  resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
-  de #36/#24; a apresentacao isolada com dados tipados foi verificada.
+  de #36 (#23 e #24 concluidas); a apresentacao isolada com dados tipados foi
+  verificada.
 
 ## Como registrar uma entrega
 
