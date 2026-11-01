@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('useWorkspace', () => {
-    it('opens in preparation: defaults, no snapshot, only loading available', () => {
+    it('opens in preparation: defaults, no snapshot, loading and editing available', () => {
         const workspace = useWorkspace();
 
         expect(workspace.snapshot.value).toBeNull();
@@ -77,7 +77,10 @@ describe('useWorkspace', () => {
             quantum: 5,
             cpuCount: 1,
         });
-        expect([...workspace.available.value]).toEqual(['load-config']);
+        expect([...workspace.available.value].sort()).toEqual([
+            'configure-system',
+            'load-config',
+        ]);
     });
 
     it('loading a file prepares its configuration without starting', async () => {
@@ -97,7 +100,7 @@ describe('useWorkspace', () => {
 
         expect(workspace.clock.value).toBe(0);
         expect(workspace.snapshot.value?.executions).toEqual([]);
-        expect(workspace.available.value.has('load-config')).toBe(false);
+        expect(workspace.available.value.has('configure-system')).toBe(false);
         expect(workspace.available.value.has('step-back')).toBe(false);
     });
 
@@ -459,4 +462,54 @@ describe('useWorkspace export file name (#39)', () => {
             );
         },
     );
+});
+
+describe('useWorkspace preparation edits (#36 part 2)', () => {
+    it('opens the system dialog and applies new values to the draft', () => {
+        const workspace = useWorkspace();
+
+        workspace.handle('configure-system');
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+
+        const issues = workspace.applySystem({
+            algorithm: 'EDF',
+            quantum: 2,
+            cpuCount: 3,
+        });
+
+        expect(issues).toEqual([]);
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'EDF',
+            quantum: 2,
+            cpuCount: 3,
+        });
+        expect(workspace.snapshot.value).toBeNull();
+    });
+
+    it('an invalid system edit returns the core reasons, keeps the dialog and the draft', () => {
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+
+        const issues = workspace.applySystem({
+            algorithm: 'RM',
+            quantum: 0,
+            cpuCount: 1,
+        });
+
+        expect(issues).toHaveLength(1);
+        expect(issues[0].message).toContain('quantum');
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+        expect(workspace.config.value.quantum).toBe(5);
+    });
+
+    it('does not open another dialog while one is open', () => {
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+
+        expect(workspace.available.value.has('load-config')).toBe(false);
+        workspace.handle('load-config');
+
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+    });
 });

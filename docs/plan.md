@@ -544,7 +544,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   preparacao nao cria simulador. Parte 1 (carregar, iniciar, avancar, voltar,
   reiniciar, paineis #73/#69/#71 montados): ver
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fluxo-da-area-de-trabalho-36-parte-1).
-  Faltam Executar tudo (#27), Sistema, Adicionar tarefa e confirmacao de FE-04.
+  Parte 2a (Sistema): ver
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#preparacao-da-configuracao-36-parte-2).
+  Faltam as tarefas do rascunho (2b), a confirmacao de FE-04 (2c) e Executar
+  tudo (#27).
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
@@ -844,6 +847,7 @@ Issues `[Docs]`, sem fase no Project.
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
+- #36 parte 2a (Sistema) em PR, `Refs #36`; 2b e 2c empilhadas sobre ela.
 - #117 em implementacao local: estado por tarefa, suspensao, forcamento,
   encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
