@@ -1983,7 +1983,10 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   periodo ou prazo) e conclui a mesma tarefa e recusado por inteiro, em
   qualquer ordem dos itens, com o motivo "so a cor pode ser alterada"
   (DEC-43). Mudanca de caracteristica em um envio e conclusao em outro,
-  posterior, e valida: cada envio e julgado em sequencia.
+  posterior, e valida: cada envio e julgado em sequencia. Excecao: a
+  conclusao e recusada se um envio anterior do mesmo tick criou um job da
+  tarefa, pois concluir cancelaria a ativacao que ele ja tornou visivel
+  (achado da revisao final; escolha do implementador, a confirmar).
 - Ingresso inalterado: depois que a tarefa ingressou, um item de ingresso
   com o valor vigente e aceito sem efeito, como os demais campos; so uma
   mudanca real e recusada ("ja ingressou"). Assim o formulario pode enviar

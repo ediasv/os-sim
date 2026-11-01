@@ -393,6 +393,7 @@ function refuseIfActivatedByEarlierEdit(
     context: EditContext,
     taskId: TaskId,
     unchanged: boolean,
+    consequence = 'esta característica não pode mais ser alterada neste tick',
 ): { ok: false; reason: string } | undefined {
     if (unchanged) return undefined;
     const jobsNow = context.state.tasks.find((t) => t.definition.id === taskId)
@@ -404,7 +405,7 @@ function refuseIfActivatedByEarlierEdit(
     if (jobsNow <= jobsBefore) return undefined;
     return {
         ok: false,
-        reason: `A tarefa ${taskId} já recebeu uma ativação por edição anterior deste tick; esta característica não pode mais ser alterada neste tick.`,
+        reason: `A tarefa ${taskId} já recebeu uma ativação por edição anterior deste tick; ${consequence}.`,
     };
 }
 
@@ -648,6 +649,17 @@ const HANDLERS: Handlers = {
         // A concluded task keeps only its color (DEC-43); concluding after a
         // characteristic in the same submission would end up the same way
         // whatever the order of the items (DEC-45).
+        if (item.state === 'concluded' && previous !== 'concluded') {
+            // Concluding would cancel a job that an earlier submission of the
+            // tick already made visible (DEC-45).
+            const earlier = refuseIfActivatedByEarlierEdit(
+                context,
+                item.taskId,
+                false,
+                'ela não pode ser concluída neste tick',
+            );
+            if (earlier !== undefined) return earlier;
+        }
         if (
             item.state === 'concluded' &&
             changesCharacteristics(target, context, item.taskId)

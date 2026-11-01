@@ -698,6 +698,17 @@ describe('edits to one task across submissions of the same tick (DEC-45)', () =>
         expect(sim.getCurrentSnapshot().tasks[0].jobs).toHaveLength(3);
     });
 
+    it('refuses to conclude a task whose job an earlier submission created', () => {
+        const sim = arrivalSim();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 3 }]);
+        expect(() =>
+            sim.edit([{ kind: 'taskState', taskId: 1, state: 'concluded' }]),
+        ).toThrow(EditRefusal);
+        const kept = sim.getCurrentSnapshot().tasks[0];
+        expect(kept.jobs).toHaveLength(1);
+        expect(kept.status).not.toBe('concluded');
+    });
+
     it('accepts the conclusion in a later submission than the characteristic', () => {
         const sim = periodSim();
         sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 2 }]);

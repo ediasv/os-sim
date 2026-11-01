@@ -846,7 +846,7 @@ Issues `[Docs]`, sem fase no Project.
        tarefa e antes dos de CPU (decisao do usuario). Forma em DEC-44
        (proposta, aguarda aceite) e DEC-45 (envios do mesmo tick e
        conclusao, decisoes do usuario na revisao). Baseline 932/932; evidencia
-       local (2026-11-01): `npm test` 1066/1066 em 54 arquivos, `npm run lint`,
+       local (2026-11-01): `npm test` 1067/1067 em 54 arquivos, `npm run lint`,
        `npm run typecheck` e `npx oxfmt --check` sem erros. Testes em
        `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts` e
        `consistency.test.ts`. Mutacoes temporarias: remover o
@@ -856,7 +856,7 @@ Issues `[Docs]`, sem fase no Project.
        em 1053), lacuna fechada pelo commit `d9b6426`: agora 2 testes
        derrubam essa mutacao. DEC-45: remover a recusa de conclusao com
        caracteristica derruba 3 testes; remover a guarda de job criado por
-       envio anterior derruba 4. `npm test` 54 arquivos / 1066 testes. Lacuna
+       envio anterior derruba 4. `npm test` 54 arquivos / 1067 testes. Lacuna
        conhecida (O3): so `projectJob` em `system.ts:87` mostra a duracao de
        um job lida da definicao (alimenta `SystemInspector.vue`), errada para
        jobs ja ativados depois de uma edicao, ate a #37/#38 lerem
