@@ -509,11 +509,11 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   mensagens ja citam o valor, inclusive quando texto e numero convertido
   diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
   sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Em andamento no
-  branch `fix/93-valor-uma-vez`, sem PR. Evidencia (2026-11-01): os testes
+  branch `fix/93-valor-uma-vez`, PR #120 aberto. Evidencia (2026-11-01): os testes
   de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
   `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
   669/669, `npm run lint` e `npm run typecheck` aprovados. Proximo passo:
-  revisao do usuario, commit e PR.
+  revisao e merge do PR #120.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
