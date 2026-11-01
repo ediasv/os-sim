@@ -40,7 +40,7 @@ import type {
 } from './domain';
 import type { EditItemRefusal } from './refusal';
 import { createTcb } from './snapshot';
-import { sameTaskId, suggestTaskId, taskIdKey, validateTaskId } from './taskId';
+import { sameTaskId, suggestTaskId, validateTaskId } from './taskId';
 
 /**
  * A task to include: a `TaskDefinition` without the raw event list, which
