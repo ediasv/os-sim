@@ -359,6 +359,36 @@ describe('useWorkspace export (#39)', () => {
         expect(workspace.available.value.has('export-svg')).toBe(true);
     });
 
+    it('clears the previous outcome when a new export starts and is cancelled', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        stubImage(
+            { status: 'saved', path: '/o/g.svg' },
+            { status: 'canceled' },
+        );
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() =>
+            expect(workspace.available.value.has('export-svg')).toBe(true),
+        );
+
+        expect(workspace.notices.value).toEqual([]);
+    });
+
+    it('dismissNotice removes only the chosen message', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        stubImage({ status: 'saved', path: '/o/g.svg' });
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        workspace.dismissNotice(0);
+
+        expect(workspace.notices.value).toEqual([]);
+    });
+
     it('treats cancel as no error', async () => {
         const workspace = await prepared();
         workspace.handle('step-forward');

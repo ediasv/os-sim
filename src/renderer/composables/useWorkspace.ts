@@ -152,6 +152,8 @@ export function useWorkspace() {
      */
     async function exportSvg(): Promise<void> {
         exporting.value = true;
+        // A cancelled export must not leave the previous outcome on screen.
+        notices.value = [];
         try {
             const content = buildGanttSvg(simulation.value!.latest(), {
                 fileName: fileName.value,
@@ -181,6 +183,11 @@ export function useWorkspace() {
         }
     }
 
+    /** Closes one message the user chose to dismiss (confirmations only). */
+    function dismissNotice(index: number): void {
+        notices.value = notices.value.filter((_, i) => i !== index);
+    }
+
     function handle(action: WorkspaceAction): void {
         if (!available.value.has(action)) return;
         switch (action) {
@@ -205,5 +212,14 @@ export function useWorkspace() {
         }
     }
 
-    return { snapshot, config, clock, taskCount, available, notices, handle };
+    return {
+        snapshot,
+        config,
+        clock,
+        taskCount,
+        available,
+        notices,
+        handle,
+        dismissNotice,
+    };
 }
