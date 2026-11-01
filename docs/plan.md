@@ -602,6 +602,16 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
+  Parcial (Refs #45, issue aberta): 10 arquivos em
+  [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
+  varias CPUs com CPU desligada e religada, preempcao/quantum/sorteio,
+  aperiodica com periodo padrao e avisos, sobrecarga com perda de prazo,
+  simulacao longa, dois arquivos com erros), cada um com descricao e
+  resultado esperado no README e lido do disco por
+  `src/main/demoConfigs.test.ts` (carga + simulacao; resultados derivados a
+  mao; mutacao conferida no 07). Fora do pacote do aplicativo. Pendentes:
+  conferencia de cada cenario na interface e roteiro de edicao e retrocesso
+  (dependem de E3 e E5, #23 a #28 e #36 a #40).
 - #80 Padronizar a versao do Node entre desenvolvimento, CI e release.
   Concluida no PR #81 (merged, `5a569db`), escopo ampliado para
   incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
@@ -659,6 +669,7 @@ Issues `[Docs]`, sem fase no Project.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
 - #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
+- #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
 - Em andamento: #23 (cursor e restauracao de snapshots completos do
