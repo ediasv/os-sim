@@ -426,7 +426,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Nao verificado: disco externo, outras plataformas e pacote no
   ambiente-alvo.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
-  Implementada na branch `test/34-arquivos-validos-invalidos` (PR a abrir; sera
+  Implementada na branch `test/34-arquivos-validos-invalidos` (PR #107; sera
   concluida so apos o merge). Evidencia (2026-10-31): `src/core/loadConfig.test.ts`
   ganhou a regra de inteiros em cada campo numerico (fracionario e alem da faixa
   exata nos 7 campos, zero CPUs), campos obrigatorios vazios e 300 tarefas;
@@ -636,7 +636,7 @@ Issues `[Docs]`, sem fase no Project.
   evidencia em E5.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
 - #34 em andamento na branch `test/34-arquivos-validos-invalidos` (testes
-  implementados, PR a abrir), evidencia em E4.
+  implementados, PR #107), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
