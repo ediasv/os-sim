@@ -49,8 +49,15 @@ describe('task duration and deadline edit in the engine', () => {
             ...DEFAULT_CONFIG,
             tasks: [task(1, { period: 20, deadline: 30 })],
         });
-        for (let step = 0; step < 4; step++) sim.tick();
+        sim.tick();
         sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 2 }]);
+        // Executed passes the lowered duration (2) at the third tick; a job
+        // judged by the definition would complete there, not at 5.
+        for (let step = 0; step < 2; step++) sim.tick();
+        const midway = sim.getCurrentSnapshot().tasks[0].jobs[0];
+        expect(midway.executed).toBe(3);
+        expect(midway.state).not.toBe('completed');
+        expect(midway.completedAt).toBeNull();
         for (let step = 0; step < 3; step++) sim.tick();
         const snapshot = sim.getCurrentSnapshot();
         const job = snapshot.tasks[0].jobs[0];
@@ -58,6 +65,18 @@ describe('task duration and deadline edit in the engine', () => {
         expect(job.completedAt).toBe(5);
         expect(snapshot.tasks[0].definition.duration).toBe(2);
         expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+    it('does not complete a job early when the duration is raised', () => {
+        const sim = createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [task(1, { duration: 2, period: 20, deadline: 30 })],
+        });
+        sim.tick();
+        sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 5 }]);
+        for (let step = 0; step < 2; step++) sim.tick();
+        const job = sim.getCurrentSnapshot().tasks[0].jobs[0];
+        expect(job.duration).toBe(2);
+        expect(job.completedAt).toBe(2);
     });
     it('gives the new duration only to later jobs', () => {
         const sim = createSimulator({
