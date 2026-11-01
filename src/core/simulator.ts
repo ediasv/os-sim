@@ -226,14 +226,25 @@ export class Simulator {
         if (edits.length === 0) {
             return;
         }
-        const context: EditContext = {
-            state: this.state,
-            hasPolicy: (algorithm) =>
-                this.resolvePolicy(algorithm) !== undefined,
-        };
+        const hasPolicy = (algorithm: AlgorithmId): boolean =>
+            this.resolvePolicy(algorithm) !== undefined;
         const before = readTarget(this.state);
         let target = before;
         edits.forEach((edit, index) => {
+            // Each submission is judged against the state the earlier ones
+            // left (DEC-45): a throwaway copy of the tick's starting state
+            // with their net change applied. Only validation sees it; the
+            // net change is still applied once, to the real state, below.
+            let judged: SimulationState = this.state;
+            if (index > 0) {
+                judged = restoreState(takeSnapshot(this.state));
+                applyNetChange(judged, before, target);
+            }
+            const context: EditContext = {
+                state: judged,
+                baseline: this.state,
+                hasPolicy,
+            };
             const result = foldEdit(target, edit, context);
             if (!result.ok) {
                 if (index < edits.length - 1) {

@@ -107,7 +107,14 @@ const TARGET_FIELDS: Readonly<
 
 /** What validation may read: the edit-stage state and the known policies. */
 export interface EditContext {
+    /**
+     * The state each submission is judged against: for the first submission
+     * of a tick it is `baseline`; for later ones, a copy of `baseline` with
+     * the net change of the earlier submissions applied (DEC-45).
+     */
     readonly state: DeepReadonly<SimulationState>;
+    /** The state of the tick before any of its edits. */
+    readonly baseline: DeepReadonly<SimulationState>;
     readonly hasPolicy: (algorithm: AlgorithmId) => boolean;
 }
 
@@ -355,6 +362,30 @@ function editableTask(
     return { ok: true, tcb };
 }
 
+/**
+ * A characteristic edit must not rewrite a job that an earlier submission of
+ * the same tick created: the net definition would reach back into it (DEC-45).
+ * Re-sending the value already in force changes nothing and is accepted.
+ */
+function refuseIfActivatedByEarlierEdit(
+    context: EditContext,
+    taskId: TaskId,
+    unchanged: boolean,
+): { ok: false; reason: string } | undefined {
+    if (unchanged) return undefined;
+    const jobsNow = context.state.tasks.find((t) => t.definition.id === taskId)
+        ?.jobs.length;
+    const jobsBefore = context.baseline.tasks.find(
+        (t) => t.definition.id === taskId,
+    )?.jobs.length;
+    if (jobsNow === undefined || jobsBefore === undefined) return undefined;
+    if (jobsNow <= jobsBefore) return undefined;
+    return {
+        ok: false,
+        reason: `A tarefa ${taskId} já recebeu uma ativação por edição anterior deste tick; esta característica não pode mais ser alterada neste tick.`,
+    };
+}
+
 /** The target with one task's definition replaced; nothing is mutated. */
 function withDefinition(
     target: EditTarget,
@@ -384,6 +415,12 @@ function editCharacteristic(
     const editable = editableTask(target, context, taskId);
     if (!editable.ok) return editable;
     const { tcb } = editable;
+    const earlier = refuseIfActivatedByEarlierEdit(
+        context,
+        taskId,
+        value === target.definitions[taskId][field],
+    );
+    if (earlier !== undefined) return earlier;
     if (remainingActivations(tcb) <= 0) {
         return {
             ok: false,
@@ -447,6 +484,12 @@ const HANDLERS: Handlers = {
         const editable = editableTask(target, context, item.taskId);
         if (!editable.ok) return editable;
         const { tcb } = editable;
+        const earlier = refuseIfActivatedByEarlierEdit(
+            context,
+            item.taskId,
+            item.period === target.definitions[item.taskId].period,
+        );
+        if (earlier !== undefined) return earlier;
         const checked = checkTaskField(
             target,
             context,

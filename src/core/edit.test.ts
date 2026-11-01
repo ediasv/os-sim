@@ -47,7 +47,8 @@ const both = (algorithm: AlgorithmId) =>
 function contextFor(
     hasPolicy: (algorithm: AlgorithmId) => boolean = both,
 ): EditContext {
-    return { state: createInitialState(config), hasPolicy };
+    const state = createInitialState(config);
+    return { state, baseline: state, hasPolicy };
 }
 
 const quantum = (value: number): EditItem => ({
@@ -353,7 +354,7 @@ describe('CPU count edit', () => {
         const state = createInitialState({ ...config, cpuCount: 4 });
         state.cpus[3].sliceElapsed = 2;
         const saved = structuredClone(state);
-        const context = { state, hasPolicy: both };
+        const context = { state, baseline: state, hasPolicy: both };
         const before = readTarget(state);
         const result = foldEdit(before, [cpus(2), cpus(4)], context);
         expect(result.ok).toBe(true);
@@ -366,7 +367,11 @@ describe('CPU count edit', () => {
 describe('edit stage guards', () => {
     it('refuses an item whose kind cannot be printed instead of crashing', () => {
         const state = createInitialState(config);
-        const context: EditContext = { state, hasPolicy: () => true };
+        const context: EditContext = {
+            state,
+            baseline: state,
+            hasPolicy: () => true,
+        };
         const malformed = {
             kind: { toString: null },
         } as unknown as EditItem;
@@ -412,7 +417,7 @@ describe('task state edit validation', () => {
                 { ...config.tasks[0], id: 2, color: '112233' },
             ],
         });
-        return { state, hasPolicy: both };
+        return { state, baseline: state, hasPolicy: both };
     };
     for (const from of states) {
         it.each(states)(`${from} -> %s follows DEC-37`, (to) => {
@@ -522,7 +527,7 @@ describe('task color edit', () => {
                 { ...config.tasks[0], id: 2, color: '112233' },
             ],
         });
-        return { state, hasPolicy: both };
+        return { state, baseline: state, hasPolicy: both };
     };
     const refusal = (reason: unknown) => ({
         ok: false,
@@ -583,7 +588,7 @@ describe('task color edit', () => {
                 { ...config.tasks[0], id: 3, color: '445566' },
             ],
         });
-        const context = { state, hasPolicy: both };
+        const context = { state, baseline: state, hasPolicy: both };
         expect(
             foldEdit(
                 readTarget(state),
@@ -609,6 +614,7 @@ describe('task color edit', () => {
         expect(
             foldEdit(readTarget(state), [color(1, '445566')], {
                 state,
+                baseline: state,
                 hasPolicy: both,
             }),
         ).toEqual(
@@ -672,7 +678,7 @@ describe('task duration and deadline edit', () => {
             ...config,
             tasks: [{ ...config.tasks[0], ...task }],
         });
-        return { state, hasPolicy: both };
+        return { state, baseline: state, hasPolicy: both };
     };
     /** Activates `count` jobs so only the remaining ones can take the edit. */
     const activate = (context: ReturnType<typeof fixture>, count: number) => {
@@ -888,7 +894,7 @@ describe('task arrival edit', () => {
             ...config,
             tasks: [{ ...config.tasks[0], arrival: 5, ...task }],
         });
-        return { state, hasPolicy: both };
+        return { state, baseline: state, hasPolicy: both };
     };
     const reasonOf = (result: ReturnType<typeof foldEdit>): string => {
         expect(result).toMatchObject({
@@ -1124,7 +1130,7 @@ describe('task period edit', () => {
             ...config,
             tasks: [{ ...config.tasks[0], ...task }],
         });
-        return { state, hasPolicy: both };
+        return { state, baseline: state, hasPolicy: both };
     };
     /** Gives the task `count` jobs at its period, as the engine would. */
     const activate = (context: ReturnType<typeof fixture>, count: number) => {
@@ -1403,7 +1409,7 @@ describe('task identifier validation', () => {
                 ...config,
                 tasks: [config.tasks[0]],
             });
-            const context = { state, hasPolicy: both };
+            const context = { state, baseline: state, hasPolicy: both };
             const result = foldEdit(
                 readTarget(state),
                 [
@@ -1433,13 +1439,13 @@ describe('task identifier validation', () => {
 
 describe('editable characteristics (DEC-37 matrix)', () => {
     // A task not yet activated, so every characteristic is still editable.
-    const pending = () => ({
-        state: createInitialState({
+    const pending = () => {
+        const state = createInitialState({
             ...config,
             tasks: [{ ...config.tasks[0], arrival: 3 }],
-        }),
-        hasPolicy: both,
-    });
+        });
+        return { state, baseline: state, hasPolicy: both };
+    };
     const run = (item: unknown) => {
         const context = pending();
         return foldEdit(readTarget(context.state), [item as EditItem], context);

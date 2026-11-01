@@ -602,36 +602,94 @@ describe('characteristic edits together (DEC-37, DEC-39)', () => {
     });
 });
 
-describe('edits to one task across submissions of the same tick (DEC-44)', () => {
-    it('judges jobs by the state before the tick and activates once from the net definition', () => {
-        // A: the first submission brings the arrival to the current tick, the
-        // second moves it away again; the net arrival is 6, so no job exists.
-        const arrival = createSimulator({
+describe('edits to one task across submissions of the same tick (DEC-45)', () => {
+    const arrivalSim = () => {
+        const sim = createSimulator({
             ...DEFAULT_CONFIG,
             tasks: [task(1, { arrival: 5, period: 20, deadline: 20 })],
         });
-        for (let step = 0; step < 3; step++) arrival.tick();
-        arrival.edit([{ kind: 'taskArrival', taskId: 1, arrival: 3 }]);
-        expect(arrival.getCurrentSnapshot().tasks[0].jobs).toHaveLength(1);
-        arrival.edit([{ kind: 'taskArrival', taskId: 1, arrival: 6 }]);
-        const moved = arrival.getCurrentSnapshot().tasks[0];
-        expect(moved.jobs).toHaveLength(0);
-        expect(moved.nextActivation).toBe(6);
-
-        // B: the first submission makes job 2 activate now; the second
-        // raises the duration and is accepted, so that job takes the net 3.
-        const period = createSimulator({
+        for (let step = 0; step < 3; step++) sim.tick();
+        return sim;
+    };
+    const periodSim = () => {
+        const sim = createSimulator({
             ...DEFAULT_CONFIG,
             tasks: [task(1, { duration: 1, period: 5, deadline: 20 })],
         });
-        for (let step = 0; step < 7; step++) period.tick();
-        period.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        for (let step = 0; step < 7; step++) sim.tick();
+        return sim;
+    };
+
+    it('refuses to move the arrival of a job the earlier submission created', () => {
+        const sim = arrivalSim();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 3 }]);
+        expect(sim.getCurrentSnapshot().tasks[0].jobs).toHaveLength(1);
+        expect(() =>
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 6 }]),
+        ).toThrow(EditRefusal);
+        const kept = sim.getCurrentSnapshot().tasks[0];
+        expect(kept.jobs).toHaveLength(1);
+        expect(kept.definition.arrival).toBe(3);
+    });
+
+    it('refuses a duration that would change a job the earlier submission created', () => {
+        const sim = periodSim();
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        expect(() =>
+            sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 3 }]),
+        ).toThrow(EditRefusal);
         expect(
-            period.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
+            sim.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
         ).toEqual([1, 1, 1]);
-        period.edit([{ kind: 'taskDuration', taskId: 1, duration: 3 }]);
-        expect(
-            period.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
-        ).toEqual([1, 1, 3]);
+    });
+
+    it('refuses a deadline or a different period after such a job, but accepts equal values and colors', () => {
+        const sim = periodSim();
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        expect(() =>
+            sim.edit([{ kind: 'taskDeadline', taskId: 1, deadline: 9 }]),
+        ).toThrow(EditRefusal);
+        expect(() =>
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 2 }]),
+        ).toThrow(EditRefusal);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 1 }]);
+        sim.edit([{ kind: 'taskColor', taskId: 1, color: 'aabbcc' }]);
+        const task1 = sim.getCurrentSnapshot().tasks[0];
+        expect(task1.definition.color).toBe('AABBCC');
+        expect(task1.jobs.map((j) => j.duration)).toEqual([1, 1, 1]);
+    });
+
+    it('judges the third submission against the net of the first two', () => {
+        const sim = periodSim();
+        sim.edit([{ kind: 'taskColor', taskId: 1, color: 'aabbcc' }]);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        expect(() =>
+            sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 3 }]),
+        ).toThrow(EditRefusal);
+    });
+
+    it('applies the same rule at tick 0', () => {
+        const sim = createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [task(1, { arrival: 4, period: 20, deadline: 20 })],
+        });
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 0 }]);
+        expect(sim.getCurrentSnapshot().tasks[0].jobs).toHaveLength(1);
+        expect(() =>
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 6 }]),
+        ).toThrow(EditRefusal);
+    });
+
+    it('keeps refusing after stepping back and forward and replaying the recorded edits', () => {
+        const sim = periodSim();
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 1 }]);
+        sim.tick();
+        sim.backward();
+        expect(() =>
+            sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 3 }]),
+        ).toThrow(EditRefusal);
+        sim.edit([{ kind: 'taskColor', taskId: 1, color: 'aabbcc' }]);
+        expect(sim.getCurrentSnapshot().tasks[0].jobs).toHaveLength(3);
     });
 });
