@@ -876,6 +876,18 @@ Issues `[Docs]`, sem fase no Project.
        `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
        lista de inclusoes na validacao, TCB provisorio) derrubam testes.
        Interface e pacote nao verificados.
+    7. Ajustes de revisao da inclusao (branch `chore/26-ajustes-inclusao`,
+       sobre `4e43467`, `Refs #26`, sem fechar a issue): comentarios de
+       `createTcb` e de `defaultTaskColor` corrigidos; limite de 894 cores
+       registrado na DEC-46 (algoritmo mantido); `applyNetChange` sem
+       `isNew`, com comportamento identico (testes existentes sem alteracao);
+       dois testes novos em `simulator.addTask.test.ts` (cor repetida na mesma
+       edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
+       temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
+       derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos (baseline 1096 mais
+       os 2 testes novos); `npm run lint` e `npm run typecheck` sem erros.
+       Interface e pacote nao verificados.
 - Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
