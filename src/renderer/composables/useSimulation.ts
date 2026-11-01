@@ -8,7 +8,8 @@ import { commandFailure, type CommandResult } from '../errors';
 /**
  * Bridges the plain core Simulator into Vue (DEC-23). The instance stays
  * private and only frozen snapshots are published; Vue only tracks `view`
- * being replaced, so it never wraps simulator internals in proxies.
+ * being replaced, so it never wraps simulator internals in proxies. `view`
+ * is always the snapshot at the history cursor (DEC-36).
  * Commands never throw: they return a result classified by DEC-24, and a
  * failure leaves the simulation and `view` unchanged. Edits during the run
  * (#25/#26) will follow the same contract.
@@ -21,9 +22,23 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     view: ShallowRef<SimulationSnapshot>;
     load: (config: SystemConfig) => CommandResult;
     tick: () => CommandResult;
+    forward: () => CommandResult;
+    backward: () => CommandResult;
+    next: () => CommandResult;
 } {
     let sim = new Simulator();
-    const view = shallowRef(sim.getLatestSnapshot());
+    const view = shallowRef(sim.getCurrentSnapshot());
+
+    /** Runs a simulator command and publishes the cursor's snapshot on success. */
+    function run(command: () => void): CommandResult {
+        try {
+            command();
+        } catch (error) {
+            return commandFailure(error);
+        }
+        view.value = sim.getCurrentSnapshot();
+        return { ok: true };
+    }
 
     /**
      * Rebuilds the simulation at t=0 for a whole new configuration. The new
@@ -38,20 +53,24 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
             return commandFailure(error);
         }
         sim = next;
-        view.value = sim.getLatestSnapshot();
+        view.value = sim.getCurrentSnapshot();
         return { ok: true };
     }
 
-    /** Advances one tick; on failure `view` keeps the last valid snapshot (DEC-14). */
-    function tick(): CommandResult {
-        try {
-            sim.tick();
-        } catch (error) {
-            return commandFailure(error);
-        }
-        view.value = sim.getLatestSnapshot();
-        return { ok: true };
-    }
+    /** Computes a new step; on failure `view` keeps the last valid snapshot (DEC-14). */
+    const tick = (): CommandResult => run(() => sim.tick());
 
-    return { view, load, tick };
+    /** Shows the next recorded step without recomputing it. */
+    const forward = (): CommandResult => run(() => sim.forward());
+
+    const backward = (): CommandResult => run(() => sim.backward());
+
+    /**
+     * The single "next" action of the interface (#36): reuses the recorded
+     * step when there is one ahead, otherwise computes a new one.
+     */
+    const next = (): CommandResult =>
+        run(() => (sim.canForward() ? sim.forward() : sim.tick()));
+
+    return { view, load, tick, forward, backward, next };
 }

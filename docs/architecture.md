@@ -51,10 +51,13 @@ afirma que os modulos planejados ja existem.
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
   (DEC-15); mantem cursor sobre o historico e restaura passos registrados
-  (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35).
+  (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35); navega por eles sem
+  recalcular (`forward`, `backward`, `canForward`) e recusa pedido impossivel com
+  `SimulationRefusal` (DEC-36).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
-  privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
-  `tick`, que devolvem resultado (DEC-23).
+  privada, publica o snapshot do cursor via `shallowRef` e oferece os comandos
+  `load`, `tick`, `forward`, `backward` e `next`, que devolvem resultado
+  (DEC-23, DEC-36).
 - [Erros da interface](../src/renderer/errors.ts): banner global e
   `commandFailure`, que classifica erros dos comandos (DEC-24).
 - [Processo principal](../src/main/main.ts): janela Electron e canal IPC que
@@ -708,6 +711,9 @@ anterior. Data inicial dos registros: 2026-10-12.
         - corrigivel pelo usuario: configuracao invalida
           (`ConfigValidationError` com `issues`); diagnosticos do parser,
           falhas de leitura e edicoes rejeitadas entram nas #31, #33 e #26;
+        - recusa: pedido impossivel no passo atual (`SimulationRefusal`,
+          categoria `refused`), mostrado onde o usuario agiu, fora do banner
+          (DEC-36);
         - inesperado: decisao invalida da politica, inconsistencia, politica
           ausente e qualquer outra excecao.
         - Cancelar a escolha do arquivo nao e erro (DEC-19).
@@ -1094,10 +1100,11 @@ anterior. Data inicial dos registros: 2026-10-12.
   passo nao registrado (nao inteiro, negativo ou alem do ultimo) e recusado
   com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
   posicao; `getLatestSnapshot()` fica inalterado.
-- Avanco: `tick()` com o cursor atras do ultimo passo e recusado com a
-  mensagem `Step ${cursor + 1} is already computed; use snapshot navigation
-  instead of tick().`. Reusar o futuro ainda valido fica na #24 e descartar o
-  futuro na #26; a #23 nao conhece edicoes.
+- Avanco: `tick()` com o cursor atras do ultimo passo e recusado; desde a #24
+  a recusa e `SimulationRefusal` com a mensagem `Step ${cursor + 1} is already
+  computed; use forward() instead of tick().` e o futuro registrado e
+  reutilizado por `forward()` (DEC-36). Descartar o futuro fica na #26; a #23
+  nao conhece edicoes.
 - Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
   novo cujo historico termina em k (`continueFrom`, acesso privado so no
   teste), avanca e compara com o k+1 registrado, inclusive eventos e
@@ -1138,6 +1145,43 @@ anterior. Data inicial dos registros: 2026-10-12.
   passo do cursor; descartado por antecipar a #26, poder apagar passos
   registrados por um `tick()` e mudar o contrato usado pelo renderer. Dele
   foi aproveitada a classe de historico separada.
+
+### DEC-36: Navegacao no historico e recusas
+
+- Estado: aceita em 2026-11-01 (acordado com o usuario na #24). Requisitos:
+  REQ-04, REQ-10. Complementa DEC-06, DEC-11, DEC-24 e DEC-35.
+- Decisao: navegar e calcular sao comandos separados no `Simulator`.
+  `forward()` move o cursor ao proximo passo registrado e `backward()` ao
+  anterior, ambos por `restore` (DEC-35), reutilizando o snapshot gravado sem
+  consultar a politica nem o sorteio. `canForward()` diz se ha passo
+  registrado a frente do cursor. `tick()` so calcula a partir do ultimo
+  passo (DEC-11).
+- Recusas: pedido impossivel lanca `SimulationRefusal`
+  (`src/core/refusal.ts`) antes de mudar qualquer coisa, com as mensagens:
+    - `backward()` no passo 0: `Step 0 is the first recorded step; there is
+      no earlier step to go back to.`;
+    - `forward()` no ultimo passo k: `Step ${k} is the latest recorded step;
+      use tick() to compute step ${k + 1}.`;
+    - `tick()` com o cursor k atras: `Step ${k + 1} is already computed; use
+      forward() instead of tick().`.
+- Interface: `AppError` ganha a categoria `refused` (DEC-24), que fica so no
+  resultado do comando, fora do banner. `useSimulation` expoe `forward`,
+  `backward` e `next`, que chama `forward` quando `canForward()` e `tick` no
+  ultimo passo, para um unico botao "proximo" na #36; `view` e
+  sempre o snapshot do cursor (`getCurrentSnapshot`).
+- Fora: recusar `tick()` quando todas as tarefas terminaram (#27); botoes e
+  atalhos (#36).
+- Prova: `src/core/simulator.navigation.test.ts` retrocede ate 0 e avanca ate
+  o fim no cenario de empates residuais, conferindo o mesmo objeto de cada
+  passo, relogio igual ao cursor, nenhuma consulta a politica e snapshots
+  iguais a copias tiradas antes (eventos `tie-break` e `drawState`); `tick()`
+  apos navegar iguala uma execucao direta. Recusas testadas sem mudanca de
+  cursor ou snapshot, inclusive repetidas e no simulador vazio.
+  `useSimulation.test.ts` e `errors.test.ts` cobrem `next`, `refused` fora do
+  banner, `load` apos retroceder e falha de `next` no ultimo passo.
+- Alternativas descartadas: um unico "avancar" no nucleo que calcula no fim
+  (o usuario separou navegar de calcular); ir direto a um passo k (nao
+  necessario); recusa como `unexpected` (o banner e reservado a bugs).
 
 ## Fluxo de um passo
 

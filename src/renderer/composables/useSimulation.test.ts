@@ -146,7 +146,14 @@ describe('useSimulation', () => {
         const adapter = useSimulation(only(firstAvailable));
         adapter.load(oneTask);
 
-        expect(Object.keys(adapter).sort()).toEqual(['load', 'tick', 'view']);
+        expect(Object.keys(adapter).sort()).toEqual([
+            'backward',
+            'forward',
+            'load',
+            'next',
+            'tick',
+            'view',
+        ]);
         expect(adapter.view.value).not.toBeInstanceOf(Simulator);
         expect(isReactive(adapter.view.value)).toBe(false);
         expect(Object.isFrozen(adapter.view.value)).toBe(true);
@@ -179,5 +186,136 @@ describe('useSimulation', () => {
         failing = false;
         expect(tick()).toEqual({ ok: true });
         expect(view.value.clock).toBe(lastValid.clock + 1);
+    });
+});
+
+describe('useSimulation navigation (DEC-36)', () => {
+    const BACKWARD_AT_ZERO =
+        'Step 0 is the first recorded step; there is no earlier step to go back to.';
+
+    it('steps backward and forward through recorded snapshots', () => {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
+        sim.tick();
+        sim.tick();
+        const two = sim.view.value;
+
+        expect(sim.backward()).toEqual({ ok: true });
+        expect(sim.view.value.clock).toBe(1);
+        expect(sim.forward()).toEqual({ ok: true });
+        expect(sim.view.value).toBe(two);
+    });
+
+    it('next reuses a recorded step and ticks only at the latest one', () => {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
+        sim.tick();
+        const one = sim.view.value;
+        sim.tick();
+        const two = sim.view.value;
+        sim.backward();
+        sim.backward();
+
+        expect(sim.next()).toEqual({ ok: true });
+        expect(sim.view.value).toBe(one);
+        expect(sim.next()).toEqual({ ok: true });
+        expect(sim.view.value).toBe(two);
+        expect(sim.next()).toEqual({ ok: true });
+        expect(sim.view.value.clock).toBe(3);
+    });
+
+    it('reports a refusal as refused, not on the banner, and keeps the view', () => {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
+        const zero = sim.view.value;
+
+        expect(sim.backward()).toEqual({
+            ok: false,
+            error: { kind: 'refused', message: BACKWARD_AT_ZERO },
+        });
+        expect(sim.forward()).toEqual({
+            ok: false,
+            error: {
+                kind: 'refused',
+                message:
+                    'Step 0 is the latest recorded step; use tick() to compute step 1.',
+            },
+        });
+        expect(sim.view.value).toBe(zero);
+        expect(currentError.value).toBeNull();
+    });
+
+    it('reports tick behind the cursor as refused', () => {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
+        sim.tick();
+        sim.backward();
+        const zero = sim.view.value;
+
+        expect(sim.tick()).toEqual({
+            ok: false,
+            error: {
+                kind: 'refused',
+                message:
+                    'Step 1 is already computed; use forward() instead of tick().',
+            },
+        });
+        expect(sim.view.value).toBe(zero);
+        expect(currentError.value).toBeNull();
+    });
+
+    it('refuses navigation before any load', () => {
+        const sim = useSimulation();
+        const zero = sim.view.value;
+        const result = sim.backward();
+        expect(!result.ok && result.error.kind).toBe('refused');
+        const forward = sim.forward();
+        expect(!forward.ok && forward.error.kind).toBe('refused');
+        expect(sim.view.value).toBe(zero);
+        expect(currentError.value).toBeNull();
+    });
+
+    it('starts a loaded config at its step 0 after navigating back', () => {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(oneTask);
+        sim.tick();
+        sim.tick();
+        sim.tick();
+        sim.backward();
+        sim.backward();
+
+        expect(sim.load(oneTask)).toEqual({ ok: true });
+        expect(sim.view.value.clock).toBe(0);
+        expect(sim.backward()).toEqual({
+            ok: false,
+            error: { kind: 'refused', message: BACKWARD_AT_ZERO },
+        });
+        expect(sim.next()).toEqual({ ok: true });
+        expect(sim.view.value.clock).toBe(1);
+    });
+
+    it('keeps the view when next fails at the latest step and still navigates back', () => {
+        let failing = false;
+        const policy: SchedulingPolicy = {
+            select: (view) => {
+                if (failing) {
+                    throw new Error('policy failed');
+                }
+                return firstAvailable.select(view);
+            },
+        };
+        const sim = useSimulation(only(policy));
+        sim.load(oneTask);
+        sim.tick();
+        const lastValid = sim.view.value;
+
+        failing = true;
+        expect(sim.next()).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: 'policy failed' },
+        });
+        expect(sim.view.value).toBe(lastValid);
+        expect(sim.backward()).toEqual({ ok: true });
+        expect(sim.view.value.clock).toBe(0);
     });
 });

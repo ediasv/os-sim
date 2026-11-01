@@ -6,7 +6,8 @@ import type { SimulationSnapshot } from './domain';
  * (DEC-11). Holds only the frozen snapshots the engine publishes and never
  * changes or drops one: a step can be added only when the cursor is on the
  * latest step. Knows nothing about the engine; restoring live state from a
- * step is the simulator's job. Reusing the future is #24, discarding it #26.
+ * step is the simulator's job. The recorded future is reused by
+ * `Simulator.forward()` (DEC-36); discarding it is #26.
  */
 export class SnapshotHistory {
     private readonly snapshots: SimulationSnapshot[] = [];
