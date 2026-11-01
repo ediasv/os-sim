@@ -7,8 +7,9 @@ import {
 } from './domain';
 import type { SchedulingPolicy } from './policy';
 import { rmPolicy } from './policies';
+import { SnapshotHistory } from './history';
 import { Simulator } from './simulator';
-import { restoreState } from './snapshot';
+import { deepCopy } from './helpers/deepCopy';
 
 // Residual ties recur, so the draw state changes many times along the run.
 const tied = (id: number, color: string): TaskDefinition => ({
@@ -39,10 +40,12 @@ function recordRun(sim: Simulator): SimulationSnapshot[] {
 
 /**
  * Proof seam for the restoration criterion (agreed on 2026-10-31): copies the
- * live state restored in `source` into a fresh simulator whose history ends at
- * the source's cursor, so ticking it recomputes the next step from the
- * restored state. Reaches private fields on purpose; nothing in #23 exposes
- * recomputation publicly (#24 reuses, #26 discards the future).
+ * live state that `source.restore()` installed into a fresh simulator whose
+ * history ends at the source's cursor, so ticking it recomputes the next step
+ * from exactly that state. Copying the live state (not re-deriving it from the
+ * snapshot) keeps the proof sensitive to anything `restore()` does. Reaches
+ * private fields on purpose; nothing in #23 exposes recomputation publicly
+ * (#24 reuses, #26 discards the future).
  */
 function continueFrom(
     source: Simulator,
@@ -50,10 +53,13 @@ function continueFrom(
     policy: SchedulingPolicy,
 ): Simulator {
     const fresh = new Simulator(cfg, policy);
-    const cursor = source.getCursor();
-    fresh['state'] = restoreState(source.getCurrentSnapshot());
-    fresh['snapshotHistory'] = source['snapshotHistory'].slice(0, cursor + 1);
-    fresh['cursor'] = cursor;
+    const history = new SnapshotHistory();
+    for (let step = 0; step <= source.getCursor(); step++) {
+        history.append(source['history'].at(step));
+    }
+    fresh['state'] = deepCopy(source['state']);
+    // `history` is readonly in Simulator; only this seam replaces it.
+    (fresh as unknown as { history: SnapshotHistory }).history = history;
     return fresh;
 }
 

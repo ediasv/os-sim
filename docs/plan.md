@@ -277,12 +277,15 @@ Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
   Evidencia (2026-10-31, branch `feat/23-historico-snapshots`, PR pendente):
-  `restoreState` em `src/core/snapshot.ts`, cursor e `restore` em
-  `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts` e
-  `src/core/simulator.history.test.ts`; `npm test` 531/531 (base 517),
-  `npm run lint` e `npm run typecheck` sem erros. Memoria: copia integral por
-  passo mantida (DEC-30), sem copia extra por passo (DEC-35). Contrato em
-  DEC-35.
+  `restoreState` em `src/core/snapshot.ts`, `SnapshotHistory` em
+  `src/core/history.ts`, `restore` e cursor em `src/core/simulator.ts`,
+  testes em `src/core/snapshot.test.ts`, `src/core/history.test.ts` e
+  `src/core/simulator.history.test.ts`; `npm test` 536/536 (base 517),
+  `npm run lint` e `npm run typecheck` sem erros. Prova de restauracao
+  conferida com mutacao em `restore` (3 testes falham). Memoria: copia
+  integral por passo mantida (DEC-30), sem copia extra por passo, com
+  medicao do PR #106 registrada em DEC-35. Contrato em DEC-35; PR #106
+  (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem

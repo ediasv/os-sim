@@ -41,6 +41,9 @@ afirma que os modulos planejados ja existem.
   sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
+- [Historico](../src/core/history.ts): `SnapshotHistory` guarda os snapshots
+  congelados (passo k no indice k) e o cursor; so acrescenta com o cursor no
+  ultimo passo e nunca altera nem descarta um passo (DEC-35).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
@@ -1081,8 +1084,12 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 - Estado: aceita em 2026-10-31 (acordado com o usuario na #23). Requisitos:
   REQ-04. Complementa DEC-06, DEC-11, DEC-12 e DEC-14.
-- Decisao: o `Simulator` mantem `snapshotHistory` e um `cursor` privado, cujo
-  indice e o relogio do snapshot (DEC-11). `restore(step)` torna o estado vivo
+- Decisao: o `Simulator` mantem privado um `SnapshotHistory`
+  (`src/core/history.ts`) com os snapshots e o cursor, cujo indice e o
+  relogio do snapshot (DEC-11). O historico so acrescenta passo com o cursor
+  no ultimo e nunca altera nem descarta um passo; a classe nao conhece o
+  motor, para que #24 e #26 mudem o historico num so lugar. `restore(step)`
+  torna o estado vivo
   uma copia mutavel do snapshot (`restoreState`), sem alterar snapshots;
   passo nao registrado (nao inteiro, negativo ou alem do ultimo) e recusado
   com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
@@ -1091,15 +1098,33 @@ anterior. Data inicial dos registros: 2026-10-12.
   mensagem `Step ${cursor + 1} is already computed; use snapshot navigation
   instead of tick().`. Reusar o futuro ainda valido fica na #24 e descartar o
   futuro na #26; a #23 nao conhece edicoes.
-- Prova: teste recalcula k+1 a partir de k restaurado num simulador novo
-  (`continueFrom`, acesso privado so no teste) e compara com o registrado,
-  inclusive eventos e `drawState`.
+- Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
+  novo cujo historico termina em k (`continueFrom`, acesso privado so no
+  teste), avanca e compara com o k+1 registrado, inclusive eventos e
+  `drawState`. Copiar o estado vivo, e nao recalcula-lo do snapshot, faz a
+  prova falhar se `restore` alterar o estado (conferido com mutacao).
 - Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
   copias por passo (restaurar copia uma vez por chamada). `restoreState`
   compartilha a `config` e cada `definition` congeladas, em vez de usar
-  `deepCopy`, que devolve valores congelados sem copiar.
-- Alternativa descartada: expor recalculo/descarte publico na #23 (fora do
-  escopo; pertence a #24/#26).
+  `deepCopy`, que devolve valores congelados sem copiar. Medicao adicional
+  do PR #106 (heap apos a simulacao, RM, 2 CPUs, 3 tarefas, Node 25.8.0,
+  diferente do 24.22.1 de `devEngines`):
+
+    | ticks | snapshots | heap   | media por snapshot |
+    | ----- | --------- | ------ | ------------------ |
+    | 1.000 | 1.001     | 23 MB  | 23 KB              |
+    | 2.000 | 2.001     | 49 MB  | 25 KB              |
+    | 4.000 | 4.001     | 165 MB | 42 KB              |
+
+    A media cresce com o comprimento, como DEC-30 descreve; a ordem de
+    grandeza e compativel com as medicoes de DEC-30 e nao muda a decisao.
+
+- Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
+  escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
+  cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
+  passo do cursor; descartado por antecipar a #26, poder apagar passos
+  registrados por um `tick()` e mudar o contrato usado pelo renderer. Dele
+  foram aproveitados a classe de historico separada e a medicao acima.
 
 ## Fluxo de um passo
 
