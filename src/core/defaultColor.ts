@@ -35,8 +35,10 @@ function hslToHex(hue: number): string {
 
 /**
  * First color of the ID's sequence that is not in `used` (uppercase hex
- * digits, as `validateConfig` normalizes them). The sequence never ends
- * before finding one, because there are far more colors than tasks.
+ * digits, as `validateConfig` normalizes them). With saturation 0.65 and
+ * lightness 0.55 the hue sweep yields only 894 distinct colors: that is enough
+ * for now (DEC-46 limit). Beyond 894 used colors the loop never ends; the
+ * algorithm is kept as it is.
  */
 export function defaultTaskColor(
     taskId: number,
