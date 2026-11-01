@@ -179,7 +179,9 @@ describe('projectInspection', () => {
     });
 });
 
-it('projects CPU history across removal and ID reuse', () => {
+it('projects the CPU history kept after removing CPUs', () => {
+    // With no tasks every CPU idles, so each one is off from tick 0 until removed.
+    expect(DEFAULT_CONFIG.tasks).toEqual([]);
     const sim = new Simulator({ ...DEFAULT_CONFIG, cpuCount: 4 });
     sim.tick();
     sim.edit([{ kind: 'cpuCount', cpuCount: 1 }]);

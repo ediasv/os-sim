@@ -729,10 +729,9 @@ Issues `[Docs]`, sem fase no Project.
        um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
        `oxfmt --check` ok e CI `test` aprovado);
     2. #115 (mergeado, `45869c7`, 2026-11-01) etapa de edicao no passo, edicoes por tick no historico, descarte do
-       futuro, recusa atomica por item, algoritmo e quantum. Implementacao
-       iniciada em 2026-11-01 sobre `1075b0a` (baseline `npm test` 669/669,
-       lint e typecheck sem erros); escopo e criterios no corpo do PR;
-       motivo da recusa de regra da configuracao vem de `validateConfig`
+       futuro, recusa atomica por item, algoritmo e quantum. Baseline
+       `npm test` 669/669, lint e typecheck sem erros; escopo e criterios no
+       corpo do PR; motivo da recusa de regra da configuracao vem de `validateConfig`
        (escolha do usuario). Codigo integrado na `main` pelo PR #115:
        `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
        liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
@@ -759,15 +758,15 @@ Issues `[Docs]`, sem fase no Project.
        desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
        consistencia por ID. Forma em DEC-40 (proposta para revisao).
        Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
-       Evidencia local: `npm test` 776/776 em 48 arquivos, `npm run lint` e
+       Evidencia local: `npm test` 794/794 em 48 arquivos, `npm run lint` e
        `npm run typecheck` aprovados. Testes novos/estendidos em
        `policy.test.ts`, `policies.test.ts`, `cpuOff.test.ts`,
        `consistency.test.ts`, `edit.test.ts`, `simulator.cpuEdits.test.ts`
        e projecoes de sistema/inspecao. RED -> GREEN conferido por tarefa;
        regressao das projecoes conferida com a consulta antiga e revertida.
-       Revisao independente do diff inteiro e testes novos: nenhum problema
-       critico, importante ou menor. Interface interativa e pacote nao
-       verificados; CI da implementacao pendente no PR de continuacao.
+       Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
+       critico; achados importantes corrigidos no proprio PR. Interface
+       interativa e pacote nao verificados; CI do PR #124 pendente.
        Limite de CPUs contra forcadas fica no #117;
     4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
@@ -775,10 +774,9 @@ Issues `[Docs]`, sem fase no Project.
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
-- Proximo passo: CI e revisao do PR de continuacao da implementacao de
-  CPUs; depois do merge, atualizar a branch do #117 com a `main`. A proxima
+- Proximo passo: CI e revisao do PR #124 (implementacao de CPUs); depois do merge, atualizar a branch do #117 com a `main`. A proxima
   implementacao da serie e #117 (estado por tarefa). Pendencias de decisao:
-  aceite de DEC-40 (continuacao do #116), DEC-39 (#115) e aceitar ou rever
+  aceite de DEC-40 (PR #124), DEC-39 (#115) e aceitar ou rever
   DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na

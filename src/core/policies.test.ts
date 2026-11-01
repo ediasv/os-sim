@@ -45,7 +45,7 @@ function cand(
         job,
         task: t,
         previousCpu: extra.previousCpu ?? null,
-        wasRunning: extra.wasRunning ?? extra.previousCpu != null,
+        wasRunning: extra.wasRunning ?? false,
     };
 }
 
@@ -135,8 +135,17 @@ describe('RM', () => {
     describe('tie-breaks among equal periods (DEC-16, DEC-18)', () => {
         it('criterion 1: keeps the job that was running', () => {
             const x = cand(task(1, 5), 10);
-            const y = cand(task(2, 5), 10, { previousCpu: 1 });
+            const y = cand(task(2, 5), 10, {
+                previousCpu: 1,
+                wasRunning: true,
+            });
             expect(decide(view(1, [x, y]))).toEqual({ selected: ['2.0'] });
+        });
+
+        it('criterion 1 ignores CPU ownership without a previous execution', () => {
+            const x = cand(task(1, 5), 10, { previousCpu: 1 });
+            const y = cand(task(2, 5), 10);
+            expect(decide(view(1, [x, y])).tie).toBeDefined();
         });
 
         it('criterion 2: earlier absolute deadline', () => {
@@ -168,6 +177,7 @@ describe('RM', () => {
             const running = cand(task(1, 5, 10, 3), 9, {
                 activation: 1,
                 previousCpu: 1,
+                wasRunning: true,
             });
             const better = cand(task(2, 5, 10, 1), 8, { activation: 0 });
             expect(decide(view(1, [better, running]))).toEqual({
@@ -251,7 +261,10 @@ describe('EDF', () => {
     describe('tie-breaks among equal deadlines (DEC-16, DEC-18)', () => {
         it('criterion 1: keeps the job that was running', () => {
             const x = cand(task(1, 5), 10);
-            const y = cand(task(2, 50), 10, { previousCpu: 2 });
+            const y = cand(task(2, 50), 10, {
+                previousCpu: 2,
+                wasRunning: true,
+            });
             expect(decide(view(1, [x, y]), edfPolicy)).toEqual({
                 selected: ['2.0'],
             });

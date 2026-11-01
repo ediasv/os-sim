@@ -19,9 +19,16 @@ import { key } from './helpers/key';
 export interface PolicyCandidate {
     readonly job: DeepReadonly<Job>;
     readonly task: TaskDefinition;
-    /** CPU owning the job before dispatch, or null when it has none (DEC-40). */
+    /**
+     * CPU owning the job before dispatch, or null when it has none (DEC-40).
+     * Informational: it does not drive the first tie-break and is independent
+     * of `wasRunning`, so a policy must not infer one from the other.
+     */
     readonly previousCpu: number | null;
-    /** Executed in [clock-1, clock), even if its CPU was removed (DEC-18, DEC-40). */
+    /**
+     * Executed in [clock-1, clock), even if its CPU was removed in the edit
+     * stage, when `previousCpu` is null (DEC-18, DEC-40).
+     */
     readonly wasRunning: boolean;
 }
 

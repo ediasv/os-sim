@@ -35,11 +35,13 @@ export interface CpuOffSummary {
 }
 
 /**
- * Lists every historical CPU by ascending ID, even removed CPUs (DEC-40).
- * Removal closes off time; absence before re-addition contributes no off ticks.
- * Throws `CpuEventSequenceError` when the events of a
- * CPU do not alternate off/on, go back in time, come after the snapshot clock,
- * or name an unknown CPU, since the intervals would then be guesses.
+ * Lists every CPU that ever existed by ascending ID, including removed CPUs
+ * and CPUs never off (DEC-40). Removing a CPU closes its open off interval at
+ * the removal time; time spent absent is not counted as off.
+ * Throws `CpuEventSequenceError` when the events of a CPU do not alternate
+ * off/on, go back in time, have an invalid time, come after the snapshot
+ * clock, name an absent CPU, or have unpaired additions/removals, since the
+ * intervals would then be guesses.
  */
 export function summarizeCpuOff(
     snapshot: DeepReadonly<SimulationState>,

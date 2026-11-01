@@ -27,7 +27,8 @@ function ascending(a: number, b: number): number {
 
 /**
  * Priority, then A.4.3 in order (DEC-16): the job that was running before the
- * selection, even if its slice just expired (DEC-18); earlier absolute
+ * selection, read from `wasRunning` rather than CPU ownership so it survives
+ * CPU removal (DEC-18, DEC-40); earlier absolute
  * deadline; earlier activation; shorter task duration. Zero means a residual
  * tie that only a draw may break.
  */

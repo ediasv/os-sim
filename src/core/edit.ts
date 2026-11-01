@@ -1,5 +1,5 @@
 /**
- * Edits made during the simulation (REQ-05, DEC-37, DEC-39). Owns the item
+ * Edits made during the simulation (REQ-05, DEC-37, DEC-39, DEC-40). Owns the item
  * kinds, their validation in order over the state of the edit stage, and the
  * net change of a tick: items are folded onto an `EditTarget` (what the user
  * asked for), not onto the state, because only the end result of the tick's
@@ -7,11 +7,18 @@
  * between the target before and after the edits, so edits that cancel out
  * leave no trace.
  *
- * Adding a kind (#116-#119) means adding a member to `EditItem`, a field to
- * `EditTarget` and a handler to `HANDLERS`, whose type demands one per kind.
+ * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
+ * (and to `TARGET_FIELDS`) and a handler to `HANDLERS`; the types demand each.
+ * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
+ * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
 import { validateConfig, type ConfigField } from './config';
-import type { AlgorithmId, DeepReadonly, SimulationState } from './domain';
+import type {
+    AlgorithmId,
+    DeepReadonly,
+    SimulationState,
+    SystemConfig,
+} from './domain';
 import type { EditItemRefusal } from './refusal';
 
 /** One change the user asks for. */
@@ -23,12 +30,21 @@ export type EditItem =
 /** One edit (one form submission): its items, in order. */
 export type Edit = readonly EditItem[];
 
-/** Parameters the user asked for at the edit stage; grows with #116-#119. */
-export interface EditTarget {
-    readonly algorithm: AlgorithmId;
-    readonly quantum: number;
-    readonly cpuCount: number;
-}
+/**
+ * Parameters the user asked for at the edit stage: the editable subset of the
+ * configuration. Tied to `SystemConfig` so a field cannot drift from it, and
+ * kept in `TARGET_FIELDS` so no comparison or copy can skip a new one.
+ */
+export type EditTarget = Readonly<
+    Pick<SystemConfig, 'algorithm' | 'quantum' | 'cpuCount'>
+>;
+
+/** Every field of `EditTarget`; the record type demands one entry per field. */
+const TARGET_FIELDS: Readonly<Record<keyof EditTarget, true>> = {
+    algorithm: true,
+    quantum: true,
+    cpuCount: true,
+};
 
 /** What validation may read: the edit-stage state and the known policies. */
 export interface EditContext {
@@ -179,23 +195,20 @@ export function foldEdit(
  * Applies only the difference between the target before and after the
  * tick's edits (DEC-37 item 5). The configuration is replaced, never
  * mutated, because snapshots and restored states share it (DEC-35).
- * Algorithm and quantum record no event (DEC-37).
+ * Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
+ * the highest IDs or appends the next ones, recording `cpu-removed` or
+ * `cpu-added` in ascending ID order (DEC-40).
  */
 export function applyNetChange(
     state: SimulationState,
     before: EditTarget,
     after: EditTarget,
 ): void {
-    if (
-        after.algorithm !== before.algorithm ||
-        after.quantum !== before.quantum ||
-        after.cpuCount !== before.cpuCount
-    ) {
+    const fields = Object.keys(TARGET_FIELDS) as (keyof EditTarget)[];
+    if (fields.some((field) => after[field] !== before[field])) {
         state.config = Object.freeze({
             ...state.config,
-            algorithm: after.algorithm,
-            quantum: after.quantum,
-            cpuCount: after.cpuCount,
+            ...Object.fromEntries(fields.map((f) => [f, after[f]])),
         });
     }
 

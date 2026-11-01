@@ -559,7 +559,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 - Consequencia:
     - Visao da politica sem mudanca (DEC-13): `previousCpu` do job vencido traz
       a CPU que ele ocupava, porque o motor monta a visao antes de liberar as
-      CPUs.
+      CPUs. Revista por DEC-40: o primeiro desempate passou a vir de
+      `wasRunning` (execucao em [t-1, t)), e `previousCpu` deixou de decidi-lo.
     - Como a politica e consultada a cada tick (DEC-07), job de prioridade maior
       ja preempta sem esperar o quantum, e no empate o job vencido fica pelo
       criterio (1). Com politicas por prioridade (RM, EDF), o vencimento renova
@@ -733,7 +734,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   removida deixa de ser "inexistente" para os eventos anteriores.
 - Revista por DEC-40 (#116): retorno inclui todos os IDs historicos em
   ordem crescente; `cpu-removed` fecha o intervalo aberto sem `cpu-on`,
-  `cpu-added` inicia outro periodo de existencia. Consulta reconstroi a
+  `cpu-added` inicia outro periodo de existencia. `summarizeCpuOff` reconstroi a
   presenca inicial a partir das CPUs atuais e eventos de existencia.
   Consistencia compara `offSince` por ID, somente para CPUs vigentes.
 
@@ -1725,9 +1726,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-40: Edicao de CPUs e execucao anterior independente da posse
 
-- Estado: proposta de implementacao em 2026-11-01 para a etapa 3 de 6 da
-  #26, no PR de continuacao do #116 (que integrou somente documentacao).
-  Implementada para revisao. Requisitos: REQ-02, REQ-04, REQ-05,
+- Estado: proposta em 2026-11-01 no PR #124 (#26, 3 de 6), para aceite do
+  usuario na revisao; o #116 integrou somente documentacao. Requisitos: REQ-02, REQ-04, REQ-05,
   REQ-07 e REQ-09. Detalha DEC-37; revisa DEC-13 e DEC-21. Nao altera o
   estado de aceite de DEC-39.
 - Contexto: remover CPU nao apaga o trabalho de [t-1, t), e uma CPU ausente
@@ -1739,7 +1739,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
        `applyNetChange` troca a configuracao congelada, remove maiores IDs
        ou acrescenta os seguintes, reutilizando IDs, somente pela diferenca
        final do tick. Eventos `cpu-removed`/`cpu-added` saem por ID crescente
-       na etapa de edicao; nao ha evento de potencia ficticio na remocao.
+       na etapa de edicao; a remocao nao registra `cpu-off`/`cpu-on` nem
+       `preemption` ficticios.
     2. CPU nova ou reincluida tem `running: null`, `sliceElapsed: 0` e
        `offSince: null`; o despacho a marca desligada se nao houver trabalho.
        Job incompleto da CPU removida volta a pronto, sem perder identidade,
