@@ -72,7 +72,9 @@ describe('App', () => {
         expect(enabled).toEqual([
             'Carregar configuração',
             'Sistema',
+            'Adicionar tarefa',
             'Carregar configuração',
+            'Adicionar tarefa',
             'Sistema',
         ]);
     });
@@ -184,13 +186,60 @@ describe('App', () => {
     });
 });
 
-describe('App system dialog (#36 part 2)', () => {
+describe('App preparation without a file (#36 part 2)', () => {
     const button = (wrapper: ReturnType<typeof mount>, label: string) =>
         wrapper.findAll('button').find((b) => b.text() === label)!;
     const field = (wrapper: ReturnType<typeof mount>, label: string) => {
         const l = wrapper.findAll('label').find((x) => x.text() === label)!;
         return wrapper.get<HTMLInputElement>(`#${l.attributes('for')}`);
     };
+
+    async function addDefaultTask(wrapper: ReturnType<typeof mount>) {
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+        await button(wrapper, 'Aplicar').trigger('click');
+    }
+
+    it('adds a task from the period 15 and starts without any file', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+        expect(field(wrapper, 'Período').element.value).toBe('15');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+        expect(wrapper.text()).toContain('1 tarefa configurada');
+        await button(wrapper, 'Avançar tick').trigger('click');
+        expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+        expect(wrapper.text()).toContain('Estado do sistema');
+    });
+
+    it('refuses period zero with the reason, keeps the form and changes nothing', async () => {
+        const wrapper = mount(App);
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+
+        await field(wrapper, 'Período').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Toda tarefa precisa de período maior que zero',
+        );
+        expect(field(wrapper, 'Período').element.value).toBe('0');
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(wrapper.text()).toContain('Nenhuma tarefa configurada');
+    });
+
+    it('shows the core reason for an invalid field and keeps what was typed', async () => {
+        const wrapper = mount(App);
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+
+        await field(wrapper, 'Duração').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'maior ou igual a 1',
+        );
+        expect(field(wrapper, 'Duração').element.value).toBe('0');
+    });
 
     it('changes the system values and shows them in the toolbar', async () => {
         const wrapper = mount(App);
@@ -206,16 +255,26 @@ describe('App system dialog (#36 part 2)', () => {
         expect(chipValue(wrapper, 'CPUs')).toBe('3');
     });
 
-    it('shows the core reason for an invalid value and keeps the dialog', async () => {
+    it('edits the selected task and removes it after confirming', async () => {
         const wrapper = mount(App);
+        await addDefaultTask(wrapper);
 
-        await button(wrapper, 'Sistema').trigger('click');
-        await field(wrapper, 'Quantum').setValue('0');
-        await button(wrapper, 'Aplicar').trigger('click');
-
-        expect(wrapper.get('[role="dialog"]').text()).toContain('quantum');
-        expect(chipValue(wrapper, 'Quantum')).toBe('5');
+        await button(wrapper, 'Editar tarefa selecionada').trigger('click');
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Editar Tarefa 1',
+        );
+        await button(wrapper, 'Remover tarefa').trigger('click');
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Remover Tarefa 1?',
+        );
         await button(wrapper, 'Cancelar').trigger('click');
+        expect(wrapper.text()).toContain('1 tarefa configurada');
+
+        await button(wrapper, 'Editar tarefa selecionada').trigger('click');
+        await button(wrapper, 'Remover tarefa').trigger('click');
+        await button(wrapper, 'Remover').trigger('click');
+
+        expect(wrapper.text()).toContain('Nenhuma tarefa configurada');
         expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
     });
 });

@@ -1,11 +1,19 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { WorkspaceAction } from '../components/workspaceActions';
 import type { ConfigIssue } from '../../core/config';
-import { DEFAULT_CONFIG, type SystemConfig } from '../../core/domain';
+import {
+    DEFAULT_CONFIG,
+    type SystemConfig,
+    type TaskId,
+} from '../../core/domain';
 import { loadConfig } from '../../core/loadConfig';
 import {
     applySystem as applySystemEdit,
+    newTaskValues,
+    removeTask,
+    saveTask as saveTaskEdit,
     type SystemValues,
+    type TaskValues,
 } from '../features/configuration/draft';
 import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
@@ -20,7 +28,15 @@ export interface Notice {
 }
 
 /** The modal the workspace is showing, if any; at most one at a time. */
-export type WorkspaceDialog = { readonly kind: 'system' };
+export type WorkspaceDialog =
+    | { readonly kind: 'system' }
+    /** `editing` is the id being edited, `null` when adding. */
+    | {
+          readonly kind: 'task';
+          readonly editing: TaskId | null;
+          readonly initial: TaskValues;
+      }
+    | { readonly kind: 'remove'; readonly taskId: TaskId };
 
 /**
  * Orchestrates the workspace (#36): which configuration is being prepared,
@@ -46,6 +62,8 @@ export function useWorkspace() {
     const fileName = ref<string | undefined>();
     const notices = shallowRef<readonly Notice[]>([]);
     const dialog = shallowRef<WorkspaceDialog | null>(null);
+    /** Task chosen in the preparation list; the target of "Editar tarefa". */
+    const selectedTaskId = ref<TaskId | null>(null);
 
     /** Snapshot at the history cursor; null while preparing. */
     const snapshot = computed(() =>
@@ -56,6 +74,9 @@ export function useWorkspace() {
     const clock = computed(() => snapshot.value?.clock ?? null);
     const taskCount = computed(() => config.value.tasks.length);
 
+    /** Tasks of the configuration being prepared; empty once it started. */
+    const draftTasks = computed(() => (started.value ? [] : draft.value.tasks));
+
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
         const idle = !loading.value && dialog.value === null;
@@ -65,6 +86,8 @@ export function useWorkspace() {
         // during the simulation belongs to #37.
         if (idle && !started.value) {
             actions.add('configure-system');
+            actions.add('add-task');
+            if (selectedTaskId.value !== null) actions.add('edit-task');
         }
         // Starting needs at least one task (FE-02).
         if (started.value || draft.value.tasks.length > 0) {
@@ -157,12 +180,38 @@ export function useWorkspace() {
         if (loaded.ok) {
             draft.value = loaded.config;
             fileName.value = result.path.split(/[/\\]/).pop();
+            selectedTaskId.value = loaded.config.tasks[0]?.id ?? null;
         }
         notices.value = next;
     }
 
     function cancelDialog(): void {
         dialog.value = null;
+    }
+
+    function selectTask(id: TaskId): void {
+        if (draft.value.tasks.some((task) => task.id === id)) {
+            selectedTaskId.value = id;
+        }
+    }
+
+    function openTaskDialog(editing: TaskId | null): void {
+        const existing = draft.value.tasks.find((task) => task.id === editing);
+        dialog.value = {
+            kind: 'task',
+            editing: existing?.id ?? null,
+            initial:
+                existing === undefined
+                    ? newTaskValues(draft.value)
+                    : {
+                          id: existing.id,
+                          color: existing.color,
+                          arrival: existing.arrival,
+                          duration: existing.duration,
+                          period: existing.period,
+                          deadline: existing.deadline,
+                      },
+        };
     }
 
     /**
@@ -175,6 +224,34 @@ export function useWorkspace() {
         draft.value = result.config;
         dialog.value = null;
         return [];
+    }
+
+    /** Applies the task form, adding or editing as the open dialog says. */
+    function saveTask(values: TaskValues): readonly ConfigIssue[] {
+        const current = dialog.value;
+        if (current?.kind !== 'task') return [];
+        const result = saveTaskEdit(draft.value, values, current.editing);
+        if (!result.ok) return result.issues;
+        draft.value = result.config;
+        selectedTaskId.value = values.id;
+        dialog.value = null;
+        return [];
+    }
+
+    /** From the edit dialog to the confirmation of removal. */
+    function requestRemove(): void {
+        const current = dialog.value;
+        if (current?.kind === 'task' && current.editing !== null) {
+            dialog.value = { kind: 'remove', taskId: current.editing };
+        }
+    }
+
+    function confirmRemove(): void {
+        const current = dialog.value;
+        if (current?.kind !== 'remove') return;
+        draft.value = removeTask(draft.value, current.taskId);
+        selectedTaskId.value = draft.value.tasks[0]?.id ?? null;
+        dialog.value = null;
     }
 
     /**
@@ -228,6 +305,12 @@ export function useWorkspace() {
             case 'configure-system':
                 dialog.value = { kind: 'system' };
                 break;
+            case 'add-task':
+                openTaskDialog(null);
+                break;
+            case 'edit-task':
+                openTaskDialog(selectedTaskId.value);
+                break;
             case 'step-forward':
                 if (!started.value) start();
                 else settle(simulation.value!.next());
@@ -254,9 +337,15 @@ export function useWorkspace() {
         available,
         notices,
         dialog,
+        draftTasks,
+        selectedTaskId,
         handle,
         dismissNotice,
+        selectTask,
         applySystem,
+        saveTask,
+        requestRemove,
+        confirmRemove,
         cancelDialog,
     };
 }

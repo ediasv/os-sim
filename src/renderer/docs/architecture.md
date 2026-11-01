@@ -706,15 +706,41 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   campo, fica preso no dialogo e volta ao botao de origem. Justificativa:
   manter as regras no nucleo, seguir o Figma onde ele define a tela e nao
   perder trabalho em silencio (FE-05). Acordado com o usuario em 2026-11-01.
-- Nao feito nesta parte: tarefas do rascunho (2b), confirmacao de FE-04
-  (2c), edicao durante a simulacao (#37), Executar tudo e cancelamento (#27).
+- 2b, logica: `saveTask` e `removeTask` seguem o mesmo caminho por
+  `validateConfig`. Unica regra do renderer: periodo zero informado na tela e
+  recusado com o motivo "Toda tarefa precisa de periodo maior que zero",
+  porque o nucleo ainda o aceita como aperiodico (DEC-29 item 3). Tarefa nova:
+  periodo 15 (DEC-29), ID igual ao maior usado mais 1 (nunca reaproveitado no
+  rascunho) e cor sugerida editavel (primeira de uma paleta ainda livre).
+- 2b, coordenacao: `selectedTaskId`, `selectTask`, `saveTask`, `requestRemove`,
+  `confirmRemove` e as acoes `add-task` e `edit-task`, so antes do inicio.
+- 2b, componentes: `TaskDialog`, `ConfirmDialog` (remover tarefa) e `TaskPanel`
+  com cartoes, "Editar tarefa selecionada" e "Adicionar tarefa" como no Figma.
+- FE-DEC-20 (REQ-05, REQ-06, REQ-10; FE-03, FE-11, FE-19; DEC-29): (a) a recusa
+  do periodo zero nas telas fica no renderer, com texto proprio, e e o unico
+  check de dominio alem do nucleo; (b) "Editar tarefa selecionada" atua na
+  tarefa escolhida na lista e "Remover tarefa" fica dentro do dialogo de
+  edicao, com confirmacao propria, como no Figma; remover vale so para o
+  rascunho (remocao durante a simulacao e da #37, FE-15); (c) `TaskDialog` e
+  um formulario de apresentacao (props e eventos), reaproveitavel pela #37, que
+  decide como aplicar edicoes durante a simulacao (sem a faixa "Editando no
+  tick" nem a secao "Job atual" do Figma); (d) o ID e a cor sugerida valem so
+  para a criacao no rascunho: o arquivo exige os dois campos e nao ha criacao
+  sem eles, e a #37 (FE-19) segue dona do ID e da cor na simulacao; (e) desvio
+  do Figma: a ajuda do periodo diz "Inteiro >= 1" em vez de "0 = aperiodica",
+  pois zero e recusado (DEC-29). Acordado com o usuario em 2026-11-01.
+- Nao feito nesta parte: confirmacao de FE-04 (2c), edicao durante a
+  simulacao e tarefa concluida so com cor (#37), Executar tudo e cancelamento
+  (#27).
 
-Verificacao (2026-11-01, 2a): `npm test` 953 aprovados e 1 ignorado, `npm run
+Verificacao (2026-11-01, 2b): `npm test` 985 aprovados e 1 ignorado, `npm run
 lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
-abrir o dialogo, aplicar valores, motivos do nucleo, restaurar padroes e
-cancelar. No navegador do app (Vite) a 1440 x 924 foi conferido o fluxo
-completo do conjunto 2a a 2c, sem repetir por PR; app Electron com o dialogo
-real de arquivo e larguras menores nao foram verificados.
+adicionar com periodo 15, periodo zero recusado, motivo do nucleo, editar,
+remover com confirmacao e a selecao. No navegador do app (Vite) a 1440 x 924
+foi conferido o fluxo completo do conjunto 2a a 2c: dialogo de tarefa com
+periodo 15, periodo 0 com o motivo junto ao campo, cartoes de tarefa, editar e
+remover. Nao verificado: app Electron, larguras menores, comparacao lado a lado
+com o Figma (#40).
 
 ## Verificacao e pendencias tecnicas
 

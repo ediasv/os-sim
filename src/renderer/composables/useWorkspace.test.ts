@@ -78,6 +78,7 @@ describe('useWorkspace', () => {
             cpuCount: 1,
         });
         expect([...workspace.available.value].sort()).toEqual([
+            'add-task',
             'configure-system',
             'load-config',
         ]);
@@ -101,6 +102,7 @@ describe('useWorkspace', () => {
         expect(workspace.clock.value).toBe(0);
         expect(workspace.snapshot.value?.executions).toEqual([]);
         expect(workspace.available.value.has('configure-system')).toBe(false);
+        expect(workspace.available.value.has('add-task')).toBe(false);
         expect(workspace.available.value.has('step-back')).toBe(false);
     });
 
@@ -465,6 +467,16 @@ describe('useWorkspace export file name (#39)', () => {
 });
 
 describe('useWorkspace preparation edits (#36 part 2)', () => {
+    const task = (overrides = {}) => ({
+        id: 1,
+        color: 'F0E0D0',
+        arrival: 0,
+        duration: 3,
+        period: 15,
+        deadline: 10,
+        ...overrides,
+    });
+
     it('opens the system dialog and applies new values to the draft', () => {
         const workspace = useWorkspace();
 
@@ -503,13 +515,102 @@ describe('useWorkspace preparation edits (#36 part 2)', () => {
         expect(workspace.config.value.quantum).toBe(5);
     });
 
+    it('adding a task starts from period 15, selects it and enables starting', () => {
+        const workspace = useWorkspace();
+
+        workspace.handle('add-task');
+
+        expect(workspace.dialog.value).toEqual({
+            kind: 'task',
+            editing: null,
+            initial: expect.objectContaining({ id: 1, period: 15 }),
+        });
+        expect(workspace.saveTask(task())).toEqual([]);
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.selectedTaskId.value).toBe(1);
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.available.value.has('step-forward')).toBe(true);
+        expect(workspace.available.value.has('edit-task')).toBe(true);
+    });
+
+    it('period zero is refused with its reason and nothing changes', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+
+        const issues = workspace.saveTask(task({ period: 0 }));
+
+        expect(issues).toEqual([
+            expect.objectContaining({
+                field: 'period',
+                message: expect.stringContaining('maior que zero'),
+            }),
+        ]);
+        expect(workspace.taskCount.value).toBe(0);
+        expect(workspace.dialog.value).not.toBeNull();
+    });
+
+    it('edits the selected task in place', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('add-task');
+        workspace.saveTask(task({ id: 2, color: 'A0B0C0' }));
+        workspace.selectTask(1);
+
+        workspace.handle('edit-task');
+        expect(workspace.dialog.value).toMatchObject({
+            kind: 'task',
+            editing: 1,
+            initial: expect.objectContaining({ id: 1, duration: 3 }),
+        });
+        expect(workspace.saveTask(task({ duration: 7 }))).toEqual([]);
+
+        expect(workspace.config.value.tasks.map((t) => t.duration)).toEqual([
+            7, 3,
+        ]);
+    });
+
+    it('removal asks first; confirming drops the task, cancelling keeps it', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('edit-task');
+
+        workspace.requestRemove();
+        expect(workspace.dialog.value).toEqual({ kind: 'remove', taskId: 1 });
+        workspace.cancelDialog();
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.dialog.value).toBeNull();
+
+        workspace.handle('edit-task');
+        workspace.requestRemove();
+        workspace.confirmRemove();
+
+        expect(workspace.taskCount.value).toBe(0);
+        expect(workspace.selectedTaskId.value).toBeNull();
+        expect(workspace.available.value.has('step-forward')).toBe(false);
+    });
+
     it('does not open another dialog while one is open', () => {
         const workspace = useWorkspace();
         workspace.handle('configure-system');
 
-        expect(workspace.available.value.has('load-config')).toBe(false);
-        workspace.handle('load-config');
+        expect(workspace.available.value.has('add-task')).toBe(false);
+        workspace.handle('add-task');
 
         expect(workspace.dialog.value).toEqual({ kind: 'system' });
+    });
+
+    it('edits made in preparation survive a restart of the session (FE-05)', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+
+        workspace.handle('restart');
+
+        expect(workspace.clock.value).toBe(0);
+        expect(workspace.taskCount.value).toBe(1);
     });
 });

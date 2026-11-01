@@ -6,6 +6,7 @@ export type WorkspaceAction =
     | 'load-config'
     | 'configure-system'
     | 'add-task'
+    | 'edit-task'
     | 'step-back'
     | 'step-forward'
     | 'restart'
@@ -23,6 +24,7 @@ export const ACTION_META: Readonly<
     'load-config': { label: 'Carregar configuração', icon: 'folder' },
     'configure-system': { label: 'Sistema', icon: 'settings' },
     'add-task': { label: 'Adicionar tarefa', icon: 'plus' },
+    'edit-task': { label: 'Editar tarefa selecionada', icon: 'edit' },
     'step-back': { label: 'Voltar tick', icon: 'step-back' },
     'step-forward': { label: 'Avançar tick', icon: 'step-forward' },
     restart: { label: 'Reiniciar', icon: 'restart' },
