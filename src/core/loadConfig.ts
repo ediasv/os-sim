@@ -99,9 +99,11 @@ function applyDefaultPeriod(draft: ConfigDraft): {
 }
 
 /**
- * Adds the line, field and received text to a core message without changing
- * the message. References to other tasks keep the core's ordinals (DEC-19).
- * A combined issue gets no received text: the field's own text would point
+ * Adds the line and field to a core message without changing the message.
+ * References to other tasks keep the core's ordinals (DEC-19). The received
+ * text stays out of the prefix because every core message already names the
+ * value, and showing it twice only repeats it (#93); it is still returned in
+ * `value`. A combined issue has no `value`: the field's own text would point
  * at a value that may be valid.
  */
 function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
@@ -121,7 +123,6 @@ function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
         : value === null
           ? 'missing'
           : 'received';
-    const received = value === null ? '' : ` (valor ${value})`;
 
     return {
         line,
@@ -129,6 +130,6 @@ function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
         value,
         valueKind,
         origin: 'core',
-        message: `Linha ${line}, campo ${field}${received}: ${issue.message}`,
+        message: `Linha ${line}, campo ${field}: ${issue.message}`,
     };
 }

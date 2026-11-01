@@ -504,8 +504,16 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   em `main`; falta o aceite do usuario ou a revisao da decisao. Nao executado:
   interface (#36) e ponte main/preload (#33).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
-  nucleo. Aberta (decisao sobre DEC-19); a dependencia do PR #84 ja foi
-  satisfeita (merged, `37ab733`, 2026-10-28).
+  nucleo. Decisao do usuario (2026-11-01): mostrar o valor uma vez; o
+  `loadConfig` acrescenta so linha e campo aos problemas do nucleo, cujas
+  mensagens ja citam o valor, inclusive quando texto e numero convertido
+  diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
+  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Em andamento no
+  branch `fix/93-valor-uma-vez`, sem PR. Evidencia (2026-11-01): os testes
+  de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
+  `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
+  669/669, `npm run lint` e `npm run typecheck` aprovados. Proximo passo:
+  revisao do usuario, commit e PR.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -689,7 +697,7 @@ Issues `[Docs]`, sem fase no Project.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
-  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 em andamento. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
