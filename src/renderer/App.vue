@@ -98,7 +98,7 @@ const system = computed(() =>
 .app__details {
     display: grid;
     flex: 1;
-    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
     align-content: start;
     align-items: start;
     gap: var(--spacing-lg);

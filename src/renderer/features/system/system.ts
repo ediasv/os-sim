@@ -1,5 +1,5 @@
-import { summarizeCpuOff, type CpuOffInterval } from '../../../core/cpuOff';
-import { findEligibleJobs } from '../../../core/eligibility';
+import type { CpuOffInterval } from '../../../core/cpuOff';
+import { cpuOffSummary, eligibleJobs } from '../../snapshotQueries';
 import type {
     DeepReadonly,
     JobRef,
@@ -10,7 +10,7 @@ import { key } from '../../../core/helpers/key';
 
 /**
  * Projection of a snapshot for the system panel (FE-09). Reads the core
- * queries (`findEligibleJobs`, `summarizeCpuOff`) and only groups their
+ * queries (`findEligibleJobs`, `summarizeCpuOff`, via `snapshotQueries`) and only groups their
  * results; it never decides eligibility, dispatch or CPU intervals. The
  * "desde t" of a running CPU is read from the execution slices, not computed
  * by a rule of its own.
@@ -116,9 +116,7 @@ function runSince(
 export function projectSystem(
     snapshot: DeepReadonly<SimulationSnapshot>,
 ): SystemData {
-    const eligibleKeys = new Set(
-        findEligibleJobs(snapshot).map((ref) => key(ref)),
-    );
+    const eligibleKeys = new Set(eligibleJobs(snapshot).map((ref) => key(ref)));
     const jobs: SystemJob[] = [];
     const jobsByKey = new Map<string, SystemJob>();
     for (const tcb of snapshot.tasks) {
@@ -130,7 +128,7 @@ export function projectSystem(
     }
 
     const offByCpu = new Map(
-        summarizeCpuOff(snapshot).map((summary) => [summary.cpuId, summary]),
+        cpuOffSummary(snapshot).map((summary) => [summary.cpuId, summary]),
     );
     const ownedKeys = new Set<string>();
     const cpus = snapshot.cpus.map((cpu): SystemCpu => {
