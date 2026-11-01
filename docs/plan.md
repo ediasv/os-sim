@@ -296,8 +296,8 @@ Requisitos: REQ-04, REQ-05.
   passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
   DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
-  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, PR
-  #112): `Simulator.forward()`/`backward()`, `canForward()` e
+  Concluida no PR #112 (merged, `ba14179`, 2026-11-01; issue fechada).
+  Evidencia (branch `feat/24-navegacao-historico`, antes do merge): `Simulator.forward()`/`backward()`, `canForward()` e
   `SimulationRefusal` (`src/core/refusal.ts`); `useSimulation` com `forward`,
   `backward` e `next`, publicando o snapshot do cursor; categoria `refused` em
   `commandFailure`. Contrato em DEC-36. Testes em
@@ -308,9 +308,19 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  DEC-37 aceita em 2026-11-01 no PR #101 (estado por tarefa aplicado ao job
-  mais antigo incompleto, recalculo do tick a partir de `t-1`); DEC-38 foi
-  retirada. Fecha com o merge do PR #101.
+  Concluida no PR #101 (squash merge `110e4ec`, 2026-11-01; issue fechada).
+  DEC-37 aceita pelo usuario (edicao durante a simulacao: recalculo do tick
+  a partir de `t-1` com a lista de edicoes do tick, estado por tarefa
+  aplicado ao job mais antigo incompleto, caracteristicas, inclusao e
+  exclusao, parametros do sistema e eventos de suspensao, retomada,
+  forcamento e CPUs). DEC-38 (uma ativacao por vez) retirada antes do
+  aceite; DEC-02 ganhou a justificativa completa e DEC-09 continua valendo.
+  A matriz foi numerada DEC-32 e DEC-35 durante o PR; DEC-37 desde o merge
+  com a `main` (#23 e #24 ocuparam DEC-35 e DEC-36). #11 e #12 reabertas e
+  fechadas de novo; #26, #37 e #38 atualizadas. Verificacao: mudanca so
+  documental; links locais e IDs DEC conferidos por script (DEC-01 a
+  DEC-38, sem lacunas nem duplicatas), `oxfmt --check` ok e CI `test`
+  aprovado no PR. Testes, lint e typecheck locais nao aplicaveis.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
   `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
@@ -678,9 +688,8 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23 e #24 concluidas; #25 em revisao (PR #101, DEC-37 aceita); #26 a
-  #28 nao iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
-  concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  E3: #23, #24 e #25 concluidas; #26 a #28 nao iniciadas. E4: #29, #30,
+  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
@@ -693,44 +702,17 @@ Issues `[Docs]`, sem fase no Project.
 - #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
   E3 e contrato em DEC-35.
 - #24 concluida no PR #112 (merged, `ba14179`, 2026-11-01), contrato em
-  DEC-36; registro de evidencia em E3 a sincronizar.
-- Em andamento (2026-10-31): #25, decisao so documental. Objetivo: responder
-  Q-02 com o usuario e registrar uma DEC ligada a REQ-05 com a matriz de
-  edicao (progresso, duracao, periodo, ingresso, prazo, estado,
-  inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
-  atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
-  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-37
-  (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
-  PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
-  verificado com `oxfmt --check`. Em 2026-11-01, rebase sobre a `main`
-  (matriz renumerada de DEC-32 para DEC-35; DEC-37 desde o merge com a
-  `main`, que ocupou DEC-35 e DEC-36 com #23 e #24) e revisao do PR #101
-  incorporada: periodo aceito apos a ultima ativacao, fatia nova apos
-  edicao do estado ou remocao de CPU, desvios do enunciado explicitados,
-  nota em DEC-09 e Q-02 alinhada. Ainda em 2026-11-01, a revisao
-  adversarial do PR #101 achou contradicoes na matriz, e a decisao foi
-  refeita com o usuario: DEC-37 reescrita (estado por tarefa com forcar,
-  suspender e encerrar; duracao e prazo na proxima ativacao; periodo
-  imediato no RM; exclusao so de tarefa nunca ativada; CPUs com IDs
-  reusados e eventos de remocao/inclusao; edicao recalcula o tick a partir
-  de `t-1`) e DEC-38 (uma ativacao por vez), que reabriu #11 e #12. Notas
-  de revisao em DEC-02, 08, 09, 10, 13, 16, 18, 21 e 22; Q-02, REQ-03,
-  REQ-07, invariantes e FE-10 a FE-16 e FE-19 do renderer atualizados;
-  `oxfmt --check` ok. Ainda em 2026-11-01, DEC-38 foi retirada antes do
-  aceite: adiava ativacoes e prazos do calendario, contra A.3.3 e as secoes
-  2.2 e 2.5.3 do material de tempo real, e o estado por tarefa nao a exige.
-  DEC-37 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
-  DEC-02 ganhou a justificativa completa; REQ-03, invariantes e notas de
-  DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
-  fechadas de novo. DEC-37 aceita pelo usuario em 2026-11-01; #26, #37 e
-  #38 atualizadas com a decisao. Pendente: merge do PR #101.
-- Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38).
-  Aceitar ou rever DEC-34 (#92).
-- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
-  confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
+  DEC-36; evidencia em E3.
+- #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
+  em E3 e decisao em DEC-37.
+- Proximo passo: #26 (aplicar as edicoes de DEC-37 no nucleo), que destrava
+  #37 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
+- Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
+  resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
-  de #36/#24; a apresentacao isolada com dados tipados foi verificada.
+  de #36 (#23 e #24 concluidas); a apresentacao isolada com dados tipados foi
+  verificada.
 
 ## Como registrar uma entrega
 
