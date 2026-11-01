@@ -238,8 +238,8 @@ Origem: REQ-04, REQ-09; interacao aprovada pelo usuario.
 - Ao selecionar job que so existe no futuro registrado, manter o destaque e
   o tick, identificar tarefa/job e informar que ainda nao foi ativado naquele
   snapshot, com o tick de ativacao registrado. Nao mostrar progresso ou estado
-  futuro como atual; suspensao, retomada e ajuste de progresso desse job ficam
-  indisponiveis enquanto ele nao existir no snapshot inspecionado.
+  futuro como atual; mudancas de estado e de caracteristicas pela selecao desse
+  job ficam indisponiveis enquanto ele nao existir no snapshot inspecionado.
 - Aceitacao: estando em 20, clicar no trecho de 5 mantem relogio e CPUs de 20.
   Estando em 8, selecionar job ativado em 12 mostra "Ainda nao ativado no
   tick 8. Ativacao registrada no tick 12", sem restaurar 12.
@@ -254,7 +254,7 @@ Origem: REQ-05, REQ-10; #25 e #26.
 - Ao editar no passado, explicar antes de aplicar quais ticks futuros serao
   descartados. A invalidacao so ocorre apos aceitacao da edicao inteira.
 - A edicao e referida ao tick selecionado, sem avancar o relogio. Tarefas
-  concluidas continuam inspecionaveis e editaveis conforme o contrato do nucleo.
+  concluidas continuam inspecionaveis; delas so a cor e editavel (DEC-37).
 - Aceitacao: rejeitar um campo preserva integralmente snapshot e futuro,
   inclusive se outros campos do mesmo formulario estavam validos.
 
@@ -267,8 +267,9 @@ Q-02 e #25/#26.
   atuais da tarefa dos valores efetivos dos jobs existentes. A interface
   apresenta o resultado do comando; nao define sua semantica de dominio.
 - Mostrar que duracao e prazo novos valem somente para proximas ativacoes,
-  nunca para o job atual ou outro ja ativado. Esse acordo foi reafirmado
-  nesta retomada; o alcance da duracao continua provisoriamente aceito.
+  nunca para jobs ja ativados (DEC-37). Periodo novo vale ja para a
+  prioridade RM dos jobs incompletos; no EDF, com as dez ativacoes feitas, avisar que fica guardado
+  sem efeito visivel.
 - Para periodo, apresentar a proxima ativacao e a previa do calendario
   fornecidas pelo nucleo, inclusive ativacao imediata quando aplicavel e
   esgotamento do teto. Nao calcular ativacoes nem congelar prioridade RM.
@@ -276,25 +277,32 @@ Q-02 e #25/#26.
   regras de calendario. A integracao precisa disponibilizar os valores
   efetivos para apresentacao; nao assumir que a duracao atual da tarefa ainda
   descreve jobs anteriores, nem prescrever como o nucleo guarda esses dados.
-- Cenarios de apresentacao: ultima ativacao em 10, edicao em 12 e periodo 8
-  mostram proxima ativacao em 18; ultima ativacao em 10, edicao em 17 e
-  periodo 4 mostram ativacao em 17 e a seguinte em 21, quando autorizadas
-  pelo nucleo e ainda houver ativacoes disponiveis.
+- Cenarios de apresentacao (DEC-37): ultima ativacao em 10, edicao em 12 e
+  periodo 8 mostram proxima ativacao em 18; ultima ativacao em 10 com
+  periodo antigo 10, edicao em 17 e periodo 4: 14 ja passou, entao a
+  ativacao ocorre em 17 e a seguinte em 21. A ativacao segue o calendario
+  mesmo com job anterior incompleto, que fica pendente (DEC-02).
 
-### FE-13: Suspender e retomar por job
+### FE-13: Mudar o estado da tarefa
 
-Origem: REQ-01, REQ-05, REQ-08; DEC-02 e expectativa relacionada a Q-02.
+Origem: REQ-01, REQ-05, REQ-08; DEC-37 (#25).
 
-- A acao identifica explicitamente o job selecionado ainda incompleto.
-  Nao suspender automaticamente todas as proximas ativacoes da tarefa.
+- O estado e da tarefa (pronta, executando forcada, suspensa, concluida),
+  vale para o job mais antigo incompleto e tambem para os jobs seguintes,
+  ate nova mudanca (DEC-37). Jobs pendentes continuam pendentes (DEC-02).
 - Apresentar que progresso e prazo sao preservados, o prazo nao pausa e
-  retomar nao garante CPU imediata nem permite ultrapassar job anterior.
+  retomar nao garante CPU imediata. Distinguir tarefa forcada de tarefa
+  pronta que executa por prioridade. Encerrar pede confirmacao e informa
+  que interrompe os jobs incompletos e impede novas ativacoes.
 - Aceitacao: controles refletem os comandos disponiveis no snapshot e seus
   erros. A UI nao transforma o job em executando para simular uma retomada.
 
 ### FE-14: Ajustar progresso como intervencao de debugger
 
 Origem: REQ-05, REQ-09; controle de apresentacao discutido; dependencia de #25/#26.
+
+> Fora do Projeto A por DEC-37 (#25): ticks executados nao sao editaveis; o
+> progresso so muda executando. Os itens abaixo ficam como registro da proposta.
 
 - Permitir ajustar o progresso inteiro de job incompleto entre zero e a duracao
   daquele job, conforme a validacao do nucleo.
@@ -315,10 +323,9 @@ Origem: REQ-05, REQ-09; expectativas relacionadas a Q-02 e #25/#26.
 - Se o ingresso solicitado for anterior ao tick selecionado, mostrar a
   rejeicao e seu motivo sem aplicar parcialmente a inclusao.
 - Mostrar a primeira ativacao fornecida pelo nucleo, imediata ou futura.
-- Remover exige confirmacao e informa que encerra jobs incompletos e impede
-  futuras ativacoes. Cancelar a confirmacao preserva a tarefa e o historico.
-- Manter identificavel o historico anterior da tarefa removida. Nao mostrar
-  jobs cancelados pela remocao como concluidos normalmente.
+- Excluir so tarefa nunca ativada (DEC-37); para tarefa ja ativada, mostrar
+  a recusa e indicar encerrar (FE-13). Nao mostrar job interrompido pelo
+  encerramento como concluido normalmente.
 - Aceitacao: inclusao ou remocao nao modifica o passado; jobs removidos nao
   continuam em CPU, conforme o resultado atomico devolvido pelo nucleo.
 
@@ -347,8 +354,9 @@ Origem: REQ-02, REQ-05, REQ-07; expectativas relacionadas a Q-02.
   vencimento informado pelo nucleo no tick da edicao; novo quantum 5 mostra
   2 ticks restantes na fatia preservada. Nenhum caso avanca o relogio nem
   diminui o progresso total do job.
-- A escolha RM/EDF pertence a preparacao, conforme A.4.1. Troca durante a
-  execucao nao foi acordada como parte da edicao de quantum/CPUs.
+- A escolha RM/EDF pertence a preparacao, conforme A.4.1, e tambem pode ser
+  trocada durante a simulacao (DEC-37); a troca vale a partir da selecao no
+  tick da edicao.
 
 ## Visualizacao e exportacao
 
@@ -402,14 +410,11 @@ Origem: REQ-05, REQ-06, REQ-09; apresentacao discutida em 2026-10-23 e
 expectativas de integracao relacionadas a Q-02.
 
 - Na criacao pela interface, a diretriz discutida e gerar o ID pelo sistema,
-  sem exigir sua digitacao. O criterio de geracao e reutilizacao ainda esta
-  em PEND-01. No arquivo, ID e cor sao entradas obrigatorias; preservar os
+  sem exigir sua digitacao, pelo criterio de DEC-37 (maior ID ja usado + 1).
+  No arquivo, ID e cor sao entradas obrigatorias; preservar os
   valores recebidos, sem renumeracao ou substituicao silenciosa de cores.
-- Oferecer edicao de ID e apresentar rejeicao de duplicidade devolvida pelo
-  nucleo. Nao copiar a restricao de ID imutavel do prototipo. Preservar a
-  correspondencia da selecao e do historico conforme o contrato de identidade,
-  ainda nao disponivel para essa integracao; componentes nao reescrevem
-  referencias antigas para simular a operacao.
+- ID nao e editavel no Projeto A (DEC-37); o ID gerado nunca repete o de uma
+  tarefa da simulacao, inclusive removida.
 - Cor aceita recolore todo o historico valido da tarefa, inclusive a
   exportacao; nao apenas trechos posteriores a edicao. Fazer isso na projecao
   de apresentacao, sem mutar snapshots antigos ou alterar fatos de CPU.
@@ -417,8 +422,9 @@ expectativas de integracao relacionadas a Q-02.
   nao substitui a obrigatoriedade do campo no TXT.
 - Antes da primeira ativacao, mostrar a possibilidade de reagendar ingresso
   para o tick inspecionado ou futuro, quando o resultado da validacao permitir.
-  O fluxo discutido espera rejeicao do deslocamento depois da primeira
-  ativacao; apresentar o motivo recebido e manter o ingresso consultavel,
+  Depois do ingresso, o campo fica bloqueado, com a explicacao ao passar o
+  cursor: "O ingresso nao pode ser alterado pois a tarefa ja ingressou."
+  (DEC-37); apresentar o motivo recebido e manter o ingresso consultavel,
   sem implementar essa validacao no componente. Nao confundir ingresso da
   tarefa com ativacoes posteriores de jobs.
 - Aceitacao: uma cor aceita atualiza os trechos antigos sem alterar eventos;
@@ -455,7 +461,7 @@ operacoes do nucleo continuam condicionados as expectativas de integracao.
 | FE-DEC-04 | Cancelar preserva ultimo tick valido; bloqueio tem uma unica saida para passo a passo. Nao desfazer trabalho implicitamente.                                                                                                                                                                                                                                                                                                                                                              | FE-07, FE-08; REQ-04, REQ-10                |
 | FE-DEC-05 | Selecao nao muda o tick; futuro valido fica visivel e so edicao aceita o descarta. Separar inspecao de navegacao.                                                                                                                                                                                                                                                                                                                                                                         | FE-06, FE-10, FE-11; REQ-04, REQ-05, REQ-09 |
 | FE-DEC-06 | SVG integral, inclusive parcial, independente da janela; formalizado pela DEC-08 (#35).                                                                                                                                                                                                                                                                                                                                                                                                   | FE-18; REQ-09                               |
-| FE-DEC-07 | Apresentar edicao de ID, recolorir o historico valido e distinguir ingresso futuro de ingresso ocorrido; validar a integracao sem definir regras do nucleo.                                                                                                                                                                                                                                                                                                                               | FE-19; REQ-05, REQ-06, REQ-09               |
+| FE-DEC-07 | ID fixo (DEC-37), recolorir o historico valido e distinguir ingresso futuro de ingresso ocorrido; validar a integracao sem definir regras do nucleo.                                                                                                                                                                                                                                                                                                                                      | FE-19; REQ-05, REQ-06, REQ-09               |
 | FE-DEC-08 | Selecao futura conserva o tick e informa ausencia do job naquele snapshot, sem comandos sobre ele.                                                                                                                                                                                                                                                                                                                                                                                        | FE-10; REQ-04, REQ-09                       |
 | FE-DEC-09 | Todos os diagnosticos ficam consultaveis com total, rolagem e teclado, sem perder mensagens do nucleo/parser.                                                                                                                                                                                                                                                                                                                                                                             | FE-20; REQ-06, REQ-10                       |
 | FE-DEC-10 | Empilhar marcadores coincidentes sem deslocar o tick; texto adaptativo preto/branco com contraste minimo de 4,5:1, preservando a cor da tarefa.                                                                                                                                                                                                                                                                                                                                           | FE-17; REQ-09, REQ-10                       |
@@ -473,38 +479,38 @@ nao uma segunda especificacao do nucleo. "Acordado" nesta matriz refere-se
 ao fluxo planejado para a interface; compatibilidade, API e suporte real
 permanecem dependencias externas. Os documentos gerais nao sao alterados.
 
-| Acordo final conferido                                                                                                      | Registro                                      | Situacao                                                                                                    |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Documentacao e responsabilidades em renderer, com nucleo agnostico.                                                         | FE-01; FE-DEC-01; organizacao de apresentacao | Acordado; bibliotecas e contratos concretos abertos em PEND-07.                                             |
-| Preparar e validar antes do inicio explicito; snapshot zero nao e primeiro tick executado.                                  | FE-02, FE-03; FE-DEC-02                       | Acordado.                                                                                                   |
-| Importar primeiro valida, depois confirma substituicao e retorna a preparacao.                                              | FE-04                                         | Acordado; cancelar ou falhar preserva a sessao.                                                             |
-| Reiniciar usa o cenario inicial; Limpar retorna aos padroes sem apagar arquivos.                                            | FE-05; FE-DEC-03                              | Acordado.                                                                                                   |
-| Retroceder conserva futuro visivel, resultados e sorteios; so edicao aceita o descarta.                                     | FE-06, FE-11; FE-DEC-05                       | Acordado.                                                                                                   |
-| Cancelar execucao completa preserva ultimo tick valido e historico, sem rollback.                                           | FE-07; FE-DEC-04                              | Acordado; depende da execucao.                                                                              |
-| Falta de progresso explica jobs bloqueadores e oferece uma saida para passo a passo.                                        | FE-08; FE-DEC-04                              | Acordado; deteccao e contrato externos.                                                                     |
-| Inspecao separa tarefa, job, elegibilidade e perda de prazo.                                                                | FE-09                                         | Acordado; nao inventar ranking da politica.                                                                 |
-| Clicar no Gantt seleciona tarefa/job sem mudar tick ou estado.                                                              | FE-10; FE-DEC-05, FE-DEC-08                   | Acordado; selecao futura identifica ausencia no snapshot atual e nao habilita comandos.                     |
-| Formularios sao rascunhos; aplicar e atomico, sem avancar o relogio.                                                        | FE-11                                         | Acordado; tarefas concluidas nao ficam inacessiveis para edicao.                                            |
-| Duracao editada afeta somente proximas ativacoes, nao jobs ja criados.                                                      | FE-12                                         | Expectativa provisoriamente aceita e reafirmada; incluir o job atual nao foi aprovado; integracao pendente. |
-| Prazo relativo editado afeta proximas ativacoes; prazos absolutos e perdas existentes permanecem.                           | FE-12                                         | Acordado; contrato externo.                                                                                 |
-| Novo periodo conta da ultima ativacao; se vencido, uma ativacao na edicao e calendario a partir dela.                       | FE-12                                         | Acordado; sem retroatividade ou reinicio da contagem de dez jobs.                                           |
-| RM usa novo periodo na proxima selecao, inclusive para jobs existentes.                                                     | FE-12                                         | Consequencia acordada; nao congela prioridade por job.                                                      |
-| Suspensao e retomada por job incompleto, sem pausar prazo nem liberar ultrapassagem.                                        | FE-13                                         | Acordado; retomar nao garante CPU imediata.                                                                 |
-| Progresso ajustavel e intervencao registrada; nao reescreve CPU anterior; atingir duracao conclui naquele tick.             | FE-14                                         | Acordado; contrato e eventos externos.                                                                      |
-| Inclusao aceita ingresso atual/futuro; remocao cancela jobs incompletos e futuras ativacoes, preservando historico.         | FE-15                                         | Acordado; cancelamento nao e conclusao normal.                                                              |
-| Quantum preserva consumo; novo limite pode vencer fatia no tick editado.                                                    | FE-16                                         | Acordado; sem configuracao agendada para proximo tick.                                                      |
-| Alterar CPUs refaz selecao global, permite migracao e conserva trabalho e raias historicas.                                 | FE-16                                         | Acordado; nao escolher quem para pelo ID da CPU retirada.                                                   |
-| Gantt por tarefa, CPU e job nos trechos, eventos, faixas de CPU, zoom e rolagem.                                            | FE-17; FE-DEC-12; DEC-08                      | Acordado na #35; detalhes de escala em PEND-04.                                                             |
-| SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                              | FE-18; FE-DEC-06                              | Acordado (DEC-08); gravacao pela infraestrutura.                                                            |
-| Recorte somente periodico discutido apos consultar A.4.4.                                                                   | Escopo; DEC-29                                | Reconciliado na #87: periodo padrao e aviso na carga (#89); UI exibe o aviso e rejeita periodo zero.        |
-| ID pode mudar sem colidir; criterio de geracao e reutilizacao ainda precisa ser definido.                                   | FE-19; PEND-01                                | Experiencia planejada; identidade historica e validacao dependem do nucleo.                                 |
-| Cor aceita recolore todo o historico valido.                                                                                | FE-19; FE-DEC-07                              | Acordado; nao mutar snapshots antigos.                                                                      |
-| Ingresso pode mudar antes da primeira ativacao, para o tick atual ou futuro; depois, preservar o fato ocorrido.             | FE-19                                         | Experiencia planejada; apresentar permissoes e rejeicoes do nucleo, sem prescrever seu contrato.            |
-| Lista completa de diagnosticos com total, rolagem e teclado.                                                                | FE-20; FE-DEC-09                              | Acordado; sem truncamento inacessivel.                                                                      |
-| Marcadores simultaneos empilhados verticalmente e texto sobre cor com contraste de 4,5:1.                                   | FE-17; FE-DEC-10                              | Acordado; demais detalhes de escala e acessibilidade continuam pendentes.                                   |
-| Base visual antes da inspecao isolada e da primeira integracao funcional.                                                   | Arquitetura do renderer                       | Planejamento registrado; nomes e escolhas de bibliotecas sao propostas, sem implementacao.                  |
-| Sem tooltip na entrega 1 e sem Reka UI apenas para essa finalidade.                                                         | FE-DEC-11                                     | Acordado; aria-label nao e tooltip visual.                                                                  |
-| Iniciar pela acao "Avancar tick" (snapshot zero no primeiro clique), tick `–` antes do inicio, acoes inertes desabilitadas. | FE-02; FE-DEC-14                              | Acordado em 2026-10-31; #72 so renderiza, o comportamento e da #36.                                         |
+| Acordo final conferido                                                                                                                      | Registro                                      | Situacao                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Documentacao e responsabilidades em renderer, com nucleo agnostico.                                                                         | FE-01; FE-DEC-01; organizacao de apresentacao | Acordado; bibliotecas e contratos concretos abertos em PEND-07.                                                                    |
+| Preparar e validar antes do inicio explicito; snapshot zero nao e primeiro tick executado.                                                  | FE-02, FE-03; FE-DEC-02                       | Acordado.                                                                                                                          |
+| Importar primeiro valida, depois confirma substituicao e retorna a preparacao.                                                              | FE-04                                         | Acordado; cancelar ou falhar preserva a sessao.                                                                                    |
+| Reiniciar usa o cenario inicial; Limpar retorna aos padroes sem apagar arquivos.                                                            | FE-05; FE-DEC-03                              | Acordado.                                                                                                                          |
+| Retroceder conserva futuro visivel, resultados e sorteios; so edicao aceita o descarta.                                                     | FE-06, FE-11; FE-DEC-05                       | Acordado.                                                                                                                          |
+| Cancelar execucao completa preserva ultimo tick valido e historico, sem rollback.                                                           | FE-07; FE-DEC-04                              | Acordado; depende da execucao.                                                                                                     |
+| Falta de progresso explica jobs bloqueadores e oferece uma saida para passo a passo.                                                        | FE-08; FE-DEC-04                              | Acordado; deteccao e contrato externos.                                                                                            |
+| Inspecao separa tarefa, job, elegibilidade e perda de prazo.                                                                                | FE-09                                         | Acordado; nao inventar ranking da politica.                                                                                        |
+| Clicar no Gantt seleciona tarefa/job sem mudar tick ou estado.                                                                              | FE-10; FE-DEC-05, FE-DEC-08                   | Acordado; selecao futura identifica ausencia no snapshot atual e nao habilita comandos.                                            |
+| Formularios sao rascunhos; aplicar e atomico, sem avancar o relogio.                                                                        | FE-11                                         | Acordado; tarefa concluida aceita so a cor (DEC-37).                                                                               |
+| Duracao editada afeta somente proximas ativacoes, nao jobs ja ativados.                                                                     | FE-12                                         | Decidido na #25 (DEC-37): sempre a partir da proxima ativacao.                                                                     |
+| Prazo relativo editado afeta proximas ativacoes; prazos absolutos e perdas existentes permanecem.                                           | FE-12                                         | Acordado; contrato externo.                                                                                                        |
+| Novo periodo conta da ultima ativacao; se ja passou, uma ativacao no tick editado e calendario a partir dela.                               | FE-12                                         | Decidido na #25 (DEC-37); sem reinicio da contagem de dez jobs.                                                                    |
+| RM usa novo periodo ja na selecao do tick editado, inclusive para jobs ja ativados.                                                         | FE-12                                         | Decidido na #25 (DEC-37); nao congela prioridade por job.                                                                          |
+| Suspensao e retomada por tarefa, sem pausar prazo; tarefa pode ser forcada a executar ou encerrada.                                         | FE-13                                         | Decidido na #25 (DEC-37); retomar nao garante CPU imediata.                                                                        |
+| Progresso ajustavel e intervencao registrada; nao reescreve CPU anterior; atingir duracao conclui naquele tick.                             | FE-14                                         | Fora do Projeto A por DEC-37 (#25).                                                                                                |
+| Inclusao aceita ingresso atual/futuro; exclusao so de tarefa nunca ativada; encerrar interrompe os jobs incompletos, preservando historico. | FE-15                                         | Decidido na #25 (DEC-37); interrupcao nao e conclusao normal.                                                                      |
+| Quantum preserva consumo; novo limite pode vencer fatia no tick editado.                                                                    | FE-16                                         | Acordado; sem configuracao agendada para proximo tick.                                                                             |
+| Alterar CPUs refaz selecao global, permite migracao e conserva trabalho e raias historicas.                                                 | FE-16                                         | Decidido na #25 (DEC-37): CPUs de maior ID saem; seus jobs mantem o primeiro desempate; IDs reusados ao aumentar, raia com lacuna. |
+| Gantt por tarefa, CPU e job nos trechos, eventos, faixas de CPU, zoom e rolagem.                                                            | FE-17; FE-DEC-12; DEC-08                      | Acordado na #35; detalhes de escala em PEND-04.                                                                                    |
+| SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                                              | FE-18; FE-DEC-06                              | Acordado (DEC-08); gravacao pela infraestrutura.                                                                                   |
+| Recorte somente periodico discutido apos consultar A.4.4.                                                                                   | Escopo; DEC-29                                | Reconciliado na #87: periodo padrao e aviso na carga (#89); UI exibe o aviso e rejeita periodo zero.                               |
+| ID fixo; gerado como maior ID ja usado + 1, sem reutilizar o de tarefa removida.                                                            | FE-19; DEC-37                                 | Decidido na #25.                                                                                                                   |
+| Cor aceita recolore todo o historico valido.                                                                                                | FE-19; FE-DEC-07                              | Acordado; nao mutar snapshots antigos.                                                                                             |
+| Ingresso pode mudar antes da primeira ativacao, para o tick atual ou futuro; depois, campo bloqueado.                                       | FE-19                                         | Decidido na #25 (DEC-37).                                                                                                          |
+| Lista completa de diagnosticos com total, rolagem e teclado.                                                                                | FE-20; FE-DEC-09                              | Acordado; sem truncamento inacessivel.                                                                                             |
+| Marcadores simultaneos empilhados verticalmente e texto sobre cor com contraste de 4,5:1.                                                   | FE-17; FE-DEC-10                              | Acordado; demais detalhes de escala e acessibilidade continuam pendentes.                                                          |
+| Base visual antes da inspecao isolada e da primeira integracao funcional.                                                                   | Arquitetura do renderer                       | Planejamento registrado; nomes e escolhas de bibliotecas sao propostas, sem implementacao.                                         |
+| Sem tooltip na entrega 1 e sem Reka UI apenas para essa finalidade.                                                                         | FE-DEC-11                                     | Acordado; aria-label nao e tooltip visual.                                                                                         |
+| Iniciar pela acao "Avancar tick" (snapshot zero no primeiro clique), tick `–` antes do inicio, acoes inertes desabilitadas.                 | FE-02; FE-DEC-14                              | Acordado em 2026-10-31; #72 so renderiza, o comportamento e da #36.                                                                |
 
 Alternativas superadas que nao devem voltar como requisitos implicitos:
 
@@ -531,22 +537,19 @@ alterar os documentos gerais ou declarar funcionalidades prontas para fechar
 essas dependencias. Conferir compatibilidade antes da integracao, sem perder
 o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 
-| Dependencia             | O que a apresentacao precisa receber                                                                                                              | Referencias                        |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Historico e edicao      | Cursor, limite valido, snapshots restauraveis, comandos atomicos, resultado e diagnosticos; estado do sorteio preservado.                         | E3, #23 a #26; DEC-06, DEC-14      |
-| Parametros por ativacao | Valores efetivos dos jobs, previa de ativacoes e possibilidades de edicao, sem prescrever a representacao do dominio.                             | Q-02, #25/#26; FE-12               |
-| Intervencoes            | Resultados e registros observaveis de suspensao, retomada, progresso, inclusao/remocao e troca de ID, conforme a API que vier a estar disponivel. | Q-02, #25/#26; FE-13 a FE-19       |
-| Execucao completa       | Andamento, snapshot de resultado e motivo de interrupcao, com jobs envolvidos quando aplicavel.                                                   | Q-06, #27; FE-07 e FE-08           |
-| Arquivos                | Dialogos autorizados, configuracao analisada e diagnosticos de conteudo/acesso; gravacao com resultado ou cancelamento.                           | E4, #33/#34, #39; DEC-19           |
-| Aperiodicas (A.4.4)     | Avisos de periodo padrao aplicado no resultado da carga, com ID, linha e motivo, para exibicao; o renderer nao filtra nem converte tarefas.       | DEC-29; #89, #33/#36               |
-| CPU desligada           | Intervalos e totais obtidos pela consulta publica do nucleo, sem rederivar sequencias no renderer.                                                | DEC-21; #15 concluida              |
-| Comandos e erros        | Usar load/tick e CommandResult existentes; reconciliar inicializacao em t=0 com preparacao antes de integrar FE-02/FE-04.                         | DEC-23, DEC-24; #17/#65 concluidas |
+| Dependencia             | O que a apresentacao precisa receber                                                                                                                | Referencias                        |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Historico e edicao      | Cursor, limite valido, snapshots restauraveis, comandos atomicos, resultado e diagnosticos; estado do sorteio preservado.                           | E3, #23 a #26; DEC-06, DEC-14      |
+| Parametros por ativacao | Valores efetivos dos jobs, previa de ativacoes e possibilidades de edicao, sem prescrever a representacao do dominio.                               | Q-02, #25/#26; FE-12               |
+| Intervencoes            | Resultados e registros observaveis de suspensao, retomada, inclusao/remocao e mudanca manual de estado, conforme a API que vier a estar disponivel. | Q-02, #25/#26; FE-13 a FE-19       |
+| Execucao completa       | Andamento, snapshot de resultado e motivo de interrupcao, com jobs envolvidos quando aplicavel.                                                     | Q-06, #27; FE-07 e FE-08           |
+| Arquivos                | Dialogos autorizados, configuracao analisada e diagnosticos de conteudo/acesso; gravacao com resultado ou cancelamento.                             | E4, #33/#34, #39; DEC-19           |
+| Aperiodicas (A.4.4)     | Avisos de periodo padrao aplicado no resultado da carga, com ID, linha e motivo, para exibicao; o renderer nao filtra nem converte tarefas.         | DEC-29; #89, #33/#36               |
+| CPU desligada           | Intervalos e totais obtidos pela consulta publica do nucleo, sem rederivar sequencias no renderer.                                                  | DEC-21; #15 concluida              |
+| Comandos e erros        | Usar load/tick e CommandResult existentes; reconciliar inicializacao em t=0 com preparacao antes de integrar FE-02/FE-04.                           | DEC-23, DEC-24; #17/#65 concluidas |
 
-- PEND-01 (parcial): ID editavel, recoloracao e ingresso definidos em FE-19.
-  Ainda falta definir criterio de geracao automatica e reutilizacao de ID de
-  tarefa removida, especialmente enquanto seu historico permanece. A identidade
-  e as referencias apos troca de ID dependem da futura integracao; nao
-  inventar a regra ou definir o modelo de identidade neste PR.
+- PEND-01: resolvida por DEC-37 (#25). ID nao e editavel; o gerado e o
+  maior ID ja usado + 1 e nunca reutiliza o de tarefa removida.
 - PEND-02 (compatibilidade externa): confrontar as expectativas de edicao,
   calendario, progresso, quantum, CPUs, inclusao/remocao, ID, ingresso e
   cancelamento/bloqueio com as capacidades e contratos reais do nucleo quando

@@ -54,6 +54,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
+  Reaberta em 2026-11-01 pela #25 para registrar DEC-38 (uma ativacao por
+  vez) e fechada de novo no mesmo dia: DEC-38 foi retirada do PR #101, e
+  DEC-09 e DEC-02 continuam valendo (justificativa em DEC-02).
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   Concluida no PR #49 (merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
@@ -61,7 +64,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
-  aprovados. Lacunas da revisao seguem na #51.
+  aprovados. Lacunas da revisao seguem na #51. Reaberta e fechada de novo em
+  2026-11-01: DEC-38 foi retirada, e o codigo e os testes atuais continuam
+  corretos.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
   valida a decisao, despacha globalmente, executa cada tick, registra
@@ -303,10 +308,13 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  Em andamento no PR #101 (rascunho, so o registro de inicio ate
-  2026-10-31); matriz ainda nao acordada com o usuario.
+  DEC-37 aceita em 2026-11-01 no PR #101 (estado por tarefa aplicado ao job
+  mais antigo incompleto, recalculo do tick a partir de `t-1`); DEC-38 foi
+  retirada. Fecha com o merge do PR #101.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
-  Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
+  Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
+  `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
+  suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
@@ -517,9 +525,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
   preparacao nao cria simulador.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
+  Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
+  issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
-  trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
+  Depende dos eventos de DEC-37 registrados pela #26: trechos suspensos e
+  forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
+  em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
@@ -667,11 +678,10 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23 concluida; #25 iniciada (PR #101, rascunho); #24 iniciada
-  (branch `feat/24-navegacao-historico`); #26 a #28 nao iniciadas.
-  E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
-  aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
-  nao iniciados.
+  E3: #23 e #24 concluidas; #25 em revisao (PR #101, DEC-37 aceita); #26 a
+  #28 nao iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
+  concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
@@ -680,19 +690,42 @@ Issues `[Docs]`, sem fase no Project.
 - #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
-- Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
-  suspensao/retomada; so o registro de inicio).
 - #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
   E3 e contrato em DEC-35.
-- Em andamento: #24 (navegacao no historico). Objetivo: `forward()` e
-  `backward()` no `Simulator` reutilizando snapshots registrados, recusas
-  com tipo proprio (`SimulationRefusal`, categoria `refused` no adaptador) e
-  adaptador com `forward`, `backward` e `next`, publicando o snapshot do
-  cursor. Escopo acordado com o usuario em 2026-11-01: nucleo e adaptador;
-  botoes na #36; recusar `tick()` com tudo terminado na #27; sem ir direto a
-  um passo k. Passos: nucleo e testes, adaptador e testes, DEC-36 e gates.
-- Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
-  destrava #26 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
+- #24 concluida no PR #112 (merged, `ba14179`, 2026-11-01), contrato em
+  DEC-36; registro de evidencia em E3 a sincronizar.
+- Em andamento (2026-10-31): #25, decisao so documental. Objetivo: responder
+  Q-02 com o usuario e registrar uma DEC ligada a REQ-05 com a matriz de
+  edicao (progresso, duracao, periodo, ingresso, prazo, estado,
+  inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
+  atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
+  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-37
+  (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
+  PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
+  verificado com `oxfmt --check`. Em 2026-11-01, rebase sobre a `main`
+  (matriz renumerada de DEC-32 para DEC-35; DEC-37 desde o merge com a
+  `main`, que ocupou DEC-35 e DEC-36 com #23 e #24) e revisao do PR #101
+  incorporada: periodo aceito apos a ultima ativacao, fatia nova apos
+  edicao do estado ou remocao de CPU, desvios do enunciado explicitados,
+  nota em DEC-09 e Q-02 alinhada. Ainda em 2026-11-01, a revisao
+  adversarial do PR #101 achou contradicoes na matriz, e a decisao foi
+  refeita com o usuario: DEC-37 reescrita (estado por tarefa com forcar,
+  suspender e encerrar; duracao e prazo na proxima ativacao; periodo
+  imediato no RM; exclusao so de tarefa nunca ativada; CPUs com IDs
+  reusados e eventos de remocao/inclusao; edicao recalcula o tick a partir
+  de `t-1`) e DEC-38 (uma ativacao por vez), que reabriu #11 e #12. Notas
+  de revisao em DEC-02, 08, 09, 10, 13, 16, 18, 21 e 22; Q-02, REQ-03,
+  REQ-07, invariantes e FE-10 a FE-16 e FE-19 do renderer atualizados;
+  `oxfmt --check` ok. Ainda em 2026-11-01, DEC-38 foi retirada antes do
+  aceite: adiava ativacoes e prazos do calendario, contra A.3.3 e as secoes
+  2.2 e 2.5.3 do material de tempo real, e o estado por tarefa nao a exige.
+  DEC-37 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
+  DEC-02 ganhou a justificativa completa; REQ-03, invariantes e notas de
+  DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
+  fechadas de novo. DEC-37 aceita pelo usuario em 2026-11-01; #26, #37 e
+  #38 atualizadas com a decisao. Pendente: merge do PR #101.
+- Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38).
+  Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

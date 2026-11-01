@@ -117,8 +117,8 @@ Fonte: A.4 a A.4.3.
   Projeto A ela nao chega ao simulador (DEC-29).
 - Politica substituivel, sem reescrever o ciclo de simulacao.
 - Em empate de prioridade: quem executava antes da selecao, prazo, ingresso,
-  menor duracao e sorteio, nessa ordem; prazo e ingresso do job, duracao da
-  tarefa (DEC-16). Sem desempate escondido pelo ID.
+  menor duracao e sorteio, nessa ordem; prazo, ingresso e duracao do job
+  (DEC-16, revista por DEC-37). Sem desempate escondido pelo ID.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar;
   todo sorteio e registrado, inclusive quando o escolhido continua executando
   (DEC-27).
@@ -169,11 +169,15 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: definir matriz de edicao: progresso, duracao, periodo, ingresso, prazo,
-  estado, inclusao/remocao de tarefas e efeito sobre jobs ja ativados. Nao
-  reescrever retroativamente fatos anteriores a edicao. Incluir os eventos de
-  suspensao e retomada que o Gantt (REQ-09) precisa para exibir trechos
-  suspensos; o modelo atual ainda nao os tem (DEC-12).
+- Q-02: resolvida em 2026-11-01 por DEC-37: edicao no tick `t`
+  vale ja em [t, t+1) sem mudar o passado; estado por tarefa (pronta,
+  executando forcada, suspensa, concluida), aplicado ao job mais antigo
+  incompleto; duracao e prazo na proxima ativacao; periodo no calendario e
+  na prioridade RM imediata; ingresso so antes da primeira ativacao; cor
+  sempre; ID e ticks executados fixos; inclusao a qualquer tick e exclusao
+  so de tarefa nunca ativada; algoritmo, quantum e CPUs editaveis; eventos
+  de suspensao, retomada, forcamento e CPUs para o Gantt. Recusas seguem
+  A.3.1 e A.3.4.
 - Q-03: resolvida em 2026-10-17 por DEC-19. DEC-10 fixou valores padrao, zero,
   campos ausentes, IDs e limites numericos; DEC-19 define diagnosticos do parser,
   numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
@@ -197,7 +201,7 @@ Fonte: gerais 5 e 6; A.5.
 
 - Um job executa em no maximo uma CPU por tick.
 - Somente o job mais antigo incompleto de uma tarefa pode ser elegivel; suspensao
-  desse job nao permite ao posterior ultrapassa-lo.
+  da tarefa (DEC-37) nao permite ao posterior ultrapassa-lo.
 - Preempcao muda posse da CPU, nao identidade, progresso ou prazo do job.
 - Snapshots nao compartilham dados mutaveis com o estado vivo.
 - Restauracao inclui configuracao, jobs, CPUs, eventos e estado do sorteio.

@@ -95,9 +95,11 @@ comuns. O estado vivo pertence ao motor, nunca aos componentes Vue.
 
 ## Registro de decisoes
 
-Estados: **aceita**, **proposta**, **substituida**. Alteracoes significativas
-recebem novo ID e indicam qual decisao substituem; nao apagar a justificativa
-anterior. Data inicial dos registros: 2026-10-12.
+Estados: **aceita**, **proposta**, **substituida**, **retirada**. Alteracoes
+significativas recebem novo ID e indicam qual decisao substituem; nao apagar a
+justificativa anterior. Proposta retirada antes do aceite mantem um registro
+curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
+2026-10-12.
 
 ### DEC-01: Motor independente da politica
 
@@ -116,10 +118,41 @@ anterior. Data inicial dos registros: 2026-10-12.
   proprios. Apenas o job mais antigo incompleto da tarefa pode executar.
 - Justificativa: acompanhar a hipotese da secao 2.5.3; fila e prioridade sozinhas
   nao impedem execucao simultanea da mesma tarefa em CPUs diferentes.
+  Complementada em 2026-11-01 com o
+  [material de tempo real](references/como-funciona-escalonamento-em-tempo-real.pdf):
+    - Ativacoes no calendario: a tarefa periodica tem "uma so ativacao por
+      intervalo regular chamado de Periodo" (secao 2.2), e o prazo absoluto
+      da k-esima ativacao e `(k-1) * P + D`, sem depender da conclusao da
+      anterior. A.3.3 diz o mesmo: ativacao "a cada n ticks" e prazo contado
+      "a partir do momento que a tarefa for ativada".
+    - Chegada e liberacao sao instantes distintos (secao 2.2): a liberacao,
+      entrada na fila de prontos, "pode ou nao coincidir" com a chegada. O job
+      posterior chega no calendario, com prazo correndo, e so e liberado
+      quando o anterior conclui.
+    - Execucao serializada (secao 2.5.3): "a execucao de qualquer liberacao
+      de uma tarefa sera atrasada ate que liberacoes anteriores da mesma
+      tarefa sejam executadas completamente". O texto chama a espera de
+      interferencia interna, e o exemplo da secao mostra uma ativacao
+      "empurrada para fora de seu periodo interferindo com a ativacao
+      seguinte".
+    - Independente da quantidade de CPUs: o material e monoprocessador, mas
+      a serializacao vem de a tarefa ser uma entidade sequencial, com um
+      TCB (A.1.3), uma linha no Gantt (A.2.1, A.2.5) e o primeiro desempate
+      por "a tarefa que esta executando" (A.4.3). Com varias CPUs livres,
+      jobs da mesma tarefa continuam sem executar em paralelo.
 - Consequencia: jobs posteriores ficam pendentes, com prazo correndo. Suspender
   o anterior nao libera o posterior. Distinguir elegibilidade de estado pronto.
+  O job pendente nao esta na fila de prontos, entao uma CPU desligada enquanto
+  ele espera nao contraria A.1.2. Atraso de um job aparece como perdas de prazo
+  nos seguintes, o que o Gantt deve mostrar (A.3.3).
 - Alternativas descartadas: sobrescrever progresso ou executar jobs da mesma
   tarefa em paralelo. O enunciado nao explicita essa restricao; e interpretacao.
+  Tambem descartado em 2026-11-01 (DEC-38, proposta no PR #101 como DEC-36
+  e retirada antes do aceite): ativar o job seguinte so na
+  conclusao do anterior, com prazo contado dessa ativacao adiada. Deslocaria
+  ativacoes e prazos do calendario e esconderia as perdas de prazo causadas
+  por acumulo de trabalho. O estado editavel por tarefa (DEC-37) nao exige
+  isso, pois vale para o job mais antigo incompleto, o unico elegivel.
 
 ### DEC-03: Fatias e preservacao de contexto
 
@@ -193,7 +226,9 @@ anterior. Data inicial dos registros: 2026-10-12.
   suspensa com hachura sobre fundo escuro, lida como o "preto com preenchimento
   diferente" do enunciado no tema escuro. Tarefa ainda nao ativada ou ja
   terminada fica vazia, delimitada pelos marcadores. Estado suspenso so pode ser
-  desenhado com registros do nucleo (pendencia de DEC-12, #25/#26).
+  desenhado com os eventos de suspensao e retomada de DEC-37, registrados
+  pela #26. DEC-37 acrescenta o trecho forcado e a lacuna de CPU
+  removida.
 - Eventos (A.2.2): marcadores com forma distinta e legenda para ingresso/ativacao,
   termino do job, fim da tarefa (ultimo job, DEC-09), perda de prazo, sorteio,
   preempcao e quantum vencido, alem do instante atual. "Termino" abrange job e
@@ -227,7 +262,12 @@ anterior. Data inicial dos registros: 2026-10-12.
   recebe o periodo padrao com aviso na carga (A.4.4); o comportamento acima
   continua sendo o do nucleo.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
-  de ativacao. Prioridade RM para periodo zero definida por DEC-17.
+  de ativacao. Prioridade RM para periodo zero definida por DEC-17. Encerrar
+  a tarefa durante a simulacao tambem a termina (DEC-37).
+- Excecao (DEC-37): periodo editado depois da primeira ativacao
+  recalcula as ativacoes restantes a partir da ultima, e a formula
+  `ingresso + k * periodo` deixa de valer para essa tarefa; o limite de dez
+  jobs continua.
 
 ### DEC-10: Valores padrao e limites da configuracao
 
@@ -256,6 +296,9 @@ anterior. Data inicial dos registros: 2026-10-12.
   (DEC-15).
 - Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
+- Revista por DEC-37: na edicao, periodo zero e recusado e os
+  tempos derivados sao conferidos sobre as ativacoes restantes, com os
+  valores editados.
 
 ### DEC-11: Passo de um tick e snapshot inicial
 
@@ -317,11 +360,10 @@ anterior. Data inicial dos registros: 2026-10-12.
       (`offSince: 0`) e registra `cpu-off`. Despachos seguintes registram
       religamento/desligamento; `findInconsistencies` e aplicado apos cada
       despacho (REQ-02, DEC-05).
-    - Suspensao: `JobState` tem `suspended`, mas nao ha eventos de suspensao e
-      retomada; a partir dos eventos e intervalos registrados nao se
-      reconstroem os trechos suspensos que o Gantt exige (REQ-09). Definir
-      esses eventos com a matriz de edicao (Q-02, E3: #25/#26) e consumi-los no
-      Gantt (E5: #38).
+    - Suspensao: `JobState` tem `suspended`, mas ainda nao ha eventos de
+      suspensao e retomada; a partir dos eventos e intervalos registrados nao
+      se reconstroem os trechos suspensos que o Gantt exige (REQ-09). Eventos
+      definidos em DEC-37 (#25); registro na #26 e consumo no Gantt (#38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
 
@@ -375,6 +417,11 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: custo de copiar as candidatas a cada selecao, pequeno frente
   ao snapshot completo por passo. `freezeCopy` (em `helpers/`) e
   reutilizada.
+- Revista por DEC-37: jobs forcados recebem CPU antes da politica,
+  que seleciona para as CPUs restantes; `cpuCount` da visao desconta esses
+  jobs. Job cuja CPU de [t-1, t) foi removida continua com o primeiro
+  desempate; a visao precisa representa-lo sem uma CPU vigente (forma na
+  #26).
 - Alternativas descartadas: ordenacao completa das candidatas, inclusive dos
   empates fora do corte (forca sorteios sem efeito alem do corte); visao
   apenas tipada sobre o estado vivo (um cast permitiria mutar o motor);
@@ -457,6 +504,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: no EDF a prioridade ja e o prazo absoluto, entao o criterio
   (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
   ou ordem das candidatas (DEC-13).
+- Revista por DEC-37: o criterio (4) usa a duracao do proprio
+  job, que pode diferir da duracao vigente da tarefa depois de uma edicao.
 
 ### DEC-17: Prioridade RM de tarefas aperiodicas
 
@@ -511,6 +560,8 @@ anterior. Data inicial dos registros: 2026-10-12.
       usuario na #14 para manter o criterio (1) e evitar a troca de contexto.
     - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); empates
       totais seriam sorteados a cada tick.
+- Revista por DEC-37: job forcado nao tem quantum; o quantum
+  editado vale ja para a fatia em curso.
 
 ### DEC-19: Diagnosticos do parser de configuracao
 
@@ -649,6 +700,11 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Alternativas descartadas: intervalos e totais guardados em `CpuState`
   (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
   dominio fora do nucleo e sem `findInconsistencies`).
+- Revista por DEC-37: `cpu-removed` e `cpu-added` delimitam os
+  periodos em que a CPU existe. A remocao fecha o intervalo desligado aberto,
+  o tempo fora do sistema nao conta como desligado, e a sequencia
+  desligar/religar e conferida dentro de cada periodo de existencia; CPU
+  removida deixa de ser "inexistente" para os eventos anteriores.
 
 ### DEC-22: Ordem dos eventos numa fronteira
 
@@ -673,6 +729,10 @@ anterior. Data inicial dos registros: 2026-10-12.
   da lista de eventos.
 - Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
   job; deixaria a ordem do log depender da posicao das tarefas na lista.
+- Revista por DEC-37: os eventos de edicao formam uma etapa entre
+  as ativacoes e as fatias vencidas, na ordem das edicoes, e a etapa de
+  fatias vencidas passa a vir depois das ativacoes; o despacho
+  passa a incluir a `preemption` causada por job forcado.
 
 ### DEC-23: Contrato do adaptador Vue
 
@@ -766,8 +826,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencias:
     - `new Simulator(config, policy)` direto continua permitido para testes e
       pode divergir de `config.algorithm`; producao usa a fabrica.
-    - Trocar o algoritmo durante a simulacao fica com Q-02/#25; a fabrica
-      concentra a resolucao e pode virar resolvedor se for preciso.
+    - Trocar o algoritmo durante a simulacao foi permitido por DEC-37 (#25);
+      a fabrica concentra a resolucao e vira resolvedor na #26.
     - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
       sorteio de DEC-27 (#20); nao cai mais na ordem do arquivo.
 
@@ -1183,20 +1243,330 @@ anterior. Data inicial dos registros: 2026-10-12.
   (o usuario separou navegar de calcular); ir direto a um passo k (nao
   necessario); recusa como `unexpected` (o banner e reservado a bugs).
 
+### DEC-37: Edicao durante a simulacao
+
+- Estado: aceita em 2026-11-01 pelo usuario no PR #101. Proposta em
+  2026-10-31 na #25 e reescrita em 2026-11-01 com as escolhas do usuario,
+  depois da revisao adversarial do PR #101, que achou contradicoes na
+  versao anterior (despacho corrigido depois de feito, sorteio refeito a
+  cada edicao, remocao de tarefa com historico, CPUs removidas); o estado
+  por tarefa passou a valer para o job mais antigo incompleto quando a
+  DEC-38 foi retirada. Numerada DEC-32 e depois DEC-35 durante o PR #101;
+  renumerada no merge com a `main`, onde DEC-35 e o historico com cursor
+  (#23). Referencias a "DEC-35" no PR #101, na #11, na #12 e nas issues
+  #26, #37 e #38 anteriores a renumeracao sao a esta decisao. Requisitos:
+  REQ-05, REQ-07, REQ-08,
+  REQ-09. Resolve Q-02 e a pendencia de suspensao de DEC-12. Mantem o
+  calendario de DEC-09 e a elegibilidade de DEC-02.
+- Contexto: o enunciado pede que o usuario mude o estado atual ou as
+  caracteristicas de qualquer tarefa em qualquer passo (requisito geral 4,
+  A.1.5.2, A.3.4) e configure o sistema durante a simulacao: conjunto de
+  tarefas, caracteristicas de cada tarefa e algoritmo (A.3.1). Mudanca que
+  nao faca sentido, nao possa ser aplicada ou seja semanticamente invalida e
+  recusada com o motivo (A.3.1, A.3.4). Toda edicao abaixo pode ser pedida;
+  cada pedido e aceito com efeito definido ou recusado com motivo. As
+  recusas sao as previstas nesses itens do enunciado, nao desvios dele.
+- Principio: o passado nao muda. Trechos, eventos e jobs anteriores ao
+  instante da edicao ficam como foram registrados. A unica excecao e a cor,
+  que e apresentacao e nao fato da simulacao.
+
+#### Quando e como a edicao vale
+
+1. Edicao feita no tick `t` vale de `t` em diante, inclusive em [t, t+1),
+   que o snapshot `t` ja mostra planejado (DEC-11). Editar num tick anterior
+   ao ultimo calculado descarta os snapshots posteriores (REQ-05).
+2. O motor nao corrige o despacho ja feito em `t`: recalcula o passo de
+   `t-1` para `t` a partir do snapshot `t-1`, com as edicoes de `t`
+   aplicadas numa etapa propria (Fluxo de um passo), depois das conclusoes,
+   perdas de prazo e ativacoes de `t`: a edicao e julgada sobre o estado que
+   o usuario ve no snapshot `t` antes do despacho (FE-11, escolha do autor).
+   Assim, o job ativado em `t` ja conta para as regras abaixo. No
+   tick 0 parte do estado inicial. Estado do sorteio, CPU de cada job em [t-1, t) e consumo
+   das fatias vem do snapshot `t-1`; o resultado depende so dele e das
+   edicoes, nao de quantas vezes se editou (DEC-06, DEC-27).
+3. Varias edicoes no mesmo tick acumulam: o historico guarda a lista de
+   edicoes aceitas de cada tick, e cada nova edicao recalcula o tick com a
+   lista inteira, na ordem em que foram aceitas. O tick `t` continua com um
+   unico snapshot. Descartar o futuro descarta tambem as edicoes dos ticks
+   descartados.
+4. Uma edicao (um envio de formulario) pode ter varios itens, aplicados em
+   ordem sobre o estado da etapa de edicao, depois das edicoes anteriores do
+   tick. Edicoes sucessivas sobre a mesma tarefa valem cada uma como acao
+   do usuario, com seus eventos (suspender e retomar no mesmo tick registra
+   os dois); so a quantidade de CPUs e liquida (parametros do sistema, item
+   3). Escolha do autor. Qualquer item recusado recusa a edicao inteira, sem aplicacao
+   parcial; a mensagem cita cada item recusado e o motivo (REQ-05).
+
+#### Estado da tarefa
+
+O estado editavel e o da tarefa, nao o do job. Ele vale para o job atual da
+tarefa, o mais antigo incompleto, que e o unico elegivel (DEC-02). Jobs
+posteriores ja ativados continuam pendentes, com prazo correndo, e herdam o
+estado da tarefa quando passam a ser o job atual. O calendario de ativacoes
+nao muda (DEC-09). Estados que o usuario escolhe:
+
+| Estado     | Significado                                                                   |
+| ---------- | ----------------------------------------------------------------------------- |
+| pronta     | a politica decide; a tarefa pode estar executando por prioridade              |
+| executando | forcada: o job atual ocupa uma CPU, sem passar pela politica                  |
+| suspensa   | fora da disputa por CPU; o prazo dos jobs ativados continua correndo (REQ-08) |
+| concluida  | encerrada: jobs incompletos interrompidos e nenhuma nova ativacao             |
+
+| De \ Para  | pronta     | executando    | suspensa           | concluida  |
+| ---------- | ---------- | ------------- | ------------------ | ---------- |
+| pronta     | sem efeito | forca         | suspende           | encerra    |
+| executando | desforca   | sem efeito    | desforca, suspende | encerra    |
+| suspensa   | retoma     | retoma, forca | sem efeito         | encerra    |
+| concluida  | recusado   | recusado      | recusado           | sem efeito |
+
+1. Mudanca para o proprio estado e aceita sem efeito e sem evento. A tela
+   distingue o estado escolhido do observado: tarefa pronta que executa por
+   prioridade nao e forcada.
+2. O estado vale tambem antes do ingresso e entre jobs: o proximo job ja
+   nasce nele (suspenso, ou forcado e tomando CPU ao se tornar o job
+   atual). Job ativado com a tarefa suspensa tem o prazo correndo desde a
+   ativacao.
+3. Suspensa: o job atual sai da disputa e, se ocupava CPU, a libera em `t`,
+   sem `preemption` (a `suspension` explica a saida). Suspender a tarefa nao
+   libera os jobs pendentes (DEC-02). Retomar devolve o job atual a disputa,
+   sem garantir CPU.
+4. Job que deixa sua CPU na etapa de edicao (suspensao, encerramento, CPU
+   removida) perde a fatia em curso: se voltar a executar, inclusive no
+   mesmo tick, comeca fatia nova (DEC-03), e a etapa de fatias vencidas nao
+   o considera. Escolha do autor.
+5. Executando (forcada):
+    1. Tarefas forcadas nao concluidas sao no maximo tantas quantas CPUs;
+       forcar alem disso e recusado. Forcada sem job incompleto conta no
+       limite. Forcar nao paraleliza a tarefa: so o job atual recebe CPU.
+    2. Jobs forcados recebem CPU antes da politica. A politica escolhe entre
+       os demais jobs elegiveis para as CPUs restantes (DEC-13 com o total de
+       CPUs menos os jobs forcados). Job que perde a CPU para um forcado
+       registra `preemption` por ele.
+    3. Atribuicao (DEC-07): job forcado ou selecionado que ocupava uma CPU
+       em [t-1, t) a mantem; os demais ocupam as CPUs livres, forcados
+       primeiro e depois na ordem da selecao, por ID de CPU.
+    4. Quantum nao se aplica ao job forcado: nao ha `quantum-expired`. Ao
+       deixar de ser forcado, se continuar na CPU, comeca fatia nova.
+    5. A tarefa continua forcada nos jobs seguintes, ate o usuario move-la
+       para pronta ou suspensa, ou ate concluir. Perdas de prazo continuam
+       registradas. Forcadas podem deixar as demais sem CPU; a simulacao
+       termina porque cada tarefa tem no maximo dez jobs.
+6. Concluida (encerrar): permitido a qualquer instante para tarefa nao
+   concluida, inclusive antes do ingresso. Todos os jobs incompletos (o
+   atual e os pendentes) sao interrompidos em `t`, sem `completion`, e o
+   atual libera a CPU; nao ha novas ativacoes. Registra `task-finished` em
+   `t` com os jobs interrompidos. Perdas de prazo registradas ate `t`,
+   inclusive a de `t` (registrada antes da etapa de edicao), permanecem; um
+   job ativado em `t` tambem e interrompido. Jobs interrompidos nao geram
+   perdas depois. A inspecao mostra os jobs como interrompidos, nao
+   concluidos. E final: nenhuma mudanca de estado depois, e das
+   caracteristicas so a cor.
+7. Primeiro desempate (A.4.3 (1), DEC-18): vale para o job que executou em
+   [t-1, t) e continua na disputa, inclusive o que perdeu a CPU removida ou
+   deixou de ser forcado. Nenhuma edicao retira esse criterio.
+
+#### Caracteristicas da tarefa
+
+| Item             | Editavel                      | Efeito                                      |
+| ---------------- | ----------------------------- | ------------------------------------------- |
+| ID               | nao                           | identidade da tarefa e ordem do Gantt       |
+| Cor              | sim, inclusive concluida      | todo o Gantt da tarefa, inclusive o passado |
+| Ingresso         | so antes da primeira ativacao | reagenda o calendario da tarefa             |
+| Duracao          | sim                           | a partir da proxima ativacao                |
+| Prazo relativo   | sim                           | a partir da proxima ativacao                |
+| Periodo          | sim                           | proximas ativacoes; prioridade RM imediata  |
+| Ticks executados | nao                           | progresso so muda executando                |
+
+1. Cor: hexadecimal valida e diferente da cor de qualquer outra tarefa da
+   simulacao, inclusive concluidas (A.2.1); tarefa excluida nao conta.
+2. Ingresso: so antes da primeira ativacao; novo valor `>= t`, e igual a
+   `t` ativa o primeiro job em `t`. Depois da primeira ativacao a edicao e
+   recusada e a tela (#37) mostra o campo bloqueado, com a explicacao ao
+   passar o cursor: "O ingresso nao pode ser alterado pois a tarefa ja
+   ingressou."
+3. Duracao e prazo relativo: jobs ja ativados (o atual e os pendentes)
+   mantem a duracao e o prazo absoluto que receberam ao ativar; os novos
+   valores valem a partir da proxima ativacao. Cada job guarda sua
+   duracao. Tarefa que ja ativou seus dez jobs recusa duracao e prazo, pois
+   nao ha proxima ativacao.
+4. Periodo:
+    - Antes da primeira ativacao: ativacoes em ingresso + k * novo periodo,
+      com k de 0 a 9 (DEC-09).
+    - Depois: proxima ativacao = ultima ativacao + novo periodo, e as
+      seguintes somam o periodo vigente a anterior. A ativacao segue o
+      calendario mesmo com job incompleto; o novo job fica pendente (DEC-02).
+      Se a proxima ativacao ja passou, ha uma unica ativacao em `t`, e as
+      seguintes vem a cada periodo a partir dela; ativacoes vencidas nao se
+      acumulam. Exemplos: ultima ativacao em 10, periodo 5 mudado para 8 em
+      13: proxima em 18. Mesma tarefa, periodo mudado para 2 em 13: 12 ja
+      passou, entao a proxima ativa em 13 e a seguinte em 15.
+    - No RM a prioridade usa o periodo vigente ja na selecao de `t`,
+      inclusive para jobs ja ativados. No EDF so muda o calendario.
+    - Aceito tambem depois das dez ativacoes: muda a prioridade RM dos jobs
+      incompletos; no EDF fica guardado sem efeito visivel, e a tela informa.
+5. Limites de DEC-10: duracao >= 1, prazo >= 1 e periodo >= 1. Periodo zero
+   e recusado tambem pelo nucleo na edicao: tornar uma tarefa aperiodica
+   fica para o Projeto B (DEC-29 continua valendo para a carga). O limite de
+   tempos derivados e conferido sobre as ativacoes restantes, com os valores
+   editados.
+6. Tarefa concluida aceita somente a cor.
+
+#### Inclusao e exclusao de tarefas
+
+1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
+   `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
+   e cor distinta. O ID e gerado: maior ID ja usado na simulacao + 1. A
+   tarefa comeca pronta.
+2. Excluir: somente tarefa nunca ativada. Ela sai do estado sem evento e
+   sem rastro no Gantt; seu ID nao volta a ser usado. Tarefa ja ativada nao
+   pode ser excluida: a recusa explica que encerrar (concluida) e o caminho,
+   pois o historico dela precisa continuar no Gantt.
+
+#### Parametros do sistema
+
+1. Algoritmo (RM ou EDF): vale ja na selecao de `t`.
+2. Quantum (>= 1): vale imediatamente. A fatia em curso conserva o consumo,
+   e a etapa de fatias vencidas de `t` usa o valor novo: consumo >= novo
+   quantum vence em `t`; um quantum maior pode evitar o vencimento que o
+   valor antigo causaria.
+3. Quantidade de CPUs (>= 1 e >= tarefas forcadas nao concluidas): aumentar
+   acrescenta CPUs com os IDs seguintes ao maior vigente, reusando IDs de
+   CPUs removidas; reduzir remove as de maior ID. Job de CPU removida volta
+   a disputa com o primeiro desempate (item 7 do estado) e a selecao global
+   decide; nao registra `preemption`, pois `cpu-removed` explica a saida.
+   Conta somente a quantidade final das edicoes do tick, comparada com a de
+   `t-1`: 4, depois 2, depois 4 no mesmo tick nao gera evento.
+4. CPU removida: `cpu-removed` fecha o intervalo desligado aberto, se houver;
+   `cpu-added` reabre a CPU, que comeca como no snapshot inicial (DEC-12:
+   o despacho a marca desligada se nao tiver trabalho). O intervalo entre
+   remocao e inclusao nao conta como desligado: a CPU nao existia. O Gantt
+   mostra a raia com lacuna.
+
+#### Eventos
+
+Novos eventos, todos com `time = t`, registrados na etapa de edicao na ordem
+das edicoes:
+
+- `suspension` (`taskId`, `cpuId` ou `null`): tarefa suspensa; `cpuId` e a
+  CPU liberada.
+- `resumption` (`taskId`): tarefa suspensa volta a disputa.
+- `forced` (`taskId`) e `unforced` (`taskId`): inicio e fim do estado
+  forcado; forcada movida para suspensa registra `unforced` e depois
+  `suspension`.
+- `cpu-removed` (`cpuId`) e `cpu-added` (`cpuId`).
+- `task-finished` ganha `interrupted` (lista de jobs): jobs incompletos
+  interrompidos pelo encerramento, o atual e os pendentes; vazia no termino
+  normal (DEC-09).
+
+Sem campo de origem: no Projeto A toda mudanca de estado vem de edicao; o
+Projeto B o acrescenta para a lista de eventos do arquivo (A.3.3.5). O
+Gantt (#38) desenha o trecho suspenso de `suspension` ate `resumption`,
+`task-finished` ou o fim do historico, e o forcado de `forced` ate
+`unforced` ou `task-finished`. Ativacao em `t` causada por edicao (ingresso
+ou inclusao em `t`, periodo cuja proxima ativacao ja passou) e registrada na etapa
+de edicao, logo apos o evento da edicao; `quantum-expired` causado por
+edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
+
+#### Fatos que o modelo passa a guardar (forma com a #26)
+
+- Estado escolhido de cada tarefa (pronta, forcada, suspensa, concluida) e os
+  jobs interrompidos pelo encerramento, sem confundi-los com jobs concluidos.
+- Duracao de cada job e instante da proxima ativacao, que deixa de seguir
+  `ingresso + k * periodo` depois de uma edicao de periodo.
+- Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
+  cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
+  (escolha do autor).
+- No historico (#23/#24, DEC-35), a lista de edicoes aceitas de cada tick.
+
+#### Revisoes de outras decisoes
+
+- DEC-02: o estado da tarefa vale para o job atual; suspender ou forcar nao
+  libera nem paraleliza os jobs pendentes.
+- DEC-09: periodo editado recalcula as ativacoes restantes (item 4 das
+  caracteristicas); termino tambem por encerramento.
+- DEC-35 e DEC-36: o historico passa a guardar a lista de edicoes de cada
+  tick e a descartar os passos e edicoes posteriores a uma edicao em tick
+  anterior ao ultimo (#26, como DEC-35 ja previa); `forward()`/`backward()`
+  continuam reutilizando snapshots sem recalcular.
+- DEC-07 e DEC-13: jobs forcados recebem CPU antes da politica, que decide
+  para as CPUs restantes; job cuja CPU foi removida continua com o primeiro
+  desempate, e a visao precisa representa-lo mesmo sem a CPU.
+- DEC-08: estados suspenso e forcado e lacunas de CPU no Gantt.
+- DEC-10 e DEC-29: periodo zero recusado na edicao.
+- DEC-12: eventos acima e estado por tarefa.
+- DEC-16: o criterio (4) usa a duracao do job, que pode diferir da duracao
+  vigente da tarefa.
+- DEC-18: job forcado nao tem quantum.
+- DEC-21: `cpu-removed`/`cpu-added` delimitam a existencia da CPU; a
+  sequencia desligar/religar e conferida por periodo de existencia.
+- DEC-22: etapa de edicao entre as ativacoes e as fatias vencidas.
+- DEC-25: o motor resolve a politica pelo algoritmo vigente (forma na #26).
+- Expectativas do [renderer](../src/renderer/docs/specification.md): FE-12
+  (calendario do periodo), FE-13 (suspensao por tarefa), FE-14 (fora do
+  Projeto A), FE-15 (exclusao so de tarefa nunca ativada), FE-19 (ID fixo).
+
+#### Justificativa e alternativas
+
+- Justificativa: escolhas do usuario na #25 (2026-11-01). Recalcular o tick
+  a partir de `t-1`, em vez de corrigir o despacho feito (escolha do autor),
+  torna o resultado independente da quantidade de edicoes e dispensa as
+  excecoes da versao anterior ao primeiro desempate. Estado por tarefa
+  segue o texto do enunciado e se aplica ao job atual, o unico elegivel por
+  DEC-02, sem mudar o calendario de ativacoes.
+- Alternativas descartadas:
+    - Estado e suspensao por job (versao de 2026-10-31): o enunciado fala
+      do estado da tarefa; o usuario escolheu a tarefa inteira.
+    - Edicao valendo so de `t+1`: mais simples, mas a edicao nao apareceria
+      no tick em que foi feita.
+    - Corrigir o despacho ja feito em `t` (versao anterior): exigia
+      restaurar CPU, fatia e sorteio que o snapshot `t` nao guarda.
+    - Forcar so por um tick: o usuario preferiu manter ate mudar o estado.
+    - Duracao valendo de imediato, ou de imediato so quando possivel: o
+      usuario preferiu uma regra unica, na proxima ativacao.
+    - Excluir tarefa ja ativada: apagaria o historico que o Gantt mostra;
+      encerrar cumpre o papel.
+    - CPUs re-incluidas com IDs novos: o usuario preferiu manter a
+      numeracao de 1 a N (DEC-12).
+    - Encerrar so o job atual: o usuario quis encerrar a tarefa inteira.
+    - Uma ativacao por vez, com o job seguinte ativado na conclusao do
+      anterior (DEC-38, retirada em 2026-11-01): ver DEC-02.
+- Consequencia: #26 implementa esta
+  matriz, a etapa de edicao e os eventos; #23/#24 guardam as edicoes por
+  tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
+  desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
+  suspensas indefinidamente seguem para a Q-06 (#27).
+
+### DEC-38: Uma ativacao por vez (retirada)
+
+- Estado: retirada em 2026-11-01, antes do aceite (PR #101). ID nao
+  reutilizado. Requisitos: REQ-03, REQ-08.
+- Numeracao: proposta e retirada como DEC-36 no PR #101; renumerada no merge
+  com a `main`, onde DEC-36 e a navegacao no historico (#24). Referencias a
+  "DEC-36" na #11, na #12 e no PR #101 anteriores a renumeracao sao a esta
+  decisao.
+- Proposta: ativar o job seguinte so na conclusao do anterior, com prazo
+  contado dessa ativacao adiada.
+- Motivo da retirada e alternativa registrados em DEC-02; texto original no
+  PR #101 (commit `37f80fa`). Reabriu e depois fechou de novo #11 e #12.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
 2. Avancar o relogio para t+1.
-3. Contabilizar conclusoes antes das perdas de prazo (DEC-04) e das fatias
-   vencidas (#14), em etapas globais na lista de eventos (DEC-22); job que
-   conclui nao registra vencimento, e o job vencido mantem o primeiro
-   desempate (DEC-18).
-4. Registrar as ativacoes devidas em t+1.
-5. Selecionar pela politica, sortear o empate residual e despachar (DEC-07,
-   DEC-13, DEC-27).
-6. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
+3. Contabilizar conclusoes antes das perdas de prazo (DEC-04), em etapas
+   globais na lista de eventos (DEC-22).
+4. Registrar as ativacoes devidas em t+1 (DEC-09, DEC-37).
+5. Aplicar, na ordem, as edicoes aceitas em t+1, julgadas sobre o estado
+   que o usuario ve (DEC-37); sem edicoes, a etapa nao faz nada.
+6. Registrar as fatias vencidas com o quantum vigente (#14); job que
+   conclui nao registra vencimento, job forcado nao tem quantum, job que
+   deixou a CPU na etapa 5 comeca fatia nova (DEC-37) e o job vencido
+   mantem o primeiro desempate (DEC-18).
+7. Dar CPU aos jobs forcados, selecionar os demais pela politica, sortear o
+   empate residual e despachar (DEC-07, DEC-13, DEC-27, DEC-37).
+8. Conferir `findInconsistencies` e publicar o snapshot t+1 (DEC-11, DEC-14).
 
 Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
-DEC-09. Fixar ambos em testes antes de expor a API. Historico deve guardar
-tambem resultados de edicoes no mesmo tick. Matriz de edicao (Q-02) permanece
-na especificacao e nao e resolvida implicitamente por este fluxo.
+DEC-09 e DEC-37. Fixar ambos em testes antes de expor a API. Editar em `t`
+recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
+`t` (DEC-37); no tick 0, o estado inicial passa pelas etapas 4, 5 e 7.
