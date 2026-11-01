@@ -503,3 +503,39 @@ it('refuses an unknown task state with an accurate reason', () => {
         ],
     });
 });
+
+describe('task identifier validation', () => {
+    it.each([['1'], [[1]], [1.5], [Number.NaN]])(
+        'refuses the non-integer task identifier %j',
+        (taskId) => {
+            const state = createInitialState({
+                ...config,
+                tasks: [config.tasks[0]],
+            });
+            const context = { state, hasPolicy: both };
+            const result = foldEdit(
+                readTarget(state),
+                [
+                    {
+                        kind: 'taskState',
+                        taskId,
+                        state: 'suspended',
+                    } as unknown as EditItem,
+                ],
+                context,
+            );
+            expect(result).toMatchObject({
+                ok: false,
+                refusals: [
+                    {
+                        index: 0,
+                        kind: 'taskState',
+                        reason: expect.stringContaining(
+                            'O identificador da tarefa deve ser um número inteiro',
+                        ),
+                    },
+                ],
+            });
+        },
+    );
+});

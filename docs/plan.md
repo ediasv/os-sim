@@ -808,13 +808,13 @@ Issues `[Docs]`, sem fase no Project.
        `t`; todas derrubam testes. Nao verificado: interface (comando
        `edit` fica na #37) e pacote. Depois de integrar a `main`
        (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
-       lint e typecheck sem erros. DEC-39 aceita pelo usuario em 2026-11-01 no plano do #117;
+       lint e typecheck sem erros. DEC-39 aceita pelo usuario em 2026-11-01 (registrado ao abrir o #117);
     3. #116 mergeado em `44d9595` (2026-11-01), somente preparacao
        documental. Implementacao de CPUs em PR de continuacao na branch
        `feat/26-3-cpus-implementation`: item `cpuCount`, eventos de existencia e
        mudanca liquida; `wasRunning` derivado de `executions` no primeiro
        desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
-       consistencia por ID. Forma em DEC-40 (aceita pelo usuario no plano do #117).
+       consistencia por ID. Forma em DEC-40 (aceita pelo usuario em 2026-11-01, registrado ao abrir o #117).
        Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
        Evidencia local: `npm test` 794/794 em 48 arquivos, `npm run lint` e
        `npm run typecheck` aprovados. Testes novos/estendidos em
@@ -825,14 +825,18 @@ Issues `[Docs]`, sem fase no Project.
        Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
        critico; achados importantes corrigidos no proprio PR. Interface
        interativa e pacote nao verificados; PR #124 integrado em `aaaa5f0`.
-       Limite de CPUs contra forcadas fica no #117;
+       Limite de CPUs contra forcadas entregue no #117 (DEC-41);
     4. #117 (rascunho), implementacao local: estado por tarefa, eventos,
        limite de forcadas, interrupcao de jobs e recusas em portugues.
        DEC-41 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
        pendentes, quantum, prazos, mudanca liquida, historico e consistencia.
-       Baseline 794/794; verificacao local 848/848 testes, `npm run lint` e
-       `npm run typecheck` sem erros (2026-11-01). Revisao independente
-       pendente. Interface e pacote nao verificados; sem commit/push;
+       Baseline 794/794; verificacao local 871/871 testes, `npm run lint` e
+       `npm run typecheck` sem erros (2026-11-01). Revisao com
+       pr-review-toolkit (5 agentes) aplicada: inspecao de tarefa concluida,
+       lacunas de testes conferidas por mutacao, invariantes de consistencia,
+       identificador de tarefa inteiro, forcar tarefa terminada recusado e
+       comentarios. Interface e pacote nao verificados; commit `WIP` ja
+       enviado ao PR;
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.

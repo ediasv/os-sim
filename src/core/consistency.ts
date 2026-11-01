@@ -7,7 +7,11 @@
  * issue (DEC-14); engine tests also assert an empty list after every step.
  * It also rejects a CPU that runs a job while off, a malformed
  * `cpu-off`/`cpu-on` sequence, and a job that ran past its duration (which
- * would have caught a half-applied step re-executing completed jobs).
+ * would have caught a half-applied step re-executing completed jobs). Task
+ * status is cross-checked too (DEC-41): forced tasks within the CPU count and
+ * owning a CPU for their oldest unfinished job, no CPU running a suspended or
+ * concluded task, interrupted jobs only in concluded tasks, and no open job
+ * left in a concluded task.
  */
 import type { DeepReadonly, Job, SimulationState } from './domain';
 import {
@@ -29,6 +33,36 @@ export function findInconsistencies(
         issues.push(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
+    }
+    const statuses: readonly string[] = [
+        'ready',
+        'forced',
+        'suspended',
+        'concluded',
+    ];
+    for (const tcb of state.tasks) {
+        const id = tcb.definition.id;
+        if (!statuses.includes(tcb.status)) {
+            issues.push(
+                `Task ${id} has an unknown status ${JSON.stringify(tcb.status)}.`,
+            );
+        }
+        for (const job of tcb.jobs) {
+            if (job.state === 'interrupted' && tcb.status !== 'concluded') {
+                issues.push(
+                    `Job ${key(job)} is interrupted but task ${id} is not concluded.`,
+                );
+            }
+            if (
+                tcb.status === 'concluded' &&
+                job.state !== 'completed' &&
+                job.state !== 'interrupted'
+            ) {
+                issues.push(
+                    `Task ${id} is concluded but job ${key(job)} is ${job.state}.`,
+                );
+            }
+        }
     }
     const forced = state.tasks.filter((tcb) => tcb.status === 'forced');
     if (forced.length > state.config.cpuCount) {

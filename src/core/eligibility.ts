@@ -2,8 +2,10 @@ import type { DeepReadonly, JobRef, SimulationState } from './domain';
 import { freezeCopy } from './helpers/freezeCopy';
 
 /**
- * Returns only each task's oldest incomplete job. A suspended oldest job
- * blocks later activations as required by DEC-02.
+ * Returns each task's oldest unfinished job (neither completed nor
+ * interrupted); it blocks later activations of that task (DEC-02). Tasks
+ * whose status is suspended or concluded offer none (DEC-41). Forced tasks
+ * are included: the engine gives them a CPU before the policy runs.
  */
 export function findEligibleJobs(
     state: DeepReadonly<SimulationState>,

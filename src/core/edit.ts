@@ -9,10 +9,14 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
+ * A task-level kind (`taskState`, DEC-41) also needs its slice of the target
+ * filled by `readTarget` and applied by `applyNetChange`, which the compiler
+ * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
 import { validateConfig, type ConfigField } from './config';
+import { maxJobs } from './domain';
 import type {
     AlgorithmId,
     DeepReadonly,
@@ -39,9 +43,11 @@ export type EditItem =
 export type Edit = readonly EditItem[];
 
 /**
- * Parameters the user asked for at the edit stage: the editable subset of the
- * configuration. Tied to `SystemConfig` so a field cannot drift from it, and
- * system fields are listed in `TARGET_FIELDS`; task states are applied separately.
+ * What the user asked for at the edit stage: the editable subset of the
+ * configuration (tied to `SystemConfig` so a field cannot drift from it) plus
+ * the chosen status of each task. Only the system fields are in
+ * `TARGET_FIELDS`; task states are applied per task by `applyNetChange` and
+ * must never be copied into the configuration.
  */
 export type EditTarget = Readonly<
     Pick<SystemConfig, 'algorithm' | 'quantum' | 'cpuCount'>
@@ -121,8 +127,32 @@ function forcedCount(target: EditTarget): number {
     ).length;
 }
 
+/**
+ * Whether the task ran every activation it will ever have (DEC-09). Forcing
+ * it would reserve a CPU it can never use, so the edit is refused (DEC-41).
+ * Concluded tasks are already refused by the transition table.
+ */
+function hasFinished(
+    state: DeepReadonly<SimulationState>,
+    taskId: TaskId,
+): boolean {
+    const tcb = state.tasks.find((t) => t.definition.id === taskId);
+    return (
+        tcb !== undefined &&
+        tcb.jobs.length === maxJobs(tcb.definition) &&
+        tcb.jobs.every((job) => job.state === 'completed')
+    );
+}
+
 const HANDLERS: Handlers = {
-    taskState: (target, item) => {
+    taskState: (target, item, context) => {
+        // hasOwn coerces its key, so '1' or [1] would silently name task 1.
+        if (!Number.isInteger(item.taskId)) {
+            return {
+                ok: false,
+                reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
+            };
+        }
         if (!Object.hasOwn(target.taskStates, item.taskId)) {
             return { ok: false, reason: `Não existe a tarefa ${item.taskId}.` };
         }
@@ -140,6 +170,16 @@ const HANDLERS: Handlers = {
             return {
                 ok: false,
                 reason: `A tarefa ${item.taskId} está concluída e não pode mudar de estado.`,
+            };
+        }
+        if (
+            item.state === 'forced' &&
+            previous !== 'forced' &&
+            hasFinished(context.state, item.taskId)
+        ) {
+            return {
+                ok: false,
+                reason: `A tarefa ${item.taskId} já terminou e não pode ser forçada.`,
             };
         }
         const count = forcedCount(target);
@@ -267,9 +307,11 @@ export function foldEdit(
 
 /**
  * Applies only the difference between the target before and after the
- * tick's edits (DEC-37 item 5). The configuration is replaced, never
- * mutated, because snapshots and restored states share it (DEC-35).
- * Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
+ * tick's edits (DEC-37 item 5). Task status changes come first, in task-list
+ * order, with their events (`suspension`, `resumption`, `forced`, `unforced`,
+ * `task-finished`; DEC-41); CPU events come after (DEC-22). The configuration
+ * is replaced, never mutated, because snapshots and restored states share it
+ * (DEC-35). Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
  * the highest IDs or appends the next ones, recording `cpu-removed` or
  * `cpu-added` in ascending ID order (DEC-40).
  */
@@ -306,7 +348,7 @@ export function applyNetChange(
                 owner.running = null;
                 owner.sliceElapsed = 0;
             }
-            // Natural completion already has its marker, even at this boundary.
+            // A task that already finished naturally has its task-finished event (possibly logged at this same tick, before the edit stage per DEC-22); concluding it must not log a second one (DEC-41).
             if (
                 !state.events.some(
                     (event) =>

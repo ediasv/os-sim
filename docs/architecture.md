@@ -338,7 +338,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       conta as ativacoes geradas.
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
-      termino de tarefa, CPU desligada/religada); execucao fica em intervalos
+      termino de tarefa, CPU desligada/religada, CPU adicionada/removida
+      (DEC-40), suspensao, retomada, forcamento e fim do forcamento (DEC-41));
+      execucao fica em intervalos
       [start, end) por CPU.
     - CPUs numeradas de 1 a `cpuCount`; cor em `RRGGBB` sem `#`, como no exemplo
       do enunciado (A.3.3), normalizada para maiusculas e comparada sem caixa.
@@ -1848,16 +1850,25 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   Tarefa `concluded` nao ativa novos jobs nem aceita outro estado.
   Encerrar uma tarefa naturalmente terminada e aceito sem duplicar seu
   `task-finished`. `interrupted` e vazio no termino normal ou sem jobs
-  incompletos; nos demais casos lista os jobs por indice.
-- Eventos: `suspension` tem `taskId` e `cpuId` (ou `null`);
+  incompletos; nos demais casos lista os jobs por indice. Forcar uma tarefa
+  que ja terminou (todas as ativacoes concluidas) e recusado com motivo,
+  porque reservaria uma CPU que ela nao pode usar (decisao do usuario no
+  #117); suspende-la ou concluí-la continua aceito.
+- Eventos: `suspension` tem `taskId` e `cpuId`, a CPU que executava o job
+  da tarefa (mesmo que ele tenha acabado de concluir no tick), ou `null`
+  se nenhuma (decisao do usuario no #117);
   `resumption`, `forced` e `unforced` tem `taskId`. Todos tem `time`.
   Na mesma tarefa, `unforced` precede `suspension`, e `resumption`
   precede `forced` (ordem acordada com o usuario). Encerrar emite apenas
   `task-finished`, sem `unforced` ou `resumption` adicional.
 - Consistencia: o limite de forcadas e a posse do job atual forcado sao
   conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
-  jobs interrompidos. A inspecao exclui interrompidos das filas pendentes
-  e os rotula como Interrompido; apresentacao completa fica na #37/#38.
+  jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
+  concluida nao guarda job aberto e o `status` pertence ao conjunto
+  conhecido. Identificador de tarefa que nao e inteiro e recusado na edicao.
+  A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
+  e os rotula como Interrompido; o restante da apresentacao fica na
+  #37/#38.
 - Justificativa: estado por tarefa atende A.3.4 e permite suspender/forcar
   antes do ingresso ou entre ativacoes sem inventar um job. O estado
   interrompido distingue encerramento de execucao completa.

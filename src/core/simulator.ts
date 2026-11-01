@@ -429,7 +429,8 @@ export class Simulator {
      * Renews every slice that used the whole quantum (DEC-03). The job keeps
      * its CPU until dispatch, so the view still counts it as running before
      * the selection (DEC-18); a job completing now is skipped, since DEC-03
-     * only returns incomplete jobs to the selection. Runs after activations
+     * only returns incomplete jobs to the selection, and a forced job never
+     * expires: it keeps its CPU outside the policy (DEC-41). Runs after activations
      * and the edit stage, so an edited quantum already decides expiry at this
      * boundary (DEC-22 as revised by DEC-37).
      */
@@ -464,7 +465,8 @@ export class Simulator {
      * Copies one global policy decision once and validates that copy (DEC-14),
      * so a policy cannot return different values to the check and to dispatch.
      * A reported residual tie is drawn here and logged as `tie-break` events
-     * (DEC-27). Selected jobs stay on their current CPUs where possible; any remaining
+     * (DEC-27). Forced jobs take CPUs first and the policy fills the remaining
+     * ones (DEC-41). Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
      * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).

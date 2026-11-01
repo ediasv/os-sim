@@ -411,3 +411,151 @@ describe('task state history and boundaries', () => {
         },
     );
 });
+
+describe('review follow-ups: forced dispatch order', () => {
+    it('gives forced jobs the free CPUs before the policy fills the rest (DEC-37 5.3)', () => {
+        const sim = make(
+            [
+                task(1, { period: 4, deadline: 4 }),
+                task(2, { period: 8, deadline: 8 }),
+            ],
+            { cpuCount: 2 },
+        );
+        edit(sim, 'forced', 2);
+        expect(
+            sim.getCurrentSnapshot().cpus.map((cpu) => cpu.running?.taskId),
+        ).toEqual([2, 1]);
+    });
+
+    it('keeps a higher-priority forced job out of the policy view so the other task still runs', () => {
+        const sim = make(
+            [
+                task(1, { period: 5, deadline: 5 }),
+                task(2, { period: 10, deadline: 10 }),
+            ],
+            { cpuCount: 2 },
+        );
+        edit(sim, 'forced', 1);
+        expect(
+            sim.getCurrentSnapshot().cpus.map((cpu) => cpu.running?.taskId),
+        ).toEqual([1, 2]);
+    });
+});
+
+describe('review follow-ups: identity edits and event order', () => {
+    const stateEvents = (sim: Simulator) =>
+        at(sim).filter((event) =>
+            ['suspension', 'resumption', 'forced', 'unforced'].includes(
+                event.kind,
+            ),
+        );
+
+    it.each(['ready', 'forced', 'suspended'] as const)(
+        'editing a %s task to the same state later records no event and changes nothing',
+        (status) => {
+            const sim = make([task(1, { duration: 10, period: 20 })]);
+            if (status !== 'ready') edit(sim, status);
+            advance(sim, 1);
+            const before = sim.getCurrentSnapshot();
+            edit(sim, status);
+            expect(stateEvents(sim)).toEqual([]);
+            expect(sim.getCurrentSnapshot()).toEqual(before);
+        },
+    );
+
+    it('editing a concluded task to concluded again records nothing', () => {
+        const sim = make();
+        edit(sim, 'concluded');
+        advance(sim, 1);
+        const before = sim.getCurrentSnapshot();
+        edit(sim, 'concluded');
+        expect(sim.getCurrentSnapshot()).toEqual(before);
+    });
+
+    it('ready to forced records only forced, never a resumption', () => {
+        const sim = make([task(1, { duration: 10, period: 20 })]);
+        advance(sim, 1);
+        edit(sim, 'forced');
+        expect(stateEvents(sim)).toEqual([
+            { kind: 'forced', time: 1, taskId: 1 },
+        ]);
+    });
+
+    it('lists task events in task-list order, then CPU events (DEC-22, DEC-37)', () => {
+        const sim = make(
+            [
+                task(1, { duration: 10, period: 20, deadline: 20 }),
+                task(2, { duration: 10, period: 20, deadline: 20 }),
+            ],
+            { cpuCount: 1 },
+        );
+        advance(sim, 1);
+        sim.edit([
+            { kind: 'taskState', taskId: 2, state: 'suspended' },
+            { kind: 'taskState', taskId: 1, state: 'forced' },
+            { kind: 'cpuCount', cpuCount: 2 },
+        ]);
+        const order = at(sim)
+            .filter((event) =>
+                ['suspension', 'forced', 'cpu-added'].includes(event.kind),
+            )
+            .map((event) => [
+                event.kind,
+                'taskId' in event
+                    ? event.taskId
+                    : 'cpuId' in event
+                      ? event.cpuId
+                      : -1,
+            ]);
+        expect(order).toEqual([
+            ['forced', 1],
+            ['suspension', 2],
+            ['cpu-added', 2],
+        ]);
+    });
+
+    it('reports in suspension.cpuId the CPU that ran the job even when it just completed', () => {
+        const sim = make([task(1, { duration: 2, period: 5, deadline: 5 })]);
+        advance(sim, 2);
+        edit(sim, 'suspended');
+        expect(stateEvents(sim)).toEqual([
+            { kind: 'suspension', time: 2, taskId: 1, cpuId: 1 },
+        ]);
+    });
+});
+
+describe('review follow-ups: refusals through the simulator', () => {
+    it('refuses leaving the concluded state and keeps the step and its edits', () => {
+        const sim = make();
+        edit(sim, 'concluded');
+        advance(sim, 1);
+        const current = sim.getCurrentSnapshot();
+        const edits = sim.getEdits(1);
+        expect(() =>
+            sim.edit([{ kind: 'taskState', taskId: 1, state: 'ready' }]),
+        ).toThrow('A tarefa 1 está concluída e não pode mudar de estado.');
+        expect(sim.getCurrentSnapshot()).toEqual(current);
+        expect(sim.getEdits(1)).toEqual(edits);
+    });
+
+    it.each(['ready', 'suspended'] as const)(
+        'refuses forcing a task that already finished while it is %s',
+        (status) => {
+            const sim = make([task(1, { period: 0, duration: 1 })]);
+            advance(sim, 1);
+            if (status === 'suspended') edit(sim, 'suspended');
+            const current = sim.getCurrentSnapshot();
+            expect(() =>
+                sim.edit([{ kind: 'taskState', taskId: 1, state: 'forced' }]),
+            ).toThrow('A tarefa 1 já terminou e não pode ser forçada.');
+            expect(sim.getCurrentSnapshot()).toEqual(current);
+        },
+    );
+
+    it('still allows forcing a periodic task between jobs', () => {
+        const sim = make([task(1, { duration: 1, period: 5, deadline: 5 })]);
+        advance(sim, 2);
+        edit(sim, 'forced');
+        expect(sim.getCurrentSnapshot().tasks[0].status).toBe('forced');
+    });
+});

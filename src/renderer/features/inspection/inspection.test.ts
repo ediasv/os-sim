@@ -201,3 +201,23 @@ it('does not count interrupted jobs as incomplete', () => {
     state.tasks[1].jobs[0].state = 'interrupted';
     expect(projectInspection(state).tasks[1].status).toBe('completed');
 });
+
+describe('concluded tasks in the inspection', () => {
+    it('shows a task concluded before its arrival as completed, not awaiting activation', () => {
+        const state = snapshot();
+        state.tasks[1].definition = {
+            ...state.tasks[1].definition,
+            arrival: 20,
+        };
+        state.tasks[1].jobs = [];
+        state.tasks[1].status = 'concluded';
+        expect(projectInspection(state).tasks[1].status).toBe('completed');
+    });
+
+    it('shows a task concluded between jobs as completed, not awaiting the next activation', () => {
+        const state = snapshot();
+        state.tasks[0].jobs[1].state = 'interrupted';
+        state.tasks[0].status = 'concluded';
+        expect(projectInspection(state).tasks[0].status).toBe('completed');
+    });
+});

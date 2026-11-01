@@ -359,3 +359,28 @@ describe('task state consistency', () => {
         );
     });
 });
+
+describe('task status cross-checks', () => {
+    it('reports a concluded task that still has an open job', () => {
+        const state = stateWith(job());
+        state.tasks[0].status = 'concluded';
+        expect(findInconsistencies(state)).toContain(
+            'Task 1 is concluded but job 1.0 is ready.',
+        );
+    });
+
+    it('reports an interrupted job of a task that is not concluded', () => {
+        const state = stateWith(job({ state: 'interrupted' }));
+        expect(findInconsistencies(state)).toContain(
+            'Job 1.0 is interrupted but task 1 is not concluded.',
+        );
+    });
+
+    it('reports a task status outside the known set', () => {
+        const state = stateWith();
+        (state.tasks[0] as { status: string }).status = 'bogus';
+        expect(findInconsistencies(state)).toContain(
+            'Task 1 has an unknown status "bogus".',
+        );
+    });
+});

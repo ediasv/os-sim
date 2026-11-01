@@ -160,9 +160,11 @@ export function selectedRefs(decision: PolicyDecision): JobRef[] {
 
 /**
  * Copies the eligible jobs out of the live state into a frozen view. Throws
- * when the engine offers a job that does not exist, has completed, is
- * suspended or appears twice, since a policy could only make a wrong choice
- * from it.
+ * when the engine offers a job that does not exist, has completed, was
+ * interrupted, is suspended or appears twice, since a policy could only make
+ * a wrong choice from it. `cpuCount` is the number of CPUs left to the policy
+ * after forced jobs took theirs (DEC-41); `eligible` must already exclude
+ * those jobs.
  */
 export function buildPolicyView(
     state: DeepReadonly<SimulationState>,
@@ -190,6 +192,9 @@ export function buildPolicyView(
         }
         if (job.state === 'suspended') {
             throw new Error(`Eligible job ${id} is suspended.`);
+        }
+        if (job.state === 'interrupted') {
+            throw new Error(`Eligible job ${id} is interrupted.`);
         }
         if (seen.has(id)) {
             throw new Error(`Eligible job ${id} is listed twice.`);
