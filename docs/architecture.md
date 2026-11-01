@@ -1082,8 +1082,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 - Estado: proposta em 2026-10-31 na #25, com as escolhas do usuario;
   revista em 2026-11-01 com a revisao do PR #101 (periodo apos a ultima
-  ativacao, fatia nova apos edicao do estado ou remocao de CPU, desvios do
-  enunciado explicitados); aguardando aceite. Requisitos: REQ-05, REQ-08, REQ-09. Resolve Q-02 e a
+  ativacao, fatia nova e perda do criterio "estava executando" apos edicao
+  do estado ou remocao de CPU, desvios do enunciado explicitados);
+  aguardando aceite. Requisitos: REQ-05, REQ-08, REQ-09. Resolve Q-02 e a
   pendencia de suspensao de DEC-12. Detalha DEC-02, DEC-09, DEC-10 e DEC-29.
 - Contexto: o enunciado permite modificar o estado atual ou as
   caracteristicas de qualquer tarefa em qualquer passo (A.1.5.2, A.3.4) e
@@ -1177,7 +1178,10 @@ anterior. Data inicial dos registros: 2026-10-12.
     4. Job em execucao posto em pronto pode ser escolhido de novo ja na
        selecao refeita em `t`, na mesma ou em outra CPU. Se for, comeca uma
        fatia nova, com o quantum inteiro: a edicao do estado zera a fatia em
-       curso.
+       curso. Esse job perde o criterio "estava executando" (A.4.3, criterio
+       1; DEC-18) na selecao refeita em `t`: a visao da politica o traz sem
+       `previousCpu` (DEC-13), e no empate de prioridade a disputa segue
+       pelos criterios seguintes ou pelo sorteio (DEC-27).
 
 - Encerrar tarefa (mover para concluido): permitido a qualquer instante
   para tarefa ainda nao terminada e vale de `t` em diante.
@@ -1217,7 +1221,9 @@ anterior. Data inicial dos registros: 2026-10-12.
        seguintes; reduzir remove as de maior ID, e o job em execucao nelas
        volta a pronto. O Gantt mantem o passado das CPUs removidas. Job que
        volta a pronto pela remocao e escolhido de novo em `t`, em outra CPU,
-       comeca uma fatia nova, com o quantum inteiro.
+       comeca uma fatia nova, com o quantum inteiro. Como o job posto em
+       pronto pelo usuario (item 4 do estado do job), ele perde o criterio
+       "estava executando" na selecao refeita em `t`.
 - Recalculo: apos uma edicao valida, o motor refaz a selecao e o despacho de
   `t` (DEC-07, DEC-13, DEC-27) sobre o estado editado, para que CPU liberada,
   algoritmo novo ou tarefa ingressando em `t` tenham efeito ja em [t, t+1).
@@ -1226,7 +1232,10 @@ anterior. Data inicial dos registros: 2026-10-12.
        `cpu-off`) sao recalculados, nao acumulados. Assim uma CPU nao
        registra desligar e religar no mesmo instante (DEC-21).
     2. Preempcao e criterio "estava executando" (DEC-18) se referem aos jobs
-       que executaram em [t-1, t), nao aos despachados em `t`. Job que
+       que executaram em [t-1, t), nao aos despachados em `t`, exceto o job
+       posto em pronto pelo usuario ou cuja CPU foi removida, que perde esse
+       criterio (item 4 do estado do job; parametros do sistema, item 3).
+       Job que
        deixou a CPU por edicao (`released`, `suspension` ou `cpu-removed`)
        nao registra `preemption` em `t`, seja ou nao escolhido de novo: o
        evento da edicao ja explica a saida.
