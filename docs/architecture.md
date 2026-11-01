@@ -1101,8 +1101,14 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
   novo cujo historico termina em k (`continueFrom`, acesso privado so no
   teste), avanca e compara com o k+1 registrado, inclusive eventos e
-  `drawState`. Copiar o estado vivo, e nao recalcula-lo do snapshot, faz a
-  prova falhar se `restore` alterar o estado (conferido com mutacao).
+  `drawState`. Copiar o estado vivo, e nao recalcula-lo do snapshot, deixa a
+  prova sensivel ao que `restore` instala. Roda em dois cenarios: empates
+  residuais (muda `drawState` e registra `tie-break`) e progresso parcial
+  (quantum 2, 2 CPUs, 4 tarefas: fatia e execucao parciais, preempcao,
+  expiracao de quantum e perda de prazo). Mutacoes em `restore` conferidas:
+  limpar eventos, semear `drawState`, nao restaurar, zerar `sliceElapsed` e
+  zerar `executed` de jobs incompletos; todas derrubam a prova. A cobertura
+  vale para os campos que esses cenarios exercitam.
 - Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
   copias por passo (restaurar copia uma vez por chamada). `restoreState`
   compartilha a `config` e cada `definition` congeladas, em vez de usar

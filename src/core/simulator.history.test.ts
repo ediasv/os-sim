@@ -28,10 +28,41 @@ const config: SystemConfig = {
 };
 const STEPS = 12;
 
-/** Runs STEPS ticks and returns the snapshots 0..STEPS as recorded. */
-function recordRun(sim: Simulator): SimulationSnapshot[] {
+// Partial progress: slices and executions are mid-way at many boundaries,
+// with preemption, quantum expiry and deadline misses; the tie scenario
+// above keeps sliceElapsed and incomplete executed at 0.
+const job = (
+    id: number,
+    color: string,
+    arrival: number,
+    duration: number,
+    period: number,
+): TaskDefinition => ({
+    id,
+    color,
+    arrival,
+    duration,
+    period,
+    deadline: period,
+    rawEvents: '',
+});
+const partialConfig: SystemConfig = {
+    ...DEFAULT_CONFIG,
+    quantum: 2,
+    cpuCount: 2,
+    tasks: [
+        job(1, 'F0E0D0', 0, 3, 5),
+        job(2, 'AABBCC', 0, 4, 6),
+        job(3, '112233', 1, 2, 4),
+        job(4, '445566', 0, 5, 6),
+    ],
+};
+const PARTIAL_STEPS = 20;
+
+/** Runs `steps` ticks and returns the snapshots 0..steps as recorded. */
+function recordRun(sim: Simulator, steps = STEPS): SimulationSnapshot[] {
     const recorded = [sim.getLatestSnapshot()];
-    for (let i = 0; i < STEPS; i++) {
+    for (let i = 0; i < steps; i++) {
         sim.tick();
         recorded.push(sim.getLatestSnapshot());
     }
@@ -90,7 +121,8 @@ describe('Simulator history cursor', () => {
 
     it('answers eligibility from the restored step', () => {
         const sim = new Simulator(config, rmPolicy);
-        const latest = (recordRun(sim), sim.getEligibleJobs());
+        recordRun(sim);
+        const latest = sim.getEligibleJobs();
         let differed = false;
         for (let k = 0; k <= STEPS; k++) {
             const reference = new Simulator(config, rmPolicy);
@@ -150,6 +182,35 @@ describe('Simulator history cursor', () => {
             expect(next).toEqual(recorded[k + 1]);
             expect(next.events).toEqual(recorded[k + 1].events);
             expect(next.drawState).toEqual(recorded[k + 1].drawState);
+        }
+    });
+
+    it('recomputes the recorded next step with slices and progress mid-way (REQ-04)', () => {
+        const sim = new Simulator(partialConfig, rmPolicy);
+        const recorded = recordRun(sim, PARTIAL_STEPS);
+        const kinds = new Set<string>(
+            recorded[PARTIAL_STEPS].events.map((e) => e.kind),
+        );
+        for (const kind of ['preemption', 'quantum-expired', 'deadline-miss']) {
+            expect(kinds.has(kind)).toBe(true);
+        }
+        expect(
+            recorded.some((s) => s.cpus.some((c) => c.sliceElapsed > 0)),
+        ).toBe(true);
+        expect(
+            recorded.some((s) =>
+                s.tasks.some((t) =>
+                    t.jobs.some(
+                        (j) => j.state !== 'completed' && j.executed > 0,
+                    ),
+                ),
+            ),
+        ).toBe(true);
+        for (let k = 0; k < PARTIAL_STEPS; k++) {
+            sim.restore(k);
+            const fresh = continueFrom(sim, partialConfig, rmPolicy);
+            fresh.tick();
+            expect(fresh.getLatestSnapshot()).toEqual(recorded[k + 1]);
         }
     });
 
