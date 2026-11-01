@@ -54,8 +54,8 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
-  Reaberta em 2026-11-01 pela #25 para registrar DEC-36 (uma ativacao por
-  vez) e fechada de novo no mesmo dia: DEC-36 foi retirada do PR #101, e
+  Reaberta em 2026-11-01 pela #25 para registrar DEC-38 (uma ativacao por
+  vez) e fechada de novo no mesmo dia: DEC-38 foi retirada do PR #101, e
   DEC-09 e DEC-02 continuam valendo (justificativa em DEC-02).
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   Concluida no PR #49 (merged).
@@ -65,7 +65,7 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
   aprovados. Lacunas da revisao seguem na #51. Reaberta e fechada de novo em
-  2026-11-01: DEC-36 foi retirada, e o codigo e os testes atuais continuam
+  2026-11-01: DEC-38 foi retirada, e o codigo e os testes atuais continuam
   corretos.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
@@ -285,11 +285,11 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  DEC-35 aceita em 2026-11-01 no PR #101 (estado por tarefa aplicado ao job
-  mais antigo incompleto, recalculo do tick a partir de `t-1`); DEC-36 foi
+  DEC-37 aceita em 2026-11-01 no PR #101 (estado por tarefa aplicado ao job
+  mais antigo incompleto, recalculo do tick a partir de `t-1`); DEC-38 foi
   retirada. Fecha com o merge do PR #101.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
-  Implementa DEC-35: etapa de edicao no passo, recalculo do tick a partir de
+  Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
   `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
   suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -502,10 +502,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
   preparacao nao cria simulador.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
-  Oferece as edicoes de DEC-35 com recusas e avisos (FE-10 a FE-16, FE-19);
+  Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de DEC-35 registrados pela #26: trechos suspensos e
+  Depende dos eventos de DEC-37 registrados pela #26: trechos suspensos e
   forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
   em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
@@ -654,29 +654,30 @@ Issues `[Docs]`, sem fase no Project.
   edicao (progresso, duracao, periodo, ingresso, prazo, estado,
   inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
   atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
-  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-35
+  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-37
   (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
   PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
   verificado com `oxfmt --check`. Em 2026-11-01, rebase sobre a `main`
-  (matriz renumerada de DEC-32 para DEC-35) e revisao do PR #101
+  (matriz renumerada de DEC-32 para DEC-35; DEC-37 desde o merge com a
+  `main`, que ocupou DEC-35 e DEC-36 com #23 e #24) e revisao do PR #101
   incorporada: periodo aceito apos a ultima ativacao, fatia nova apos
   edicao do estado ou remocao de CPU, desvios do enunciado explicitados,
   nota em DEC-09 e Q-02 alinhada. Ainda em 2026-11-01, a revisao
   adversarial do PR #101 achou contradicoes na matriz, e a decisao foi
-  refeita com o usuario: DEC-35 reescrita (estado por tarefa com forcar,
+  refeita com o usuario: DEC-37 reescrita (estado por tarefa com forcar,
   suspender e encerrar; duracao e prazo na proxima ativacao; periodo
   imediato no RM; exclusao so de tarefa nunca ativada; CPUs com IDs
   reusados e eventos de remocao/inclusao; edicao recalcula o tick a partir
-  de `t-1`) e DEC-36 (uma ativacao por vez), que reabriu #11 e #12. Notas
+  de `t-1`) e DEC-38 (uma ativacao por vez), que reabriu #11 e #12. Notas
   de revisao em DEC-02, 08, 09, 10, 13, 16, 18, 21 e 22; Q-02, REQ-03,
   REQ-07, invariantes e FE-10 a FE-16 e FE-19 do renderer atualizados;
-  `oxfmt --check` ok. Ainda em 2026-11-01, DEC-36 foi retirada antes do
+  `oxfmt --check` ok. Ainda em 2026-11-01, DEC-38 foi retirada antes do
   aceite: adiava ativacoes e prazos do calendario, contra A.3.3 e as secoes
   2.2 e 2.5.3 do material de tempo real, e o estado por tarefa nao a exige.
-  DEC-35 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
+  DEC-37 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
   DEC-02 ganhou a justificativa completa; REQ-03, invariantes e notas de
   DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
-  fechadas de novo. DEC-35 aceita pelo usuario em 2026-11-01; #26, #37 e
+  fechadas de novo. DEC-37 aceita pelo usuario em 2026-11-01; #26, #37 e
   #38 atualizadas com a decisao. Pendente: merge do PR #101.
 - Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
   seguir em paralelo, nessa ordem (a #24 depende da #23). Aceitar ou rever

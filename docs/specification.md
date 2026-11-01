@@ -118,7 +118,7 @@ Fonte: A.4 a A.4.3.
 - Politica substituivel, sem reescrever o ciclo de simulacao.
 - Em empate de prioridade: quem executava antes da selecao, prazo, ingresso,
   menor duracao e sorteio, nessa ordem; prazo, ingresso e duracao do job
-  (DEC-16, revista por DEC-35). Sem desempate escondido pelo ID.
+  (DEC-16, revista por DEC-37). Sem desempate escondido pelo ID.
 - Registrar sorteio para marcacao no instante em que o escolhido (re)executar;
   todo sorteio e registrado, inclusive quando o escolhido continua executando
   (DEC-27).
@@ -169,7 +169,7 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: resolvida em 2026-11-01 por DEC-35: edicao no tick `t`
+- Q-02: resolvida em 2026-11-01 por DEC-37: edicao no tick `t`
   vale ja em [t, t+1) sem mudar o passado; estado por tarefa (pronta,
   executando forcada, suspensa, concluida), aplicado ao job mais antigo
   incompleto; duracao e prazo na proxima ativacao; periodo no calendario e
@@ -201,7 +201,7 @@ Fonte: gerais 5 e 6; A.5.
 
 - Um job executa em no maximo uma CPU por tick.
 - Somente o job mais antigo incompleto de uma tarefa pode ser elegivel; suspensao
-  da tarefa (DEC-35) nao permite ao posterior ultrapassa-lo.
+  da tarefa (DEC-37) nao permite ao posterior ultrapassa-lo.
 - Preempcao muda posse da CPU, nao identidade, progresso ou prazo do job.
 - Snapshots nao compartilham dados mutaveis com o estado vivo.
 - Restauracao inclui configuracao, jobs, CPUs, eventos e estado do sorteio.
