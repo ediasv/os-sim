@@ -1,3 +1,5 @@
+import { Simulator } from '../../../core/simulator';
+import { DEFAULT_CONFIG } from '../../../core/domain';
 import { describe, expect, it } from 'vitest';
 import { CpuEventSequenceError } from '../../../core/cpuOff';
 import type { SimulationState } from '../../../core/domain';
@@ -282,4 +284,22 @@ describe('projectSystem', () => {
 
         expect(state).toEqual(before);
     });
+});
+
+it('projects CPU history across removal and ID reuse', () => {
+    const sim = new Simulator({ ...DEFAULT_CONFIG, cpuCount: 4 });
+    sim.tick();
+    sim.edit([{ kind: 'cpuCount', cpuCount: 1 }]);
+    sim.tick();
+    expect(
+        projectSystem(sim.getCurrentSnapshot()).cpus.map((cpu) => cpu.id),
+    ).toEqual([1]);
+    sim.edit([{ kind: 'cpuCount', cpuCount: 4 }]);
+    const rows = projectSystem(sim.getCurrentSnapshot()).cpus;
+    expect(rows.map((cpu) => cpu.id)).toEqual([1, 2, 3, 4]);
+    expect(rows[2].totalOff).toBe(1);
+    expect(rows[2].offIntervals).toEqual([
+        { start: 0, end: 1 },
+        { start: 2, end: null },
+    ]);
 });

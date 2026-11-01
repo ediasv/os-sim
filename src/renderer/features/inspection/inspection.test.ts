@@ -1,3 +1,5 @@
+import { Simulator } from '../../../core/simulator';
+import { DEFAULT_CONFIG } from '../../../core/domain';
 import { describe, expect, it } from 'vitest';
 import type { SimulationState } from '../../../core/domain';
 import { projectFutureJob, projectInspection } from './inspection';
@@ -175,4 +177,17 @@ describe('projectInspection', () => {
 
         expect(input).toEqual(before);
     });
+});
+
+it('projects CPU history across removal and ID reuse', () => {
+    const sim = new Simulator({ ...DEFAULT_CONFIG, cpuCount: 4 });
+    sim.tick();
+    sim.edit([{ kind: 'cpuCount', cpuCount: 1 }]);
+    sim.tick();
+    expect(projectInspection(sim.getCurrentSnapshot()).cpuOff).toEqual([
+        { cpuId: 1, intervals: [{ start: 0, end: null }], totalOff: 2 },
+        { cpuId: 2, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
+        { cpuId: 3, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
+        { cpuId: 4, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
+    ]);
 });

@@ -28,7 +28,8 @@ afirma que os modulos planejados ja existem.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
 - [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
-  snapshot os intervalos e o total desligado de cada CPU (DEC-21).
+  snapshot os intervalos e o total desligado de cada CPU, inclusive
+  removida, sem contar ausencia como desligamento (DEC-21, DEC-40).
 - [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
@@ -46,9 +47,9 @@ afirma que os modulos planejados ja existem.
   congelados (passo k no indice k), a lista de edicoes de cada passo e o
   cursor; so acrescenta com o cursor no ultimo passo, e `rewrite` troca um
   passo editado e descarta os seguintes com suas edicoes (DEC-35, DEC-39).
-- [Edicao](../src/core/edit.ts): tipos de item (algoritmo e quantum na
-  #115), dobra em ordem sobre o alvo pedido, validacao por item e aplicacao
-  da mudanca liquida do tick (DEC-37, DEC-39).
+- [Edicao](../src/core/edit.ts): tipos de item (algoritmo, quantum e
+  quantidade de CPUs), dobra em ordem sobre o alvo pedido, validacao por
+  item e aplicacao da mudanca liquida do tick (DEC-37, DEC-39, DEC-40).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz despacho global pela politica do
@@ -430,6 +431,10 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   jobs. Job cuja CPU de [t-1, t) foi removida continua com o primeiro
   desempate; a visao precisa representa-lo sem uma CPU vigente (forma na
   #26).
+- Revista por DEC-40 (#116): `wasRunning` representa a execucao em
+  [t-1, t), derivada de `executions`; `previousCpu` permanece como posse
+  antes do despacho e pode ser nulo mesmo com `wasRunning: true`. RM/EDF
+  usam `wasRunning` no primeiro desempate.
 - Alternativas descartadas: ordenacao completa das candidatas, inclusive dos
   empates fora do corte (forca sorteios sem efeito alem do corte); visao
   apenas tipada sobre o estado vivo (um cast permitiria mutar o motor);
@@ -726,6 +731,11 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   o tempo fora do sistema nao conta como desligado, e a sequencia
   desligar/religar e conferida dentro de cada periodo de existencia; CPU
   removida deixa de ser "inexistente" para os eventos anteriores.
+- Revista por DEC-40 (#116): retorno inclui todos os IDs historicos em
+  ordem crescente; `cpu-removed` fecha o intervalo aberto sem `cpu-on`,
+  `cpu-added` inicia outro periodo de existencia. Consulta reconstroi a
+  presenca inicial a partir das CPUs atuais e eventos de existencia.
+  Consistencia compara `offSince` por ID, somente para CPUs vigentes.
 
 ### DEC-22: Ordem dos eventos numa fronteira
 
@@ -1712,3 +1722,54 @@ Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
 DEC-09 e DEC-37. Fixar ambos em testes antes de expor a API. Editar em `t`
 recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 `t` (DEC-37); no tick 0, o estado inicial passa pelas etapas 4, 5 e 7.
+
+### DEC-40: Edicao de CPUs e execucao anterior independente da posse
+
+- Estado: proposta de implementacao em 2026-11-01 para a etapa 3 de 6 da
+  #26, no PR de continuacao do #116 (que integrou somente documentacao).
+  Implementada para revisao. Requisitos: REQ-02, REQ-04, REQ-05,
+  REQ-07 e REQ-09. Detalha DEC-37; revisa DEC-13 e DEC-21. Nao altera o
+  estado de aceite de DEC-39.
+- Contexto: remover CPU nao apaga o trabalho de [t-1, t), e uma CPU ausente
+  nao esta desligada. A posse vigente e o array atual de CPUs nao bastam
+  para derivar esses fatos.
+- Decisao de implementacao:
+    1. `EditItem` ganha `cpuCount` e `EditTarget` guarda a quantidade final.
+       O tratador usa `validateConfig`, incluindo as mensagens existentes.
+       `applyNetChange` troca a configuracao congelada, remove maiores IDs
+       ou acrescenta os seguintes, reutilizando IDs, somente pela diferenca
+       final do tick. Eventos `cpu-removed`/`cpu-added` saem por ID crescente
+       na etapa de edicao; nao ha evento de potencia ficticio na remocao.
+    2. CPU nova ou reincluida tem `running: null`, `sliceElapsed: 0` e
+       `offSince: null`; o despacho a marca desligada se nao houver trabalho.
+       Job incompleto da CPU removida volta a pronto, sem perder identidade,
+       progresso ou prazo. Se selecionado em outra CPU, inicia fatia nova;
+       CPUs sobreviventes preservam consumo, salvo vencimento real.
+    3. `PolicyCandidate.wasRunning` e verdadeiro se `executions` tem trecho
+       do job com `start < clock` e `end === clock`. O conjunto e montado uma
+       vez por visao e congelado com ela; nao se guarda flag no snapshot.
+       Em t=0 ninguem executou. `previousCpu` segue descrevendo a posse
+       antes do despacho, nao o primeiro desempate. Prioridade RM/EDF vem
+       antes de `wasRunning`; os criterios seguintes e sorteio nao mudam.
+    4. `summarizeCpuOff` devolve todos os IDs que existiram naquele snapshot,
+       em ID crescente, incluindo removidos e CPUs nunca desligadas. Deriva
+       a presenca inicial desfazendo os eventos de existencia sobre os IDs
+       atuais e depois percorre o historico de potencia/existencia. Remover
+       fecha eventual intervalo aberto; reincluir nao soma o tempo ausente.
+       Eventos futuros, tempos invalidos/regressivos, transicoes sem par e
+       eventos de potencia durante ausencia lancam `CpuEventSequenceError`.
+       Nao existe consulta ao historico futuro nem registro mutavel extra.
+    5. `findInconsistencies` confere IDs atuais 1..`cpuCount` e compara
+       intervalos abertos por ID, nao por indice; apenas CPUs vigentes podem
+       ter intervalo aberto. Continua convertendo somente
+       `CpuEventSequenceError` em inconsistencia.
+- Justificativa: preservar o desempate de DEC-18 quando a CPU desaparece e
+  manter toda a evidencia de CPU desligada para inspecao/Gantt, sem inventar
+  desligamento durante ausencia. Historico e transacoes do #115 bastam:
+  nao foi necessario mudar `Simulator`, `SnapshotHistory` ou o renderer.
+- Alternativas descartadas: guardar outro fato por job/snapshot para execucao
+  anterior (ja derivavel dos trechos); manter CPU removida no array vigente;
+  filtrar resumos pelas CPUs atuais (apagaria evidencia); guardar intervalos
+  desligados em paralelo aos eventos (mais um fato duplicado).
+- Fora: limite contra tarefas forcadas (#117), comando no adaptador (#37) e
+  desenho de lacunas no Gantt (#38). #26 permanece aberta.

@@ -40,10 +40,7 @@ function compareCandidates(
         // Two aperiodic RM tasks both rank as Infinity, and Infinity -
         // Infinity would be NaN.
         ascending(priority(a), priority(b)) ||
-        ascending(
-            a.previousCpu === null ? 1 : 0,
-            b.previousCpu === null ? 1 : 0,
-        ) ||
+        ascending(a.wasRunning ? 0 : 1, b.wasRunning ? 0 : 1) ||
         ascending(a.job.absoluteDeadline, b.job.absoluteDeadline) ||
         ascending(a.job.activation, b.job.activation) ||
         ascending(a.task.duration, b.task.duration)

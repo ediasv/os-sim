@@ -752,24 +752,34 @@ Issues `[Docs]`, sem fase no Project.
        (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
        lint e typecheck sem erros. DEC-39 continua registrada como
        proposta na arquitetura; seu aceite nao e presumido pelo merge;
-    3. #116 (rascunho, branch `feat/26-3-cpus`) quantidade de CPUs,
-       `cpu-removed`/`cpu-added` e primeiro desempate sem a CPU. Preparacao:
-       `main` em `45869c7` integrada e plano reconciliado em 2026-11-01;
-       implementacao de CPUs ainda nao iniciada. Verificacao desta integracao:
-       `npm test` 733/733 em 47 arquivos, `npm run lint` e
-       `npm run typecheck` aprovados; links locais e referencias DEC/REQ
-       do plano conferidos. Interface e pacote nao verificados. Escopo e
-       criterios no PR #116;
+    3. #116 mergeado em `44d9595` (2026-11-01), somente preparacao
+       documental. Implementacao de CPUs em PR de continuacao na branch
+       `feat/26-3-cpus-implementation`: item `cpuCount`, eventos de existencia e
+       mudanca liquida; `wasRunning` derivado de `executions` no primeiro
+       desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
+       consistencia por ID. Forma em DEC-40 (proposta para revisao).
+       Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
+       Evidencia local: `npm test` 776/776 em 48 arquivos, `npm run lint` e
+       `npm run typecheck` aprovados. Testes novos/estendidos em
+       `policy.test.ts`, `policies.test.ts`, `cpuOff.test.ts`,
+       `consistency.test.ts`, `edit.test.ts`, `simulator.cpuEdits.test.ts`
+       e projecoes de sistema/inspecao. RED -> GREEN conferido por tarefa;
+       regressao das projecoes conferida com a consulta antiga e revertida.
+       Revisao independente do diff inteiro e testes novos: nenhum problema
+       critico, importante ou menor. Interface interativa e pacote nao
+       verificados; CI da implementacao pendente no PR de continuacao.
+       Limite de CPUs contra forcadas fica no #117;
     4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
-- Proximo passo: implementar e testar a edicao de CPUs no #116 sobre a
-  base do #115, incluindo eventos, desempate e periodos de existencia
-  usados por `cpuOff` e `findInconsistencies`. Pendencias de decisao:
-  aceite de DEC-39 (#115) e aceitar ou rever DEC-34 (#92).
+- Proximo passo: CI e revisao do PR de continuacao da implementacao de
+  CPUs; depois do merge, atualizar a branch do #117 com a `main`. A proxima
+  implementacao da serie e #117 (estado por tarefa). Pendencias de decisao:
+  aceite de DEC-40 (continuacao do #116), DEC-39 (#115) e aceitar ou rever
+  DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

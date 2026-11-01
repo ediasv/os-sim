@@ -27,6 +27,7 @@ function cand(
     extra: {
         activation?: number;
         previousCpu?: number | null;
+        wasRunning?: boolean;
         executed?: number;
     } = {},
 ): PolicyCandidate {
@@ -40,7 +41,12 @@ function cand(
         completedAt: null,
         deadlineMissed: false,
     };
-    return { job, task: t, previousCpu: extra.previousCpu ?? null };
+    return {
+        job,
+        task: t,
+        previousCpu: extra.previousCpu ?? null,
+        wasRunning: extra.wasRunning ?? extra.previousCpu != null,
+    };
 }
 
 function view(cpuCount: number, candidates: PolicyCandidate[]): PolicyView {
@@ -293,5 +299,43 @@ describe('DEFAULT_POLICIES', () => {
         expect(DEFAULT_POLICIES.RM).toBe(rmPolicy);
         expect(DEFAULT_POLICIES.EDF).toBe(edfPolicy);
         expect(Object.isFrozen(DEFAULT_POLICIES)).toBe(true);
+    });
+});
+
+describe.each([
+    ['RM', rmPolicy],
+    ['EDF', edfPolicy],
+] as const)('%s after CPU removal', (_, policy) => {
+    it('uses execution precedence without current CPU ownership', () => {
+        const earlier = cand(task(1, 20, 20, 1), 20, { activation: 0 });
+        const removed = cand(task(2, 20, 20, 5), 20, {
+            activation: 1,
+            wasRunning: true,
+        });
+        expect(decide(view(1, [earlier, removed]), policy)).toEqual({
+            selected: ['2.0'],
+        });
+    });
+    it('lets priority outrank previous execution', () => {
+        const higher = cand(task(1, 10), 10);
+        const removed = cand(task(2, 20), 20, { wasRunning: true });
+        expect(decide(view(1, [removed, higher]), policy)).toEqual({
+            selected: ['1.0'],
+        });
+    });
+    it('uses later criteria and residual ties between prior runners', () => {
+        const x = cand(task(1, 20), 20, { activation: 1, wasRunning: true });
+        const y = cand(task(2, 20), 20, { activation: 1, wasRunning: true });
+        expect(decide(view(1, [y, x]), policy)).toEqual({
+            selected: [],
+            tie: { candidates: ['1.0', '2.0'], slots: 1 },
+        });
+        const earlier = cand(task(2, 20), 20, {
+            activation: 0,
+            wasRunning: true,
+        });
+        expect(decide(view(1, [x, earlier]), policy)).toEqual({
+            selected: ['2.0'],
+        });
     });
 });

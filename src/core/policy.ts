@@ -19,13 +19,10 @@ import { key } from './helpers/key';
 export interface PolicyCandidate {
     readonly job: DeepReadonly<Job>;
     readonly task: TaskDefinition;
-    /**
-     * CPU that owned the job when the view was built, or null; feeds the first
-     * tie-break ("who was running before the selection", DEC-03). The engine
-     * builds the view before releasing CPUs, so a job whose quantum just
-     * expired still reports its CPU and keeps that tie-break (DEC-18).
-     */
+    /** CPU owning the job before dispatch, or null when it has none (DEC-40). */
     readonly previousCpu: number | null;
+    /** Executed in [clock-1, clock), even if its CPU was removed (DEC-18, DEC-40). */
+    readonly wasRunning: boolean;
 }
 
 /** Everything a policy may read when choosing; a deep-frozen copy, never live state. */
@@ -164,6 +161,14 @@ export function buildPolicyView(
     state: DeepReadonly<SimulationState>,
     eligible: readonly JobRef[],
 ): PolicyView {
+    const previouslyRunning = new Set(
+        state.executions
+            .filter(
+                (slice) =>
+                    slice.start < state.clock && slice.end === state.clock,
+            )
+            .map((slice) => key(slice.job)),
+    );
     const seen = new Set<string>();
     const candidates = eligible.map((ref): PolicyCandidate => {
         const id = key(ref);
@@ -189,6 +194,7 @@ export function buildPolicyView(
             job,
             task: tcb.definition,
             previousCpu: owner?.id ?? null,
+            wasRunning: previouslyRunning.has(id),
         };
     });
     return freezeCopy({

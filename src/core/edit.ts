@@ -17,7 +17,8 @@ import type { EditItemRefusal } from './refusal';
 /** One change the user asks for. */
 export type EditItem =
     | { readonly kind: 'algorithm'; readonly algorithm: AlgorithmId }
-    | { readonly kind: 'quantum'; readonly quantum: number };
+    | { readonly kind: 'quantum'; readonly quantum: number }
+    | { readonly kind: 'cpuCount'; readonly cpuCount: number };
 
 /** One edit (one form submission): its items, in order. */
 export type Edit = readonly EditItem[];
@@ -26,6 +27,7 @@ export type Edit = readonly EditItem[];
 export interface EditTarget {
     readonly algorithm: AlgorithmId;
     readonly quantum: number;
+    readonly cpuCount: number;
 }
 
 /** What validation may read: the edit-stage state and the known policies. */
@@ -52,7 +54,7 @@ type Handlers = {
  * configuration as the earlier items left it. On success returns the
  * normalized value (the algorithm in uppercase).
  */
-function checkSystemField<F extends 'algorithm' | 'quantum'>(
+function checkSystemField<F extends 'algorithm' | 'quantum' | 'cpuCount'>(
     target: EditTarget,
     field: F & ConfigField,
     value: unknown,
@@ -79,6 +81,16 @@ function checkSystemField<F extends 'algorithm' | 'quantum'>(
 }
 
 const HANDLERS: Handlers = {
+    cpuCount: (target, item, context) => {
+        const checked = checkSystemField(
+            target,
+            'cpuCount',
+            item.cpuCount,
+            context,
+        );
+        if (!checked.ok) return checked;
+        return { ok: true, target: { ...target, cpuCount: checked.value } };
+    },
     algorithm: (target, item, context) => {
         const checked = checkSystemField(
             target,
@@ -112,6 +124,7 @@ export function readTarget(state: DeepReadonly<SimulationState>): EditTarget {
     return {
         algorithm: state.config.algorithm,
         quantum: state.config.quantum,
+        cpuCount: state.config.cpuCount,
     };
 }
 
@@ -172,12 +185,48 @@ export function applyNetChange(
 ): void {
     if (
         after.algorithm !== before.algorithm ||
-        after.quantum !== before.quantum
+        after.quantum !== before.quantum ||
+        after.cpuCount !== before.cpuCount
     ) {
         state.config = Object.freeze({
             ...state.config,
             algorithm: after.algorithm,
             quantum: after.quantum,
+            cpuCount: after.cpuCount,
         });
+    }
+
+    // Only the final target is materialized. Surviving CPUs keep their
+    // slice; removed owners lose it without a fictitious preemption (DEC-37).
+    if (after.cpuCount < before.cpuCount) {
+        const removed = state.cpus.splice(after.cpuCount);
+        for (const cpu of removed) {
+            const ref = cpu.running;
+            if (ref !== null) {
+                const job = state.tasks.find(
+                    (t) => t.definition.id === ref.taskId,
+                )?.jobs[ref.index];
+                if (job?.state === 'running') job.state = 'ready';
+            }
+            state.events.push({
+                kind: 'cpu-removed',
+                time: state.clock,
+                cpuId: cpu.id,
+            });
+        }
+    } else {
+        for (let id = before.cpuCount + 1; id <= after.cpuCount; id++) {
+            state.cpus.push({
+                id,
+                running: null,
+                sliceElapsed: 0,
+                offSince: null,
+            });
+            state.events.push({
+                kind: 'cpu-added',
+                time: state.clock,
+                cpuId: id,
+            });
+        }
     }
 }
