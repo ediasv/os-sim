@@ -326,3 +326,52 @@ describe('buildGanttSvg', () => {
         expect(count(svg, 'data-state="running"')).toBe(0);
     });
 });
+
+describe('buildGanttSvg with free-text task IDs (DEC-48)', () => {
+    const texts = (ids: string[]): SystemConfig => ({
+        algorithm: 'RM',
+        quantum: 2,
+        cpuCount: 1,
+        tasks: ids.map((id, i) =>
+            task(id, ['FF0000', '00FF00', '0000FF', 'FFFF00'][i], 1, 6),
+        ),
+    });
+    const labelY = (svg: string, text: string) =>
+        Number(svg.match(new RegExp(`y="([0-9.]+)"[^>]*>${text}</text>`))![1]);
+
+    it('orders rows by descending natural order, lowest next to the CPU lanes', () => {
+        const svg = buildGanttSvg(run(texts(['10', '2', 'A']), 4));
+
+        expect(labelY(svg, 'Tarefa A')).toBeLessThan(labelY(svg, 'Tarefa 10'));
+        expect(labelY(svg, 'Tarefa 10')).toBeLessThan(labelY(svg, 'Tarefa 2'));
+        expect(labelY(svg, 'Tarefa 2')).toBeLessThan(
+            labelY(svg, 'PROCESSADORES'),
+        );
+    });
+
+    it('escapes an ID everywhere it is written, so the document stays well formed', () => {
+        const id = '<&"';
+        const svg = buildGanttSvg(run(texts([id]), 4));
+        const escaped = '&lt;&amp;&quot;';
+
+        expect(svg).toContain(`data-task="${escaped}"`);
+        expect(svg).toContain(`>Tarefa ${escaped}</text>`);
+        expect(svg).toContain(`Execução: tarefa ${escaped} #1`);
+        expect(svg).not.toContain('<&');
+        expect(svg).not.toContain('data-task="<');
+    });
+
+    it('shortens a long ID in the lane label and keeps the whole ID in a tooltip', () => {
+        const id = 'x'.repeat(32);
+        const svg = buildGanttSvg(run(texts([id]), 4));
+
+        expect(svg).not.toContain(`>Tarefa ${id}</text>`);
+        expect(svg).toMatch(/>x{1,9}…<title>Tarefa x{32}<\/title><\/text>/);
+    });
+
+    it('keeps the label of a numeric ID exactly as before', () => {
+        const svg = buildGanttSvg(run(texts(['100']), 4));
+
+        expect(svg).toContain('>Tarefa 100</text>');
+    });
+});

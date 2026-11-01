@@ -2088,10 +2088,31 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   O estado de cada snapshot guarda os IDs ja usados (hoje, o maior ID
   numerico, DEC-37); descartar o futuro descarta os IDs criados nele.
 - Rotulos (escolha do autor): Gantt, snapshots e SVG mostram o ID como
-  digitado, mantendo o prefixo `#` (`CPU 1 · #A`).
+  digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
+  tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
+  lugar onde aparece; no rotulo da raia, um ID que nao cabe (mais de 3
+  caracteres depois de "Tarefa ") perde o prefixo e e cortado com
+  reticencias, e o ID inteiro fica na dica da raia.
+- Edicao: o identificador de um item de edicao e procurado pelo texto exato
+  (diferente da unicidade, que ignora caixa), e so aceita texto; outro tipo
+  e recusado ("deve ser um texto"). Quem edita escolhe a tarefa na lista.
+- Cabecalho ausente: o arquivo sem cabecalho nao pode mais ser reconhecido
+  pelo primeiro campo numerico quando o ID e texto; a primeira linha e uma
+  linha de tarefa se o primeiro campo for numerico ou se tiver mais campos
+  que o cabecalho e o segundo campo for uma cor de 6 digitos hexadecimais.
+- Mudanca conhecida para IDs numericos: `01` passa a ser exibido como `01` e
+  nao mais como `1` (o ID e mostrado como digitado); `1` e `01` sao IDs
+  diferentes.
 - Alternativas descartadas: ordem de insercao no arquivo (quebraria A.2.5
   para quem lista tarefas fora de ordem); ID gerado a partir de texto
   (sufixo numerico), por criar regra sem pedido; unicidade sensivel a caixa,
   por gerar linhas quase identicas.
-- Evidencia: a preencher na implementacao (testes de formato, unicidade,
-  ordem natural e inclusao; mesmos snapshots para IDs numericos).
+- Evidencia: `taskId.test.ts` (formato, chave, ordem natural, sugestao),
+  `config.test.ts` e `loadConfig.test.ts` (validacao e duplicidade com
+  linha e campo), `parser.test.ts` (ID como escrito, cabecalho ausente),
+  `textIds.test.ts` (arquivo com IDs textuais carregado e simulado, ordem
+  natural no sorteio, nomes como `constructor`), `ganttSvg.test.ts`
+  (ordem, escape, rotulo longo), `numericIds.golden.test.ts` e
+  `renderer/.../numericIds.golden.test.ts` (trace e SVG de IDs numericos
+  iguais aos de antes). Inclusao de tarefa (ID sugerido ou digitado):
+  pendente do PR #119.
