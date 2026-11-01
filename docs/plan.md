@@ -276,8 +276,9 @@ Requisito: REQ-07.
 Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
-  Evidencia (2026-11-01, branch `feat/23-historico-snapshots`, PR #109
-  aberto, com a main integrada): `restoreState` em `src/core/snapshot.ts`,
+  Concluida no PR #109 (merged, `51dd7bf`, 2026-11-01; issue fechada).
+  Evidencia (2026-11-01, branch `feat/23-historico-snapshots`, antes do
+  merge, com a main integrada): `restoreState` em `src/core/snapshot.ts`,
   `SnapshotHistory` em `src/core/history.ts`, `restore` e cursor em
   `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts`,
   `src/core/history.test.ts` e `src/core/simulator.history.test.ts`;
@@ -565,7 +566,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Reproduzido em 2026-10-31 num checkout local: o panic vem so de
   `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
   nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
-  real, que depende de #36/#23/#24.
+  real, que depende de #36/#24 (#23 concluida).
 - #72 Compor a area de trabalho vazia em preparacao. Concluida no PR #100
   (merged, `2efe280`, 2026-11-01; issue fechada em 2026-11-01): `App` mostra a preparacao estatica (barra, painel de tarefas e
   Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
@@ -657,8 +658,8 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #25 iniciada (PR #101, rascunho) e #23 em revisao no PR #109; #24 e
-  #26 a #28 nao iniciadas.
+  E3: #23 concluida; #25 iniciada (PR #101, rascunho); #24 e #26 a #28 nao
+  iniciadas.
   E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
   aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
   nao iniciados.
@@ -672,19 +673,17 @@ Issues `[Docs]`, sem fase no Project.
 - #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
-- Em andamento: #23 (cursor e restauracao de snapshots completos do
-  historico, REQ-04; exclui #24 e #26), em revisao no PR #109 com evidencia
-  em E3 e contrato em DEC-35; nao entregue ate o merge. Proximo passo: merge
-  do PR #109 e, depois, a #24.
+- #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
+  E3 e contrato em DEC-35.
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
-  destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
-  paralelo a ela, nessa ordem (a #24 depende da #23). Aceitar ou rever
+  destrava #26 e o Gantt (#38); a #24 nao depende dela e, com a #23
+  integrada, pode seguir em paralelo a ela. Aceitar ou rever
   DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
-  de #36/#23/#24; a apresentacao isolada com dados tipados foi verificada.
+  de #36/#24; a apresentacao isolada com dados tipados foi verificada.
 
 ## Como registrar uma entrega
 
