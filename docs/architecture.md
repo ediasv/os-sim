@@ -1112,25 +1112,32 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
   copias por passo (restaurar copia uma vez por chamada). `restoreState`
   compartilha a `config` e cada `definition` congeladas, em vez de usar
-  `deepCopy`, que devolve valores congelados sem copiar. Medicao adicional
-  do PR #106 (heap apos a simulacao, RM, 2 CPUs, 3 tarefas, Node 25.8.0,
-  diferente do 24.22.1 de `devEngines`):
+  `deepCopy`, que devolve valores congelados sem copiar. Medicao no branch
+  da #23 (2026-11-01, Node 24.22.1 de `devEngines`), com a carga de DEC-30
+  (RM, quantum 5, 2 CPUs, ingresso 0, (duracao, periodo = prazo) de
+  (300, 1000), (500, 1500) e (800, 2500)), `createSimulator` e `tick()`
+  repetido, heap apos `gc()`; script fora do repositorio:
 
-    | ticks | snapshots | heap   | media por snapshot |
-    | ----- | --------- | ------ | ------------------ |
-    | 1.000 | 1.001     | 23 MB  | 23 KB              |
-    | 2.000 | 2.001     | 49 MB  | 25 KB              |
-    | 4.000 | 4.001     | 165 MB | 42 KB              |
+    | ticks | tempo | heap   | media por snapshot |
+    | ----- | ----- | ------ | ------------------ |
+    | 30    | 0,0 s | 0,4 MB | 14 KB              |
+    | 1.000 | 0,1 s | 24 MB  | 24 KB              |
+    | 2.000 | 0,3 s | 75 MB  | 38 KB              |
+    | 4.000 | 1,1 s | 248 MB | 62 KB              |
 
-    A media cresce com o comprimento, como DEC-30 descreve; a ordem de
-    grandeza e compativel com as medicoes de DEC-30 e nao muda a decisao.
+    Em 4.000 ticks o valor fica proximo dos 254 MB de DEC-30 (mesmas tarefas e
+    versao); a media cresce com o comprimento, como DEC-30 descreve. Nas
+    cerca de 30 ticks de uso realista o historico ocupa menos de 1 MB, o que
+    mantem a decisao. A tabela do PR #106 (Node 25.8.0, codigo de outra
+    abordagem, tarefas nao registradas) foi substituida por esta, por nao ser
+    reproduzivel nas condicoes de `devEngines`.
 
 - Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
   escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
   cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
   passo do cursor; descartado por antecipar a #26, poder apagar passos
   registrados por um `tick()` e mudar o contrato usado pelo renderer. Dele
-  foram aproveitados a classe de historico separada e a medicao acima.
+  foi aproveitada a classe de historico separada.
 
 ## Fluxo de um passo
 
