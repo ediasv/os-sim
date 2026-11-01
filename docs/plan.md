@@ -276,6 +276,19 @@ Requisito: REQ-07.
 Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
+  Evidencia (2026-11-01, branch `feat/23-historico-snapshots`, PR #109
+  aberto, com a main integrada): `restoreState` em `src/core/snapshot.ts`,
+  `SnapshotHistory` em `src/core/history.ts`, `restore` e cursor em
+  `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts`,
+  `src/core/history.test.ts` e `src/core/simulator.history.test.ts`;
+  `npm test` 632/632 em 40 arquivos (base: main com 612 em 38),
+  `npm run lint` e `npm run typecheck` sem erros. Prova de restauracao em
+  dois cenarios (empates residuais; fatia e progresso parciais), conferida
+  com mutacoes em `restore`: limpar eventos, semear `drawState`, nao
+  restaurar, zerar `sliceElapsed` e zerar `executed` derrubam a prova.
+  Memoria: copia integral por passo mantida (DEC-30), sem copia extra por
+  passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
+  DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
@@ -634,10 +647,11 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
-  iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
-  concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36
-  a #40 nao iniciados.
+  E3: #25 iniciada (PR #101, rascunho) e #23 em revisao no PR #109; #24 e
+  #26 a #28 nao iniciadas.
+  E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
+  aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73 concluidas; #36 a #40
+  nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
@@ -647,6 +661,10 @@ Issues `[Docs]`, sem fase no Project.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
+- Em andamento: #23 (cursor e restauracao de snapshots completos do
+  historico, REQ-04; exclui #24 e #26), em revisao no PR #109 com evidencia
+  em E3 e contrato em DEC-35; nao entregue ate o merge. Proximo passo: merge
+  do PR #109 e, depois, a #24.
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
   paralelo a ela, nessa ordem (a #24 depende da #23). Aceitar ou rever

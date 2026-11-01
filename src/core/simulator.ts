@@ -18,7 +18,8 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
-import { createInitialState, takeSnapshot } from './snapshot';
+import { createInitialState, restoreState, takeSnapshot } from './snapshot';
+import { SnapshotHistory } from './history';
 import { deepCopy } from './helpers/deepCopy';
 import { key } from './helpers/key';
 
@@ -81,7 +82,8 @@ export interface ExecutionGuardResult {
 export class Simulator {
     private state: SimulationState;
     private readonly policy: SchedulingPolicy;
-    private snapshotHistory: SimulationSnapshot[] = [];
+    /** Recorded steps and the cursor; the live state shows the cursor's step. */
+    private readonly history = new SnapshotHistory();
 
     constructor(
         config: SystemConfig = DEFAULT_CONFIG,
@@ -124,18 +126,34 @@ export class Simulator {
         return findEligibleJobs(this.state);
     }
 
+    /** Newest recorded step, wherever the cursor is. */
     public getLatestSnapshot(): SimulationSnapshot {
-        const latestSnapshot = this.snapshotHistory.at(-1);
+        return this.history.latest();
+    }
 
-        if (!latestSnapshot) {
-            throw new Error('Snapshot history is empty');
-        }
+    /**
+     * Makes a recorded step the current one: the live state becomes a mutable
+     * copy of that snapshot, so eligibility and later ticks start from it
+     * (REQ-04, DEC-06). Recorded snapshots are never changed or dropped. An
+     * unrecorded step is refused by the history with a RangeError before the
+     * live state or the cursor is touched, so the check lives in one place.
+     */
+    public restore(step: number): void {
+        this.state = restoreState(this.history.at(step));
+        this.history.moveTo(step);
+    }
 
-        return latestSnapshot;
+    public getCursor(): number {
+        return this.history.cursor;
+    }
+
+    /** Snapshot of the step the cursor points at. */
+    public getCurrentSnapshot(): SimulationSnapshot {
+        return this.history.current();
     }
 
     private recordSnapshot(): void {
-        this.snapshotHistory.push(takeSnapshot(this.state));
+        this.history.append(takeSnapshot(this.state));
     }
 
     /** Executes exactly [clock, clock + 1) on each dispatched CPU. */
@@ -441,7 +459,18 @@ export class Simulator {
             ?.jobs[ref.index];
     }
 
+    /**
+     * Refuses tick() while the cursor is behind the latest recorded step, so a
+     * recorded step is never overwritten. Reusing the computed future is #24
+     * and discarding it is #26; until then navigation is the only way back.
+     */
     private executionGuard(): ExecutionGuardResult {
+        if (this.history.isBehind) {
+            return {
+                ready: false,
+                reason: `Step ${this.history.cursor + 1} is already computed; use snapshot navigation instead of tick().`,
+            };
+        }
         return { ready: true };
     }
 

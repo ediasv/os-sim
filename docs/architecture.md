@@ -41,13 +41,17 @@ afirma que os modulos planejados ja existem.
   sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
   resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
+- [Historico](../src/core/history.ts): `SnapshotHistory` guarda os snapshots
+  congelados (passo k no indice k) e o cursor; so acrescenta com o cursor no
+  ultimo passo e nunca altera nem descarta um passo (DEC-35).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
   (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
   sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
-  (DEC-15).
+  (DEC-15); mantem cursor sobre o historico e restaura passos registrados
+  (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica snapshots via `shallowRef` e oferece os comandos `load` e
   `tick`, que devolvem resultado (DEC-23).
@@ -155,7 +159,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   avancar no historico restaura, editar invalida o futuro.
 - Consequencia: validar edicao antes de mutar/descartar historico. Nao sortear
   dentro de comparadores de ordenacao; sortear somente no empate residual e
-  registrar resultado. Definir estruturas concretas na entrega do historico.
+  registrar resultado. Estruturas concretas do historico (cursor e restauracao)
+  definidas na #23, em DEC-35.
 - Alternativa descartada: usar sorteio nao restauravel a cada revisita do tick.
 
 ### DEC-07: Reavaliacao preemptiva e estabilidade de CPU
@@ -292,7 +297,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: placeholders `task.ts` (classe com cor aleatoria e ID 0, em
   conflito com DEC-10) e `scheduler.ts` foram removidos; o contrato de politica
   e criado na #10. Copia integral por passo custa O(tamanho do estado); rever
-  na #23 se o historico ficar grande.
+  na #23 se o historico ficar grande (revisto na #23: mantida, DEC-30 e
+  DEC-35).
 - Fatos em dobro: execucao fica em `Job.state = running` e em
   `CpuState.running`; perda de prazo em `Job.deadlineMissed` e no evento
   `deadline-miss`; CPU desligada em `CpuState.offSince` e no intervalo aberto
@@ -394,7 +400,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   (`executed > duration`) e corrompia o historico (REQ-04).
 - Consequencia:
     - Uma copia extra O(estado) por tick, da mesma ordem do snapshot; rever na
-      #23 junto com DEC-12. Efeito medido na memoria do historico em DEC-30.
+      #23 junto com DEC-12 (revisto na #23: mantida, DEC-30 e DEC-35). Efeito
+      medido na memoria do historico em DEC-30.
     - `findInconsistencies` tambem rejeita `executed > duration`.
     - `deepCopy` compartilha subarvores congeladas (a configuracao) em vez de
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
@@ -1072,6 +1079,65 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Limite: a decisao cobre a fronteira `loadConfig`; falhas de leitura do
   arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
   exibicao continua fora do escopo da #92 (#36).
+
+### DEC-35: Historico com cursor e restauracao
+
+- Estado: aceita em 2026-10-31 (acordado com o usuario na #23). Requisitos:
+  REQ-04. Complementa DEC-06, DEC-11, DEC-12 e DEC-14.
+- Decisao: o `Simulator` mantem privado um `SnapshotHistory`
+  (`src/core/history.ts`) com os snapshots e o cursor, cujo indice e o
+  relogio do snapshot (DEC-11). O historico so acrescenta passo com o cursor
+  no ultimo e nunca altera nem descarta um passo; a classe nao conhece o
+  motor, para que #24 e #26 mudem o historico num so lugar. `restore(step)`
+  torna o estado vivo
+  uma copia mutavel do snapshot (`restoreState`), sem alterar snapshots;
+  passo nao registrado (nao inteiro, negativo ou alem do ultimo) e recusado
+  com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
+  posicao; `getLatestSnapshot()` fica inalterado.
+- Avanco: `tick()` com o cursor atras do ultimo passo e recusado com a
+  mensagem `Step ${cursor + 1} is already computed; use snapshot navigation
+  instead of tick().`. Reusar o futuro ainda valido fica na #24 e descartar o
+  futuro na #26; a #23 nao conhece edicoes.
+- Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
+  novo cujo historico termina em k (`continueFrom`, acesso privado so no
+  teste), avanca e compara com o k+1 registrado, inclusive eventos e
+  `drawState`. Copiar o estado vivo, e nao recalcula-lo do snapshot, deixa a
+  prova sensivel ao que `restore` instala. Roda em dois cenarios: empates
+  residuais (muda `drawState` e registra `tie-break`) e progresso parcial
+  (quantum 2, 2 CPUs, 4 tarefas: fatia e execucao parciais, preempcao,
+  expiracao de quantum e perda de prazo). Mutacoes em `restore` conferidas:
+  limpar eventos, semear `drawState`, nao restaurar, zerar `sliceElapsed` e
+  zerar `executed` de jobs incompletos; todas derrubam a prova. A cobertura
+  vale para os campos que esses cenarios exercitam.
+- Memoria: copia integral por passo continua (DEC-30); a #23 nao acrescenta
+  copias por passo (restaurar copia uma vez por chamada). `restoreState`
+  compartilha a `config` e cada `definition` congeladas, em vez de usar
+  `deepCopy`, que devolve valores congelados sem copiar. Medicao no branch
+  da #23 (2026-11-01, Node 24.22.1 de `devEngines`), com a carga de DEC-30
+  (RM, quantum 5, 2 CPUs, ingresso 0, (duracao, periodo = prazo) de
+  (300, 1000), (500, 1500) e (800, 2500)), `createSimulator` e `tick()`
+  repetido, heap apos `gc()`; script fora do repositorio:
+
+    | ticks | tempo | heap   | media por snapshot |
+    | ----- | ----- | ------ | ------------------ |
+    | 30    | 0,0 s | 0,4 MB | 14 KB              |
+    | 1.000 | 0,1 s | 24 MB  | 24 KB              |
+    | 2.000 | 0,3 s | 75 MB  | 38 KB              |
+    | 4.000 | 1,1 s | 248 MB | 62 KB              |
+
+    Em 4.000 ticks o valor fica proximo dos 254 MB de DEC-30 (mesmas tarefas e
+    versao); a media cresce com o comprimento, como DEC-30 descreve. Nas
+    cerca de 30 ticks de uso realista o historico ocupa menos de 1 MB, o que
+    mantem a decisao. A tabela do PR #106 (Node 25.8.0, codigo de outra
+    abordagem, tarefas nao registradas) foi substituida por esta, por nao ser
+    reproduzivel nas condicoes de `devEngines`.
+
+- Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
+  escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
+  cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
+  passo do cursor; descartado por antecipar a #26, poder apagar passos
+  registrados por um `tick()` e mudar o contrato usado pelo renderer. Dele
+  foi aproveitada a classe de historico separada.
 
 ## Fluxo de um passo
 
