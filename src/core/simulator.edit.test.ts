@@ -187,7 +187,7 @@ describe('Simulator.edit: refusals and recorded edits', () => {
         }
         expect(refusal).toBeInstanceOf(EditRefusal);
         expect((refusal as EditRefusal).items[0].reason).toBe(
-            'No scheduling policy is registered for algorithm EDF.',
+            'Nenhuma política de escalonamento está registrada para o algoritmo EDF.',
         );
     });
 
@@ -202,7 +202,7 @@ describe('Simulator.edit: refusals and recorded edits', () => {
         expect(refusal).toBeInstanceOf(SimulationRefusal);
         expect(refusal).not.toBeInstanceOf(EditRefusal);
         expect((refusal as Error).message).toBe(
-            'An edit needs at least one item.',
+            'Uma edição precisa de pelo menos um item.',
         );
     });
 

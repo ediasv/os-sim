@@ -29,7 +29,7 @@ const config: SystemConfig = {
 const STEPS = 12;
 
 const BACKWARD_AT_ZERO =
-    'Step 0 is the first recorded step; there is no earlier step to go back to.';
+    'O passo 0 é o primeiro passo registrado; não há passo anterior para voltar.';
 
 /** Runs `steps` ticks and returns the snapshots 0..steps as recorded. */
 function recordRun(sim: Simulator, steps = STEPS): SimulationSnapshot[] {
@@ -129,7 +129,7 @@ describe('Simulator navigation', () => {
         for (let attempt = 0; attempt < 2; attempt++) {
             expect(() => sim.forward()).toThrow(SimulationRefusal);
             expect(() => sim.forward()).toThrow(
-                'Step 12 is the latest recorded step; use tick() to compute step 13.',
+                'O passo 12 é o último passo registrado; use tick() para calcular o passo 13.',
             );
             expect(sim.getCursor()).toBe(STEPS);
             expect(sim.getCurrentSnapshot()).toBe(recorded[STEPS]);
@@ -142,7 +142,7 @@ describe('Simulator navigation', () => {
         const zero = sim.getCurrentSnapshot();
         expect(() => sim.backward()).toThrow(SimulationRefusal);
         expect(() => sim.forward()).toThrow(
-            'Step 0 is the latest recorded step; use tick() to compute step 1.',
+            'O passo 0 é o último passo registrado; use tick() para calcular o passo 1.',
         );
         expect(sim.getCursor()).toBe(0);
         expect(sim.getCurrentSnapshot()).toBe(zero);
@@ -165,7 +165,7 @@ describe('Simulator navigation', () => {
         sim.backward();
         expect(() => sim.tick()).toThrow(SimulationRefusal);
         expect(() => sim.tick()).toThrow(
-            'Step 12 is already computed; use forward() instead of tick().',
+            'O passo 12 já foi calculado; use forward() em vez de tick().',
         );
         expect(sim.getCursor()).toBe(STEPS - 1);
     });

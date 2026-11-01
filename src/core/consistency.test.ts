@@ -319,3 +319,43 @@ describe('findInconsistencies: CPU count and IDs', () => {
         expect(findInconsistencies(state)).toContain(message);
     });
 });
+
+describe('task state consistency', () => {
+    it('reports more forced tasks than configured CPUs even without jobs', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [definition, { ...definition, id: 2 }],
+        });
+        state.tasks.forEach((t) => {
+            t.status = 'forced';
+        });
+        expect(findInconsistencies(state)).toContain(
+            'There are 2 forced tasks for 1 CPUs.',
+        );
+    });
+    it.each(['suspended', 'concluded'] as const)(
+        'reports a CPU running a %s task',
+        (status) => {
+            const state = stateWith(job({ state: 'running' }));
+            state.tasks[0].status = status;
+            state.cpus[0].running = { taskId: 1, index: 0 };
+            expect(findInconsistencies(state)).toContain(
+                `CPU 1 runs task 1, whose status is ${status}.`,
+            );
+        },
+    );
+    it('reports an interrupted job on a CPU', () => {
+        const state = stateWith(job({ state: 'interrupted' }));
+        state.cpus[0].running = { taskId: 1, index: 0 };
+        expect(findInconsistencies(state)).toContain(
+            'CPU 1 runs job 1.0, whose state is interrupted.',
+        );
+    });
+    it('reports a forced current job without a CPU', () => {
+        const state = stateWith(job());
+        state.tasks[0].status = 'forced';
+        expect(findInconsistencies(state)).toContain(
+            'Forced job 1.0 has no CPU.',
+        );
+    });
+});

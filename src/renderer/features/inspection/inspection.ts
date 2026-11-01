@@ -118,7 +118,9 @@ function taskStatus(
             : 'awaiting-next-activation';
     }
 
-    const hasIncompleteJob = jobs.some((job) => job.state !== 'completed');
+    const hasIncompleteJob = jobs.some(
+        (job) => job.state !== 'completed' && job.state !== 'interrupted',
+    );
     if (hasIncompleteJob) {
         return 'active';
     }

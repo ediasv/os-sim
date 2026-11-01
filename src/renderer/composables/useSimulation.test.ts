@@ -204,7 +204,7 @@ describe('useSimulation', () => {
 
 describe('useSimulation navigation (DEC-36)', () => {
     const BACKWARD_AT_ZERO =
-        'Step 0 is the first recorded step; there is no earlier step to go back to.';
+        'O passo 0 é o primeiro passo registrado; não há passo anterior para voltar.';
 
     it('steps backward and forward through recorded snapshots', () => {
         const sim = useSimulation(only(firstAvailable));
@@ -251,7 +251,7 @@ describe('useSimulation navigation (DEC-36)', () => {
             error: {
                 kind: 'refused',
                 message:
-                    'Step 0 is the latest recorded step; use tick() to compute step 1.',
+                    'O passo 0 é o último passo registrado; use tick() para calcular o passo 1.',
             },
         });
         expect(sim.view.value).toBe(zero);
@@ -270,7 +270,7 @@ describe('useSimulation navigation (DEC-36)', () => {
             error: {
                 kind: 'refused',
                 message:
-                    'Step 1 is already computed; use forward() instead of tick().',
+                    'O passo 1 já foi calculado; use forward() em vez de tick().',
             },
         });
         expect(sim.view.value).toBe(zero);

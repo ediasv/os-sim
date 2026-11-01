@@ -22,6 +22,7 @@ function stateLabel(job: InspectionJob): string {
         running: 'Executando',
         suspended: 'Suspensa',
         completed: 'Concluído',
+        interrupted: 'Interrompido',
     }[job.state];
 }
 </script>

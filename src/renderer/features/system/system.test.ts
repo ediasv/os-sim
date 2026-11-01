@@ -37,6 +37,7 @@ function snapshot(): SimulationState {
         },
         tasks: [
             {
+                status: 'ready',
                 definition: t1,
                 jobs: [
                     {
@@ -62,6 +63,7 @@ function snapshot(): SimulationState {
                 ],
             },
             {
+                status: 'ready',
                 definition: t2,
                 jobs: [
                     {
@@ -77,6 +79,7 @@ function snapshot(): SimulationState {
                 ],
             },
             {
+                status: 'ready',
                 definition: t3,
                 jobs: [
                     {
@@ -304,4 +307,15 @@ it('projects system CPU rows across removal and ID reuse', () => {
         { start: 0, end: 1 },
         { start: 2, end: null },
     ]);
+});
+
+it('does not list interrupted jobs as ready or pending', () => {
+    const state = snapshot();
+    state.tasks[1].jobs[0].state = 'interrupted';
+    state.tasks[2].jobs.forEach((job) => {
+        job.state = 'interrupted';
+    });
+    const result = projectSystem(state);
+    expect(result.ready).toEqual([]);
+    expect(result.pending).toEqual([]);
 });

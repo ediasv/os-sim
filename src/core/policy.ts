@@ -167,6 +167,7 @@ export function selectedRefs(decision: PolicyDecision): JobRef[] {
 export function buildPolicyView(
     state: DeepReadonly<SimulationState>,
     eligible: readonly JobRef[],
+    cpuCount = state.config.cpuCount,
 ): PolicyView {
     const previouslyRunning = new Set(
         state.executions
@@ -206,7 +207,7 @@ export function buildPolicyView(
     });
     return freezeCopy({
         clock: state.clock,
-        cpuCount: state.config.cpuCount,
+        cpuCount,
         candidates,
     });
 }

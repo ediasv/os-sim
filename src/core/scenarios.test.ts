@@ -602,7 +602,7 @@ describe('RM priority of an aperiodic task (#21, DEC-17)', () => {
             act(0, 2, 0),
             done(3, 2, 0),
             done(5, 1, 0),
-            { kind: 'task-finished', time: 5, taskId: 1 },
+            { kind: 'task-finished', time: 5, taskId: 1, interrupted: [] },
             cpuOff(5),
         ]);
     });

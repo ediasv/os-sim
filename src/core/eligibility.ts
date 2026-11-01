@@ -10,7 +10,10 @@ export function findEligibleJobs(
 ): readonly JobRef[] {
     const eligible: JobRef[] = [];
     for (const tcb of state.tasks) {
-        const index = tcb.jobs.findIndex((job) => job.state !== 'completed');
+        if (tcb.status === 'suspended' || tcb.status === 'concluded') continue;
+        const index = tcb.jobs.findIndex(
+            (job) => job.state !== 'completed' && job.state !== 'interrupted',
+        );
         if (index === -1 || tcb.jobs[index].state === 'suspended') {
             continue;
         }

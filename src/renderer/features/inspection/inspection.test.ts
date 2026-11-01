@@ -34,6 +34,7 @@ function snapshot(): SimulationState {
         },
         tasks: [
             {
+                status: 'ready',
                 definition: {
                     id: 1,
                     color: 'F0E0D0',
@@ -67,6 +68,7 @@ function snapshot(): SimulationState {
                 ],
             },
             {
+                status: 'ready',
                 definition: {
                     id: 2,
                     color: 'D0E0F0',
@@ -192,4 +194,10 @@ it('projects the CPU history kept after removing CPUs', () => {
         { cpuId: 3, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
         { cpuId: 4, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
     ]);
+});
+
+it('does not count interrupted jobs as incomplete', () => {
+    const state = snapshot();
+    state.tasks[1].jobs[0].state = 'interrupted';
+    expect(projectInspection(state).tasks[1].status).toBe('completed');
 });

@@ -65,6 +65,7 @@ describe('edit fold', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 1,
+            taskStates: { 1: 'ready' },
         });
     });
 
@@ -73,10 +74,23 @@ describe('edit fold', () => {
         const base = readTarget(context.state);
         expect(foldEdit(base, [quantum(3), quantum(4)], context)).toEqual({
             ok: true,
-            target: { algorithm: 'RM', quantum: 4, cpuCount: 1 },
+            target: {
+                algorithm: 'RM',
+                quantum: 4,
+                cpuCount: 1,
+                taskStates: { 1: 'ready' },
+            },
         });
         expect(foldEdit(base, [algorithm('EDF'), quantum(2)], context)).toEqual(
-            { ok: true, target: { algorithm: 'EDF', quantum: 2, cpuCount: 1 } },
+            {
+                ok: true,
+                target: {
+                    algorithm: 'EDF',
+                    quantum: 2,
+                    cpuCount: 1,
+                    taskStates: { 1: 'ready' },
+                },
+            },
         );
     });
 
@@ -86,7 +100,12 @@ describe('edit fold', () => {
             foldEdit(readTarget(context.state), [algorithm('edf')], context),
         ).toEqual({
             ok: true,
-            target: { algorithm: 'EDF', quantum: 5, cpuCount: 1 },
+            target: {
+                algorithm: 'EDF',
+                quantum: 5,
+                cpuCount: 1,
+                taskStates: { 1: 'ready' },
+            },
         });
     });
 
@@ -134,7 +153,7 @@ describe('edit fold', () => {
                 {
                     index: 0,
                     kind: 'algorithm',
-                    reason: 'No scheduling policy is registered for algorithm EDF.',
+                    reason: 'Nenhuma política de escalonamento está registrada para o algoritmo EDF.',
                 },
             ],
         });
@@ -167,7 +186,7 @@ describe('edit fold', () => {
                 {
                     index: 0,
                     kind: 'speed',
-                    reason: 'Unknown edit item kind "speed".',
+                    reason: 'Tipo de item de edição desconhecido "speed".',
                 },
             ],
         });
@@ -248,7 +267,12 @@ describe('CPU count edit', () => {
             foldEdit(readTarget(context.state), [cpus(2), cpus(17)], context),
         ).toEqual({
             ok: true,
-            target: { algorithm: 'RM', quantum: 5, cpuCount: 17 },
+            target: {
+                algorithm: 'RM',
+                quantum: 5,
+                cpuCount: 17,
+                taskStates: { 1: 'ready' },
+            },
         });
     });
 
@@ -363,5 +387,119 @@ describe('edit stage guards', () => {
         expect(() =>
             applyNetChange(state, before, { ...before, cpuCount: 1 }),
         ).toThrow(/CPU 2 owns job 99#0, which does not exist/);
+    });
+});
+
+describe('task state edit validation', () => {
+    const states = ['ready', 'forced', 'suspended', 'concluded'] as const;
+    const taskState = (
+        taskId: number,
+        state: (typeof states)[number],
+    ): EditItem => ({ kind: 'taskState', taskId, state });
+    const fixture = () => {
+        const state = createInitialState({
+            ...config,
+            cpuCount: 2,
+            tasks: [
+                config.tasks[0],
+                { ...config.tasks[0], id: 2, color: '112233' },
+            ],
+        });
+        return { state, hasPolicy: both };
+    };
+    for (const from of states) {
+        it.each(states)(`${from} -> %s follows DEC-37`, (to) => {
+            const context = fixture();
+            context.state.tasks[0].status = from;
+            const base = readTarget(context.state);
+            const result = foldEdit(base, [taskState(1, to)], context);
+            if (from === 'concluded' && to !== 'concluded') {
+                expect(result).toEqual({
+                    ok: false,
+                    refusals: [
+                        {
+                            index: 0,
+                            kind: 'taskState',
+                            reason: 'A tarefa 1 está concluída e não pode mudar de estado.',
+                        },
+                    ],
+                });
+            } else {
+                expect(result).toEqual({
+                    ok: true,
+                    target: { ...base, taskStates: { 1: to, 2: 'ready' } },
+                });
+            }
+        });
+    }
+    it('refuses a missing task', () => {
+        const context = fixture();
+        expect(
+            foldEdit(
+                readTarget(context.state),
+                [taskState(9, 'ready')],
+                context,
+            ),
+        ).toEqual({
+            ok: false,
+            refusals: [
+                {
+                    index: 0,
+                    kind: 'taskState',
+                    reason: 'Não existe a tarefa 9.',
+                },
+            ],
+        });
+    });
+    it.each([
+        {
+            items: [
+                taskState(1, 'forced'),
+                taskState(2, 'forced'),
+                { kind: 'cpuCount', cpuCount: 1 } as EditItem,
+            ],
+            kind: 'cpuCount',
+            reason: 'Não é possível reduzir para 1 CPU: há 2 tarefas forçadas.',
+        },
+        {
+            items: [
+                { kind: 'cpuCount', cpuCount: 1 } as EditItem,
+                taskState(1, 'forced'),
+                taskState(2, 'forced'),
+            ],
+            kind: 'taskState',
+            reason: 'Não há CPUs para forçar a tarefa 2: já há 1 tarefa forçada para 1 CPU.',
+        },
+    ])('checks capacity in item order ($kind)', ({ items, kind, reason }) => {
+        const context = fixture();
+        expect(foldEdit(readTarget(context.state), items, context)).toEqual({
+            ok: false,
+            refusals: [{ index: 2, kind, reason }],
+        });
+    });
+});
+
+it('refuses an unknown task state with an accurate reason', () => {
+    const context = contextFor();
+    const result = foldEdit(
+        readTarget(context.state),
+        [
+            {
+                kind: 'taskState',
+                taskId: 1,
+                state: 'sleeping',
+            } as unknown as EditItem,
+        ],
+        context,
+    );
+    expect(result).toEqual({
+        ok: false,
+        refusals: [
+            {
+                index: 0,
+                kind: 'taskState',
+                reason: 'Estado de tarefa inválido: "sleeping".',
+            },
+        ],
     });
 });

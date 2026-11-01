@@ -72,7 +72,12 @@ export interface JobRef {
  * may run, DEC-02) is derived by the engine, not stored, so a later job can be
  * `ready` and still wait for an older one.
  */
-export type JobState = 'ready' | 'running' | 'suspended' | 'completed';
+export type JobState =
+    | 'ready'
+    | 'running'
+    | 'suspended'
+    | 'completed'
+    | 'interrupted';
 
 /** One activation of a task, with its own progress and deadline (REQ-03). */
 export interface Job extends JobRef {
@@ -94,7 +99,11 @@ export interface Job extends JobRef {
  * and every activation it generated (A.1.3). `jobs.length` is the number of
  * activations so far; the task has finished when its last job completes.
  */
+/** User-selected task state; independent from the current job (DEC-37). */
+export type TaskStatus = 'ready' | 'forced' | 'suspended' | 'concluded';
+
 export interface TaskControlBlock {
+    status: TaskStatus;
     definition: TaskDefinition;
     jobs: Job[];
 }
@@ -123,6 +132,17 @@ export interface ExecutionSlice {
  * legend (REQ-09). Each kind gets a distinct graphic element.
  */
 export type SimulationEvent =
+    | {
+          readonly kind: 'suspension';
+          readonly time: number;
+          readonly taskId: TaskId;
+          readonly cpuId: number | null;
+      }
+    | {
+          readonly kind: 'resumption' | 'forced' | 'unforced';
+          readonly time: number;
+          readonly taskId: TaskId;
+      }
     | {
           readonly kind: 'activation';
           readonly time: number;
@@ -164,6 +184,7 @@ export type SimulationEvent =
       }
     | {
           readonly kind: 'task-finished';
+          readonly interrupted: readonly JobRef[];
           readonly time: number;
           readonly taskId: TaskId;
       }

@@ -30,6 +30,12 @@ export function findInconsistencies(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
     }
+    const forced = state.tasks.filter((tcb) => tcb.status === 'forced');
+    if (forced.length > state.config.cpuCount) {
+        issues.push(
+            `There are ${forced.length} forced tasks for ${state.config.cpuCount} CPUs.`,
+        );
+    }
     const jobs = new Map<string, DeepReadonly<Job>>();
     for (const tcb of state.tasks) {
         for (const job of tcb.jobs) {
@@ -47,6 +53,14 @@ export function findInconsistencies(
     for (const cpu of state.cpus) {
         if (cpu.running === null) {
             continue;
+        }
+        const task = state.tasks.find(
+            (tcb) => tcb.definition.id === cpu.running!.taskId,
+        );
+        if (task?.status === 'suspended' || task?.status === 'concluded') {
+            issues.push(
+                `CPU ${cpu.id} runs task ${task.definition.id}, whose status is ${task.status}.`,
+            );
         }
         const ref = key(cpu.running);
         const job = jobs.get(ref);
@@ -67,6 +81,16 @@ export function findInconsistencies(
     for (const [ref, job] of jobs) {
         if (job.state === 'running' && !ownerByJob.has(ref)) {
             issues.push(`Job ${ref} is running but no CPU owns it.`);
+        }
+    }
+
+    // Only the oldest unfinished activation must own a CPU when forced.
+    for (const tcb of forced) {
+        const current = tcb.jobs.find(
+            (job) => job.state !== 'completed' && job.state !== 'interrupted',
+        );
+        if (current !== undefined && !ownerByJob.has(key(current))) {
+            issues.push(`Forced job ${key(current)} has no CPU.`);
         }
     }
 
