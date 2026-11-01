@@ -5,7 +5,10 @@ import { useWorkspace } from './useWorkspace';
 
 // Lets a test make `next` fail like a core refusal, which no short
 // configuration reaches (the core only refuses past its length limit).
-const refuse = vi.hoisted(() => ({ next: false }));
+const refuse = vi.hoisted(() => ({
+    next: false,
+    kind: 'refused' as 'refused' | 'unexpected',
+}));
 vi.mock('./useSimulation', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./useSimulation')>();
     return {
@@ -19,7 +22,7 @@ vi.mock('./useSimulation', async (importOriginal) => {
                         ? {
                               ok: false as const,
                               error: {
-                                  kind: 'refused' as const,
+                                  kind: refuse.kind,
                                   message: 'Recusado pelo núcleo.',
                               },
                           }
@@ -56,6 +59,8 @@ async function prepared(text = TWO_TASKS) {
 
 beforeEach(dismissError);
 afterEach(() => {
+    refuse.next = false;
+    refuse.kind = 'refused';
     vi.unstubAllGlobals();
     dismissError();
 });
@@ -222,5 +227,61 @@ describe('useWorkspace', () => {
         workspace.handle('step-forward');
         expect(workspace.notices.value).toEqual([]);
         expect(workspace.clock.value).toBe(2);
+    });
+
+    it('an unexpected failure clears the previous message instead of keeping it', async () => {
+        const workspace = await prepared(TWO_TASKS);
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+        refuse.next = true;
+        workspace.handle('step-forward');
+        expect(workspace.notices.value).toHaveLength(1);
+
+        refuse.kind = 'unexpected';
+        workspace.handle('step-forward');
+
+        expect(workspace.notices.value).toEqual([]);
+    });
+
+    it('ignores a file chosen after the session started, so Reiniciar keeps the session configuration', async () => {
+        let choose: (result: ConfigFileResult) => void = () => {};
+        const openConfigFile = vi
+            .fn<() => Promise<ConfigFileResult>>()
+            .mockResolvedValueOnce(loaded(TWO_TASKS))
+            .mockImplementationOnce(
+                () => new Promise((resolve) => (choose = resolve)),
+            );
+        vi.stubGlobal('window', { configFile: { openConfigFile } });
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+
+        workspace.handle('load-config');
+        expect(workspace.available.value.has('load-config')).toBe(false);
+        workspace.handle('step-forward');
+        expect(workspace.clock.value).toBe(0);
+        choose(loaded('EDF;9;4\n\n1;FFFFFF;0;1;5;5\n'));
+        await vi.waitFor(() => expect(openConfigFile).toHaveBeenCalledTimes(2));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        workspace.handle('restart');
+
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'RM',
+            cpuCount: 2,
+        });
+        expect(workspace.taskCount.value).toBe(2);
+    });
+
+    it('does not open a second dialog while one is open', () => {
+        const openConfigFile = vi.fn(
+            () => new Promise<ConfigFileResult>(() => {}),
+        );
+        vi.stubGlobal('window', { configFile: { openConfigFile } });
+        const workspace = useWorkspace();
+
+        workspace.handle('load-config');
+        workspace.handle('load-config');
+
+        expect(openConfigFile).toHaveBeenCalledTimes(1);
     });
 });

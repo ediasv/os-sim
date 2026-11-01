@@ -29,6 +29,8 @@ export function useWorkspace() {
         null,
     );
     const started = ref(false);
+    /** A file dialog is open; its result is applied only if still preparing. */
+    const loading = ref(false);
     const notices = shallowRef<readonly Notice[]>([]);
 
     /** Snapshot at the history cursor; null while preparing. */
@@ -43,7 +45,7 @@ export function useWorkspace() {
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
         // Replacing a running session needs the confirmation of FE-04.
-        if (!started.value) actions.add('load-config');
+        if (!started.value && !loading.value) actions.add('load-config');
         // Starting needs at least one task (FE-02).
         if (started.value || draft.value.tasks.length > 0) {
             actions.add('step-forward');
@@ -72,8 +74,10 @@ export function useWorkspace() {
             notices.value = [];
             return true;
         }
+        // An unexpected failure reached the banner (DEC-24); the old message
+        // no longer describes the state the user is in, so it goes too.
         const notice = refusalNotice(result.error);
-        if (notice !== null) notices.value = [notice];
+        notices.value = notice === null ? [] : [notice];
         return false;
     }
 
@@ -83,13 +87,19 @@ export function useWorkspace() {
     }
 
     async function openConfigFile(): Promise<void> {
+        loading.value = true;
         let result;
         try {
             result = await window.configFile.openConfigFile();
         } catch (error) {
             reportError(error);
             return;
+        } finally {
+            loading.value = false;
         }
+        // The user may have started while the dialog was open: replacing the
+        // draft now would change what Reiniciar reloads (FE-05).
+        if (started.value) return;
         if (result.status === 'canceled') return;
         if (result.status === 'failed') {
             notices.value = [
