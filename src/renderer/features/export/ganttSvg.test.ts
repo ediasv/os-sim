@@ -40,9 +40,11 @@ describe('buildGanttSvg', () => {
     it('is a standalone SVG document with no script or external reference', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
 
-        expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(
-            true,
-        );
+        expect(
+            svg.startsWith(
+                '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns=',
+            ),
+        ).toBe(true);
         expect(svg.endsWith('</svg>')).toBe(true);
         expect(svg).not.toMatch(/<script|href=|<image|url\(/);
     });

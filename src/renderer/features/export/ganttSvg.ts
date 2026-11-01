@@ -264,7 +264,7 @@ export function isFinalSnapshot(snapshot: Snapshot): boolean {
 
 /** Estimated advance of Inter text; viewers without the font differ a little. */
 const textWidth = (text: string, size: number): number =>
-    text.length * size * 0.52;
+    text.length * size * 0.55;
 
 const two = (n: number): string => String(n).padStart(2, '0');
 
@@ -387,6 +387,7 @@ export function buildGanttSvg(
     ].join('  ·  ');
 
     const out: string[] = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
         `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" role="img" aria-label="Diagrama de Gantt, ticks 0 a ${snapshot.clock}, ${final ? 'final' : 'parcial'}">`,
         `<title>Diagrama de Gantt, ticks 0 a ${snapshot.clock} (${final ? 'final' : 'parcial'})</title>`,
         `<rect width="${width}" height="${height}" fill="${THEME.app}"/>`,
