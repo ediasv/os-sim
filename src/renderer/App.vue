@@ -57,7 +57,7 @@ const system = computed(() =>
                 :dismissible="false"
             />
         </div>
-        <GanttPanel :available="available">
+        <GanttPanel :available="available" @action="handle">
             <div
                 v-if="inspection !== null && system !== null"
                 class="app__details"
