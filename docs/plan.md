@@ -280,8 +280,8 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  Em andamento no PR #101 (rascunho, so o registro de inicio ate
-  2026-10-31); matriz ainda nao acordada com o usuario.
+  Em andamento no PR #101: matriz acordada com o usuario e registrada como
+  DEC-35 (proposta), aguardando aceite.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -627,7 +627,7 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
+  E3: so a #25 iniciada (PR #101, em revisao); #23, #24 e #26 a #28 nao
   iniciadas. E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94
   concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
   a #40 e #73 nao iniciados.
@@ -643,12 +643,12 @@ Issues `[Docs]`, sem fase no Project.
   edicao (progresso, duracao, periodo, ingresso, prazo, estado,
   inclusao/remocao; proposta: parametros do sistema), efeitos sobre jobs
   atuais, ativados e futuros, e eventos de suspensao/retomada (DEC-12) para
-  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-32
+  #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-35
   (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
   PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
-  verificado com `oxfmt --check`. Pendentes: aceite de DEC-32 e atualizacao
+  verificado com `oxfmt --check`. Pendentes: aceite de DEC-35 e atualizacao
   das issues #26, #37 e #38.
-- Proximo passo: aceite de DEC-32 na #25, pois ela destrava #26 e o Gantt
+- Proximo passo: aceite de DEC-35 na #25, pois ela destrava #26 e o Gantt
   (#38); #23 e #24 nao dependem dela e podem seguir em paralelo a ela, nessa
   ordem (a #24 depende da #23). Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem

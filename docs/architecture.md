@@ -185,7 +185,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   suspensa com hachura sobre fundo escuro, lida como o "preto com preenchimento
   diferente" do enunciado no tema escuro. Tarefa ainda nao ativada ou ja
   terminada fica vazia, delimitada pelos marcadores. Estado suspenso so pode ser
-  desenhado com os eventos de suspensao e retomada de DEC-32, registrados
+  desenhado com os eventos de suspensao e retomada de DEC-35, registrados
   pela #26.
 - Eventos (A.2.2): marcadores com forma distinta e legenda para ingresso/ativacao,
   termino do job, fim da tarefa (ultimo job, DEC-09), perda de prazo, sorteio,
@@ -221,7 +221,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   continua sendo o do nucleo.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
   de ativacao. Prioridade RM para periodo zero definida por DEC-17. Encerrar
-  a tarefa durante a simulacao tambem a termina (DEC-32, proposta).
+  a tarefa durante a simulacao tambem a termina (DEC-35, proposta).
 
 ### DEC-10: Valores padrao e limites da configuracao
 
@@ -313,7 +313,7 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Suspensao: `JobState` tem `suspended`, mas ainda nao ha eventos de
       suspensao e retomada; a partir dos eventos e intervalos registrados nao
       se reconstroem os trechos suspensos que o Gantt exige (REQ-09). Eventos
-      definidos em DEC-32 (#25); registro na #26 e consumo no Gantt (#38).
+      definidos em DEC-35 (#25); registro na #26 e consumo no Gantt (#38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
 
@@ -754,7 +754,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencias:
     - `new Simulator(config, policy)` direto continua permitido para testes e
       pode divergir de `config.algorithm`; producao usa a fabrica.
-    - Trocar o algoritmo durante a simulacao foi permitido por DEC-32 (#25);
+    - Trocar o algoritmo durante a simulacao foi permitido por DEC-35 (#25);
       a fabrica concentra a resolucao e vira resolvedor na #26.
     - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
       sorteio de DEC-27 (#20); nao cai mais na ordem do arquivo.
@@ -1074,7 +1074,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   arquivo e a ponte main/preload da #33 mantem seus contratos proprios, e a
   exibicao continua fora do escopo da #92 (#36).
 
-### DEC-32: Matriz de edicao durante a simulacao
+### DEC-35: Matriz de edicao durante a simulacao
 
 - Estado: proposta em 2026-10-31 na #25, com as escolhas do usuario;
   aguardando aceite. Requisitos: REQ-05, REQ-08, REQ-09. Resolve Q-02 e a
@@ -1267,4 +1267,4 @@ anterior. Data inicial dos registros: 2026-10-12.
 Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
 DEC-09. Fixar ambos em testes antes de expor a API. Historico deve guardar
 tambem resultados de edicoes no mesmo tick. Edicao valida em `t` refaz o passo
-5 sobre o estado editado (DEC-32).
+5 sobre o estado editado (DEC-35).

@@ -169,7 +169,7 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: resolvida em 2026-10-31 por DEC-32 (edicoes valem para o futuro sem
+- Q-02: resolvida em 2026-10-31 por DEC-35 (edicoes valem para o futuro sem
   alterar o historico executado; cor, duracao, periodo, prazo e estado
   editaveis; ID, ingresso e ticks executados fixos; inclusao e remocao de
   tarefas; algoritmo, quantum e CPUs editaveis; eventos de suspensao e
