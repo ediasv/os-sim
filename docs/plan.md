@@ -486,7 +486,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   (base: 517 em 35), `npm run lint` e `npm run typecheck` aprovados. Defeito do
   plano: os bytes `52 4D 00 FF` ja caem na decodificacao UTF-8 estrita, entao
   foi incluido o caso UTF-16 sem BOM, o unico que falha sem a checagem de NUL.
-  As mensagens seguem o formato atual do nucleo (a #93 pode muda-lo).
+  As mensagens seguem o formato do nucleo da epoca; a #93 depois tirou o
+  valor do prefixo dos problemas do nucleo.
   Verificacao manual no aplicativo nao executada pelo agente: o carregamento
   completo depende da interface (#36); `window.configFile.openConfigFile()` pelo
   DevTools e um arquivo em outro volume (A.3.3.4) ficam com o usuario. Nao
@@ -508,8 +509,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   `loadConfig` acrescenta so linha e campo aos problemas do nucleo, cujas
   mensagens ja citam o valor, inclusive quando texto e numero convertido
   diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
-  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Concluida no
-  PR #120, mergeado em `220e35c` (2026-11-01). Evidencia (2026-11-01): os testes
+  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Concluida no PR #120
+  (squash merge `220e35c`, 2026-11-01). Evidencia (2026-11-01): os testes
   de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
   `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
   669/669, `npm run lint` e `npm run typecheck` aprovados.
@@ -702,6 +703,8 @@ Issues `[Docs]`, sem fase no Project.
   #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 parcial; #37 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
+- #93 concluida no PR #120 (squash merge `220e35c`, 2026-11-01), evidencia
+  em E4 e decisao em DEC-19.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
   evidencia em E5.
