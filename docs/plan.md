@@ -756,11 +756,11 @@ Issues `[Docs]`, sem fase no Project.
 
 - #133 em andamento (iniciada 2026-11-01): ID de tarefa como texto livre.
   Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
-  Escopo desta etapa: DEC-46 (formato, unicidade sem caixa, ordem natural,
+  Escopo desta etapa: DEC-48 (formato, unicidade sem caixa, ordem natural,
   inclusao com ID sugerido ou digitado, rotulos) e criterios na
   [specification.md](specification.md#req-06-arquivo-texto); codigo depois da
   aprovacao da DEC. Verificacao: links e IDs conferidos (so documental).
-  Proximo passo: revisao da DEC-46 e plano de codigo (nucleo antes da
+  Proximo passo: revisao da DEC-48 e plano de codigo (nucleo antes da
   interface).
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.

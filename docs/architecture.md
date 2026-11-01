@@ -224,7 +224,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
 - Estado: aceita em 2026-10-24 (#35). Requisito: REQ-09. Resolve Q-05.
-- Decisao: linhas por tarefa em ID decrescente na ordem natural de DEC-46
+- Decisao: linhas por tarefa em ID decrescente na ordem natural de DEC-48
   (menor ID junto ao eixo X) e, em
   secao propria, uma faixa por CPU para os intervalos desligados (DEC-21); o
   intervalo ainda aberto no instante atual termina nele. Cada trecho executado
@@ -287,7 +287,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
-  maximo (mantem DEC-05); ID unico (texto livre, DEC-46; antes inteiro >= 1); ingresso >= 0; periodo >= 0; prazo
+  maximo (mantem DEC-05); ID unico (texto livre, DEC-48; antes inteiro >= 1); ingresso >= 0; periodo >= 0; prazo
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
 - Campos ausentes: somente periodo pode faltar (campo vazio na sua posicao,
@@ -1486,7 +1486,7 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
    `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
    e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
-   um ID ja usado (revisto por DEC-46). A
+   um ID ja usado (revisto por DEC-48). A
    tarefa comeca pronta.
 2. Excluir: somente tarefa nunca ativada. Ela sai do estado sem evento e
    sem rastro no Gantt; seu ID nao volta a ser usado. Tarefa ja ativada nao
@@ -1549,7 +1549,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Duracao de cada job e instante da proxima ativacao, que deixa de seguir
   `ingresso + k * periodo` depois de uma edicao de periodo. Forma na DEC-44 (`Job.duration`,
   `TaskControlBlock.nextActivation`).
-- Revisto por DEC-46: IDs de tarefa ja usados, inclusive de tarefa excluida,
+- Revisto por DEC-48: IDs de tarefa ja usados, inclusive de tarefa excluida,
   no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
@@ -1875,7 +1875,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
   jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
   concluida nao guarda job aberto e o `status` pertence ao conjunto
-  conhecido. Identificador de tarefa vazio ou invalido (DEC-46) e recusado na edicao.
+  conhecido. Identificador de tarefa vazio ou invalido (DEC-48) e recusado na edicao.
   A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
   e os rotula como Interrompido; o restante da apresentacao fica na
   #37/#38.
@@ -2053,13 +2053,14 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Evidencia: `src/core/simulator.addTask.test.ts`,
   `src/core/defaultColor.test.ts`, `consistency.test.ts` e `edit.test.ts`.
 
-### DEC-46: ID de tarefa como texto livre
+### DEC-48: ID de tarefa como texto livre
 
 - Estado: aceita em 2026-11-01 (#133), decisoes 1 a 4 do usuario na
   brainstorming; itens marcados "escolha do autor" aguardam confirmacao na
   revisao. Requisitos: REQ-03, REQ-05, REQ-06, REQ-09. Revisa DEC-08
   (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
-  ID) e DEC-37 (ID gerado na inclusao). Nao muda FE-19: o ID segue fixo na
+  ID) e DEC-37 (ID gerado na inclusao), e a DEC-46 do PR #119 (inclusao e ID
+  gerado), que deve estar mergeado antes do codigo desta decisao. Nao muda FE-19: o ID segue fixo na
   edicao.
 - Contexto: o professor quer que o ID deixe de ser so numero. O enunciado
   chama `id` de "identificador unico da tarefa" (A.3.3) sem dizer que e

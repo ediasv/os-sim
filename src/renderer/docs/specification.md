@@ -364,7 +364,7 @@ Origem: REQ-02, REQ-05, REQ-07; expectativas relacionadas a Q-02.
 
 Origem: REQ-02, REQ-09; DEC-08 aceita em 2026-10-24 (#35).
 
-- Raias de tarefas por ID decrescente, ordem natural de DEC-46; identificar CPU e job nos trechos
+- Raias de tarefas por ID decrescente, ordem natural de DEC-48; identificar CPU e job nos trechos
   executados. Um job posterior ainda nao elegivel mostra so o marcador de
   ativacao. Mostrar tambem intervalos de CPUs desligadas, inclusive de CPUs
   historicas, em faixas por CPU; o intervalo aberto termina no instante atual.
@@ -411,7 +411,7 @@ expectativas de integracao relacionadas a Q-02.
 
 - Na criacao pela interface, a diretriz discutida e gerar o ID pelo sistema,
   sugerido pelo sistema (proximo numero livre) e aceitando um ID digitado
-  (DEC-46, revisao de DEC-37).
+  (DEC-48, revisao de DEC-37).
   No arquivo, ID e cor sao entradas obrigatorias; preservar os
   valores recebidos, sem renumeracao ou substituicao silenciosa de cores.
 - ID nao e editavel no Projeto A (DEC-37); o ID gerado nunca repete o de uma
@@ -504,7 +504,7 @@ permanecem dependencias externas. Os documentos gerais nao sao alterados.
 | Gantt por tarefa, CPU e job nos trechos, eventos, faixas de CPU, zoom e rolagem.                                                            | FE-17; FE-DEC-12; DEC-08                      | Acordado na #35; detalhes de escala em PEND-04.                                                                                    |
 | SVG inclui historico valido inteiro, independente do cursor; parcial permitido e identificado.                                              | FE-18; FE-DEC-06                              | Acordado (DEC-08); gravacao pela infraestrutura.                                                                                   |
 | Recorte somente periodico discutido apos consultar A.4.4.                                                                                   | Escopo; DEC-29                                | Reconciliado na #87: periodo padrao e aviso na carga (#89); UI exibe o aviso e rejeita periodo zero.                               |
-| ID fixo; sugerido como proximo numero livre ou digitado, sem reutilizar o de tarefa removida.                                               | FE-19; DEC-37; DEC-46                         | Decidido na #25; revisto na #133.                                                                                                  |
+| ID fixo; sugerido como proximo numero livre ou digitado, sem reutilizar o de tarefa removida.                                               | FE-19; DEC-37; DEC-48                         | Decidido na #25; revisto na #133.                                                                                                  |
 | Cor aceita recolore todo o historico valido.                                                                                                | FE-19; FE-DEC-07                              | Acordado; nao mutar snapshots antigos.                                                                                             |
 | Ingresso pode mudar antes da primeira ativacao, para o tick atual ou futuro; depois, campo bloqueado.                                       | FE-19                                         | Decidido na #25 (DEC-37).                                                                                                          |
 | Lista completa de diagnosticos com total, rolagem e teclado.                                                                                | FE-20; FE-DEC-09                              | Acordado; sem truncamento inacessivel.                                                                                             |
@@ -551,7 +551,7 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 
 - PEND-01: resolvida por DEC-37 (#25). ID nao e editavel; o gerado e o
   sugerido e o proximo numero livre ou digitado, e nunca reutiliza o de
-  tarefa removida (revisto por DEC-46, #133).
+  tarefa removida (revisto por DEC-48, #133).
 - PEND-02 (compatibilidade externa): confrontar as expectativas de edicao,
   calendario, progresso, quantum, CPUs, inclusao/remocao, ID, ingresso e
   cancelamento/bloqueio com as capacidades e contratos reais do nucleo quando
