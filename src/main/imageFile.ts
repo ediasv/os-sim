@@ -10,6 +10,7 @@
  */
 import type { SaveDialogReturnValue } from 'electron';
 import { writeFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 import {
     type ImageFileFailure,
     type ImageFileResult,
@@ -88,6 +89,15 @@ export async function writeImageFile(
     }
 }
 
+/**
+ * The dialog does not force an extension: a bare "gantt" would be written as
+ * a file no viewer opens as an image, so `.svg` is appended when none was
+ * typed. An extension the user chose, even another one, is respected.
+ */
+export function withSvgExtension(filePath: string): string {
+    return extname(filePath) === '' ? `${filePath}.svg` : filePath;
+}
+
 /** Cancelling, or a dialog that returns no path, is not an error. */
 export async function saveImageFile(
     showDialog: ShowSaveDialog,
@@ -98,5 +108,5 @@ export async function saveImageFile(
     if (canceled || filePath === undefined || filePath === '') {
         return { status: 'canceled' };
     }
-    return writeImageFile(filePath, content, write);
+    return writeImageFile(withSvgExtension(filePath), content, write);
 }

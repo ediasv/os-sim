@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveImageFile, writeImageFile } from './imageFile';
+import { saveImageFile, withSvgExtension, writeImageFile } from './imageFile';
 
 let dir: string;
 
@@ -129,5 +129,29 @@ describe('saveImageFile', () => {
 
         expect(result).toEqual({ status: 'canceled' });
         expect(write).not.toHaveBeenCalled();
+    });
+});
+
+describe('withSvgExtension', () => {
+    it.each([
+        ['/o/gantt', '/o/gantt.svg'],
+        ['/pasta.x/gantt', '/pasta.x/gantt.svg'],
+        ['/o/gantt.svg', '/o/gantt.svg'],
+        ['/o/gantt.png', '/o/gantt.png'],
+    ])('%s -> %s', (typed, saved) => {
+        expect(withSvgExtension(typed)).toBe(saved);
+    });
+
+    it('saveImageFile writes to the path with the extension', async () => {
+        const write = vi.fn().mockResolvedValue(undefined);
+
+        const result = await saveImageFile(
+            () => Promise.resolve({ canceled: false, filePath: '/o/gantt' }),
+            '<svg/>',
+            write,
+        );
+
+        expect(result).toEqual({ status: 'saved', path: '/o/gantt.svg' });
+        expect(write).toHaveBeenCalledWith('/o/gantt.svg', '<svg/>');
     });
 });
