@@ -436,6 +436,30 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Nao verificado: disco externo, outras plataformas e pacote no
   ambiente-alvo.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
+  Concluida no PR #107 (merged, `9c97048`, 2026-11-01; issue fechada em
+  2026-11-01). Evidencia (2026-10-31): `src/core/loadConfig.test.ts`
+  ganhou a regra de inteiros em cada campo numerico (fracionario e alem da faixa
+  exata nos 7 campos, zero CPUs), campos obrigatorios vazios e 300 tarefas;
+  `src/main/configLoad.test.ts` (novo, 46 testes) le arquivos reais de
+  diretorio temporario e passa por `readConfigFile` e `loadConfig` (e
+  `openConfigFile` nos testes de dialogo e cancelamento): validos
+  (CRLF, CR, BOM, espacos, linhas em branco, `;` final), invalidos (sintaxe e
+  nucleo, linha original apos linhas em branco e CR), falhas de leitura
+  (inexistente, diretorio, sem permissao real, nao UTF-8, UTF-16 sem BOM,
+  acima do limite, vazio como erro de conteudo, cancelamento) e qualquer nome e
+  local (A.3.3.4). Busca estatica `grep -rnE "defaultPath|filters|readFileSync|\.(txt|cfg|conf)['\"]" src --exclude='*.test.ts'`
+  so acha texto em `src/renderer/docs/architecture.md:503`, nenhum codigo com
+  caminho fixo. Teste de permissao negada rodou em darwin sem root (nao foi
+  pulado). Mutacoes temporarias (minimo de CPUs em 0; sem a checagem de NUL no
+  decodificador) fizeram os testes falharem. `npm test` 587/587 em 36 arquivos
+  (base: 517 em 35), `npm run lint` e `npm run typecheck` aprovados. Defeito do
+  plano: os bytes `52 4D 00 FF` ja caem na decodificacao UTF-8 estrita, entao
+  foi incluido o caso UTF-16 sem BOM, o unico que falha sem a checagem de NUL.
+  As mensagens seguem o formato atual do nucleo (a #93 pode muda-lo).
+  Verificacao manual no aplicativo nao executada pelo agente: o carregamento
+  completo depende da interface (#36); `window.configFile.openConfigFile()` pelo
+  DevTools e um arquivo em outro volume (A.3.3.4) ficam com o usuario. Nao
+  verificado: pacote no ambiente-alvo (#44).
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
   no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
   `ConfigParseIssue` expoe `valueKind` (`received`, `missing`, `combined`) e
@@ -615,14 +639,15 @@ Issues `[Docs]`, sem fase no Project.
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #25 iniciada (PR #101, rascunho) e #23 pronta para PR na branch
   `feat/23-historico-snapshots` (2026-10-31); #24 e #26 a #28 nao iniciadas.
-  E4: #29, #30, #31, #32, #33, #87, #89, #92 e #94 concluidas;
-  #34 e #93 abertas. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
+  E4: #29, #30, #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93
+  aberta. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
   a #40 e #73 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
   evidencia em E5.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
+- #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
@@ -632,8 +657,7 @@ Issues `[Docs]`, sem fase no Project.
   #23 e, depois, a #24.
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
-  paralelo a ela, nessa ordem (a #24 depende da #23). Seguir com a #34,
-  mantendo os diagnosticos de DEC-19 no escopo da #34. Aceitar ou rever
+  paralelo a ela, nessa ordem (a #24 depende da #23). Aceitar ou rever
   DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
