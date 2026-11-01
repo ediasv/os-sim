@@ -730,7 +730,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 - Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
   job; deixaria a ordem do log depender da posicao das tarefas na lista.
 - Revista por DEC-37: os eventos de edicao formam uma etapa entre
-  as ativacoes e as fatias vencidas, na ordem das edicoes, e a etapa de
+  as ativacoes e as fatias vencidas, com a mudanca liquida do tick na ordem
+  da lista de tarefas e depois das CPUs (revisao de 2026-11-01), e a etapa de
   fatias vencidas passa a vir depois das ativacoes; o despacho
   passa a incluir a `preemption` causada por job forcado.
 
@@ -1254,7 +1255,10 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   DEC-38 foi retirada. Numerada DEC-32 e depois DEC-35 durante o PR #101;
   renumerada no merge com a `main`, onde DEC-35 e o historico com cursor
   (#23). Referencias a "DEC-35" no PR #101, na #11, na #12 e nas issues
-  #26, #37 e #38 anteriores a renumeracao sao a esta decisao. Requisitos:
+  #26, #37 e #38 anteriores a renumeracao sao a esta decisao. Revista em
+  2026-11-01 pelo usuario na #26: dentro de um tick so o resultado final das
+  edicoes conta (item 5 de "Quando e como a edicao vale"); antes cada edicao
+  registrava seus eventos. Requisitos:
   REQ-05, REQ-07, REQ-08,
   REQ-09. Resolve Q-02 e a pendencia de suspensao de DEC-12. Mantem o
   calendario de DEC-09 e a elegibilidade de DEC-02.
@@ -1289,13 +1293,29 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
    lista inteira, na ordem em que foram aceitas. O tick `t` continua com um
    unico snapshot. Descartar o futuro descarta tambem as edicoes dos ticks
    descartados.
-4. Uma edicao (um envio de formulario) pode ter varios itens, aplicados em
+4. Uma edicao (um envio de formulario) pode ter varios itens, validados em
    ordem sobre o estado da etapa de edicao, depois das edicoes anteriores do
-   tick. Edicoes sucessivas sobre a mesma tarefa valem cada uma como acao
-   do usuario, com seus eventos (suspender e retomar no mesmo tick registra
-   os dois); so a quantidade de CPUs e liquida (parametros do sistema, item
-   3). Escolha do autor. Qualquer item recusado recusa a edicao inteira, sem aplicacao
+   tick. Qualquer item recusado recusa a edicao inteira, sem aplicacao
    parcial; a mensagem cita cada item recusado e o motivo (REQ-05).
+5. Dentro de um tick so o resultado final das edicoes conta (escolha do
+   usuario na #26). A etapa de edicao compara o estado de cada tarefa e os
+   parametros do sistema antes das edicoes do tick com o estado depois de
+   todas elas, e aplica e registra so essa mudanca liquida, com os efeitos
+   e eventos da transicao liquida nas tabelas abaixo. Exemplos no tick `t`:
+    - suspender e voltar a pronta: sem efeito e sem evento; o job mantem a
+      CPU e a fatia;
+    - forcar e depois suspender: pronta para suspensa, so `suspension`;
+    - periodo 5 mudado para 8 e de volta para 5: sem efeito, nenhuma
+      ativacao causada pela edicao;
+    - suspender em `t` e retomar em `t+1`: ticks diferentes, `suspension`
+      em `t` e `resumption` em `t+1`.
+
+    Assim o snapshot `t` so depende do snapshot `t-1` e do estado final
+    pedido, nao de quantas edicoes houve nem de como foram divididas.
+    Excecao: o ID gerado por uma inclusao fica usado mesmo que a tarefa
+    seja excluida no mesmo tick, e a tarefa nao deixa outro rastro
+    (escolha do autor, para que a numeracao nao dependa de edicoes
+    posteriores no mesmo tick).
 
 #### Estado da tarefa
 
@@ -1333,7 +1353,9 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 4. Job que deixa sua CPU na etapa de edicao (suspensao, encerramento, CPU
    removida) perde a fatia em curso: se voltar a executar, inclusive no
    mesmo tick, comeca fatia nova (DEC-03), e a etapa de fatias vencidas nao
-   o considera. Escolha do autor.
+   o considera. Escolha do autor. Vale pela mudanca liquida do tick (item 5
+   de "Quando e como a edicao vale"): suspender e retomar no mesmo tick nao
+   tira o job da CPU.
 5. Executando (forcada):
     1. Tarefas forcadas nao concluidas sao no maximo tantas quantas CPUs;
        forcar alem disso e recusado. Forcada sem job incompleto conta no
@@ -1434,8 +1456,9 @@ nao muda (DEC-09). Estados que o usuario escolhe:
    CPUs removidas; reduzir remove as de maior ID. Job de CPU removida volta
    a disputa com o primeiro desempate (item 7 do estado) e a selecao global
    decide; nao registra `preemption`, pois `cpu-removed` explica a saida.
-   Conta somente a quantidade final das edicoes do tick, comparada com a de
-   `t-1`: 4, depois 2, depois 4 no mesmo tick nao gera evento.
+   Como toda edicao (item 5 de "Quando e como a edicao vale"), conta somente
+   a quantidade final das edicoes do tick, comparada com a de `t-1`: 4,
+   depois 2, depois 4 no mesmo tick nao gera evento.
 4. CPU removida: `cpu-removed` fecha o intervalo desligado aberto, se houver;
    `cpu-added` reabre a CPU, que comeca como no snapshot inicial (DEC-12:
    o despacho a marca desligada se nao tiver trabalho). O intervalo entre
@@ -1444,8 +1467,11 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 #### Eventos
 
-Novos eventos, todos com `time = t`, registrados na etapa de edicao na ordem
-das edicoes:
+Novos eventos, todos com `time = t`, registrados na etapa de edicao a partir
+da mudanca liquida do tick (item 5 de "Quando e como a edicao vale"). Como
+nas demais etapas (DEC-22), a ordem segue a lista de tarefas, com os eventos
+de cada tarefa na ordem da sua transicao liquida, e depois os eventos de CPU
+por ID (escolha do autor: a ordem nao depende da ordem das edicoes):
 
 - `suspension` (`taskId`, `cpuId` ou `null`): tarefa suspensa; `cpuId` e a
   CPU liberada.
@@ -1514,6 +1540,10 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   segue o texto do enunciado e se aplica ao job atual, o unico elegivel por
   DEC-02, sem mudar o calendario de ativacoes.
 - Alternativas descartadas:
+    - Cada edicao do tick com seus proprios eventos (versao aceita no PR
+      #101, item 4): suspender e retomar no mesmo tick deixaria dois
+      marcadores de uma acao desfeita; o usuario quer so o resultado final
+      (#26).
     - Estado e suspensao por job (versao de 2026-10-31): o enunciado fala
       do estado da tarefa; o usuario escolheu a tarefa inteira.
     - Edicao valendo so de `t+1`: mais simples, mas a edicao nao apareceria
@@ -1556,8 +1586,9 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 3. Contabilizar conclusoes antes das perdas de prazo (DEC-04), em etapas
    globais na lista de eventos (DEC-22).
 4. Registrar as ativacoes devidas em t+1 (DEC-09, DEC-37).
-5. Aplicar, na ordem, as edicoes aceitas em t+1, julgadas sobre o estado
-   que o usuario ve (DEC-37); sem edicoes, a etapa nao faz nada.
+5. Aplicar a mudanca liquida das edicoes aceitas em t+1, validadas em ordem
+   sobre o estado que o usuario ve (DEC-37); sem edicoes, ou com edicoes que
+   se anulam, a etapa nao faz nada.
 6. Registrar as fatias vencidas com o quantum vigente (#14); job que
    conclui nao registra vencimento, job forcado nao tem quantum, job que
    deixou a CPU na etapa 5 comeca fatia nova (DEC-37) e o job vencido

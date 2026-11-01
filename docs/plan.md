@@ -708,9 +708,13 @@ Issues `[Docs]`, sem fase no Project.
 - #26 em andamento (iniciada 2026-11-01, branch `feat/26-edicoes-atomicas`):
   aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
   do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
-  eventos novos). Destrava #37 e o Gantt (#38). Nada implementado ou
-  verificado ainda; baseline `npm test` 669/669.
-- Proximo passo: plano de implementacao da #26 em incrementos com testes. Aceitar ou rever DEC-34 (#92).
+  eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
+  PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
+  adaptador fica na #37. Primeiro PR (#114, so documental): revisao de
+  DEC-37, em que so o resultado final das edicoes de um tick conta. Nada
+  implementado ainda; baseline `npm test` 669/669.
+- Proximo passo: definir a divisao dos PRs de codigo da #26 e o plano do
+  primeiro deles. Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
