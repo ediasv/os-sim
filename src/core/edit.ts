@@ -364,11 +364,11 @@ function refuseUnknownTask(
     target: EditTarget,
     taskId: TaskId,
 ): { ok: false; reason: string } | undefined {
-    // hasOwn coerces its key, so '1' or [1] would silently name task 1.
-    if (!Number.isInteger(taskId)) {
+    // hasOwn coerces its key, so 1 or ['1'] would silently name task '1'.
+    if (typeof taskId !== 'string') {
         return {
             ok: false,
-            reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
+            reason: `O identificador da tarefa deve ser um texto; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
         };
     }
     if (!Object.hasOwn(target.definitions, taskId)) {
@@ -526,8 +526,7 @@ function forcedCount(
     state: DeepReadonly<SimulationState>,
 ): number {
     return Object.entries(target.taskStates).filter(
-        ([id, status]) =>
-            status === 'forced' && !hasFinished(state, Number(id)),
+        ([id, status]) => status === 'forced' && !hasFinished(state, id),
     ).length;
 }
 
@@ -746,11 +745,11 @@ const HANDLERS: Handlers = {
         };
     },
     taskState: (target, item, context) => {
-        // hasOwn coerces its key, so '1' or [1] would silently name task 1.
-        if (!Number.isInteger(item.taskId)) {
+        // hasOwn coerces its key, so 1 or ['1'] would silently name task '1'.
+        if (typeof item.taskId !== 'string') {
             return {
                 ok: false,
-                reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
+                reason: `O identificador da tarefa deve ser um texto; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
             };
         }
         if (!Object.hasOwn(target.taskStates, item.taskId)) {

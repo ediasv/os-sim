@@ -12,7 +12,7 @@ import { Simulator } from './simulator';
 import { deepCopy } from './helpers/deepCopy';
 
 // Residual ties recur, so the draw state changes many times along the run.
-const tied = (id: number, color: string): TaskDefinition => ({
+const tied = (id: string, color: string): TaskDefinition => ({
     id,
     color,
     arrival: 0,
@@ -24,7 +24,7 @@ const tied = (id: number, color: string): TaskDefinition => ({
 const config: SystemConfig = {
     ...DEFAULT_CONFIG,
     cpuCount: 1,
-    tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC'), tied(3, '112233')],
+    tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC'), tied('3', '112233')],
 };
 const STEPS = 12;
 
@@ -32,7 +32,7 @@ const STEPS = 12;
 // with preemption, quantum expiry and deadline misses; the tie scenario
 // above keeps sliceElapsed and incomplete executed at 0.
 const job = (
-    id: number,
+    id: string,
     color: string,
     arrival: number,
     duration: number,
@@ -51,10 +51,10 @@ const partialConfig: SystemConfig = {
     quantum: 2,
     cpuCount: 2,
     tasks: [
-        job(1, 'F0E0D0', 0, 3, 5),
-        job(2, 'AABBCC', 0, 4, 6),
-        job(3, '112233', 1, 2, 4),
-        job(4, '445566', 0, 5, 6),
+        job('1', 'F0E0D0', 0, 3, 5),
+        job('2', 'AABBCC', 0, 4, 6),
+        job('3', '112233', 1, 2, 4),
+        job('4', '445566', 0, 5, 6),
     ],
 };
 const PARTIAL_STEPS = 20;

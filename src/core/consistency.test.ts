@@ -10,7 +10,7 @@ import {
 import { createInitialState, takeSnapshot } from './snapshot';
 
 const definition: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 2,
@@ -21,7 +21,7 @@ const definition: TaskDefinition = {
 
 function job(overrides: Partial<Job> = {}): Job {
     return {
-        taskId: 1,
+        taskId: '1',
         index: 0,
         activation: 0,
         absoluteDeadline: 5,
@@ -55,7 +55,7 @@ function stateWith(...jobs: Job[]): SimulationState {
 describe('findInconsistencies: running state', () => {
     it('accepts a running job owned by exactly one CPU', () => {
         const state = stateWith(job({ state: 'running' }));
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
 
         expect(findInconsistencies(state)).toEqual([]);
     });
@@ -70,7 +70,7 @@ describe('findInconsistencies: running state', () => {
         'reports a CPU running a job whose state is %s',
         (jobState) => {
             const state = stateWith(job({ state: jobState }));
-            state.cpus[0].running = { taskId: 1, index: 0 };
+            state.cpus[0].running = { taskId: '1', index: 0 };
 
             expect(findInconsistencies(state)).toHaveLength(1);
         },
@@ -78,15 +78,15 @@ describe('findInconsistencies: running state', () => {
 
     it('reports a job owned by two CPUs in the same tick', () => {
         const state = stateWith(job({ state: 'running' }));
-        state.cpus[0].running = { taskId: 1, index: 0 };
-        state.cpus[1].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
+        state.cpus[1].running = { taskId: '1', index: 0 };
 
         expect(findInconsistencies(state)).toHaveLength(1);
     });
 
     it('reports a CPU running a job that does not exist', () => {
         const state = stateWith();
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
 
         expect(findInconsistencies(state)).toHaveLength(1);
     });
@@ -98,7 +98,7 @@ describe('findInconsistencies: missed deadlines', () => {
         state.events.push({
             kind: 'deadline-miss',
             time: 5,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
 
         expect(findInconsistencies(state)).toEqual([]);
@@ -115,7 +115,7 @@ describe('findInconsistencies: missed deadlines', () => {
         state.events.push({
             kind: 'deadline-miss',
             time: 5,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
 
         expect(findInconsistencies(state)).toHaveLength(1);
@@ -127,7 +127,7 @@ describe('findInconsistencies: missed deadlines', () => {
             state.events.push({
                 kind: 'deadline-miss',
                 time,
-                job: { taskId: 1, index: 0 },
+                job: { taskId: '1', index: 0 },
             });
         }
 
@@ -139,7 +139,7 @@ describe('findInconsistencies: missed deadlines', () => {
         state.events.push({
             kind: 'deadline-miss',
             time: 5,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
 
         expect(findInconsistencies(state)).toHaveLength(1);
@@ -191,7 +191,7 @@ describe('findInconsistencies: CPU power (DEC-21)', () => {
 
     it('reports a CPU running a job while marked off', () => {
         const state = stateWith(job({ state: 'running' }));
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
         state.cpus[0].offSince = 0;
         state.events.push({ kind: 'cpu-off', time: 0, cpuId: 1 });
 
@@ -310,11 +310,11 @@ describe('findInconsistencies: inputs', () => {
             job({ state: 'running', deadlineMissed: true }),
             job({ index: 1, activation: 5, absoluteDeadline: 10 }),
         );
-        state.cpus[1].running = { taskId: 1, index: 0 };
+        state.cpus[1].running = { taskId: '1', index: 0 };
         state.events.push({
             kind: 'deadline-miss',
             time: 5,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
 
         expect(findInconsistencies(stateWith())).toEqual([]);
@@ -394,7 +394,7 @@ describe('task state consistency', () => {
     it('reports more forced tasks than configured CPUs even without jobs', () => {
         const state = createInitialState({
             ...DEFAULT_CONFIG,
-            tasks: [definition, { ...definition, id: 2 }],
+            tasks: [definition, { ...definition, id: '2' }],
         });
         state.tasks.forEach((t) => {
             t.status = 'forced';
@@ -408,7 +408,7 @@ describe('task state consistency', () => {
         (status) => {
             const state = stateWith(job({ state: 'running' }));
             state.tasks[0].status = status;
-            state.cpus[0].running = { taskId: 1, index: 0 };
+            state.cpus[0].running = { taskId: '1', index: 0 };
             expect(findInconsistencies(state)).toContain(
                 `CPU 1 runs task 1, whose status is ${status}.`,
             );
@@ -416,7 +416,7 @@ describe('task state consistency', () => {
     );
     it('reports an interrupted job on a CPU', () => {
         const state = stateWith(job({ state: 'interrupted' }));
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
         expect(findInconsistencies(state)).toContain(
             'CPU 1 runs job 1.0, whose state is interrupted.',
         );
@@ -461,7 +461,7 @@ describe('forced limit and finished tasks', () => {
             ...DEFAULT_CONFIG,
             tasks: [
                 { ...definition, period: 0 },
-                { ...definition, id: 2, period: 0 },
+                { ...definition, id: '2', period: 0 },
             ],
         });
         state.tasks[0].jobs.push(
@@ -470,8 +470,8 @@ describe('forced limit and finished tasks', () => {
         state.tasks.forEach((t) => {
             t.status = 'forced';
         });
-        state.tasks[1].jobs.push(job({ taskId: 2, state: 'running' }));
-        state.cpus[0].running = { taskId: 2, index: 0 };
+        state.tasks[1].jobs.push(job({ taskId: '2', state: 'running' }));
+        state.cpus[0].running = { taskId: '2', index: 0 };
         expect(
             findInconsistencies(state).filter((i) =>
                 i.includes('forced tasks'),

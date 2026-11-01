@@ -13,7 +13,7 @@ const oneTask: SystemConfig = {
     cpuCount: 1,
     tasks: [
         {
-            id: 1,
+            id: '1',
             color: 'F0E0D0',
             arrival: 0,
             duration: 3,
@@ -59,7 +59,7 @@ describe('useSimulation', () => {
         expect(sim.load(oneTask)).toEqual({ ok: true });
         expect(sim.view.value.clock).toBe(0);
         expect(sim.view.value.cpus[0].running).toEqual({
-            taskId: 1,
+            taskId: '1',
             index: 0,
         });
     });
@@ -69,7 +69,7 @@ describe('useSimulation', () => {
         sim.load(oneTask);
         expect(sim.tick()).toEqual({ ok: true });
         expect(sim.view.value.executions).toEqual([
-            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 1 },
+            { cpuId: 1, job: { taskId: '1', index: 0 }, start: 0, end: 1 },
         ]);
     });
 
@@ -113,7 +113,7 @@ describe('useSimulation', () => {
 
         expect(sim.load(oneTask)).toEqual({ ok: true });
         expect(sim.view.value.cpus[0].running).toEqual({
-            taskId: 1,
+            taskId: '1',
             index: 0,
         });
     });
@@ -135,7 +135,7 @@ describe('useSimulation', () => {
         // The next tick extends this interval to [0, 2) in the live state.
         expect(second.clock).toBe(1);
         expect(second.executions).toEqual([
-            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 1 },
+            { cpuId: 1, job: { taskId: '1', index: 0 }, start: 0, end: 1 },
         ]);
         expect(view.value.executions[0].end).toBe(2);
         expect(Object.isFrozen(first)).toBe(true);

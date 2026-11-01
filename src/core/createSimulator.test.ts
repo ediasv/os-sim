@@ -11,7 +11,7 @@ import type { SchedulingPolicy } from './policy';
 import type { Simulator } from './simulator';
 
 function task(
-    id: number,
+    id: string,
     arrival: number,
     duration: number,
     period: number,
@@ -19,7 +19,7 @@ function task(
 ): TaskDefinition {
     return {
         id,
-        color: id.toString(16).padStart(6, '0'),
+        color: Number(id).toString(16).padStart(6, '0'),
         arrival,
         duration,
         period,
@@ -52,8 +52,8 @@ const arrivalPreemption = [
         kind: 'preemption',
         time: 1,
         cpuId: 1,
-        preempted: { taskId: 1, index: 0 },
-        by: { taskId: 2, index: 0 },
+        preempted: { taskId: '1', index: 0 },
+        by: { taskId: '2', index: 0 },
     },
 ];
 
@@ -66,7 +66,7 @@ function preemptions(sim: Simulator) {
 describe('createSimulator', () => {
     it('resolves the policy from config.algorithm (A.4.1)', () => {
         // T2 has the shorter period, T1 the earlier absolute deadline.
-        const tasks = [task(1, 0, 2, 10, 3), task(2, 0, 2, 5, 5)];
+        const tasks = [task('1', 0, 2, 10, 3), task('2', 0, 2, 5, 5)];
 
         expect(owners(createSimulator(oneCpu('RM', 5, tasks)), 4)).toBe(
             'T2 T2 T1 T1',
@@ -78,7 +78,7 @@ describe('createSimulator', () => {
 
     it('RM preempts when a shorter-period job arrives', () => {
         const sim = createSimulator(
-            oneCpu('RM', 2, [task(1, 0, 4, 10, 10), task(2, 1, 1, 5, 5)]),
+            oneCpu('RM', 2, [task('1', 0, 4, 10, 10), task('2', 1, 1, 5, 5)]),
         );
 
         expect(owners(sim, 6)).toBe('T1 T2 T1 T1 T1 -');
@@ -87,7 +87,7 @@ describe('createSimulator', () => {
 
     it('EDF preempts when an earlier-deadline job arrives', () => {
         const sim = createSimulator(
-            oneCpu('EDF', 2, [task(1, 0, 4, 10, 10), task(2, 1, 1, 10, 2)]),
+            oneCpu('EDF', 2, [task('1', 0, 4, 10, 10), task('2', 1, 1, 10, 2)]),
         );
 
         expect(owners(sim, 6)).toBe('T1 T2 T1 T1 T1 -');
@@ -123,7 +123,7 @@ describe('createSimulator', () => {
             },
         };
 
-        createSimulator(oneCpu('EDF', 2, [task(1, 0, 1, 5, 5)]), {
+        createSimulator(oneCpu('EDF', 2, [task('1', 0, 1, 5, 5)]), {
             RM: spy,
             EDF: spy,
         });

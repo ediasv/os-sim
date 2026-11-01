@@ -15,7 +15,7 @@ const config: SystemConfig = validateConfigOrThrow({
     ...DEFAULT_CONFIG,
     tasks: [
         {
-            id: 1,
+            id: '1',
             color: 'F0E0D0',
             arrival: 0,
             duration: 2,
@@ -306,7 +306,7 @@ describe('CPU count edit', () => {
         const state = createInitialState({ ...config, cpuCount: 4 });
         state.clock = 2;
         const running = {
-            taskId: 1,
+            taskId: '1',
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
@@ -324,8 +324,8 @@ describe('CPU count edit', () => {
             executed: 2,
         };
         state.tasks[0].jobs.push(running, completed);
-        state.cpus[2].running = { taskId: 1, index: 0 };
-        state.cpus[3].running = { taskId: 1, index: 1 };
+        state.cpus[2].running = { taskId: '1', index: 0 };
+        state.cpus[3].running = { taskId: '1', index: 1 };
         state.cpus[0].sliceElapsed = 1;
         const survivors = state.cpus.slice(0, 2);
         const original = state.config;
@@ -413,7 +413,7 @@ describe('edit stage guards', () => {
 
     it('rejects a removed CPU that owns a job that does not exist', () => {
         const state = createInitialState({ ...config, cpuCount: 2 });
-        state.cpus[1].running = { taskId: 99, index: 0 };
+        state.cpus[1].running = { taskId: '99', index: 0 };
         const before = readTarget(state);
 
         expect(() =>
@@ -425,7 +425,7 @@ describe('edit stage guards', () => {
 describe('task state edit validation', () => {
     const states = ['ready', 'forced', 'suspended', 'concluded'] as const;
     const taskState = (
-        taskId: number,
+        taskId: string,
         state: (typeof states)[number],
     ): EditItem => ({ kind: 'taskState', taskId, state });
     const fixture = () => {
@@ -434,7 +434,7 @@ describe('task state edit validation', () => {
             cpuCount: 2,
             tasks: [
                 config.tasks[0],
-                { ...config.tasks[0], id: 2, color: '112233' },
+                { ...config.tasks[0], id: '2', color: '112233' },
             ],
         });
         return { state, baseline: state, hasPolicy: both };
@@ -444,7 +444,7 @@ describe('task state edit validation', () => {
             const context = fixture();
             context.state.tasks[0].status = from;
             const base = readTarget(context.state);
-            const result = foldEdit(base, [taskState(1, to)], context);
+            const result = foldEdit(base, [taskState('1', to)], context);
             if (from === 'concluded' && to !== 'concluded') {
                 expect(result).toEqual({
                     ok: false,
@@ -469,7 +469,7 @@ describe('task state edit validation', () => {
         expect(
             foldEdit(
                 readTarget(context.state),
-                [taskState(9, 'ready')],
+                [taskState('9', 'ready')],
                 context,
             ),
         ).toEqual({
@@ -486,8 +486,8 @@ describe('task state edit validation', () => {
     it.each([
         {
             items: [
-                taskState(1, 'forced'),
-                taskState(2, 'forced'),
+                taskState('1', 'forced'),
+                taskState('2', 'forced'),
                 { kind: 'cpuCount', cpuCount: 1 } as EditItem,
             ],
             kind: 'cpuCount',
@@ -496,8 +496,8 @@ describe('task state edit validation', () => {
         {
             items: [
                 { kind: 'cpuCount', cpuCount: 1 } as EditItem,
-                taskState(1, 'forced'),
-                taskState(2, 'forced'),
+                taskState('1', 'forced'),
+                taskState('2', 'forced'),
             ],
             kind: 'taskState',
             reason: 'Não há CPUs para forçar a tarefa 2: já há 1 tarefa forçada para 1 CPU.',
@@ -518,7 +518,7 @@ it('refuses an unknown task state with an accurate reason', () => {
         [
             {
                 kind: 'taskState',
-                taskId: 1,
+                taskId: '1',
                 state: 'sleeping',
             } as unknown as EditItem,
         ],
@@ -537,14 +537,14 @@ it('refuses an unknown task state with an accurate reason', () => {
 });
 
 describe('task color edit', () => {
-    const color = (taskId: number, value: unknown): EditItem =>
+    const color = (taskId: string, value: unknown): EditItem =>
         ({ kind: 'taskColor', taskId, color: value }) as EditItem;
     const fixture = () => {
         const state = createInitialState({
             ...config,
             tasks: [
                 config.tasks[0],
-                { ...config.tasks[0], id: 2, color: '112233' },
+                { ...config.tasks[0], id: '2', color: '112233' },
             ],
         });
         return { state, baseline: state, hasPolicy: both };
@@ -557,7 +557,7 @@ describe('task color edit', () => {
     it('stores a valid color in uppercase', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        const result = foldEdit(base, [color(1, 'aabbcc')], context);
+        const result = foldEdit(base, [color('1', 'aabbcc')], context);
         expect(result).toMatchObject({ ok: true });
         if (!result.ok) return;
         expect(result.target.definitions[1].color).toBe('AABBCC');
@@ -567,7 +567,7 @@ describe('task color edit', () => {
     it('accepts an identity edit without changing the color', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        const result = foldEdit(base, [color(1, 'f0e0d0')], context);
+        const result = foldEdit(base, [color('1', 'f0e0d0')], context);
         expect(result).toMatchObject({ ok: true });
         if (!result.ok) return;
         expect(result.target.definitions[1].color).toBe('F0E0D0');
@@ -577,35 +577,39 @@ describe('task color edit', () => {
         (value) => {
             const context = fixture();
             expect(
-                foldEdit(readTarget(context.state), [color(1, value)], context),
+                foldEdit(
+                    readTarget(context.state),
+                    [color('1', value)],
+                    context,
+                ),
             ).toMatchObject(refusal(expect.stringContaining('cor')));
         },
     );
     it('refuses a color used by another task, ignoring case', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        expect(foldEdit(base, [color(1, '112233')], context)).toMatchObject(
+        expect(foldEdit(base, [color('1', '112233')], context)).toMatchObject(
             refusal(expect.stringContaining('cor')),
         );
-        expect(foldEdit(base, [color(2, 'f0e0d0')], context)).toMatchObject(
+        expect(foldEdit(base, [color('2', 'f0e0d0')], context)).toMatchObject(
             refusal(expect.stringContaining('cor')),
         );
     });
     it.each([
         // edited task, wanted color, expected owner ordinal
-        [1, '445566', '3ª', 'before the owner'],
-        [2, 'f0e0d0', '1ª', 'after the owner'],
-        [2, '445566', '3ª', 'before the owner, edited in the middle'],
-        [3, 'f0e0d0', '1ª', 'last, owner first'],
-        [3, '112233', '2ª', 'last, owner in the middle'],
-        [1, '112233', '2ª', 'first, owner in the middle'],
-    ])('names the real owner for task %i taking %s: %s', (id, wanted, nth) => {
+        ['1', '445566', '3ª', 'before the owner'],
+        ['2', 'f0e0d0', '1ª', 'after the owner'],
+        ['2', '445566', '3ª', 'before the owner, edited in the middle'],
+        ['3', 'f0e0d0', '1ª', 'last, owner first'],
+        ['3', '112233', '2ª', 'last, owner in the middle'],
+        ['1', '112233', '2ª', 'first, owner in the middle'],
+    ])('names the real owner for task %s taking %s: %s', (id, wanted, nth) => {
         const state = createInitialState({
             ...config,
             tasks: [
                 config.tasks[0],
-                { ...config.tasks[0], id: 2, color: '112233' },
-                { ...config.tasks[0], id: 3, color: '445566' },
+                { ...config.tasks[0], id: '2', color: '112233' },
+                { ...config.tasks[0], id: '3', color: '445566' },
             ],
         });
         const context = { state, baseline: state, hasPolicy: both };
@@ -626,13 +630,13 @@ describe('task color edit', () => {
             ...config,
             tasks: [
                 config.tasks[0],
-                { ...config.tasks[0], id: 2, color: '112233' },
-                { ...config.tasks[0], id: 3, color: '445566' },
+                { ...config.tasks[0], id: '2', color: '112233' },
+                { ...config.tasks[0], id: '3', color: '445566' },
             ],
         });
         state.tasks[2].status = 'concluded';
         expect(
-            foldEdit(readTarget(state), [color(1, '445566')], {
+            foldEdit(readTarget(state), [color('1', '445566')], {
                 state,
                 baseline: state,
                 hasPolicy: both,
@@ -647,7 +651,11 @@ describe('task color edit', () => {
         const context = fixture();
         context.state.tasks[1].status = 'concluded';
         expect(
-            foldEdit(readTarget(context.state), [color(1, '112233')], context),
+            foldEdit(
+                readTarget(context.state),
+                [color('1', '112233')],
+                context,
+            ),
         ).toMatchObject(refusal(expect.stringContaining('cor')));
     });
     it('accepts the color of a concluded task', () => {
@@ -655,21 +663,27 @@ describe('task color edit', () => {
         context.state.tasks[0].status = 'concluded';
         const result = foldEdit(
             readTarget(context.state),
-            [color(1, 'aabbcc')],
+            [color('1', 'aabbcc')],
             context,
         );
         expect(result).toMatchObject({ ok: true });
     });
-    it('refuses unknown and non-integer task identifiers', () => {
+    it('refuses unknown and non-text task identifiers', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        expect(foldEdit(base, [color(9, 'aabbcc')], context)).toMatchObject(
+        expect(foldEdit(base, [color('9', 'aabbcc')], context)).toMatchObject(
             refusal('Não existe a tarefa 9.'),
         );
-        expect(foldEdit(base, [color(1.5, 'aabbcc')], context)).toMatchObject(
+        expect(
+            foldEdit(
+                base,
+                [color(1.5 as unknown as string, 'aabbcc')],
+                context,
+            ),
+        ).toMatchObject(
             refusal(
                 expect.stringContaining(
-                    'O identificador da tarefa deve ser um número inteiro',
+                    'O identificador da tarefa deve ser um texto',
                 ),
             ),
         );
@@ -678,7 +692,7 @@ describe('task color edit', () => {
         const context = fixture();
         const result = foldEdit(
             readTarget(context.state),
-            [color(1, 'aabbcc'), color(2, 'aabbcc')],
+            [color('1', 'aabbcc'), color('2', 'aabbcc')],
             context,
         );
         expect(result).toMatchObject({
@@ -689,9 +703,9 @@ describe('task color edit', () => {
 });
 
 describe('task duration and deadline edit', () => {
-    const duration = (taskId: number, value: unknown): EditItem =>
+    const duration = (taskId: string, value: unknown): EditItem =>
         ({ kind: 'taskDuration', taskId, duration: value }) as EditItem;
-    const deadline = (taskId: number, value: unknown): EditItem =>
+    const deadline = (taskId: string, value: unknown): EditItem =>
         ({ kind: 'taskDeadline', taskId, deadline: value }) as EditItem;
     const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
         const state = createInitialState({
@@ -706,7 +720,7 @@ describe('task duration and deadline edit', () => {
         const { period } = tcb.definition;
         for (let index = 0; index < count; index++) {
             tcb.jobs.push({
-                taskId: 1,
+                taskId: '1',
                 index,
                 activation: index * period,
                 absoluteDeadline: index * period + tcb.definition.deadline,
@@ -733,7 +747,7 @@ describe('task duration and deadline edit', () => {
         const base = readTarget(context.state);
         const result = foldEdit(
             base,
-            [duration(1, 7), deadline(1, 9)],
+            [duration('1', 7), deadline('1', 9)],
             context,
         );
         expect(result).toMatchObject({ ok: true });
@@ -748,7 +762,7 @@ describe('task duration and deadline edit', () => {
         activate(context, 3);
         const result = foldEdit(
             readTarget(context.state),
-            [duration(1, 4), deadline(1, 6)],
+            [duration('1', 4), deadline('1', 6)],
             context,
         );
         expect(result).toMatchObject({ ok: true });
@@ -758,8 +772,8 @@ describe('task duration and deadline edit', () => {
         activate(context, 10);
         const base = readTarget(context.state);
         for (const [item, kind] of [
-            [duration(1, 4), 'taskDuration'],
-            [deadline(1, 6), 'taskDeadline'],
+            [duration('1', 4), 'taskDuration'],
+            [deadline('1', 6), 'taskDeadline'],
         ] as const) {
             expect(refusalOf(foldEdit(base, [item], context), kind)).toMatch(
                 /não há próxima ativação/,
@@ -771,7 +785,11 @@ describe('task duration and deadline edit', () => {
         activate(context, 1);
         expect(
             refusalOf(
-                foldEdit(readTarget(context.state), [duration(1, 3)], context),
+                foldEdit(
+                    readTarget(context.state),
+                    [duration('1', 3)],
+                    context,
+                ),
                 'taskDuration',
             ),
         ).toMatch(/não há próxima ativação/);
@@ -788,13 +806,13 @@ describe('task duration and deadline edit', () => {
                 } as ConfigInput);
             expect(
                 refusalOf(
-                    foldEdit(base, [duration(1, value)], context),
+                    foldEdit(base, [duration('1', value)], context),
                     'taskDuration',
                 ),
             ).toBe(wording('duration'));
             expect(
                 refusalOf(
-                    foldEdit(base, [deadline(1, value)], context),
+                    foldEdit(base, [deadline('1', value)], context),
                     'taskDeadline',
                 ),
             ).toBe(wording('deadline'));
@@ -807,13 +825,13 @@ describe('task duration and deadline edit', () => {
         const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
         expect(
             refusalOf(
-                foldEdit(base, [duration(1, 3)], context),
+                foldEdit(base, [duration('1', 3)], context),
                 'taskDuration',
             ),
         ).toBe(reason);
         expect(
             refusalOf(
-                foldEdit(base, [deadline(1, 3)], context),
+                foldEdit(base, [deadline('1', 3)], context),
                 'taskDeadline',
             ),
         ).toBe(reason);
@@ -824,9 +842,9 @@ describe('task duration and deadline edit', () => {
         const result = foldEdit(
             readTarget(context.state),
             [
-                { kind: 'taskState', taskId: 1, state: 'concluded' },
-                duration(1, 3),
-                deadline(1, 3),
+                { kind: 'taskState', taskId: '1', state: 'concluded' },
+                duration('1', 3),
+                deadline('1', 3),
             ],
             context,
         );
@@ -843,24 +861,26 @@ describe('task duration and deadline edit', () => {
         const result = foldEdit(
             readTarget(context.state),
             [
-                { kind: 'taskState', taskId: 1, state: 'concluded' },
-                { kind: 'taskColor', taskId: 1, color: 'aabbcc' },
+                { kind: 'taskState', taskId: '1', state: 'concluded' },
+                { kind: 'taskColor', taskId: '1', color: 'aabbcc' },
             ],
             context,
         );
         expect(result).toMatchObject({ ok: true });
     });
-    it('refuses unknown and non-integer task identifiers', () => {
+    it('refuses unknown and non-text task identifiers', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        expect(foldEdit(base, [duration(9, 3)], context)).toMatchObject({
+        expect(foldEdit(base, [duration('9', 3)], context)).toMatchObject({
             refusals: [{ reason: 'Não existe a tarefa 9.' }],
         });
-        expect(foldEdit(base, [deadline(1.5, 3)], context)).toMatchObject({
+        expect(
+            foldEdit(base, [deadline(1.5 as unknown as string, 3)], context),
+        ).toMatchObject({
             refusals: [
                 {
                     reason: expect.stringContaining(
-                        'O identificador da tarefa deve ser um número inteiro',
+                        'O identificador da tarefa deve ser um texto',
                     ),
                 },
             ],
@@ -871,7 +891,7 @@ describe('task duration and deadline edit', () => {
         const reason = refusalOf(
             foldEdit(
                 readTarget(context.state),
-                [deadline(1, Number.MAX_SAFE_INTEGER)],
+                [deadline('1', Number.MAX_SAFE_INTEGER)],
                 context,
             ),
             'taskDeadline',
@@ -884,14 +904,14 @@ describe('task duration and deadline edit', () => {
         const wanted = 5e15;
         const ten = fixture({ period: 1e15 });
         expect(
-            foldEdit(readTarget(ten.state), [deadline(1, wanted)], ten),
+            foldEdit(readTarget(ten.state), [deadline('1', wanted)], ten),
         ).toMatchObject({ ok: false });
         const one = fixture({ period: 1e15 });
         activate(one, 9);
         // The bound starts at the next activation, wherever it was moved to.
         one.state.tasks[0].nextActivation = 0;
         expect(
-            foldEdit(readTarget(one.state), [deadline(1, wanted)], one),
+            foldEdit(readTarget(one.state), [deadline('1', wanted)], one),
         ).toMatchObject({ ok: true });
     });
     it('does not apply the period term to a single remaining activation', () => {
@@ -899,7 +919,7 @@ describe('task duration and deadline edit', () => {
         expect(
             foldEdit(
                 readTarget(context.state),
-                [deadline(1, Number.MAX_SAFE_INTEGER)],
+                [deadline('1', Number.MAX_SAFE_INTEGER)],
                 context,
             ),
         ).toMatchObject({ ok: true });
@@ -907,7 +927,7 @@ describe('task duration and deadline edit', () => {
 });
 
 describe('task arrival edit', () => {
-    const arrival = (taskId: number, value: unknown): EditItem =>
+    const arrival = (taskId: string, value: unknown): EditItem =>
         ({ kind: 'taskArrival', taskId, arrival: value }) as EditItem;
     const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
         const state = createInitialState({
@@ -930,7 +950,7 @@ describe('task arrival edit', () => {
         context.state.clock = 2;
         const base = readTarget(context.state);
         for (const value of [8, 2]) {
-            const result = foldEdit(base, [arrival(1, value)], context);
+            const result = foldEdit(base, [arrival('1', value)], context);
             expect(result).toMatchObject({ ok: true });
             if (!result.ok) return;
             expect(result.target.definitions[1].arrival).toBe(value);
@@ -943,7 +963,7 @@ describe('task arrival edit', () => {
         context.state.clock = 3;
         expect(
             reasonOf(
-                foldEdit(readTarget(context.state), [arrival(1, 2)], context),
+                foldEdit(readTarget(context.state), [arrival('1', 2)], context),
             ),
         ).toBe('O ingresso deve ser maior ou igual ao tick atual (3).');
     });
@@ -951,7 +971,7 @@ describe('task arrival edit', () => {
         const context = fixture({ arrival: 0 });
         context.state.clock = 0;
         context.state.tasks[0].jobs.push({
-            taskId: 1,
+            taskId: '1',
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
@@ -963,12 +983,12 @@ describe('task arrival edit', () => {
         });
         expect(
             reasonOf(
-                foldEdit(readTarget(context.state), [arrival(1, 1)], context),
+                foldEdit(readTarget(context.state), [arrival('1', 1)], context),
             ),
         ).toBe('O ingresso não pode ser alterado pois a tarefa já ingressou.');
         const unchanged = foldEdit(
             readTarget(context.state),
-            [arrival(1, 0)],
+            [arrival('1', 0)],
             context,
         );
         expect(unchanged).toMatchObject({ ok: true });
@@ -985,7 +1005,7 @@ describe('task arrival edit', () => {
                 reasonOf(
                     foldEdit(
                         readTarget(context.state),
-                        [arrival(1, value)],
+                        [arrival('1', value)],
                         context,
                     ),
                 ),
@@ -1006,23 +1026,27 @@ describe('task arrival edit', () => {
             Number.MAX_SAFE_INTEGER - 49,
         ]) {
             expect(
-                reasonOf(foldEdit(base, [arrival(1, value)], context)),
+                reasonOf(foldEdit(base, [arrival('1', value)], context)),
             ).toMatch(/ultrapassa o maior inteiro exato/);
         }
         expect(
-            foldEdit(base, [arrival(1, Number.MAX_SAFE_INTEGER - 50)], context),
+            foldEdit(
+                base,
+                [arrival('1', Number.MAX_SAFE_INTEGER - 50)],
+                context,
+            ),
         ).toMatchObject({ ok: true });
-        expect(foldEdit(base, [arrival(1, 8)], context)).toMatchObject({
+        expect(foldEdit(base, [arrival('1', 8)], context)).toMatchObject({
             ok: true,
         });
     });
     it('bounds the last deadline by the pending arrival of the same edit, in either order', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        const far = arrival(1, Number.MAX_SAFE_INTEGER - 50);
+        const far = arrival('1', Number.MAX_SAFE_INTEGER - 50);
         const wide = {
             kind: 'taskDeadline',
-            taskId: 1,
+            taskId: '1',
             deadline: 10,
         } as EditItem;
         for (const items of [
@@ -1038,8 +1062,8 @@ describe('task arrival edit', () => {
             );
         }
         for (const items of [
-            [arrival(1, 8), wide],
-            [wide, arrival(1, 8)],
+            [arrival('1', 8), wide],
+            [wide, arrival('1', 8)],
         ]) {
             expect(foldEdit(base, items, context)).toMatchObject({ ok: true });
         }
@@ -1050,15 +1074,15 @@ describe('task arrival edit', () => {
         context.state.tasks[0].status = 'concluded';
         expect(
             reasonOf(
-                foldEdit(readTarget(context.state), [arrival(1, 8)], context),
+                foldEdit(readTarget(context.state), [arrival('1', 8)], context),
             ),
         ).toBe(reason);
         const live = fixture();
         const result = foldEdit(
             readTarget(live.state),
             [
-                { kind: 'taskState', taskId: 1, state: 'concluded' },
-                arrival(1, 8),
+                { kind: 'taskState', taskId: '1', state: 'concluded' },
+                arrival('1', 8),
             ],
             live,
         );
@@ -1067,22 +1091,22 @@ describe('task arrival edit', () => {
             refusals: [{ index: 1, kind: 'taskArrival', reason }],
         });
     });
-    it('refuses unknown and non-integer task identifiers', () => {
+    it('refuses unknown and non-text task identifiers', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        expect(reasonOf(foldEdit(base, [arrival(9, 8)], context))).toBe(
+        expect(reasonOf(foldEdit(base, [arrival('9', 8)], context))).toBe(
             'Não existe a tarefa 9.',
         );
         expect(
             reasonOf(
-                foldEdit(base, [arrival('1' as unknown as number, 8)], context),
+                foldEdit(base, [arrival(1 as unknown as string, 8)], context),
             ),
-        ).toContain('O identificador da tarefa deve ser um número inteiro');
+        ).toContain('O identificador da tarefa deve ser um texto');
     });
     it('reschedules the first activation on the net change', () => {
         const context = fixture();
         const before = readTarget(context.state);
-        const result = foldEdit(before, [arrival(1, 8)], context);
+        const result = foldEdit(before, [arrival('1', 8)], context);
         if (!result.ok) throw new Error('expected acceptance');
         applyNetChange(context.state, before, result.target);
         expect(context.state.tasks[0].nextActivation).toBe(8);
@@ -1093,14 +1117,14 @@ describe('task arrival edit', () => {
         const context = fixture();
         context.state.clock = 2;
         const before = readTarget(context.state);
-        const result = foldEdit(before, [arrival(1, 2)], context);
+        const result = foldEdit(before, [arrival('1', 2)], context);
         if (!result.ok) throw new Error('expected acceptance');
         applyNetChange(context.state, before, result.target);
         expect(context.state.tasks[0].jobs).toMatchObject([
             { index: 0, activation: 2, absoluteDeadline: 7 },
         ]);
         expect(context.state.events).toEqual([
-            { kind: 'activation', time: 2, job: { taskId: 1, index: 0 } },
+            { kind: 'activation', time: 2, job: { taskId: '1', index: 0 } },
         ]);
         expect(context.state.tasks[0].nextActivation).toBe(7);
     });
@@ -1111,8 +1135,8 @@ describe('task arrival edit', () => {
         const result = foldEdit(
             before,
             [
-                { kind: 'taskState', taskId: 1, state: 'suspended' },
-                arrival(1, 2),
+                { kind: 'taskState', taskId: '1', state: 'suspended' },
+                arrival('1', 2),
             ],
             context,
         );
@@ -1131,7 +1155,7 @@ describe('task arrival edit', () => {
         const before = readTarget(context.state);
         const result = foldEdit(
             before,
-            [arrival(1, 2), arrival(1, 5)],
+            [arrival('1', 2), arrival('1', 5)],
             context,
         );
         if (!result.ok) throw new Error('expected acceptance');
@@ -1143,16 +1167,16 @@ describe('task arrival edit', () => {
 });
 
 describe('task period edit', () => {
-    const period = (taskId: number, value: unknown): EditItem =>
+    const period = (taskId: string, value: unknown): EditItem =>
         ({ kind: 'taskPeriod', taskId, period: value }) as EditItem;
     const deadline = (value: number): EditItem => ({
         kind: 'taskDeadline',
-        taskId: 1,
+        taskId: '1',
         deadline: value,
     });
     const arrival = (value: number): EditItem => ({
         kind: 'taskArrival',
-        taskId: 1,
+        taskId: '1',
         arrival: value,
     });
     const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
@@ -1168,7 +1192,7 @@ describe('task period edit', () => {
         const { period: p, deadline: d, duration } = tcb.definition;
         for (let index = 0; index < count; index++) {
             tcb.jobs.push({
-                taskId: 1,
+                taskId: '1',
                 index,
                 activation: index * p,
                 absoluteDeadline: index * p + d,
@@ -1193,7 +1217,7 @@ describe('task period edit', () => {
     it('accepts a new period, replacing the definition without mutating it', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        const result = foldEdit(base, [period(1, 8)], context);
+        const result = foldEdit(base, [period('1', 8)], context);
         expect(result).toMatchObject({ ok: true });
         if (!result.ok) return;
         expect(result.target.definitions[1].period).toBe(8);
@@ -1203,7 +1227,7 @@ describe('task period edit', () => {
     it('refuses zero naming the Projeto A rule and DEC-29', () => {
         const context = fixture();
         const reason = reasonOf(
-            foldEdit(readTarget(context.state), [period(1, 0)], context),
+            foldEdit(readTarget(context.state), [period('1', 0)], context),
         );
         expect(reason).toMatch(/maior ou igual a 1/);
         expect(reason).toMatch(/Projeto B/);
@@ -1217,7 +1241,7 @@ describe('task period edit', () => {
                 reasonOf(
                     foldEdit(
                         readTarget(context.state),
-                        [period(1, value)],
+                        [period('1', value)],
                         context,
                     ),
                 ),
@@ -1237,7 +1261,7 @@ describe('task period edit', () => {
                 reasonOf(
                     foldEdit(
                         readTarget(context.state),
-                        [period(1, Number.MAX_SAFE_INTEGER)],
+                        [period('1', Number.MAX_SAFE_INTEGER)],
                         context,
                     ),
                 ),
@@ -1250,7 +1274,7 @@ describe('task period edit', () => {
         expect(
             foldEdit(
                 readTarget(context.state),
-                [period(1, Number.MAX_SAFE_INTEGER)],
+                [period('1', Number.MAX_SAFE_INTEGER)],
                 context,
             ),
         ).toMatchObject({ ok: true });
@@ -1261,7 +1285,7 @@ describe('task period edit', () => {
         context.state.tasks[0].status = 'concluded';
         expect(
             reasonOf(
-                foldEdit(readTarget(context.state), [period(1, 8)], context),
+                foldEdit(readTarget(context.state), [period('1', 8)], context),
             ),
         ).toBe(reason);
         const live = fixture();
@@ -1269,8 +1293,8 @@ describe('task period edit', () => {
             foldEdit(
                 readTarget(live.state),
                 [
-                    { kind: 'taskState', taskId: 1, state: 'concluded' },
-                    period(1, 8),
+                    { kind: 'taskState', taskId: '1', state: 'concluded' },
+                    period('1', 8),
                 ],
                 live,
             ),
@@ -1279,17 +1303,17 @@ describe('task period edit', () => {
             refusals: [{ index: 1, kind: 'taskPeriod', reason }],
         });
     });
-    it('refuses unknown and non-integer task identifiers', () => {
+    it('refuses unknown and non-text task identifiers', () => {
         const context = fixture();
         const base = readTarget(context.state);
-        expect(reasonOf(foldEdit(base, [period(9, 8)], context))).toBe(
+        expect(reasonOf(foldEdit(base, [period('9', 8)], context))).toBe(
             'Não existe a tarefa 9.',
         );
         expect(
             reasonOf(
-                foldEdit(base, [period('1' as unknown as number, 8)], context),
+                foldEdit(base, [period(1 as unknown as string, 8)], context),
             ),
-        ).toContain('O identificador da tarefa deve ser um número inteiro');
+        ).toContain('O identificador da tarefa deve ser um texto');
     });
 
     describe('limit with the other items of the same submission', () => {
@@ -1320,13 +1344,13 @@ describe('task period edit', () => {
             expectUnsafe(
                 bothOrders(
                     context,
-                    period(1, 8),
+                    period('1', 8),
                     deadline(Number.MAX_SAFE_INTEGER - 62),
                 ),
             );
             for (const result of bothOrders(
                 context,
-                period(1, 8),
+                period('1', 8),
                 deadline(Number.MAX_SAFE_INTEGER - 63),
             )) {
                 expect(result).toMatchObject({ ok: true });
@@ -1338,13 +1362,13 @@ describe('task period edit', () => {
             expectUnsafe(
                 bothOrders(
                     context,
-                    period(1, 8),
+                    period('1', 8),
                     arrival(Number.MAX_SAFE_INTEGER - 76),
                 ),
             );
             for (const result of bothOrders(
                 context,
-                period(1, 8),
+                period('1', 8),
                 arrival(Number.MAX_SAFE_INTEGER - 77),
             )) {
                 expect(result).toMatchObject({ ok: true });
@@ -1358,13 +1382,13 @@ describe('task period edit', () => {
             expectUnsafe(
                 bothOrders(
                     context,
-                    period(1, 8),
+                    period('1', 8),
                     deadline(Number.MAX_SAFE_INTEGER - 71),
                 ),
             );
             for (const result of bothOrders(
                 context,
-                period(1, 8),
+                period('1', 8),
                 deadline(Number.MAX_SAFE_INTEGER - 72),
             )) {
                 expect(result).toMatchObject({ ok: true });
@@ -1387,7 +1411,7 @@ describe('task period edit', () => {
             const context = fixture({ period: 5 });
             activate(context, 3); // last activation 10, next 15
             context.state.clock = 13;
-            apply(context, [period(1, 8)]);
+            apply(context, [period('1', 8)]);
             expect(context.state.tasks[0].nextActivation).toBe(18);
             expect(context.state.tasks[0].jobs).toHaveLength(3);
             expect(context.state.events).toEqual([]);
@@ -1396,11 +1420,15 @@ describe('task period edit', () => {
             const context = fixture({ period: 5 });
             activate(context, 3);
             context.state.clock = 13;
-            apply(context, [period(1, 2)]);
+            apply(context, [period('1', 2)]);
             expect(context.state.tasks[0].jobs).toHaveLength(4);
             expect(context.state.tasks[0].jobs[3].activation).toBe(13);
             expect(context.state.events).toEqual([
-                { kind: 'activation', time: 13, job: { taskId: 1, index: 3 } },
+                {
+                    kind: 'activation',
+                    time: 13,
+                    job: { taskId: '1', index: 3 },
+                },
             ]);
             expect(context.state.tasks[0].nextActivation).toBe(15);
         });
@@ -1408,7 +1436,7 @@ describe('task period edit', () => {
             const context = fixture({ period: 5 });
             activate(context, 3);
             context.state.clock = 13;
-            apply(context, [period(1, 8), period(1, 5)]);
+            apply(context, [period('1', 8), period('1', 5)]);
             expect(context.state.tasks[0].jobs).toHaveLength(3);
             expect(context.state.tasks[0].nextActivation).toBe(15);
             expect(context.state.events).toEqual([]);
@@ -1417,7 +1445,7 @@ describe('task period edit', () => {
             const context = fixture({ period: 5 });
             activate(context, 10);
             context.state.clock = 60;
-            apply(context, [period(1, 2)]);
+            apply(context, [period('1', 2)]);
             expect(context.state.tasks[0].nextActivation).toBeNull();
             expect(context.state.tasks[0].jobs).toHaveLength(10);
             expect(context.state.tasks[0].definition.period).toBe(2);
@@ -1425,15 +1453,15 @@ describe('task period edit', () => {
         });
         it('keeps the arrival as the first activation before any job', () => {
             const context = fixture({ arrival: 4, period: 3 });
-            apply(context, [period(1, 6)]);
+            apply(context, [period('1', 6)]);
             expect(context.state.tasks[0].nextActivation).toBe(4);
         });
     });
 });
 
 describe('task identifier validation', () => {
-    it.each([['1'], [[1]], [1.5], [Number.NaN]])(
-        'refuses the non-integer task identifier %j',
+    it.each([[['1']], [1], [1.5], [Number.NaN], [null]])(
+        'refuses the non-text task identifier %j',
         (taskId) => {
             const state = createInitialState({
                 ...config,
@@ -1458,7 +1486,7 @@ describe('task identifier validation', () => {
                         index: 0,
                         kind: 'taskState',
                         reason: expect.stringContaining(
-                            'O identificador da tarefa deve ser um número inteiro',
+                            'O identificador da tarefa deve ser um texto',
                         ),
                     },
                 ],
@@ -1489,8 +1517,8 @@ describe('editable characteristics (DEC-37 matrix)', () => {
         ['period', { kind: 'taskPeriod', period: 4 }, { period: 0 }],
     ])('%s has a valid case and a refusal case', (_name, valid, invalid) => {
         const kind = valid.kind;
-        expect(run({ ...valid, taskId: 1 })).toMatchObject({ ok: true });
-        const refused = run({ kind, taskId: 1, ...invalid });
+        expect(run({ ...valid, taskId: '1' })).toMatchObject({ ok: true });
+        const refused = run({ kind, taskId: '1', ...invalid });
         expect(refused).toMatchObject({
             ok: false,
             refusals: [{ index: 0, kind }],
@@ -1503,7 +1531,7 @@ describe('editable characteristics (DEC-37 matrix)', () => {
         ['ID', 'taskId'],
         ['executed ticks', 'taskExecuted'],
     ])('%s has no item kind and is refused as unknown', (_name, kind) => {
-        expect(run({ kind, taskId: 1, value: 2 })).toEqual({
+        expect(run({ kind, taskId: '1', value: 2 })).toEqual({
             ok: false,
             refusals: [
                 {
@@ -1522,10 +1550,10 @@ describe('characteristic edit together with conclusion in one submission (DEC-45
         const context = contextFor();
         return foldEdit(readTarget(context.state), items, context);
     };
-    const period: EditItem = { kind: 'taskPeriod', taskId: 1, period: 3 };
+    const period: EditItem = { kind: 'taskPeriod', taskId: '1', period: 3 };
     const conclude: EditItem = {
         kind: 'taskState',
-        taskId: 1,
+        taskId: '1',
         state: 'concluded',
     };
 
@@ -1544,14 +1572,14 @@ describe('characteristic edit together with conclusion in one submission (DEC-45
     it('accepts a color change with the conclusion, in either order', () => {
         const color: EditItem = {
             kind: 'taskColor',
-            taskId: 1,
+            taskId: '1',
             color: 'aabbcc',
         };
         expect(fold([color, conclude])).toMatchObject({ ok: true });
         expect(fold([conclude, color])).toMatchObject({ ok: true });
     });
     it('accepts the conclusion after a characteristic that returned to its value', () => {
-        const back: EditItem = { kind: 'taskPeriod', taskId: 1, period: 5 };
+        const back: EditItem = { kind: 'taskPeriod', taskId: '1', period: 5 };
         expect(fold([period, back, conclude])).toMatchObject({ ok: true });
     });
 });

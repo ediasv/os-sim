@@ -27,6 +27,7 @@ import type {
     SimulationSnapshot,
     TaskId,
 } from '../../../core/domain';
+import { compareTaskIds } from '../../../core/taskId';
 import { cpuOffSummary } from '../../snapshotQueries';
 
 type Snapshot = DeepReadonly<SimulationSnapshot>;
@@ -321,7 +322,9 @@ export function buildGanttSvg(
     // Highest ID at the top, lowest next to the CPU lanes (A.2.5).
     const order = snapshot.tasks
         .map((tcb, index) => ({ tcb, index }))
-        .sort((a, b) => b.tcb.definition.id - a.tcb.definition.id);
+        .sort((a, b) =>
+            compareTaskIds(b.tcb.definition.id, a.tcb.definition.id),
+        );
     const laneTop = new Map<TaskId, number>();
     const laneHeight = (id: TaskId): number =>
         LANE_HEIGHT + ((laneDepth.get(id) ?? 1) - 1) * MARKER_STEP;

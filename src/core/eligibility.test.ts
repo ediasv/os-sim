@@ -4,7 +4,7 @@ import { findEligibleJobs } from './eligibility';
 import { createInitialState } from './snapshot';
 
 const task: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 2,
@@ -13,7 +13,7 @@ const task: TaskDefinition = {
     rawEvents: '',
 };
 
-function job(index: number, state: Job['state'], taskId = 1): Job {
+function job(index: number, state: Job['state'], taskId = '1'): Job {
     return {
         taskId,
         index,
@@ -39,30 +39,33 @@ describe('findEligibleJobs', () => {
             job(2, 'ready'),
         );
 
-        expect(findEligibleJobs(state)).toEqual([{ taskId: 1, index: 1 }]);
+        expect(findEligibleJobs(state)).toEqual([{ taskId: '1', index: 1 }]);
     });
 
     it('does not let a later job pass a suspended oldest incomplete job', () => {
-        const secondTask = { ...task, id: 2, color: 'AABBCC' };
+        const secondTask = { ...task, id: '2', color: 'AABBCC' };
         const state = createInitialState({
             ...DEFAULT_CONFIG,
             tasks: [task, secondTask],
         });
         state.tasks[0].jobs.push(job(0, 'completed'), job(1, 'ready'));
-        state.tasks[1].jobs.push(job(0, 'suspended', 2), job(1, 'ready', 2));
+        state.tasks[1].jobs.push(
+            job(0, 'suspended', '2'),
+            job(1, 'ready', '2'),
+        );
 
-        expect(findEligibleJobs(state)).toEqual([{ taskId: 1, index: 1 }]);
+        expect(findEligibleJobs(state)).toEqual([{ taskId: '1', index: 1 }]);
     });
 
     it('skips a task that has no jobs yet', () => {
-        const secondTask = { ...task, id: 2, color: 'AABBCC' };
+        const secondTask = { ...task, id: '2', color: 'AABBCC' };
         const state = createInitialState({
             ...DEFAULT_CONFIG,
             tasks: [task, secondTask],
         });
-        state.tasks[1].jobs.push(job(0, 'ready', 2));
+        state.tasks[1].jobs.push(job(0, 'ready', '2'));
 
-        expect(findEligibleJobs(state)).toEqual([{ taskId: 2, index: 0 }]);
+        expect(findEligibleJobs(state)).toEqual([{ taskId: '2', index: 0 }]);
     });
 
     it('skips a task whose jobs are all completed', () => {
@@ -82,7 +85,7 @@ describe('findEligibleJobs', () => {
         });
         state.tasks[0].jobs.push(job(0, 'running'), job(1, 'ready'));
 
-        expect(findEligibleJobs(state)).toEqual([{ taskId: 1, index: 0 }]);
+        expect(findEligibleJobs(state)).toEqual([{ taskId: '1', index: 0 }]);
     });
 
     it('returns frozen refs so callers cannot mutate eligibility results', () => {

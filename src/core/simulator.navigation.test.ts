@@ -12,7 +12,7 @@ import { Simulator } from './simulator';
 
 // Residual ties recur, so the draw state and tie-break events change along
 // the run: reusing a step must keep them exactly as recorded (DEC-06).
-const tied = (id: number, color: string): TaskDefinition => ({
+const tied = (id: string, color: string): TaskDefinition => ({
     id,
     color,
     arrival: 0,
@@ -24,7 +24,7 @@ const tied = (id: number, color: string): TaskDefinition => ({
 const config: SystemConfig = {
     ...DEFAULT_CONFIG,
     cpuCount: 1,
-    tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC'), tied(3, '112233')],
+    tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC'), tied('3', '112233')],
 };
 const STEPS = 12;
 

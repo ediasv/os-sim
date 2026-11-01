@@ -4,7 +4,7 @@ import type { SimulationSnapshot, SystemConfig } from '../../../core/domain';
 import { buildGanttSvg, isFinalSnapshot } from './ganttSvg';
 
 function task(
-    id: number,
+    id: string,
     color: string,
     duration: number,
     period: number,
@@ -33,7 +33,7 @@ const SMALL: SystemConfig = {
     algorithm: 'RM',
     quantum: 5,
     cpuCount: 1,
-    tasks: [task(1, 'FF0000', 3, 5), task(2, '0000FF', 4, 8)],
+    tasks: [task('1', 'FF0000', 3, 5), task('2', '0000FF', 4, 8)],
 };
 
 describe('buildGanttSvg', () => {
@@ -108,7 +108,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 10,
             cpuCount: 1,
-            tasks: [task(1, 'FF0000', 6, 4, 20)],
+            tasks: [task('1', 'FF0000', 6, 4, 20)],
         };
         const svg = buildGanttSvg(run(behind, 5));
 
@@ -151,7 +151,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 1,
-            tasks: [task(1, '00FF00', 4, 5), task(2, 'FFFF00', 4, 5)],
+            tasks: [task('1', '00FF00', 4, 5), task('2', 'FFFF00', 4, 5)],
         };
         const svg = buildGanttSvg(run(overload, 6));
 
@@ -163,7 +163,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 2,
-            tasks: [task(1, 'FF0000', 2, 10)],
+            tasks: [task('1', 'FF0000', 2, 10)],
         };
         const svg = buildGanttSvg(run(idle, 4));
 
@@ -208,11 +208,11 @@ describe('buildGanttSvg', () => {
             quantum: 3,
             cpuCount: 3,
             tasks: [
-                task(1, 'E41A1C', 40, 300),
-                task(2, '377EB8', 70, 250),
-                task(3, '4DAF4A', 90, 400),
-                task(4, '984EA3', 120, 320),
-                task(5, 'FF7F00', 150, 280),
+                task('1', 'E41A1C', 40, 300),
+                task('2', '377EB8', 70, 250),
+                task('3', '4DAF4A', 90, 400),
+                task('4', '984EA3', 120, 320),
+                task('5', 'FF7F00', 150, 280),
             ],
         };
         const snapshot = run(long, 2400);
@@ -247,7 +247,10 @@ describe('buildGanttSvg', () => {
                     algorithm: 'RM',
                     quantum: 5,
                     cpuCount: 2,
-                    tasks: [task(1, 'FFFF00', 4, 10), task(2, '000080', 4, 10)],
+                    tasks: [
+                        task('1', 'FFFF00', 4, 10),
+                        task('2', '000080', 4, 10),
+                    ],
                 },
                 4,
             ),
@@ -291,7 +294,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 2,
-            tasks: [task(1, 'FF0000', 2, 10)],
+            tasks: [task('1', 'FF0000', 2, 10)],
         };
         const svg = buildGanttSvg(run(idle, 4));
 

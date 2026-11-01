@@ -9,7 +9,7 @@
 export type AlgorithmId = 'RM' | 'EDF';
 
 /** Unique task identifier from the configuration; always >= 1 (DEC-10). */
-export type TaskId = number;
+export type TaskId = string;
 
 /** One task line of the configuration file (A.3.3), after validation. */
 export interface TaskDefinition {

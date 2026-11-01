@@ -13,7 +13,7 @@ function snapshot(): SimulationState {
             cpuCount: 1,
             tasks: [
                 {
-                    id: 1,
+                    id: '1',
                     color: 'F0E0D0',
                     arrival: 0,
                     duration: 3,
@@ -22,7 +22,7 @@ function snapshot(): SimulationState {
                     rawEvents: '',
                 },
                 {
-                    id: 2,
+                    id: '2',
                     color: 'D0E0F0',
                     arrival: 0,
                     duration: 2,
@@ -36,7 +36,7 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: {
-                    id: 1,
+                    id: '1',
                     color: 'F0E0D0',
                     arrival: 0,
                     duration: 3,
@@ -47,7 +47,7 @@ function snapshot(): SimulationState {
                 nextActivation: 10,
                 jobs: [
                     {
-                        taskId: 1,
+                        taskId: '1',
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 4,
@@ -58,7 +58,7 @@ function snapshot(): SimulationState {
                         deadlineMissed: false,
                     },
                     {
-                        taskId: 1,
+                        taskId: '1',
                         index: 1,
                         activation: 5,
                         absoluteDeadline: 9,
@@ -73,7 +73,7 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: {
-                    id: 2,
+                    id: '2',
                     color: 'D0E0F0',
                     arrival: 0,
                     duration: 2,
@@ -84,7 +84,7 @@ function snapshot(): SimulationState {
                 nextActivation: null,
                 jobs: [
                     {
-                        taskId: 2,
+                        taskId: '2',
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 2,
@@ -100,7 +100,7 @@ function snapshot(): SimulationState {
         cpus: [
             {
                 id: 1,
-                running: { taskId: 1, index: 1 },
+                running: { taskId: '1', index: 1 },
                 sliceElapsed: 1,
                 offSince: null,
             },
@@ -159,14 +159,14 @@ describe('projectInspection', () => {
     it('represents future selection without current progress or state', () => {
         expect(
             projectFutureJob({
-                taskId: 1,
+                taskId: '1',
                 index: 3,
                 activation: 15,
                 absoluteDeadline: 19,
             }),
         ).toEqual({
             availability: 'future',
-            ref: { taskId: 1, index: 3 },
+            ref: { taskId: '1', index: 3 },
             activation: 15,
             absoluteDeadline: 19,
             executed: null,

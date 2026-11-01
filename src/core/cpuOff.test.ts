@@ -48,7 +48,7 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 3,
@@ -74,7 +74,7 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 3,
@@ -98,14 +98,14 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 2,
                         duration: 1,
                     },
                     {
                         ...aperiodic,
-                        id: 2,
+                        id: '2',
                         color: 'AABBCC',
                         arrival: 5,
                         duration: 1,
@@ -179,14 +179,14 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 2,
                     },
                     {
                         ...aperiodic,
-                        id: 2,
+                        id: '2',
                         color: 'AABBCC',
                         arrival: 0,
                         duration: 3,
