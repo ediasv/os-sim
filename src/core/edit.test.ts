@@ -1430,3 +1430,52 @@ describe('task identifier validation', () => {
         },
     );
 });
+
+describe('editable characteristics (DEC-37 matrix)', () => {
+    // A task not yet activated, so every characteristic is still editable.
+    const pending = () => ({
+        state: createInitialState({
+            ...config,
+            tasks: [{ ...config.tasks[0], arrival: 3 }],
+        }),
+        hasPolicy: both,
+    });
+    const run = (item: unknown) => {
+        const context = pending();
+        return foldEdit(readTarget(context.state), [item as EditItem], context);
+    };
+
+    it.each([
+        ['color', { kind: 'taskColor', color: 'aabbcc' }, { color: 'zz' }],
+        ['arrival', { kind: 'taskArrival', arrival: 4 }, { arrival: -1 }],
+        ['duration', { kind: 'taskDuration', duration: 3 }, { duration: 0 }],
+        ['deadline', { kind: 'taskDeadline', deadline: 7 }, { deadline: 0 }],
+        ['period', { kind: 'taskPeriod', period: 4 }, { period: 0 }],
+    ])('%s has a valid case and a refusal case', (_name, valid, invalid) => {
+        const kind = valid.kind;
+        expect(run({ ...valid, taskId: 1 })).toMatchObject({ ok: true });
+        const refused = run({ kind, taskId: 1, ...invalid });
+        expect(refused).toMatchObject({
+            ok: false,
+            refusals: [{ index: 0, kind }],
+        });
+        if (refused.ok) return;
+        expect(refused.refusals[0].reason).not.toBe('');
+    });
+
+    it.each([
+        ['ID', 'taskId'],
+        ['executed ticks', 'taskExecuted'],
+    ])('%s has no item kind and is refused as unknown', (_name, kind) => {
+        expect(run({ kind, taskId: 1, value: 2 })).toEqual({
+            ok: false,
+            refusals: [
+                {
+                    index: 0,
+                    kind,
+                    reason: `Tipo de item de edição desconhecido "${kind}".`,
+                },
+            ],
+        });
+    });
+});

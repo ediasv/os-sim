@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, type TaskDefinition } from './domain';
 import { createSimulator } from './createSimulator';
 import { findInconsistencies } from './consistency';
+import { EditRefusal } from './refusal';
 
 const task = (
     id = 1,
@@ -317,5 +318,267 @@ describe('task period edit in the engine', () => {
         expect(() =>
             sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 3 }]),
         ).toThrow(/concluída/);
+    });
+});
+
+describe('characteristic edits together (DEC-37, DEC-39)', () => {
+    const periodic = (
+        tasks = [task(1, { period: 5, deadline: 5, duration: 1 })],
+    ) => createSimulator({ ...DEFAULT_CONFIG, tasks });
+    type Sim = ReturnType<typeof periodic>;
+    const advanceTo = (sim: Sim, clock: number) => {
+        while (sim.getCurrentSnapshot().clock < clock) {
+            sim.tick();
+            expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
+        }
+    };
+    const activationsOf = (sim: Sim, taskId = 1) =>
+        sim
+            .getCurrentSnapshot()
+            .events.filter(
+                (event) =>
+                    event.kind === 'activation' && event.job.taskId === taskId,
+            )
+            .map((event) => event.time);
+    const kindsAt = (sim: Sim, time: number) =>
+        sim
+            .getCurrentSnapshot()
+            .events.filter((event) => event.time === time)
+            .map((event) => event.kind);
+    /** Every recorded snapshot and edit list, serialized, leaving the cursor. */
+    const everything = (sim: Sim) => {
+        const cursor = sim.getCursor();
+        const out = [];
+        for (let step = 0; step <= sim.getLatestSnapshot().clock; step++) {
+            sim.restore(step);
+            out.push({
+                snapshot: sim.getCurrentSnapshot(),
+                edits: sim.getEdits(step),
+            });
+        }
+        sim.restore(cursor);
+        return JSON.stringify(out);
+    };
+
+    it('applies a multi-item edit in order and in one submission', () => {
+        const sim = periodic();
+        advanceTo(sim, 3);
+        sim.edit([
+            { kind: 'taskDuration', taskId: 1, duration: 3 },
+            { kind: 'taskPeriod', taskId: 1, period: 8 },
+            { kind: 'taskColor', taskId: 1, color: 'abcdef' },
+        ]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(snapshot.tasks[0].definition).toMatchObject({
+            duration: 3,
+            period: 8,
+            color: 'ABCDEF',
+        });
+        expect(snapshot.tasks[0].nextActivation).toBe(8);
+        expect(sim.getEdits(3)).toHaveLength(1);
+        expect(sim.getEdits(3)[0]).toHaveLength(3);
+        expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+
+    it('refuses the whole edit, with every reason, and changes nothing (atomicity)', () => {
+        const sim = periodic();
+        advanceTo(sim, 3);
+        const before = everything(sim);
+        const cursor = sim.getCursor();
+        let message = '';
+        try {
+            sim.edit([
+                { kind: 'taskColor', taskId: 1, color: 'abcdef' },
+                { kind: 'taskPeriod', taskId: 1, period: 0 },
+                { kind: 'taskDuration', taskId: 1, duration: 2 },
+                { kind: 'taskDeadline', taskId: 1, deadline: 0 },
+            ]);
+        } catch (error) {
+            expect(error).toBeInstanceOf(EditRefusal);
+            message = (error as Error).message;
+        }
+        expect(message.split('\n')).toHaveLength(2);
+        expect(message).toMatch(
+            /^Item 2 \(taskPeriod\): .+\nItem 4 \(taskDeadline\): .+$/,
+        );
+        expect(sim.getCursor()).toBe(cursor);
+        expect(everything(sim)).toBe(before);
+    });
+
+    it('lets a later item see the earlier ones (arrival moved, then period)', () => {
+        const sim = periodic([
+            task(1, { arrival: 5, period: 20, deadline: 20, duration: 1 }),
+        ]);
+        advanceTo(sim, 2);
+        sim.edit([
+            { kind: 'taskArrival', taskId: 1, arrival: 8 },
+            { kind: 'taskPeriod', taskId: 1, period: 3 },
+        ]);
+        expect(sim.getCurrentSnapshot().tasks[0].nextActivation).toBe(8);
+        advanceTo(sim, 15);
+        expect(activationsOf(sim)).toEqual([8, 11, 14]);
+    });
+
+    it('judges a period item against an earlier conclusion in the same submission', () => {
+        const sim = periodic();
+        advanceTo(sim, 2);
+        expect(() =>
+            sim.edit([
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+                { kind: 'taskPeriod', taskId: 1, period: 3 },
+            ]),
+        ).toThrow(/Item 2 \(taskPeriod\): .*concluída/);
+    });
+
+    describe('after going back with restore', () => {
+        const build = () => {
+            const sim = periodic();
+            advanceTo(sim, 3);
+            sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 4 }]);
+            advanceTo(sim, 8);
+            return sim;
+        };
+
+        it('discards the future and keeps nextActivation and Job.duration of the restored step', () => {
+            const sim = build();
+            sim.restore(6);
+            const restored = sim.getCurrentSnapshot();
+            expect(restored.tasks[0].nextActivation).toBe(10);
+            expect(restored.tasks[0].jobs.map((j) => j.duration)).toEqual([
+                1, 4,
+            ]);
+            const earlier = [0, 1, 2, 3, 4, 5].map((step) => {
+                sim.restore(step);
+                return JSON.stringify(sim.getCurrentSnapshot());
+            });
+            sim.restore(6);
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 3 }]);
+
+            expect(sim.getLatestSnapshot().clock).toBe(6);
+            const after = sim.getCurrentSnapshot();
+            expect(after.tasks[0].nextActivation).toBe(8);
+            expect(after.tasks[0].jobs.map((j) => j.duration)).toEqual([1, 4]);
+            expect(sim.getEdits(3)).toHaveLength(1);
+            earlier.forEach((json, step) => {
+                sim.restore(step);
+                expect(JSON.stringify(sim.getCurrentSnapshot())).toBe(json);
+            });
+            sim.restore(6);
+            advanceTo(sim, 10);
+            expect(activationsOf(sim)).toEqual([0, 5, 8]);
+            expect(
+                sim.getCurrentSnapshot().tasks[0].jobs.map((j) => j.duration),
+            ).toEqual([1, 4, 4]);
+        });
+
+        it('recalculates deterministically from t-1', () => {
+            const run = () => {
+                const sim = build();
+                sim.restore(6);
+                sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 3 }]);
+                advanceTo(sim, 12);
+                return sim;
+            };
+            const first = run();
+            const second = run();
+            expect(first.getCurrentSnapshot()).toEqual(
+                second.getCurrentSnapshot(),
+            );
+            expect(everything(first)).toBe(everything(second));
+        });
+    });
+
+    describe('with task-state edits in the same tick (DEC-37 order)', () => {
+        const busy = (count = 1) =>
+            periodic(
+                Array.from({ length: count }, (_, i) =>
+                    task(i + 1, { period: 5, deadline: 5, duration: 1 }),
+                ),
+            );
+
+        it('suspension, then the edit activation, then CPU events', () => {
+            const sim = busy();
+            advanceTo(sim, 13);
+            sim.edit([
+                { kind: 'taskPeriod', taskId: 1, period: 2 },
+                { kind: 'taskState', taskId: 1, state: 'suspended' },
+                { kind: 'cpuCount', cpuCount: 2 },
+            ]);
+            const kinds = kindsAt(sim, 13);
+            expect(kinds.filter((kind) => !kind.startsWith('cpu-'))).toEqual([
+                'suspension',
+                'activation',
+            ]);
+            expect(kinds.slice(0, 2)).toEqual(['suspension', 'activation']);
+            expect(kinds.slice(2)).toContain('cpu-added');
+            expect(kinds.slice(2).every((k) => k.startsWith('cpu-'))).toBe(
+                true,
+            );
+            expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
+        });
+
+        it('conclusion cancels the activation the period edit would cause', () => {
+            const sim = busy();
+            advanceTo(sim, 13);
+            sim.edit([
+                { kind: 'taskPeriod', taskId: 1, period: 2 },
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+            ]);
+            const snapshot = sim.getCurrentSnapshot();
+            expect(activationsOf(sim)).toEqual([0, 5, 10]);
+            expect(snapshot.tasks[0].jobs).toHaveLength(3);
+            expect(snapshot.tasks[0].status).toBe('concluded');
+            expect(findInconsistencies(snapshot)).toEqual([]);
+        });
+
+        it('conclusion after an arrival edit leaves no activation', () => {
+            const sim = periodic([
+                task(1, { arrival: 5, period: 20, deadline: 20 }),
+            ]);
+            advanceTo(sim, 2);
+            sim.edit([
+                { kind: 'taskArrival', taskId: 1, arrival: 2 },
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+            ]);
+            const snapshot = sim.getCurrentSnapshot();
+            expect(activationsOf(sim)).toEqual([]);
+            expect(snapshot.tasks[0].jobs).toEqual([]);
+            expect(snapshot.tasks[0].status).toBe('concluded');
+            expect(findInconsistencies(snapshot)).toEqual([]);
+        });
+
+        it('orders events per task in list order, then CPU events', () => {
+            const sim = busy(2);
+            advanceTo(sim, 13);
+            sim.edit([
+                { kind: 'taskPeriod', taskId: 2, period: 2 },
+                { kind: 'taskState', taskId: 2, state: 'suspended' },
+                { kind: 'taskPeriod', taskId: 1, period: 2 },
+                { kind: 'taskState', taskId: 1, state: 'forced' },
+                { kind: 'cpuCount', cpuCount: 2 },
+            ]);
+            const order = sim
+                .getCurrentSnapshot()
+                .events.filter((event) => event.time === 13)
+                .map((event) => [
+                    event.kind,
+                    'taskId' in event
+                        ? event.taskId
+                        : 'job' in event
+                          ? event.job.taskId
+                          : -1,
+                ]);
+            expect(order.slice(0, 4)).toEqual([
+                ['forced', 1],
+                ['activation', 1],
+                ['suspension', 2],
+                ['activation', 2],
+            ]);
+            expect(order.slice(4).map(([kind]) => kind)).toContain('cpu-added');
+            expect(
+                order.slice(4).every(([kind]) => `${kind}`.startsWith('cpu-')),
+            ).toBe(true);
+            expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
+        });
     });
 });
