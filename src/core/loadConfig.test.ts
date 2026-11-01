@@ -369,6 +369,103 @@ describe('loadConfig', () => {
     });
 });
 
+describe('loadConfig: integer rule in every numeric field (DEC-10)', () => {
+    // Each builder puts `v` in that field of an otherwise valid file.
+    const at = {
+        quantum: (v: string) => `RM;${v};1\n1;FFFFFF;0;1;0;1`,
+        qtde_cpus: (v: string) => `RM;5;${v}\n1;FFFFFF;0;1;0;1`,
+        id: (v: string) => `RM;5;1\n${v};FFFFFF;0;1;0;1`,
+        ingresso: (v: string) => `RM;5;1\n1;FFFFFF;${v};1;0;1`,
+        duracao: (v: string) => `RM;5;1\n1;FFFFFF;0;${v};0;1`,
+        periodo: (v: string) => `RM;5;1\n1;FFFFFF;0;1;${v};1`,
+        prazo: (v: string) => `RM;5;1\n1;FFFFFF;0;1;0;${v}`,
+    } as const;
+    const minimum = {
+        quantum: 1,
+        qtde_cpus: 1,
+        id: 1,
+        ingresso: 0,
+        duracao: 1,
+        periodo: 0,
+        prazo: 1,
+    } as const;
+    const fields = Object.keys(at) as (keyof typeof at)[];
+    const lineOf = (field: keyof typeof at) =>
+        field === 'quantum' || field === 'qtde_cpus' ? 1 : 2;
+
+    function expectRejected(
+        field: keyof typeof at,
+        value: string,
+        shown: string,
+    ) {
+        const issues = issuesOf(at[field](value));
+        const line = lineOf(field);
+        expect(issues).toHaveLength(1);
+        expect(where(issues[0])).toEqual({ line, field, value });
+        expect(issues[0].origin).toBe('core');
+        expect(issues[0].message).toBe(
+            `Linha ${line}, campo ${field} (valor ${value}): O campo ${field} deve ser um número inteiro maior ou igual a ${minimum[field]}; valor recebido: ${shown}.`,
+        );
+    }
+
+    it.each(fields)('rejects a fractional %s', (field) => {
+        expectRejected(field, '1.5', '1.5');
+    });
+
+    it.each(fields)('rejects %s beyond the exact-integer range', (field) => {
+        expectRejected(field, '99999999999999999999', '100000000000000000000');
+    });
+
+    it('rejects zero CPUs', () => {
+        expectRejected('qtde_cpus', '0', '0');
+    });
+});
+
+describe('loadConfig: only the period may be missing (DEC-10, DEC-31)', () => {
+    it.each([
+        ['algoritmo_escalonamento', ';5;1\n1;FFFFFF;0;1;0;1', 1],
+        ['quantum', 'RM;;1\n1;FFFFFF;0;1;0;1', 1],
+        // `RM;5;` would lose its final `;` (DEC-20) and report a count.
+        ['qtde_cpus', 'RM;5; ;\n1;FFFFFF;0;1;0;1', 1],
+        ['id', 'RM;5;1\n;FFFFFF;0;1;0;1', 2],
+        ['cor', 'RM;5;1\n1;;0;1;0;1', 2],
+        ['ingresso', 'RM;5;1\n1;FFFFFF;;1;0;1', 2],
+        ['duracao', 'RM;5;1\n1;FFFFFF;0;;0;1', 2],
+        ['prazo', 'RM;5;1\n1;FFFFFF;0;1;0;;', 2],
+    ])('rejects an empty %s', (field, text, line) => {
+        const issues = issuesOf(text);
+        expect(issues).toHaveLength(1);
+        expect(where(issues[0])).toEqual({ line, field, value: null });
+        expect(issues[0].origin).toBe('syntax');
+        expect(issues[0].message).toBe(
+            `Linha ${line}, campo ${field}, valor ausente: campo obrigatório ausente.`,
+        );
+    });
+});
+
+describe('loadConfig: many tasks', () => {
+    it('loads many tasks through the whole pipeline', () => {
+        const count = 300;
+        const rows = Array.from(
+            { length: count },
+            (_, i) =>
+                `${i + 1};${(i + 1).toString(16).padStart(6, '0')};${i % 7};1;${10 + i};${10 + i}`,
+        );
+        const result = loadConfig(['RM;1;4', ...rows].join('\n'));
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.tasks).toHaveLength(count);
+        expect(result.warnings).toEqual([]);
+        expect(result.lines.tasks).toEqual(
+            Array.from({ length: count }, (_, i) => i + 2),
+        );
+        for (const task of result.config.tasks) {
+            expect(task.color).toBe(task.color.toUpperCase());
+        }
+    });
+});
+
 describe('default period (DEC-29)', () => {
     function loaded(text: string) {
         const result = loadConfig(text);
