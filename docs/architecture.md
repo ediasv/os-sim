@@ -18,8 +18,8 @@ afirma que os modulos planejados ja existem.
   `analyzeConfig` devolve os erros de sintaxe ou, sem eles, a configuracao com
   linhas e textos recebidos; `parseConfig` descarta os textos.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
-  `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
-  campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
+  `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha e
+  campo aos problemas do nucleo, cujas mensagens ja citam o valor (DEC-19); nao repete regras
   semanticas. Antes do `validateConfig`, aplica o periodo padrao a tarefa com
   periodo zero e devolve `warnings` no sucesso ou junto dos problemas do nucleo
   (DEC-29, DEC-34).
@@ -565,8 +565,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 
 ### DEC-19: Diagnosticos do parser de configuracao
 
-- Estado: aceita em 2026-10-17 e revista em 2026-10-18 e em 2026-10-28 (revisao
-  do PR #84, #31, e decisao da #94) pelo usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
+- Estado: aceita em 2026-10-17 e revista em 2026-10-18, em 2026-10-28 (revisao
+  do PR #84, #31, e decisao da #94) e em 2026-11-01 (decisao da #93) pelo
+  usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
   detalha DEC-10, DEC-12 e DEC-15.
 - Decisao:
     1. Diagnosticos de conteudo identificam linha original (base 1), campo,
@@ -584,16 +585,18 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
        incluir todos os problemas retornados pelo nucleo; havendo erro de
        sintaxe, reportar somente os erros de sintaxe (revisao de 2026-10-28).
        Nao repetir as regras semanticas do nucleo. Acrescentar ao texto
-       original de cada mensagem do nucleo o contexto da linha e do campo (e
-       o valor recebido quando disponivel), sem alterar nem reescrever a
-       mensagem. Em particular,
+       original de cada mensagem do nucleo o contexto da linha e do campo,
+       sem alterar nem reescrever a mensagem. O valor recebido nao entra no
+       texto acrescentado, porque toda mensagem do nucleo ja cita o valor;
+       o texto como escrito continua no campo `value` do diagnostico
+       (decisao da #93, 2026-11-01). Em particular,
        referencias ordinais a outras tarefas permanecem como o nucleo as
        produziu; nao sao substituidas pela linha original da tarefa referida.
        A linha e o campo adicionados correspondem a tarefa que tem o problema,
        associados pelo indice da tarefa (DEC-10, DEC-15). Problema causado
        por varios campos juntos (o nucleo o marca como `combined`, por
        exemplo o prazo da ultima ativacao) recebe linha e campo, sem valor
-       recebido, porque o texto de um so campo apontaria um valor que pode
+       recebido nem `value`, porque o texto de um so campo apontaria um valor que pode
        ser valido. O parser entrega a cor como foi escrita; compara-la sem
        caixa e converte-la para maiusculas fica com o nucleo, para que a
        mensagem de cor invalida mostre o valor recebido; a de cor repetida
@@ -612,8 +615,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
        de conteudo nem de leitura, conforme #33.
 - Exemplos:
     - Sintaxe: `Linha 4, campo duracao, valor "x": esperado um numero.`
-    - Regra do nucleo: `Linha 6, campo id (valor 2): O id 2 já foi usado
-      pela 1ª tarefa; cada tarefa precisa de um id único.`
+    - Regra do nucleo: `Linha 6, campo id: O id 2 já foi usado pela 1ª
+      tarefa; cada tarefa precisa de um id único.`
     - Falha de acesso: `Nao foi possivel abrir o arquivo "<caminho>":
       permissao negada.`
 - Justificativa: linhas originais permitem localizar erros mesmo quando o
@@ -622,7 +625,15 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   alterar referencias ordinais. O nucleo numera as tarefas pela posicao na
   lista que recebe; validar sem uma linha descartada deslocaria esses
   ordinais e esconderia conflitos com ela, entao uma segunda rodada de
-  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28). O
+  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28).
+  Repetir o valor no prefixo e na mensagem do nucleo
+  (`campo quantum (valor 0): ... valor recebido: 0.`) so acrescenta ruido; o
+  usuario preferiu mostrar o valor uma vez, inclusive quando o texto escrito
+  e o numero convertido diferem (`2.50` e `2.5`, ou um inteiro alem do limite
+  exato), caso em que fica o numero citado pelo nucleo. Mudar a mensagem do
+  nucleo tiraria o valor da edicao durante a simulacao (DEC-15), que nao tem
+  prefixo, entao a mudanca fica no carregamento (decisao da #93,
+  2026-11-01). O
   algoritmo valido e uma regra semantica (DEC-10, DEC-15): checa-lo no parser
   duplicava a regra com outra mensagem e tornava inalcancavel a do nucleo
   para arquivos; com a cor, ficou uma so regra e uma so mensagem (#94). Falhas
