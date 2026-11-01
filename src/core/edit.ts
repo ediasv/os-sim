@@ -9,9 +9,11 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`, `taskArrival`, `taskPeriod`) also needs its slice of the target
- * filled by `readTarget` and applied by `applyNetChange`, which the compiler
- * does not check.
+ * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`,
+ * `taskDeadline`, `taskArrival`, `taskPeriod`, DEC-44) also needs its slice of
+ * the target filled by `readTarget` and applied by `applyNetChange`, which the
+ * compiler does not check: statuses live in `EditTarget.taskStates` and
+ * characteristics in `EditTarget.definitions` (replaced, never mutated).
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
