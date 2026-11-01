@@ -96,3 +96,93 @@ describe('task duration and deadline edit in the engine', () => {
         expect(sim.getCurrentSnapshot().events).toHaveLength(count);
     });
 });
+
+describe('task arrival edit in the engine', () => {
+    const later = () =>
+        createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [task(1, { arrival: 5, period: 20, deadline: 30 })],
+        });
+    const activations = (sim: ReturnType<typeof later>) =>
+        sim
+            .getCurrentSnapshot()
+            .events.filter((event) => event.kind === 'activation');
+
+    it('moves the first activation later', () => {
+        const sim = later();
+        sim.tick();
+        sim.tick();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 8 }]);
+        while (sim.getCurrentSnapshot().clock < 9) sim.tick();
+        expect(activations(sim)).toMatchObject([{ time: 8 }]);
+        expect(sim.getCurrentSnapshot().tasks[0].jobs[0].activation).toBe(8);
+    });
+    it('activates and dispatches in the same tick when moved to the clock', () => {
+        const sim = later();
+        sim.tick();
+        sim.tick();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 2 }]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(activations(sim)).toMatchObject([{ time: 2 }]);
+        expect(snapshot.tasks[0].jobs).toHaveLength(1);
+        expect(snapshot.cpus[0].running).toEqual({ taskId: 1, index: 0 });
+        expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+    it('activates and dispatches at tick 0', () => {
+        const sim = later();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 0 }]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(activations(sim)).toMatchObject([{ time: 0 }]);
+        expect(snapshot.cpus[0].running).toEqual({ taskId: 1, index: 0 });
+        expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+    it('refuses an arrival before the clock', () => {
+        const sim = later();
+        sim.tick();
+        sim.tick();
+        expect(() =>
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 1 }]),
+        ).toThrow(/maior ou igual ao tick atual \(2\)/);
+    });
+    it('refuses after the first activation, even at the arrival tick', () => {
+        const sim = make();
+        expect(() =>
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 0 }]),
+        ).toThrow(
+            'O ingresso não pode ser alterado pois a tarefa já ingressou.',
+        );
+    });
+    it('gives a suspended task its job without CPU', () => {
+        const sim = later();
+        sim.tick();
+        sim.tick();
+        sim.edit([
+            { kind: 'taskState', taskId: 1, state: 'suspended' },
+            { kind: 'taskArrival', taskId: 1, arrival: 2 },
+        ]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(snapshot.tasks[0].status).toBe('suspended');
+        expect(snapshot.tasks[0].jobs).toHaveLength(1);
+        expect(snapshot.cpus[0].running).toBeNull();
+        expect(
+            snapshot.events
+                .filter((event) => event.time === 2)
+                .map((event) => event.kind),
+        ).toEqual(['suspension', 'activation']);
+    });
+    it('leaves no trace when the arrival returns to the original', () => {
+        const sim = later();
+        sim.tick();
+        sim.tick();
+        const count = sim.getCurrentSnapshot().events.length;
+        sim.edit([
+            { kind: 'taskArrival', taskId: 1, arrival: 8 },
+            { kind: 'taskArrival', taskId: 1, arrival: 5 },
+        ]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(snapshot.events).toHaveLength(count);
+        expect(snapshot.tasks[0].jobs).toEqual([]);
+        while (sim.getCurrentSnapshot().clock < 6) sim.tick();
+        expect(activations(sim)).toMatchObject([{ time: 5 }]);
+    });
+});

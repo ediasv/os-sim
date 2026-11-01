@@ -9,7 +9,7 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`) also needs its slice of the target
+ * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`, `taskArrival`) also needs its slice of the target
  * filled by `readTarget` and applied by `applyNetChange`, which the compiler
  * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
@@ -21,6 +21,7 @@ import {
     type ConfigField,
     type ConfigInput,
 } from './config';
+import { activateTask } from './activation';
 import { maxJobs } from './domain';
 import type {
     AlgorithmId,
@@ -59,6 +60,11 @@ export type EditItem =
           readonly kind: 'taskDeadline';
           readonly taskId: TaskId;
           readonly deadline: number;
+      }
+    | {
+          readonly kind: 'taskArrival';
+          readonly taskId: TaskId;
+          readonly arrival: number;
       };
 
 /** One edit (one form submission): its items, in order. */
@@ -272,6 +278,24 @@ export function checkRemainingLimit(
     return `O prazo da última das ${remaining} ${remaining === 1 ? 'ativação restante' : 'ativações restantes'} da tarefa ${definition.id} ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`;
 }
 
+/** Refuses an identifier that is not an integer or names no task. */
+function refuseUnknownTask(
+    target: EditTarget,
+    taskId: TaskId,
+): { ok: false; reason: string } | undefined {
+    // hasOwn coerces its key, so '1' or [1] would silently name task 1.
+    if (!Number.isInteger(taskId)) {
+        return {
+            ok: false,
+            reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
+        };
+    }
+    if (!Object.hasOwn(target.definitions, taskId)) {
+        return { ok: false, reason: `Não existe a tarefa ${taskId}.` };
+    }
+    return undefined;
+}
+
 /**
  * Shared handler of the characteristics that only shape future activations
  * (duration, relative deadline). Checks follow DEC-37: task exists, not
@@ -286,15 +310,8 @@ function editCharacteristic(
     field: 'duration' | 'deadline',
     value: unknown,
 ): ItemResult {
-    if (!Number.isInteger(taskId)) {
-        return {
-            ok: false,
-            reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
-        };
-    }
-    if (!Object.hasOwn(target.definitions, taskId)) {
-        return { ok: false, reason: `Não existe a tarefa ${taskId}.` };
-    }
+    const unknown = refuseUnknownTask(target, taskId);
+    if (unknown !== undefined) return unknown;
     const concluded = refuseIfConcluded(context, taskId, field, target);
     if (concluded !== undefined) return concluded;
     const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
@@ -365,6 +382,55 @@ function hasFinished(
 }
 
 const HANDLERS: Handlers = {
+    taskArrival: (target, item, context) => {
+        const unknown = refuseUnknownTask(target, item.taskId);
+        if (unknown !== undefined) return unknown;
+        const concluded = refuseIfConcluded(
+            context,
+            item.taskId,
+            'arrival',
+            target,
+        );
+        if (concluded !== undefined) return concluded;
+        const tcb = context.state.tasks.find(
+            (t) => t.definition.id === item.taskId,
+        );
+        if (tcb === undefined) {
+            throw new Error(
+                `Task ${item.taskId} has a definition but no control block.`,
+            );
+        }
+        if (tcb.jobs.length > 0) {
+            return {
+                ok: false,
+                reason: 'O ingresso não pode ser alterado pois a tarefa já ingressou.',
+            };
+        }
+        const checked = checkTaskField(
+            target,
+            context,
+            item.taskId,
+            'arrival',
+            item.arrival,
+        );
+        if (!checked.ok) return checked;
+        if (checked.definition.arrival < context.state.clock) {
+            return {
+                ok: false,
+                reason: `O ingresso deve ser maior ou igual ao tick atual (${context.state.clock}).`,
+            };
+        }
+        return {
+            ok: true,
+            target: {
+                ...target,
+                definitions: {
+                    ...target.definitions,
+                    [item.taskId]: checked.definition,
+                },
+            },
+        };
+    },
     taskDuration: (target, item, context) =>
         editCharacteristic(
             target,
@@ -382,15 +448,8 @@ const HANDLERS: Handlers = {
             item.deadline,
         ),
     taskColor: (target, item, context) => {
-        if (!Number.isInteger(item.taskId)) {
-            return {
-                ok: false,
-                reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
-            };
-        }
-        if (!Object.hasOwn(target.definitions, item.taskId)) {
-            return { ok: false, reason: `Não existe a tarefa ${item.taskId}.` };
-        }
+        const unknown = refuseUnknownTask(target, item.taskId);
+        if (unknown !== undefined) return unknown;
         const checked = checkTaskField(
             target,
             context,
@@ -602,9 +661,35 @@ export function applyNetChange(
         if (after.definitions[taskId] !== before.definitions[taskId]) {
             tcb.definition = after.definitions[taskId];
         }
-        const previous = before.taskStates[taskId];
-        const next = after.taskStates[taskId];
-        if (previous === next) continue;
+        const rescheduled =
+            tcb.jobs.length === 0 &&
+            after.definitions[taskId].arrival !==
+                before.definitions[taskId].arrival;
+        if (rescheduled) tcb.nextActivation = after.definitions[taskId].arrival;
+        applyStatusChange(
+            state,
+            tcb,
+            before.taskStates[taskId],
+            after.taskStates[taskId],
+        );
+        // An arrival moved to the current tick activates here, after the
+        // task's status events and before any CPU event (DEC-37, DEC-22).
+        if (rescheduled) activateTask(state, tcb);
+    }
+
+    applyCpuChange(state, before, after);
+}
+
+/** Moves one task from `previous` to `next` status, with its events (DEC-43). */
+function applyStatusChange(
+    state: SimulationState,
+    tcb: TaskControlBlock,
+    previous: TaskStatus,
+    next: TaskStatus,
+): void {
+    const taskId = tcb.definition.id;
+    {
+        if (previous === next) return;
         tcb.status = next;
         const owner = state.cpus.find((cpu) => cpu.running?.taskId === taskId);
         if (next === 'concluded') {
@@ -634,7 +719,7 @@ export function applyNetChange(
                     interrupted,
                 });
             }
-            continue;
+            return;
         }
         if (previous === 'forced') {
             state.events.push({ kind: 'unforced', time: state.clock, taskId });
@@ -664,7 +749,14 @@ export function applyNetChange(
             state.events.push({ kind: 'forced', time: state.clock, taskId });
         }
     }
+}
 
+/** Materializes the CPU count of the final target, with its events. */
+function applyCpuChange(
+    state: SimulationState,
+    before: EditTarget,
+    after: EditTarget,
+): void {
     // Only the final target is materialized. Surviving CPUs keep their
     // slice; removed owners lose it without a fictitious preemption (DEC-37).
     if (state.cpus.length !== before.cpuCount) {

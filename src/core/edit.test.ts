@@ -880,6 +880,185 @@ describe('task duration and deadline edit', () => {
     });
 });
 
+describe('task arrival edit', () => {
+    const arrival = (taskId: number, value: unknown): EditItem =>
+        ({ kind: 'taskArrival', taskId, arrival: value }) as EditItem;
+    const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
+        const state = createInitialState({
+            ...config,
+            tasks: [{ ...config.tasks[0], arrival: 5, ...task }],
+        });
+        return { state, hasPolicy: both };
+    };
+    const reasonOf = (result: ReturnType<typeof foldEdit>): string => {
+        expect(result).toMatchObject({
+            ok: false,
+            refusals: [{ kind: 'taskArrival' }],
+        });
+        if (result.ok) throw new Error('expected a refusal');
+        return result.refusals[0].reason;
+    };
+
+    it('accepts a later arrival and one equal to the clock', () => {
+        const context = fixture();
+        context.state.clock = 2;
+        const base = readTarget(context.state);
+        for (const value of [8, 2]) {
+            const result = foldEdit(base, [arrival(1, value)], context);
+            expect(result).toMatchObject({ ok: true });
+            if (!result.ok) return;
+            expect(result.target.definitions[1].arrival).toBe(value);
+            expect(Object.isFrozen(result.target.definitions[1])).toBe(true);
+        }
+        expect(base.definitions[1].arrival).toBe(5);
+    });
+    it('refuses an arrival before the clock naming it', () => {
+        const context = fixture();
+        context.state.clock = 3;
+        expect(
+            reasonOf(
+                foldEdit(readTarget(context.state), [arrival(1, 2)], context),
+            ),
+        ).toBe('O ingresso deve ser maior ou igual ao tick atual (3).');
+    });
+    it('refuses once the task has a job, even when the arrival equals the clock', () => {
+        const context = fixture({ arrival: 0 });
+        context.state.clock = 0;
+        context.state.tasks[0].jobs.push({
+            taskId: 1,
+            index: 0,
+            activation: 0,
+            absoluteDeadline: 5,
+            duration: 2,
+            executed: 0,
+            state: 'ready',
+            completedAt: null,
+            deadlineMissed: false,
+        });
+        expect(
+            reasonOf(
+                foldEdit(readTarget(context.state), [arrival(1, 0)], context),
+            ),
+        ).toBe('O ingresso não pode ser alterado pois a tarefa já ingressou.');
+    });
+    it.each([-1, 1.5, Number.NaN, '3', null, undefined])(
+        'refuses the invalid value %j with the validateConfig wording',
+        (value) => {
+            const context = fixture();
+            expect(
+                reasonOf(
+                    foldEdit(
+                        readTarget(context.state),
+                        [arrival(1, value)],
+                        context,
+                    ),
+                ),
+            ).toBe(
+                issue({
+                    ...config,
+                    tasks: [{ ...config.tasks[0], arrival: value }],
+                } as ConfigInput),
+            );
+        },
+    );
+    it('refuses a concluded task, also when concluded in the same edit', () => {
+        const context = fixture();
+        const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
+        context.state.tasks[0].status = 'concluded';
+        expect(
+            reasonOf(
+                foldEdit(readTarget(context.state), [arrival(1, 8)], context),
+            ),
+        ).toBe(reason);
+        const live = fixture();
+        const result = foldEdit(
+            readTarget(live.state),
+            [
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+                arrival(1, 8),
+            ],
+            live,
+        );
+        expect(result).toEqual({
+            ok: false,
+            refusals: [{ index: 1, kind: 'taskArrival', reason }],
+        });
+    });
+    it('refuses unknown and non-integer task identifiers', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        expect(reasonOf(foldEdit(base, [arrival(9, 8)], context))).toBe(
+            'Não existe a tarefa 9.',
+        );
+        expect(
+            reasonOf(
+                foldEdit(base, [arrival('1' as unknown as number, 8)], context),
+            ),
+        ).toContain('O identificador da tarefa deve ser um número inteiro');
+    });
+    it('reschedules the first activation on the net change', () => {
+        const context = fixture();
+        const before = readTarget(context.state);
+        const result = foldEdit(before, [arrival(1, 8)], context);
+        if (!result.ok) throw new Error('expected acceptance');
+        applyNetChange(context.state, before, result.target);
+        expect(context.state.tasks[0].nextActivation).toBe(8);
+        expect(context.state.tasks[0].jobs).toEqual([]);
+        expect(context.state.events).toEqual([]);
+    });
+    it('activates in the edit stage when the arrival equals the clock', () => {
+        const context = fixture();
+        context.state.clock = 2;
+        const before = readTarget(context.state);
+        const result = foldEdit(before, [arrival(1, 2)], context);
+        if (!result.ok) throw new Error('expected acceptance');
+        applyNetChange(context.state, before, result.target);
+        expect(context.state.tasks[0].jobs).toMatchObject([
+            { index: 0, activation: 2, absoluteDeadline: 7 },
+        ]);
+        expect(context.state.events).toEqual([
+            { kind: 'activation', time: 2, job: { taskId: 1, index: 0 } },
+        ]);
+        expect(context.state.tasks[0].nextActivation).toBe(7);
+    });
+    it('records the status event before the edit-caused activation', () => {
+        const context = fixture();
+        context.state.clock = 2;
+        const before = readTarget(context.state);
+        const result = foldEdit(
+            before,
+            [
+                { kind: 'taskState', taskId: 1, state: 'suspended' },
+                arrival(1, 2),
+            ],
+            context,
+        );
+        if (!result.ok) throw new Error('expected acceptance');
+        applyNetChange(context.state, before, result.target);
+        expect(context.state.events.map((event) => event.kind)).toEqual([
+            'suspension',
+            'activation',
+        ]);
+        expect(context.state.tasks[0].jobs).toHaveLength(1);
+        expect(context.state.tasks[0].status).toBe('suspended');
+    });
+    it('changes nothing when the arrival returns to the original', () => {
+        const context = fixture();
+        context.state.clock = 2;
+        const before = readTarget(context.state);
+        const result = foldEdit(
+            before,
+            [arrival(1, 2), arrival(1, 5)],
+            context,
+        );
+        if (!result.ok) throw new Error('expected acceptance');
+        applyNetChange(context.state, before, result.target);
+        expect(context.state.tasks[0].jobs).toEqual([]);
+        expect(context.state.tasks[0].nextActivation).toBe(5);
+        expect(context.state.events).toEqual([]);
+    });
+});
+
 describe('task identifier validation', () => {
     it.each([['1'], [[1]], [1.5], [Number.NaN]])(
         'refuses the non-integer task identifier %j',
