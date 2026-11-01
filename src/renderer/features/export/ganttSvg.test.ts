@@ -265,7 +265,7 @@ describe('buildGanttSvg', () => {
         expect(svg).not.toContain('Suspenso');
     });
 
-    it('labels a one-tick CPU-off interval "Off" and longer ones "Desligada"', () => {
+    it('labels every CPU-off interval "Desligada", even a one-tick one', () => {
         const idle: SystemConfig = {
             algorithm: 'RM',
             quantum: 5,
@@ -275,7 +275,8 @@ describe('buildGanttSvg', () => {
         const svg = buildGanttSvg(run(idle, 4));
 
         expect(svg).toContain('>Desligada</text>');
-        expect(buildGanttSvg(run(idle, 1))).toContain('>Off</text>');
+        expect(buildGanttSvg(run(idle, 1))).toContain('>Desligada</text>');
+        expect(buildGanttSvg(run(idle, 1))).not.toContain('>Off</text>');
     });
 
     it('shows the file name and the export instant in the header when given', () => {

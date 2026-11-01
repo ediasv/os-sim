@@ -478,7 +478,7 @@ export function buildGanttSvg(
             const w = (end - interval.start) * TICK - 2;
             out.push(
                 `<rect data-state="cpu-off" x="${tx(interval.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${w - 1.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="${THEME.raised}" stroke="${THEME.border}" stroke-width="1.5" stroke-dasharray="4 3"><title>CPU ${cpu.cpuId} desligada: [${interval.start}, ${end})</title></rect>`,
-                `<text x="${tx(interval.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${THEME.textSecondary}">${end - interval.start === 1 ? 'Off' : 'Desligada'}</text>`,
+                `<text x="${tx(interval.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${THEME.textSecondary}">Desligada</text>`,
             );
         }
         out.push('</g>');
