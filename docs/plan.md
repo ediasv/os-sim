@@ -663,7 +663,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #42 Revisar comentarios de componentes/funcoes e justificativas das decisoes.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
-  Em andamento (Refs #44, issue aberta; nenhum codigo alterado). Alvos
+  Concluida pelo usuario em 2026-11-01 (issue fechada por decisao dele, com as
+  lacunas abaixo aceitas; nenhum codigo alterado). Alvos
   propostos em DEC-42 (aceite do usuario pendente): Windows x64 com o
   `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, testado por ediasv
   (abaixo). Verificacao no Windows (2026-11-01,
@@ -845,7 +846,6 @@ Issues `[Docs]`, sem fase no Project.
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
-- Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
