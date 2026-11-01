@@ -980,6 +980,34 @@ describe('task arrival edit', () => {
             ok: true,
         });
     });
+    it('bounds the last deadline by the pending arrival of the same edit, in either order', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        const far = arrival(1, Number.MAX_SAFE_INTEGER - 50);
+        const wide = {
+            kind: 'taskDeadline',
+            taskId: 1,
+            deadline: 10,
+        } as EditItem;
+        for (const items of [
+            [far, wide],
+            [wide, far],
+        ]) {
+            const result = foldEdit(base, items, context);
+            expect(result).toMatchObject({ ok: false });
+            if (result.ok) return;
+            expect(result.refusals).toHaveLength(1);
+            expect(result.refusals[0].reason).toMatch(
+                /ultrapassa o maior inteiro exato/,
+            );
+        }
+        for (const items of [
+            [arrival(1, 8), wide],
+            [wide, arrival(1, 8)],
+        ]) {
+            expect(foldEdit(base, items, context)).toMatchObject({ ok: true });
+        }
+    });
     it('refuses a concluded task, also when concluded in the same edit', () => {
         const context = fixture();
         const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';

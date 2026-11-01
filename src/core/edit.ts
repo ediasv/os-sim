@@ -278,6 +278,23 @@ export function checkRemainingLimit(
     return `O prazo da última das ${remaining} ${remaining === 1 ? 'ativação restante' : 'ativações restantes'} da tarefa ${definition.id} ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`;
 }
 
+/**
+ * The task as the net target would schedule it: before the first activation
+ * the next activation is the pending arrival, which an earlier item of the
+ * same edit may have moved, so limit checks must not read the live one.
+ */
+function withPendingArrival(
+    tcb: DeepReadonly<TaskControlBlock>,
+    target: EditTarget,
+): DeepReadonly<TaskControlBlock> {
+    return tcb.jobs.length === 0
+        ? {
+              ...tcb,
+              nextActivation: target.definitions[tcb.definition.id].arrival,
+          }
+        : tcb;
+}
+
 /** Refuses an identifier that is not an integer or names no task. */
 function refuseUnknownTask(
     target: EditTarget,
@@ -328,7 +345,10 @@ function editCharacteristic(
     }
     const checked = checkTaskField(target, context, taskId, field, value);
     if (!checked.ok) return checked;
-    const tooFar = checkRemainingLimit(tcb, checked.definition);
+    const tooFar = checkRemainingLimit(
+        withPendingArrival(tcb, target),
+        checked.definition,
+    );
     if (tooFar !== null) return { ok: false, reason: tooFar };
     return {
         ok: true,
