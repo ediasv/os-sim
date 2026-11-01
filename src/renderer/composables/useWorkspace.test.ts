@@ -404,3 +404,29 @@ describe('useWorkspace export (#39)', () => {
         expect(workspace.available.value.has('export-svg')).toBe(true);
     });
 });
+
+describe('useWorkspace export file name (#39)', () => {
+    it.each([String.raw`C:\pastas\tarefas.txt`, '/home/u/tarefas.txt'])(
+        'puts the base name of %s in the exported title',
+        async (path) => {
+            stubFile({ status: 'loaded', path, text: TWO_TASKS });
+            const workspace = useWorkspace();
+            workspace.handle('load-config');
+            await vi.waitFor(() =>
+                expect(workspace.taskCount.value).toBeGreaterThan(0),
+            );
+            workspace.handle('step-forward');
+            const saveImageFile = vi
+                .fn()
+                .mockResolvedValue({ status: 'canceled' });
+            vi.stubGlobal('window', { imageFile: { saveImageFile } });
+
+            workspace.handle('export-svg');
+            await vi.waitFor(() => expect(saveImageFile).toHaveBeenCalled());
+
+            expect(saveImageFile.mock.calls[0][0].content).toContain(
+                '>os-sim — tarefas.txt</text>',
+            );
+        },
+    );
+});

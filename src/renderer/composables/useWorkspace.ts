@@ -141,7 +141,7 @@ export function useWorkspace() {
         }
         if (loaded.ok) {
             draft.value = loaded.config;
-            fileName.value = result.path.split(/[\/]/).pop();
+            fileName.value = result.path.split(/[/\\]/).pop();
         }
         notices.value = next;
     }
