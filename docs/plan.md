@@ -569,7 +569,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   #26, PRs #115 a #119, rascunhos): trechos suspensos e forcados e lacuna de CPU
   removida; revisar o SVG quando a #38 desenhar o Gantt na tela, para
   compartilhar a apresentacao em vez de manter duas (hoje o Gantt na tela nao
-  existe). Verificacao: `npm test` 730/730 (1 ignorado), `npm run lint` e
+  existe). Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
   `npm run typecheck` aprovados; SVG gerado com `demoConfigs/05` lido como XML
   bem formado e aberto no painel de navegacao do app, sem conferencia visual
   detalhada (#40). Nao verificado: gravacao pelo dialogo real do Electron.
