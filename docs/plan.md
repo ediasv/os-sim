@@ -688,7 +688,7 @@ Issues `[Docs]`, sem fase no Project.
 ## Trabalho atual
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23, #24 e #25 concluidas; #26 a #28 nao iniciadas. E4: #29, #30,
+  E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
   #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
@@ -705,8 +705,27 @@ Issues `[Docs]`, sem fase no Project.
   DEC-36; evidencia em E3.
 - #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
   em E3 e decisao em DEC-37.
-- Proximo passo: #26 (aplicar as edicoes de DEC-37 no nucleo), que destrava
-  #37 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
+- #26 em andamento (iniciada 2026-11-01, branch `feat/26-edicoes-atomicas`):
+  aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
+  do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
+  eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
+  PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
+  adaptador fica na #37. Primeiro PR (#114, so documental): revisao de
+  DEC-37, em que so o resultado final das edicoes de um tick conta. Nada
+  implementado ainda; baseline `npm test` 669/669.
+  Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
+  #26), todos em rascunho:
+    1. #114 revisao de DEC-37 (documental);
+    2. #115 etapa de edicao no passo, edicoes por tick no historico, descarte do
+       futuro, recusa atomica por item, algoritmo e quantum;
+    3. #116 quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
+       sem a CPU;
+    4. #117 estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+    5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
+       ingresso, cor);
+    6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
+- Proximo passo: plano de implementacao do #115. Fora da #26:
+  aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
