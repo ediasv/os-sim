@@ -1,5 +1,5 @@
-import { findEligibleJobs } from '../../../core/eligibility';
-import { summarizeCpuOff, type CpuOffSummary } from '../../../core/cpuOff';
+import type { CpuOffSummary } from '../../../core/cpuOff';
+import { cpuOffSummary, eligibleJobs } from '../../snapshotQueries';
 import {
     maxJobs,
     type DeepReadonly,
@@ -168,7 +168,7 @@ export function projectInspection(
     snapshot: DeepReadonly<SimulationSnapshot>,
 ): InspectionData {
     const eligibleKeys = new Set(
-        findEligibleJobs(snapshot).map((ref) => jobKey(ref)),
+        eligibleJobs(snapshot).map((ref) => jobKey(ref)),
     );
     const tasks = snapshot.tasks.map((tcb) => {
         const definition = copyDefinition(tcb.definition);
@@ -198,6 +198,6 @@ export function projectInspection(
         inspectedTick: snapshot.clock,
         tasks,
         futureJobs: [],
-        cpuOff: summarizeCpuOff(snapshot),
+        cpuOff: cpuOffSummary(snapshot),
     };
 }

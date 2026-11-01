@@ -533,7 +533,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Pendencia herdada da #72: `useSimulation` (adaptador de DEC-23) ficou sem
   uso em producao desde que `App` deixou de chama-lo; a #36 deve liga-lo ou
   revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
-  preparacao nao cria simulador.
+  preparacao nao cria simulador. Parte 1 (carregar, iniciar, avancar, voltar,
+  reiniciar, paineis #73/#69/#71 montados): ver
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fluxo-da-area-de-trabalho-36-parte-1).
+  Faltam Executar tudo (#27), Sistema, Adicionar tarefa e confirmacao de FE-04.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
@@ -724,6 +727,8 @@ Issues `[Docs]`, sem fase no Project.
     5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
+- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
+  a issue continua aberta (Refs #36).
 - Proximo passo: plano de implementacao do #115. Fora da #26:
   aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
