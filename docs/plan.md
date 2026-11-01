@@ -857,13 +857,9 @@ Issues `[Docs]`, sem fase no Project.
        derrubam essa mutacao. DEC-45: remover a recusa de conclusao com
        caracteristica derruba 3 testes; remover a guarda de job criado por
        envio anterior derruba 4. `npm test` 54 arquivos / 1067 testes. Lacuna
-       conhecida (O3): so `projectJob` em `system.ts:87` mostra a duracao de
-       um job lida da definicao (alimenta `SystemInspector.vue`), errada para
-       jobs ja ativados depois de uma edicao, ate a #37/#38 lerem
-       `Job.duration`; `copyDefinition` (`inspection.ts:104`) e
-       `TaskDetails.vue:35` mostram a duracao da tarefa, corretas. Editar
+       conhecida (O3) de `projectJob` tratada na #131 (ver abaixo). Editar
        periodo 0 (aperiodica) fica fora do Projeto A (DEC-29). Nao verificado: interface e pacote. Acompanhamento em issues
-       novas (`projectJob`; refactors do `edit.ts`); Project e corpo do PR
+       novas (#131; refactors do `edit.ts`); Project e corpo do PR
        #118 a atualizar com o aceite do usuario;
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
        #118 mergeado na `main` (`1559d97`). Implementacao local sobre ela,
@@ -888,6 +884,14 @@ Issues `[Docs]`, sem fase no Project.
        `npm test` 1098 passam e 1 ignorado em 56 arquivos (baseline 1096 mais
        os 2 testes novos); `npm run lint` e `npm run typecheck` sem erros.
        Interface e pacote nao verificados.
+- #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
+  do sistema mostra a duracao de cada job a partir de `Job.duration`
+  (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
+  `system.test.ts` com edicao real de duracao: falhou antes (7 em vez de 4)
+  e passa depois. Evidencia local (2026-11-01): `npm test` 1068/1068 em 54
+  arquivos, `npm run lint` e `npm run typecheck` sem erros. Nao verificado:
+  interface interativa e pacote. Proximo passo: revisao do usuario e PR
+  pronto.
 - Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com

@@ -1938,17 +1938,13 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Semantica entre envios do mesmo tick: resolvida na DEC-45 (decisao do
   usuario em 2026-11-01); a primeira redacao, que julgava os jobs pelo
   estado de antes do tick, foi substituida.
-- Lacuna conhecida (decisao do usuario, O3): so um ponto do renderer
-  mostra a duracao de um JOB lida da definicao: `projectJob` em
-  `src/renderer/features/system/system.ts` (linha 87, `duration:
-  definition.duration`), cujo `SystemJob.duration` alimenta
-  `SystemInspector.vue` (CPUs, prontos, pendentes). Depois de editar a
-  duracao, jobs ja ativados aparecem com o valor novo, errado, ate a
-  #37/#38 passarem a ler `Job.duration`. Nao sao lacuna: `copyDefinition`
-  (`inspection.ts`, linha 104) apenas copia a definicao da tarefa para
-  `InspectionTaskDefinition`, e `TaskDetails.vue` (linha 35) imprime
-  `task.definition.duration`, campo da tarefa, correto. Fora do escopo
-  desta serie; o nucleo e os testes de nucleo ja expoem `Job.duration`.
+- Lacuna conhecida (decisao do usuario, O3), fechada pela #131 (PR #135):
+  `projectJob` em `src/renderer/features/system/system.ts` lia a duracao
+  do job da definicao da tarefa, e `SystemInspector.vue` (CPUs, prontos,
+  pendentes) mostrava o valor editado para jobs ja ativados. Agora
+  `SystemJob.duration` vem de `Job.duration`. `copyDefinition`
+  (`inspection.ts`) e `TaskDetails.vue` continuam mostrando a duracao
+  vigente da tarefa, como devem.
 - Fora do escopo (decisao do usuario, O4): editar periodo 0 (tarefa
   aperiodica) no Projeto A; inclusao e exclusao de tarefas, no PR 6/6 (#119).
 - Justificativa: guardar a duracao no job e a proxima ativacao na tarefa
