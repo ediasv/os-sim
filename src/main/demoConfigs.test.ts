@@ -234,8 +234,8 @@ describe('05: preemption, quantum expiry and a tie settled by the draw', () => {
         // The winner finishes exactly when its slice would expire (t=2), so
         // no expiry is logged for it. Task 2 (period 7) preempts the loser
         // at t=3 and task 1 at t=10, the instant task 1's second slice
-        // expires: the expiry is logged first, then the activation and the
-        // preemption (DEC-18, DEC-22). Task 1 has quantum slices [6, 8) and
+        // expires: the activation is logged first, then the expiry and the
+        // preemption (DEC-18, DEC-22 as revised by DEC-37). Task 1 has quantum slices [6, 8) and
         // [8, 10) and resumes at t=12 with 2 ticks left, ending at t=14.
         expect(s.executions).toEqual([
             slice(1, winner, 0, 2),
@@ -255,8 +255,8 @@ describe('05: preemption, quantum expiry and a tie settled by the draw', () => {
             { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref(1, 0) },
         ]);
         expect(s.events.filter((event) => event.time === 10)).toEqual([
-            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref(1, 0) },
             act(10, 2, 1),
+            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref(1, 0) },
             preempt(10, ref(1, 0), ref(2, 1)),
         ]);
         expect(of(s, 'deadline-miss')).toEqual([]);
@@ -412,12 +412,12 @@ describe('09 and 10: files with errors show line, field and value (DEC-19)', () 
             { line: 4, field: 'id', value: '1', origin: 'core' },
         ]);
         expect(issues.map((issue) => issue.message)).toEqual([
-            'Linha 1, campo quantum (valor 0): O campo quantum deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 3, campo ingresso (valor -1): O campo ingresso deve ser um número inteiro maior ou igual a 0; valor recebido: -1.',
-            'Linha 3, campo cor (valor E41A1C): A cor E41A1C já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
-            'Linha 4, campo duracao (valor 0): O campo duracao deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 4, campo prazo (valor 0): O campo prazo deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 4, campo id (valor 1): O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+            'Linha 1, campo quantum: O campo quantum deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 3, campo ingresso: O campo ingresso deve ser um número inteiro maior ou igual a 0; valor recebido: -1.',
+            'Linha 3, campo cor: A cor E41A1C já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
+            'Linha 4, campo duracao: O campo duracao deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 4, campo prazo: O campo prazo deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 4, campo id: O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
         ]);
     });
 

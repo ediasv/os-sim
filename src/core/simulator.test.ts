@@ -10,7 +10,7 @@ import {
     type TaskDefinition,
 } from './domain';
 import { DRAW_SEED } from './draw';
-import { rmPolicy } from './policies';
+import { DEFAULT_POLICIES, rmPolicy } from './policies';
 import type { PolicyDecision, PolicyView, SchedulingPolicy } from './policy';
 import { Simulator } from './simulator';
 
@@ -1725,13 +1725,14 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
         expectMultiCpuInvariants(sim);
 
         run(sim, 2);
-        // Completion, deadline miss, slice expiry, activation, then dispatch.
+        // Completion, deadline miss, activation, slice expiry, then dispatch
+        // (DEC-22 as revised by DEC-37: the edit stage sits between the last two).
         expect(eventsAt(sim, 2)).toEqual([
             { kind: 'completion', time: 2, job: ref(1) },
             { kind: 'task-finished', time: 2, taskId: 1 },
             { kind: 'deadline-miss', time: 2, job: ref(3) },
-            { kind: 'quantum-expired', time: 2, cpuId: 2, job: ref(2) },
             { kind: 'activation', time: 2, job: ref(4) },
+            { kind: 'quantum-expired', time: 2, cpuId: 2, job: ref(2) },
             {
                 kind: 'preemption',
                 time: 2,
@@ -2094,5 +2095,85 @@ describe('Simulator draws (#20)', () => {
             expect(sim.getLatestSnapshot()).toBe(before);
             expect(before.drawState).toBe(DRAW_SEED);
         });
+    });
+});
+
+describe('policy source', () => {
+    // RM runs task 2 (shorter period); EDF runs task 1 (earlier deadline).
+    const differing: SystemConfig = {
+        ...DEFAULT_CONFIG,
+        cpuCount: 1,
+        quantum: 5,
+        tasks: [
+            {
+                id: 1,
+                color: 'F0E0D0',
+                arrival: 0,
+                duration: 3,
+                period: 10,
+                deadline: 3,
+                rawEvents: '',
+            },
+            {
+                id: 2,
+                color: 'AABBCC',
+                arrival: 0,
+                duration: 3,
+                period: 5,
+                deadline: 5,
+                rawEvents: '',
+            },
+        ],
+    };
+
+    it('runs the registered policy of the configured algorithm', () => {
+        const edf = new Simulator(
+            { ...differing, algorithm: 'EDF' },
+            { policies: DEFAULT_POLICIES },
+        );
+        expect(edf.getLatestSnapshot().cpus[0].running).toEqual({
+            taskId: 1,
+            index: 0,
+        });
+        const rm = new Simulator(differing, { policies: DEFAULT_POLICIES });
+        expect(rm.getLatestSnapshot().cpus[0].running).toEqual({
+            taskId: 2,
+            index: 0,
+        });
+    });
+
+    it('refuses a lookup without the configured algorithm when tasks exist', () => {
+        expect(
+            () =>
+                new Simulator(
+                    { ...differing, algorithm: 'EDF' },
+                    { policies: { RM: rmPolicy } },
+                ),
+        ).toThrow('No scheduling policy is registered for algorithm EDF.');
+    });
+
+    it('accepts a lookup without the configured algorithm when there are no tasks', () => {
+        expect(
+            () =>
+                new Simulator(
+                    { ...DEFAULT_CONFIG, algorithm: 'EDF' },
+                    { policies: { RM: rmPolicy } },
+                ),
+        ).not.toThrow();
+    });
+
+    it('still rejects an object that is neither a policy nor a lookup', () => {
+        expect(() => new Simulator(differing, {} as SchedulingPolicy)).toThrow(
+            /select method is required/,
+        );
+    });
+
+    it('rejects a lookup entry without select', () => {
+        expect(
+            () =>
+                new Simulator(differing, {
+                    policies: { RM: {} as SchedulingPolicy },
+                }),
+        ).toThrow(/select method is required/);
     });
 });

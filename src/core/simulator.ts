@@ -1,6 +1,7 @@
 import {
     DEFAULT_CONFIG,
     maxJobs,
+    type AlgorithmId,
     type Job,
     type JobRef,
     type SimulationSnapshot,
@@ -14,14 +15,24 @@ import {
     buildPolicyView,
     checkDecision,
     selectedRefs,
+    type PolicyLookup,
     type PolicyTie,
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
 import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 import { SnapshotHistory } from './history';
-import { SimulationRefusal } from './refusal';
+import { EditRefusal, SimulationRefusal } from './refusal';
+import {
+    applyNetChange,
+    foldEdit,
+    readTarget,
+    type Edit,
+    type EditContext,
+    type EditItem,
+} from './edit';
 import { deepCopy } from './helpers/deepCopy';
+import { freezeCopy } from './helpers/freezeCopy';
 import { key } from './helpers/key';
 
 const NO_WORK_POLICY: SchedulingPolicy = {
@@ -69,6 +80,26 @@ function copyTie(raw: unknown): PolicyTie {
     return { candidates, slots };
 }
 
+/**
+ * Where the Simulator gets its policies (DEC-39, revising DEC-25 item 2). A
+ * plain policy runs for every algorithm, so engine tests can inject a test
+ * policy; `{ policies }` is looked up by the current `config.algorithm` at
+ * every dispatch, which is the production path through `createSimulator`.
+ */
+export type PolicySource =
+    | SchedulingPolicy
+    | { readonly policies: PolicyLookup };
+
+const MISSING_SELECT = 'A scheduling policy with a select method is required.';
+
+function hasSelect(value: unknown): value is SchedulingPolicy {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as SchedulingPolicy).select === 'function'
+    );
+}
+
 /** Whether tick() may run; a refusal always carries its reason (DEC-36). */
 export type ExecutionGuardResult =
     | { ready: true }
@@ -77,24 +108,30 @@ export type ExecutionGuardResult =
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
  * Activations are processed at each boundary, eligible jobs are selected
- * globally by an injected policy, and slices that used the whole quantum
- * are renewed at each boundary (DEC-03, DEC-18).
+ * globally by the policy of the current algorithm (DEC-39), and slices that
+ * used the whole quantum are renewed at each boundary (DEC-03, DEC-18).
  */
 export class Simulator {
     private state: SimulationState;
-    private readonly policy: SchedulingPolicy;
-    /** Recorded steps and the cursor; the live state shows the cursor's step. */
+    /**
+     * Policy for an algorithm, read from the state at every dispatch and
+     * never cached, so a restored step runs its own algorithm (DEC-39). The
+     * engine looks a policy up by name but never branches on it (DEC-01).
+     */
+    private readonly resolvePolicy: (
+        algorithm: AlgorithmId,
+    ) => SchedulingPolicy | undefined;
+    /** Recorded steps, their edits and the cursor; the live state shows the cursor's step. */
     private readonly history = new SnapshotHistory();
+    /** Validated constructor configuration: a tick-0 edit recomputes from it (DEC-37). */
+    private readonly initialConfig: SystemConfig;
 
-    constructor(
-        config: SystemConfig = DEFAULT_CONFIG,
-        policy?: SchedulingPolicy,
-    ) {
-        const validated = this.validateDependencies(config, policy);
+    constructor(config: SystemConfig = DEFAULT_CONFIG, source?: PolicySource) {
+        const validated = this.validateDependencies(config, source);
+        this.initialConfig = validated.config;
         this.state = createInitialState(validated.config);
-        this.policy = validated.policy;
-        this.activateDueJobs();
-        this.dispatch();
+        this.resolvePolicy = validated.resolvePolicy;
+        this.startStages([]);
         this.recordSnapshot();
     }
 
@@ -109,17 +146,103 @@ export class Simulator {
         const committed = this.state;
         this.state = deepCopy(committed);
         try {
-            this.executeTick();
-            this.state.clock++;
-            this.completeJobsAndRecordDeadlineMisses();
-            this.expireSlices();
-            this.activateDueJobs();
-            this.dispatch();
+            this.advanceStages([]);
         } catch (error) {
             this.state = committed;
             throw error;
         }
         this.recordSnapshot();
+    }
+
+    /**
+     * Applies an edit at the cursor's tick `t` (REQ-05, DEC-37, DEC-39). The
+     * dispatch already done at `t` is never patched: step `t-1 -> t` is
+     * recomputed from snapshot `t-1` (at tick 0, from the initial state) with
+     * every edit accepted at `t` plus this one, so the result depends only on
+     * that snapshot and the requested end state. Items are validated in order;
+     * any refused item refuses the whole edit with an `EditRefusal`, and like
+     * any other failure it leaves state, cursor and history untouched
+     * (DEC-14). On success the recomputed step replaces `t` and every later
+     * step is discarded with its edits, even when the net change is nil.
+     */
+    public edit(items: readonly EditItem[]): void {
+        if (items.length === 0) {
+            throw new SimulationRefusal('An edit needs at least one item.');
+        }
+        const step = this.history.cursor;
+        const edits = [...this.history.editsAt(step), freezeCopy(items)];
+        const committed = this.state;
+        try {
+            if (step === 0) {
+                this.state = createInitialState(this.initialConfig);
+                this.startStages(edits);
+            } else {
+                this.state = restoreState(this.history.at(step - 1));
+                this.advanceStages(edits);
+            }
+        } catch (error) {
+            this.state = committed;
+            throw error;
+        }
+        this.history.rewrite(step, takeSnapshot(this.state), edits);
+    }
+
+    /** Edits accepted at a recorded step, in order; RangeError otherwise. */
+    public getEdits(step: number): readonly Edit[] {
+        return this.history.editsAt(step);
+    }
+
+    /**
+     * Snapshot 0 from the initial state: activations, edit stage and
+     * dispatch (DEC-11; no slice has run yet, so none expires).
+     */
+    private startStages(edits: readonly Edit[]): void {
+        this.activateDueJobs();
+        this.applyEditStage(edits);
+        this.dispatch();
+    }
+
+    /** One step from the live state, in the order of "Fluxo de um passo". */
+    private advanceStages(edits: readonly Edit[]): void {
+        this.executeTick();
+        this.state.clock++;
+        this.completeJobsAndRecordDeadlineMisses();
+        this.activateDueJobs();
+        this.applyEditStage(edits);
+        this.expireSlices();
+        this.dispatch();
+    }
+
+    /**
+     * Edit stage (DEC-37): folds every edit of the tick onto the parameters in
+     * force before them and applies only the net change. Only the last edit
+     * is new; the earlier ones were accepted on this same state, so a refusal
+     * of one of them means the engine is broken, not the request.
+     */
+    private applyEditStage(edits: readonly Edit[]): void {
+        if (edits.length === 0) {
+            return;
+        }
+        const context: EditContext = {
+            state: this.state,
+            hasPolicy: (algorithm) =>
+                this.resolvePolicy(algorithm) !== undefined,
+        };
+        const before = readTarget(this.state);
+        let target = before;
+        edits.forEach((edit, index) => {
+            const result = foldEdit(target, edit, context);
+            if (!result.ok) {
+                if (index < edits.length - 1) {
+                    throw new Error(
+                        `A recorded edit was refused on replay:\n${result.refusals.map((r) => r.reason).join('\n')}`,
+                    );
+                }
+                throw new EditRefusal(result.refusals);
+            }
+            target = result.target;
+        });
+        applyNetChange(this.state, before, target);
     }
 
     /** Returns the current jobs allowed to run, without exposing live state. */
@@ -301,7 +424,9 @@ export class Simulator {
      * Renews every slice that used the whole quantum (DEC-03). The job keeps
      * its CPU until dispatch, so the view still counts it as running before
      * the selection (DEC-18); a job completing now is skipped, since DEC-03
-     * only returns incomplete jobs to the selection.
+     * only returns incomplete jobs to the selection. Runs after activations
+     * and the edit stage, so an edited quantum already decides expiry at this
+     * boundary (DEC-22 as revised by DEC-37).
      */
     private expireSlices(): void {
         for (const cpu of this.state.cpus) {
@@ -337,7 +462,18 @@ export class Simulator {
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);
         const view = buildPolicyView(this.state, eligible);
-        const decision = this.policy.select(view);
+        // Without candidates nothing is selected, so a lookup lacking the
+        // algorithm is fine there; with candidates, construction and edits
+        // have already refused an algorithm without a policy.
+        const policy =
+            this.resolvePolicy(this.state.config.algorithm) ??
+            (eligible.length === 0 ? NO_WORK_POLICY : undefined);
+        if (policy === undefined) {
+            throw new Error(
+                `No scheduling policy is registered for algorithm ${this.state.config.algorithm}.`,
+            );
+        }
+        const decision = policy.select(view);
         // Read `selected` a single time: a getter could answer differently later.
         const rawSelected: unknown =
             typeof decision === 'object' && decision !== null
@@ -499,7 +635,7 @@ export class Simulator {
     /**
      * Refuses tick() while the cursor is behind the latest recorded step, so a
      * recorded step is never overwritten: the recorded future is reached with
-     * forward() (DEC-36), and discarding it is #26.
+     * forward() (DEC-36), and only an accepted edit discards it (DEC-39).
      */
     private executionGuard(): ExecutionGuardResult {
         if (this.history.isBehind) {
@@ -513,32 +649,57 @@ export class Simulator {
 
     /**
      * Validates all required inputs before creating any live simulator state.
-     * The configuration is checked before the policy, and its rejection keeps
-     * each issue's field and task index (DEC-15).
+     * The configuration is checked before the policy source, and its
+     * rejection keeps each issue's field and task index (DEC-15). With no
+     * source, only a configuration without tasks runs (on the policy that
+     * selects nothing). A lookup must hold a policy for the configured
+     * algorithm when there are tasks, with the factory's message (DEC-25).
      */
     private validateDependencies(
         config: SystemConfig,
-        policy: SchedulingPolicy | undefined,
-    ): { config: SystemConfig; policy: SchedulingPolicy } {
+        source: PolicySource | undefined,
+    ): {
+        config: SystemConfig;
+        resolvePolicy: (algorithm: AlgorithmId) => SchedulingPolicy | undefined;
+    } {
         const validConfig = requireValidConfig(config);
-        if (policy === undefined) {
+        if (source === undefined) {
             if (validConfig.tasks.length > 0) {
                 throw new TypeError(
                     'A scheduling policy is required when tasks are configured.',
                 );
             }
-            return { config: validConfig, policy: NO_WORK_POLICY };
+            return { config: validConfig, resolvePolicy: () => NO_WORK_POLICY };
+        }
+        if (hasSelect(source)) {
+            return { config: validConfig, resolvePolicy: () => source };
         }
         if (
-            policy === null ||
-            typeof policy !== 'object' ||
-            typeof policy.select !== 'function'
+            typeof source !== 'object' ||
+            source === null ||
+            !('policies' in source) ||
+            typeof source.policies !== 'object' ||
+            source.policies === null
+        ) {
+            throw new TypeError(MISSING_SELECT);
+        }
+        const policies = source.policies;
+        if (Object.values(policies).some((policy) => !hasSelect(policy))) {
+            throw new TypeError(MISSING_SELECT);
+        }
+        const resolvePolicy = (algorithm: AlgorithmId) =>
+            Object.hasOwn(policies, algorithm)
+                ? policies[algorithm]
+                : undefined;
+        if (
+            validConfig.tasks.length > 0 &&
+            resolvePolicy(validConfig.algorithm) === undefined
         ) {
             throw new TypeError(
-                'A scheduling policy with a select method is required.',
+                `No scheduling policy is registered for algorithm ${validConfig.algorithm}.`,
             );
         }
-        return { config: validConfig, policy };
+        return { config: validConfig, resolvePolicy };
     }
 
     /**

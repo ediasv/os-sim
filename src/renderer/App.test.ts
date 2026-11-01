@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App.vue';
 import { useSimulation } from './composables/useSimulation';
@@ -27,6 +27,9 @@ vi.mock('../core/simulator', async (importOriginal) => {
 });
 
 enableAutoUnmount(afterEach);
+afterEach(() => {
+    Reflect.deleteProperty(window, 'configFile');
+});
 
 function chipValue(wrapper: ReturnType<typeof mount>, label: string) {
     return wrapper
@@ -58,13 +61,87 @@ describe('App', () => {
         expect(chipValue(wrapper, 'Tick atual')).toBe('–');
     });
 
-    it('renders every action disabled', () => {
+    it('renders 13 buttons and only the loading ones are enabled while preparing', () => {
         const buttons = mount(App).findAll('button');
 
         expect(buttons).toHaveLength(13);
-        for (const button of buttons) {
-            expect(button.attributes('disabled')).toBeDefined();
+        const enabled = buttons
+            .filter((button) => button.attributes('disabled') === undefined)
+            .map((button) => button.text());
+        expect(enabled).toEqual([
+            'Carregar configuração',
+            'Carregar configuração',
+        ]);
+    });
+
+    describe('with a loaded file', () => {
+        async function loadFile(wrapper: ReturnType<typeof mount>) {
+            Object.defineProperty(window, 'configFile', {
+                configurable: true,
+                value: {
+                    openConfigFile: vi.fn().mockResolvedValue({
+                        status: 'loaded',
+                        path: '/c.txt',
+                        text: 'EDF;4;2\n\n1;F0E0D0;0;3;5;5\n',
+                    }),
+                },
+            });
+            await wrapper
+                .findAll('button')
+                .find((b) => b.text() === 'Carregar configuração')!
+                .trigger('click');
+            await flushPromises();
         }
+
+        function button(wrapper: ReturnType<typeof mount>, label: string) {
+            return wrapper.findAll('button').find((b) => b.text() === label)!;
+        }
+
+        it('prepares without starting: parameters and task count, no clock', async () => {
+            const wrapper = mount(App);
+
+            await loadFile(wrapper);
+
+            expect(chipValue(wrapper, 'Política')).toBe('EDF');
+            expect(chipValue(wrapper, 'CPUs')).toBe('2');
+            expect(chipValue(wrapper, 'Tick atual')).toBe('–');
+            expect(wrapper.text()).toContain('Configuração pronta');
+            expect(wrapper.text()).toContain('1 tarefa configurada');
+            expect(useSimulation).not.toHaveBeenCalled();
+        });
+
+        it('the first "Avançar tick" starts at t = 0 and shows the system and task panels', async () => {
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+            expect(wrapper.text()).toContain('Estado do sistema');
+            expect(wrapper.text()).toContain('snapshot t = 0');
+            expect(wrapper.text()).toContain('Tick inspecionado: 0');
+            expect(
+                button(wrapper, 'Voltar tick').attributes('disabled'),
+            ).toBeDefined();
+        });
+
+        it('advances, goes back and restarts, updating both panels from the snapshot', async () => {
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            await button(wrapper, 'Avançar tick').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+            expect(chipValue(wrapper, 'Tick atual')).toBe('2');
+            expect(wrapper.text()).toContain('snapshot t = 2');
+
+            await button(wrapper, 'Voltar tick').trigger('click');
+            expect(chipValue(wrapper, 'Tick atual')).toBe('1');
+            expect(wrapper.text()).toContain('Tick inspecionado: 1');
+
+            await button(wrapper, 'Reiniciar').trigger('click');
+            expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+        });
     });
 
     it('no longer shows the placeholder counter', () => {

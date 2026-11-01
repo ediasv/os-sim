@@ -340,17 +340,18 @@ describe('Quantum on the figure schedules (#21, DEC-18)', () => {
         },
     );
 
-    it('logs the expiry before the activation and the preemption at t=100 (DEC-22)', () => {
+    it('logs the activation before the expiry and the preemption at t=100 (DEC-22)', () => {
         // C's slice of 1 expires as A1 arrives and preempts it: both are
-        // logged (DEC-18), in the stage order of DEC-22.
+        // logged (DEC-18), in the stage order of DEC-22 as revised by DEC-37
+        // (activations, then expired slices).
         const s = simulate(
             { algorithm: 'RM', quantum: 1, cpuCount: 1, tasks: FIG_2_5.tasks },
             100,
         );
 
         expect(s.events.filter((event) => event.time === 100)).toEqual([
-            expired(100, ref(3, 0)),
             act(100, 1, 1),
+            expired(100, ref(3, 0)),
             preempt(100, ref(3, 0), ref(1, 1)),
         ]);
     });

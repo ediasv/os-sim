@@ -17,6 +17,15 @@ describe('TaskPanel', () => {
         );
     });
 
+    it('shows the task count instead of the empty copy when tasks exist', () => {
+        const one = mount(TaskPanel, { props: { taskCount: 1 } });
+        const many = mount(TaskPanel, { props: { taskCount: 3 } });
+
+        expect(one.text()).toContain('1 tarefa configurada.');
+        expect(many.text()).toContain('3 tarefas configuradas.');
+        expect(one.text()).not.toContain('Nenhuma tarefa');
+    });
+
     it('keeps "Adicionar tarefa" disabled by default', async () => {
         const wrapper = mount(TaskPanel);
         const button = wrapper.get('button');

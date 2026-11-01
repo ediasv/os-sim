@@ -4,10 +4,12 @@ import { DEFAULT_POLICIES, type PolicyRegistry } from './policies';
 import { Simulator } from './simulator';
 
 /**
- * Builds a Simulator that runs the policy registered for the configured
+ * Builds a Simulator that runs the policy registered for the current
  * `algorithm`. This is the production path from the configuration to the
- * policy (A.4.1, DEC-25): the Simulator itself never reads the algorithm name
- * (DEC-01), so engine tests can still inject a test policy directly.
+ * policy (A.4.1, DEC-25): the factory forwards the whole registry and the
+ * Simulator looks the policy up at each dispatch, so an edited algorithm
+ * runs at once (DEC-39). The engine never branches on the name (DEC-01), and
+ * engine tests can still inject a single test policy directly.
  *
  * An invalid configuration is reported as a `ConfigValidationError` even when
  * its algorithm has no policy, keeping the user-fixable error ahead of the
@@ -25,5 +27,5 @@ export function createSimulator(
             `No scheduling policy is registered for algorithm ${config.algorithm}.`,
         );
     }
-    return new Simulator(config, policies[config.algorithm]);
+    return new Simulator(config, { policies });
 }
