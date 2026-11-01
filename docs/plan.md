@@ -419,8 +419,12 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   "tudo funciona", sem copiar a saida. Roteiro: arquivo valido carregado
   (remetente aceito); opcionais: UTF-16 sem BOM como `not-utf8`, arquivo de
   1,05 MiB como `too-large`, cancelamento como `canceled` e duas chamadas
-  simultaneas com um so dialogo. Nao verificado: canal no app empacotado (`npm run package`),
-  onde o remetente e conferido pelo `index.html` exato.
+  simultaneas com um so dialogo. App empacotado (`npm run package`, macOS arm64, 2026-11-01) conferido
+  pelo usuario pelo console do DevTools, que relatou tudo funcionando, sem
+  copiar a saida: arquivo valido carregado (remetente `file:` do `index.html`
+  aceito), cancelamento como `canceled`, `require` e `process` indefinidos.
+  Nao verificado: disco externo, outras plataformas e pacote no
+  ambiente-alvo.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
   no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
@@ -530,15 +534,18 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
   componentes novos, nove icones do Figma e `size` no `UiIcon`; decisoes em
   FE-DEC-14. `npm test` 460/460 em 29 arquivos, lint e typecheck aprovados;
-  app conferido por CDP a 1440 x 924 e 1024 x 768; pacote, redimensionamento
-  real da janela e navegacao por Tab nao executados. Achado de espacamento
+  app conferido por CDP a 1440 x 924 e 1024 x 768. Achado de espacamento
   vertical da barra a 1024 px corrigido (`padding-block`), junto com a altura
   da pagina com o banner de erro. Revisao do PR: tamanho do `UiIcon` por
   propriedade customizada, altura maxima do banner, rotulos e icones das
   acoes centralizados (`ACTION_META`, `NO_ACTIONS`), helper de CSS movido
   para `testing/`; `npm test` 467/467 em 30 arquivos, lint e typecheck
   aprovados; icones e banner com erro longo conferidos no app pelo usuario.
-  Detalhes em
+  App empacotado (`npm run package`, macOS arm64, 2026-11-01) conferido pelo usuario, que relatou tudo
+  funcionando, sem copiar a saida: icones (pasta 32 px, demais 16 px), banner
+  com erro longo, redimensionamento real da janela e navegacao por Tab. Nao
+  executados: comparacao lado a lado com o Figma (#40) e pacote no
+  ambiente-alvo. Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 
@@ -613,8 +620,7 @@ Issues `[Docs]`, sem fase no Project.
   paralelo a ela, nessa ordem (a #24 depende da #23). Seguir com a #34,
   mantendo os diagnosticos de DEC-19 no escopo da #34. Aceitar ou rever
   DEC-34 (#92).
-- Pendencias: canal de carga da #33 no app empacotado (`npm run package`) e
-  pacote da #72 nao conferidos apos as revisoes; Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
+- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
