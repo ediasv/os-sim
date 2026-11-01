@@ -9,7 +9,7 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-43; `taskColor`) also needs its slice of the target
+ * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`) also needs its slice of the target
  * filled by `readTarget` and applied by `applyNetChange`, which the compiler
  * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
@@ -28,6 +28,7 @@ import type {
     JobRef,
     SimulationState,
     SystemConfig,
+    TaskControlBlock,
     TaskDefinition,
     TaskId,
     TaskStatus,
@@ -48,6 +49,16 @@ export type EditItem =
           readonly kind: 'taskColor';
           readonly taskId: TaskId;
           readonly color: string;
+      }
+    | {
+          readonly kind: 'taskDuration';
+          readonly taskId: TaskId;
+          readonly duration: number;
+      }
+    | {
+          readonly kind: 'taskDeadline';
+          readonly taskId: TaskId;
+          readonly deadline: number;
       };
 
 /** One edit (one form submission): its items, in order. */
@@ -210,18 +221,107 @@ function checkTaskField(
 /**
  * Concluded tasks keep only their color editable (DEC-43); handlers of the
  * other characteristics call this first. `characteristic` names the caller
- * for readers and tests; the reason is the same for all of them.
+ * for readers and tests; the reason is the same for all of them. DEC-37 judges
+ * the net state, so when the edit in progress is given, a `taskState` item
+ * that concluded the task earlier in the same submission counts too.
  */
 export function refuseIfConcluded(
     context: EditContext,
     taskId: TaskId,
     _characteristic: string,
+    target?: EditTarget,
 ): { ok: false; reason: string } | undefined {
     const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
-    if (tcb?.status !== 'concluded') return undefined;
+    const concluded =
+        tcb?.status === 'concluded' ||
+        target?.taskStates[taskId] === 'concluded';
+    if (!concluded) return undefined;
     return {
         ok: false,
         reason: `A tarefa ${taskId} está concluída; só a cor pode ser alterada.`,
+    };
+}
+
+/** Activations the task still has to receive, ten at most (DEC-09). */
+export function remainingActivations(
+    tcb: DeepReadonly<TaskControlBlock>,
+): number {
+    return maxJobs(tcb.definition) - tcb.jobs.length;
+}
+
+/**
+ * A new duration or deadline only reaches the activations not yet made, so
+ * only those bound the value (DEC-10): the last of them has the absolute
+ * deadline `nextActivation + (remaining - 1) * period + deadline`, which must
+ * stay an exact integer. Returns the reason, or null when it does.
+ */
+export function checkRemainingLimit(
+    tcb: DeepReadonly<TaskControlBlock>,
+    definition: TaskDefinition,
+): string | null {
+    if (tcb.nextActivation === null) {
+        throw new Error(
+            `Task ${tcb.definition.id} has no next activation to check.`,
+        );
+    }
+    const remaining = remainingActivations(tcb);
+    const last =
+        tcb.nextActivation +
+        (remaining > 1 ? (remaining - 1) * definition.period : 0);
+    if (Number.isSafeInteger(last + definition.deadline)) return null;
+    return `O prazo da última das ${remaining} ${remaining === 1 ? 'ativação restante' : 'ativações restantes'} da tarefa ${definition.id} ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`;
+}
+
+/**
+ * Shared handler of the characteristics that only shape future activations
+ * (duration, relative deadline). Checks follow DEC-37: task exists, not
+ * concluded in the net state, still has an activation to receive, value
+ * valid, last remaining deadline exact. Definitions are replaced, never
+ * mutated; jobs already activated keep the values they copied.
+ */
+function editCharacteristic(
+    target: EditTarget,
+    context: EditContext,
+    taskId: TaskId,
+    field: 'duration' | 'deadline',
+    value: unknown,
+): ItemResult {
+    if (!Number.isInteger(taskId)) {
+        return {
+            ok: false,
+            reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
+        };
+    }
+    if (!Object.hasOwn(target.definitions, taskId)) {
+        return { ok: false, reason: `Não existe a tarefa ${taskId}.` };
+    }
+    const concluded = refuseIfConcluded(context, taskId, field, target);
+    if (concluded !== undefined) return concluded;
+    const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
+    if (tcb === undefined) {
+        throw new Error(
+            `Task ${taskId} has a definition but no control block.`,
+        );
+    }
+    if (remainingActivations(tcb) <= 0) {
+        return {
+            ok: false,
+            reason: `A tarefa ${taskId} já teve todas as suas ativações; não há próxima ativação para receber o novo valor.`,
+        };
+    }
+    const checked = checkTaskField(target, context, taskId, field, value);
+    if (!checked.ok) return checked;
+    const tooFar = checkRemainingLimit(tcb, checked.definition);
+    if (tooFar !== null) return { ok: false, reason: tooFar };
+    return {
+        ok: true,
+        target: {
+            ...target,
+            definitions: {
+                ...target.definitions,
+                [taskId]: checked.definition,
+            },
+        },
     };
 }
 
@@ -265,6 +365,22 @@ function hasFinished(
 }
 
 const HANDLERS: Handlers = {
+    taskDuration: (target, item, context) =>
+        editCharacteristic(
+            target,
+            context,
+            item.taskId,
+            'duration',
+            item.duration,
+        ),
+    taskDeadline: (target, item, context) =>
+        editCharacteristic(
+            target,
+            context,
+            item.taskId,
+            'deadline',
+            item.deadline,
+        ),
     taskColor: (target, item, context) => {
         if (!Number.isInteger(item.taskId)) {
             return {

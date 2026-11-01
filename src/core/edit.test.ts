@@ -662,6 +662,224 @@ describe('task color edit', () => {
     });
 });
 
+describe('task duration and deadline edit', () => {
+    const duration = (taskId: number, value: unknown): EditItem =>
+        ({ kind: 'taskDuration', taskId, duration: value }) as EditItem;
+    const deadline = (taskId: number, value: unknown): EditItem =>
+        ({ kind: 'taskDeadline', taskId, deadline: value }) as EditItem;
+    const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
+        const state = createInitialState({
+            ...config,
+            tasks: [{ ...config.tasks[0], ...task }],
+        });
+        return { state, hasPolicy: both };
+    };
+    /** Activates `count` jobs so only the remaining ones can take the edit. */
+    const activate = (context: ReturnType<typeof fixture>, count: number) => {
+        const tcb = context.state.tasks[0];
+        const { period } = tcb.definition;
+        for (let index = 0; index < count; index++) {
+            tcb.jobs.push({
+                taskId: 1,
+                index,
+                activation: index * period,
+                absoluteDeadline: index * period + tcb.definition.deadline,
+                duration: tcb.definition.duration,
+                executed: 0,
+                state: 'ready',
+                completedAt: null,
+                deadlineMissed: false,
+            });
+        }
+        tcb.nextActivation = count === 10 ? null : count * period;
+    };
+    const refusalOf = (
+        result: ReturnType<typeof foldEdit>,
+        kind: string,
+    ): string => {
+        expect(result).toMatchObject({ ok: false, refusals: [{ kind }] });
+        if (result.ok) throw new Error('expected a refusal');
+        return result.refusals[0].reason;
+    };
+
+    it('accepts a duration and a deadline before the first activation', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        const result = foldEdit(
+            base,
+            [duration(1, 7), deadline(1, 9)],
+            context,
+        );
+        expect(result).toMatchObject({ ok: true });
+        if (!result.ok) return;
+        const edited = result.target.definitions[1];
+        expect(edited).toMatchObject({ duration: 7, deadline: 9 });
+        expect(Object.isFrozen(edited)).toBe(true);
+        expect(base.definitions[1]).toMatchObject({ duration: 2, deadline: 5 });
+    });
+    it('accepts the edit between jobs', () => {
+        const context = fixture();
+        activate(context, 3);
+        const result = foldEdit(
+            readTarget(context.state),
+            [duration(1, 4), deadline(1, 6)],
+            context,
+        );
+        expect(result).toMatchObject({ ok: true });
+    });
+    it('refuses when every activation already happened', () => {
+        const context = fixture();
+        activate(context, 10);
+        const base = readTarget(context.state);
+        for (const [item, kind] of [
+            [duration(1, 4), 'taskDuration'],
+            [deadline(1, 6), 'taskDeadline'],
+        ] as const) {
+            expect(refusalOf(foldEdit(base, [item], context), kind)).toMatch(
+                /não há próxima ativação/,
+            );
+        }
+    });
+    it('refuses an aperiodic task that already activated its only job', () => {
+        const context = fixture({ period: 0 });
+        activate(context, 1);
+        expect(
+            refusalOf(
+                foldEdit(readTarget(context.state), [duration(1, 3)], context),
+                'taskDuration',
+            ),
+        ).toMatch(/não há próxima ativação/);
+    });
+    it.each([0, -1, 1.5, Number.NaN, '3', null, undefined])(
+        'refuses the invalid value %j with the validateConfig wording',
+        (value) => {
+            const context = fixture();
+            const base = readTarget(context.state);
+            const wording = (field: 'duration' | 'deadline') =>
+                issue({
+                    ...config,
+                    tasks: [{ ...config.tasks[0], [field]: value }],
+                } as ConfigInput);
+            expect(
+                refusalOf(
+                    foldEdit(base, [duration(1, value)], context),
+                    'taskDuration',
+                ),
+            ).toBe(wording('duration'));
+            expect(
+                refusalOf(
+                    foldEdit(base, [deadline(1, value)], context),
+                    'taskDeadline',
+                ),
+            ).toBe(wording('deadline'));
+        },
+    );
+    it('refuses a concluded task', () => {
+        const context = fixture();
+        context.state.tasks[0].status = 'concluded';
+        const base = readTarget(context.state);
+        const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
+        expect(
+            refusalOf(
+                foldEdit(base, [duration(1, 3)], context),
+                'taskDuration',
+            ),
+        ).toBe(reason);
+        expect(
+            refusalOf(
+                foldEdit(base, [deadline(1, 3)], context),
+                'taskDeadline',
+            ),
+        ).toBe(reason);
+    });
+    it('refuses a characteristic after concluding the task in the same edit', () => {
+        const context = fixture();
+        const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
+        const result = foldEdit(
+            readTarget(context.state),
+            [
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+                duration(1, 3),
+                deadline(1, 3),
+            ],
+            context,
+        );
+        expect(result).toEqual({
+            ok: false,
+            refusals: [
+                { index: 1, kind: 'taskDuration', reason },
+                { index: 2, kind: 'taskDeadline', reason },
+            ],
+        });
+    });
+    it('still accepts the color after concluding the task in the same edit', () => {
+        const context = fixture();
+        const result = foldEdit(
+            readTarget(context.state),
+            [
+                { kind: 'taskState', taskId: 1, state: 'concluded' },
+                { kind: 'taskColor', taskId: 1, color: 'aabbcc' },
+            ],
+            context,
+        );
+        expect(result).toMatchObject({ ok: true });
+    });
+    it('refuses unknown and non-integer task identifiers', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        expect(foldEdit(base, [duration(9, 3)], context)).toMatchObject({
+            refusals: [{ reason: 'Não existe a tarefa 9.' }],
+        });
+        expect(foldEdit(base, [deadline(1.5, 3)], context)).toMatchObject({
+            refusals: [
+                {
+                    reason: expect.stringContaining(
+                        'O identificador da tarefa deve ser um número inteiro',
+                    ),
+                },
+            ],
+        });
+    });
+    it('refuses a deadline whose last remaining activation is not exact', () => {
+        const context = fixture();
+        const reason = refusalOf(
+            foldEdit(
+                readTarget(context.state),
+                [deadline(1, Number.MAX_SAFE_INTEGER)],
+                context,
+            ),
+            'taskDeadline',
+        );
+        expect(reason).toMatch(/10 ativações restantes/);
+        expect(reason).toContain(String(Number.MAX_SAFE_INTEGER));
+    });
+    it('counts only the remaining activations in the deadline limit', () => {
+        // 9 periods plus this deadline overflow, but one activation does not.
+        const wanted = 5e15;
+        const ten = fixture({ period: 1e15 });
+        expect(
+            foldEdit(readTarget(ten.state), [deadline(1, wanted)], ten),
+        ).toMatchObject({ ok: false });
+        const one = fixture({ period: 1e15 });
+        activate(one, 9);
+        // The bound starts at the next activation, wherever it was moved to.
+        one.state.tasks[0].nextActivation = 0;
+        expect(
+            foldEdit(readTarget(one.state), [deadline(1, wanted)], one),
+        ).toMatchObject({ ok: true });
+    });
+    it('does not apply the period term to a single remaining activation', () => {
+        const context = fixture({ period: 0 });
+        expect(
+            foldEdit(
+                readTarget(context.state),
+                [deadline(1, Number.MAX_SAFE_INTEGER)],
+                context,
+            ),
+        ).toMatchObject({ ok: true });
+    });
+});
+
 describe('task identifier validation', () => {
     it.each([['1'], [[1]], [1.5], [Number.NaN]])(
         'refuses the non-integer task identifier %j',

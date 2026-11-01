@@ -29,14 +29,16 @@ function cand(
         previousCpu?: number | null;
         wasRunning?: boolean;
         executed?: number;
+        index?: number;
+        duration?: number;
     } = {},
 ): PolicyCandidate {
     const job: Job = {
         taskId: t.id,
-        index: 0,
+        index: extra.index ?? 0,
         activation: extra.activation ?? 0,
         absoluteDeadline,
-        duration: t.duration,
+        duration: extra.duration ?? t.duration,
         executed: extra.executed ?? 0,
         state: 'ready',
         completedAt: null,
@@ -172,6 +174,16 @@ describe('RM', () => {
             const x = cand(task(1, 5, 10, 4), 10, { executed: 3 });
             const y = cand(task(2, 5, 10, 2), 10);
             expect(decide(view(1, [x, y]))).toEqual({ selected: ['2.0'] });
+        });
+
+        it('criterion 4: compares the duration each job copied, not the definition', () => {
+            // Same task, edited between two activations (DEC-37, DEC-16).
+            const edited = task(1, 5, 10, 1);
+            const early = cand(edited, 10, { index: 0, duration: 3 });
+            const late = cand(edited, 10, { index: 1, duration: 1 });
+            expect(decide(view(1, [early, late]))).toEqual({
+                selected: ['1.1'],
+            });
         });
 
         it('applies the criteria in order', () => {
