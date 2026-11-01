@@ -2049,3 +2049,69 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   viria depois do `cpu-added` que o explica).
 - Evidencia: `src/core/simulator.addTask.test.ts`,
   `src/core/defaultColor.test.ts`, `consistency.test.ts` e `edit.test.ts`.
+
+### DEC-47: Exclusao de tarefas
+
+- Estado: proposta em 2026-11-01 no PR 7/7 da #26, que fecha a #26, para
+  revisao; aguarda aceite do usuario. Requisitos: REQ-05. Detalha o item
+  Excluir de DEC-37 e completa DEC-46 (inclusao, que deixou a exclusao para
+  este PR). Complementa DEC-43 (estado concluido e interrupcao) e DEC-44
+  (`definitions` como fonte da caracteristica).
+- Item: `EditItem` ganha `removeTask` com `taskId`; o handler e `HANDLERS`
+  como os demais. Validacao, em ordem sobre o estado da etapa de edicao:
+    - ID inteiro e existente em `target.definitions` (`refuseUnknownTask`, a
+      mesma regra de DEC-44; ID de outra forma gera a mensagem de ID invalido);
+    - tarefa com algum job recusada, inclusive a cujo primeiro job a etapa de
+      ativacoes deste tick acabou de dar origem (as ativacoes rodam antes da
+      etapa de edicao, DEC-22). A recusa aponta encerrar (estado concluida)
+      como caminho:
+      `A tarefa N já foi ativada e não pode ser excluída; encerre-a (estado concluída) para manter o histórico dela.`
+    - excluir de novo, ou mudar a tarefa ja excluida na mesma edicao, e
+      recusado como tarefa inexistente (ela sai de `target.definitions` e de
+      `target.taskStates`).
+- Tarefa incluida no mesmo tick ainda nao tem TCB; ela sai so do alvo, sem
+  evento nem rastro. Incluir e excluir no mesmo tick deixa o estado igual ao
+  de antes, e o ID gerado continua gasto (`maxTaskId` nunca diminui).
+- Aplicacao (mudanca liquida, `applyNetChange`): ids presentes em
+  `before.definitions` e ausentes em `after.definitions` sao excluidos. Os
+  TCBs saem de `state.tasks` e os eventos que citam o ID saem de
+  `state.events`. Se algum TCB excluido tiver job, a aplicacao lanca `Error`:
+  e defeito do motor, nao recusa, porque a validacao ja barrou esse caso.
+  O status e os eventos da tarefa excluida nao sao gerados.
+- Eventos anteriores (decisao do autor do PR, aguardando aceite do usuario):
+  `suspension`, `resumption`, `forced`, `unforced`, `task-finished` e
+  qualquer evento com o mesmo `taskId` saem de `state.events` do snapshot do
+  tick. Os snapshots anteriores mantem os seus eventos: voltar no historico
+  mostra a tarefa como era, e `forward()` volta sem eles.
+- Cor: uma tarefa excluida no tick nao conta para a cor distinta de DEC-10
+  (`liveDefinitions` so considera as tarefas que ainda estao no alvo), entao
+  uma inclusao ou mudanca de cor no mesmo tick pode reusar a cor dela.
+- ID: nunca reutilizado. `maxTaskId` continua o maior ID ja usado, inclusive
+  depois da exclusao; so volta a ser liberado quando a edicao que o gerou sai
+  do futuro (DEC-46).
+- `config.tasks` nao e atualizada (convencao de DEC-44 e DEC-46); a interface
+  conta `snapshot.tasks`.
+- Justificativa: excluir uma tarefa ja ativada apagaria o historico dela no
+  Gantt (a tela so ve o estado e os eventos), contra o principio de DEC-37
+  de que o passado nao muda. Excluir so a tarefa nunca ativada
+  deixa o historico como ele aconteceu: ela nunca executou, e os eventos de
+  estado que ela tenha (suspensao, forcamento) vem de uma edicao que tambem
+  sai com ela.
+- Alternativas descartadas:
+    - Excluir tarefa ativada (apaga o historico, contra DEC-37).
+    - Manter os eventos antigos da tarefa excluida no snapshot atual: o Gantt
+      citaria uma tarefa que nao existe mais no estado.
+    - Recusar a exclusao de tarefa que tenha evento sem job (suspensa,
+      forcada ou concluida sem ativacao): recusaria a exclusao que DEC-37
+      aceita, a de tarefa nunca ativada. Fica para o usuario decidir no
+      aceite, junto com a decisao de eventos acima.
+- Evidencia: `src/core/simulator.removeTask.test.ts` (15 testes, matriz de
+  exclusao, recusa atomica, ID, historico, cor e CPUs); suite completa, lint
+  e typecheck na entrega. Mutacoes (cada uma derrubou testes; revertidas):
+    1. nao limpar eventos da tarefa excluida (2 falhas);
+    2. aceitar tarefa com job (3 falhas);
+    3. recalcular `maxTaskId` pela lista de tarefas (4 falhas);
+    4. nao filtrar `definitions` ao excluir (11 falhas);
+    5. considerar a tarefa excluida na cor distinta (1 falha).
+- Nao verificado nesta decisao: o comando `edit` do adaptador e a tela de
+  edicao (#37); o pacote (#26 nao o cobre).

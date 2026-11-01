@@ -14,7 +14,8 @@
  * the target filled by `readTarget` and applied by `applyNetChange`, which the
  * compiler does not check: statuses live in `EditTarget.taskStates` and
  * characteristics in `EditTarget.definitions` (replaced, never mutated).
- * A task is included (`addTask`, DEC-46) by adding its entry to both records.
+ * A task is included (`addTask`, DEC-46) by adding its entry to both records,
+ * and excluded (`removeTask`, DEC-47) by dropping its entry from both.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
@@ -88,7 +89,8 @@ export type EditItem =
           readonly taskId: TaskId;
           readonly period: number;
       }
-    | { readonly kind: 'addTask'; readonly task: NewTask };
+    | { readonly kind: 'addTask'; readonly task: NewTask }
+    | { readonly kind: 'removeTask'; readonly taskId: TaskId };
 
 /** One edit (one form submission): its items, in order. */
 export type Edit = readonly EditItem[];
@@ -189,16 +191,17 @@ function checkSystemField<F extends 'algorithm' | 'quantum' | 'cpuCount'>(
 type TaskField = 'color' | 'arrival' | 'duration' | 'period' | 'deadline';
 
 /**
- * Every task's wanted definition: the live tasks in their order, then the
- * ones included earlier in this tick, which have no control block yet.
+ * Every task's wanted definition: the live tasks still wanted, in their order,
+ * then the ones included earlier in this tick, which have no control block yet.
+ * A task excluded in this tick is no longer wanted, so its color is free.
  */
 function liveDefinitions(
     target: EditTarget,
     context: EditContext,
 ): TaskDefinition[] {
-    const live = context.state.tasks.map(
-        (tcb) => target.definitions[tcb.definition.id] ?? tcb.definition,
-    );
+    const live = context.state.tasks
+        .filter((tcb) => Object.hasOwn(target.definitions, tcb.definition.id))
+        .map((tcb) => target.definitions[tcb.definition.id]);
     const known = new Set(live.map((definition) => definition.id));
     return [
         ...live,
@@ -627,7 +630,39 @@ function includeTask(
     };
 }
 
+/**
+ * Excludes a task (DEC-47) only while it is still a task never activated: a
+ * task with a job, including one activated at this tick by the activation
+ * step, keeps its history in the Gantt, so the user is pointed to concluding
+ * it instead. A task included earlier in this tick has no job and is simply
+ * dropped from the target, leaving no trace; its ID stays spent.
+ */
+function excludeTask(
+    target: EditTarget,
+    item: Extract<EditItem, { kind: 'removeTask' }>,
+    context: EditContext,
+): ItemResult {
+    const unknown = refuseUnknownTask(target, item.taskId);
+    if (unknown !== undefined) return unknown;
+    const tcb = context.state.tasks.find(
+        (t) => t.definition.id === item.taskId,
+    );
+    if (tcb !== undefined && tcb.jobs.length > 0) {
+        return {
+            ok: false,
+            reason: `A tarefa ${item.taskId} já foi ativada e não pode ser excluída; encerre-a (estado concluída) para manter o histórico dela.`,
+        };
+    }
+    const { [item.taskId]: _definition, ...definitions } = target.definitions;
+    const { [item.taskId]: _status, ...taskStates } = target.taskStates;
+    return {
+        ok: true,
+        target: { ...target, definitions, taskStates },
+    };
+}
+
 const HANDLERS: Handlers = {
+    removeTask: excludeTask,
     addTask: includeTask,
     taskPeriod: (target, item, context) => {
         const editable = editableTask(target, context, item.taskId);
@@ -955,6 +990,32 @@ export function applyNetChange(
             ...state.config,
             ...Object.fromEntries(fields.map((f) => [f, after[f]])),
         });
+    }
+
+    // Excluded tasks were never activated (`excludeTask`), so they have no job
+    // or CPU to release. Their events are dropped from this step's state only;
+    // earlier snapshots keep them (DEC-47). A job here would mean the engine
+    // let an exclusion through, so it is a defect, not a refusal.
+    const excluded = new Set(
+        Object.keys(before.definitions)
+            .map(Number)
+            .filter((id) => !Object.hasOwn(after.definitions, id)),
+    );
+    for (const id of excluded) {
+        const tcb = state.tasks.find((t) => t.definition.id === id);
+        if (tcb !== undefined && tcb.jobs.length > 0) {
+            throw new Error(
+                `Task ${id} has jobs and cannot be excluded at the edit stage.`,
+            );
+        }
+    }
+    if (excluded.size > 0) {
+        state.tasks = state.tasks.filter(
+            (tcb) => !excluded.has(tcb.definition.id),
+        );
+        state.events = state.events.filter(
+            (event) => !('taskId' in event && excluded.has(event.taskId)),
+        );
     }
 
     // Included tasks are born ready and appended in ID order, and activate
