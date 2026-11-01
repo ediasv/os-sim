@@ -8,7 +8,10 @@
 /** Scheduling policies required by Project A (A.4). */
 export type AlgorithmId = 'RM' | 'EDF';
 
-/** Unique task identifier from the configuration; always >= 1 (DEC-10). */
+/**
+ * Unique task identifier from the configuration: free text, unique ignoring
+ * case, shown as typed (DEC-48). Rules live in `taskId.ts`.
+ */
 export type TaskId = string;
 
 /** One task line of the configuration file (A.3.3), after validation. */

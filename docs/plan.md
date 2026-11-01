@@ -756,12 +756,15 @@ Issues `[Docs]`, sem fase no Project.
 
 - #133 em andamento (iniciada 2026-11-01): ID de tarefa como texto livre.
   Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
-  Escopo desta etapa: DEC-48 (formato, unicidade sem caixa, ordem natural,
-  inclusao com ID sugerido ou digitado, rotulos) e criterios na
-  [specification.md](specification.md#req-06-arquivo-texto); codigo depois da
-  aprovacao da DEC. Verificacao: links e IDs conferidos (so documental).
-  Proximo passo: revisao da DEC-48 e plano de codigo (nucleo antes da
-  interface).
+  Feito no PR #134 (rascunho): DEC-48 (formato, unicidade sem caixa, ordem
+  natural, inclusao com ID sugerido ou digitado, rotulos), criterios na
+  [specification.md](specification.md#req-06-arquivo-texto), `TaskId` como
+  texto no nucleo (parser, validacao, ordem natural, edicao) e no SVG (escape
+  e rotulo longo). Verificacao: `npm test` 1143/1143 (baseline 1067),
+  `npm run lint` e `npm run typecheck` sem erros; trace e SVG de IDs
+  numericos iguais aos de antes (testes de caracterizacao).
+  Falta: inclusao com ID sugerido ou digitado (depende do PR #119, que traz
+  `addTask` e o maior ID usado), revisao final e ver a interface rodando.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
