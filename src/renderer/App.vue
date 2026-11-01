@@ -38,6 +38,7 @@ const {
     saveTask,
     requestRemove,
     confirmRemove,
+    confirmReplace,
     cancelDialog,
 } = useWorkspace();
 
@@ -154,6 +155,19 @@ const system = computed(() =>
             confirm-label="Remover"
             destructive
             @confirm="confirmRemove"
+            @cancel="cancelDialog"
+        />
+        <ConfirmDialog
+            v-else-if="dialog?.kind === 'replace'"
+            title="Substituir a configuração?"
+            :message="
+                snapshot === null
+                    ? 'O arquivo substitui o sistema e as tarefas que você preparou. Você continua na preparação, sem iniciar a simulação.'
+                    : 'O arquivo substitui o sistema e as tarefas, e a simulação em andamento é descartada. Você volta à preparação, sem iniciar.'
+            "
+            confirm-label="Substituir"
+            destructive
+            @confirm="confirmReplace"
             @cancel="cancelDialog"
         />
     </WorkspaceLayout>

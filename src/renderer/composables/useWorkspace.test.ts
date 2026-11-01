@@ -249,35 +249,6 @@ describe('useWorkspace', () => {
         expect(workspace.notices.value).toEqual([]);
     });
 
-    it('ignores a file chosen after the session started, so Reiniciar keeps the session configuration', async () => {
-        let choose: (result: ConfigFileResult) => void = () => {};
-        const openConfigFile = vi
-            .fn<() => Promise<ConfigFileResult>>()
-            .mockResolvedValueOnce(loaded(TWO_TASKS))
-            .mockImplementationOnce(
-                () => new Promise((resolve) => (choose = resolve)),
-            );
-        vi.stubGlobal('window', { configFile: { openConfigFile } });
-        const workspace = useWorkspace();
-        workspace.handle('load-config');
-        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
-
-        workspace.handle('load-config');
-        expect(workspace.available.value.has('load-config')).toBe(false);
-        workspace.handle('step-forward');
-        expect(workspace.clock.value).toBe(0);
-        choose(loaded('EDF;9;4\n\n1;FFFFFF;0;1;5;5\n'));
-        await vi.waitFor(() => expect(openConfigFile).toHaveBeenCalledTimes(2));
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        workspace.handle('restart');
-
-        expect(workspace.config.value).toMatchObject({
-            algorithm: 'RM',
-            cpuCount: 2,
-        });
-        expect(workspace.taskCount.value).toBe(2);
-    });
-
     it('does not open a second dialog while one is open', () => {
         const openConfigFile = vi.fn(
             () => new Promise<ConfigFileResult>(() => {}),
@@ -612,5 +583,106 @@ describe('useWorkspace preparation edits (#36 part 2)', () => {
 
         expect(workspace.clock.value).toBe(0);
         expect(workspace.taskCount.value).toBe(1);
+    });
+});
+
+describe('useWorkspace replacing a configuration (FE-04)', () => {
+    const OTHER = 'EDF;9;4\n\n1;FFFFFF;0;1;5;5\n';
+
+    it('loads straight into an empty preparation, without asking', async () => {
+        const workspace = await prepared();
+
+        expect(workspace.dialog.value).toBeNull();
+    });
+
+    it('asks before replacing a prepared configuration; cancelling keeps everything', async () => {
+        stubFile(loaded(TWO_TASKS), loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        workspace.cancelDialog();
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'RM',
+            cpuCount: 2,
+        });
+        expect(workspace.taskCount.value).toBe(2);
+    });
+
+    it('confirming replaces everything and discards a started session', async () => {
+        stubFile(loaded(TWO_TASKS), loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+        expect(workspace.clock.value).toBe(1);
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        workspace.confirmReplace();
+
+        expect(workspace.snapshot.value).toBeNull();
+        expect(workspace.clock.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'EDF',
+            quantum: 9,
+            cpuCount: 4,
+        });
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.available.value.has('configure-system')).toBe(true);
+        workspace.handle('restart');
+        expect(workspace.clock.value).toBeNull();
+    });
+
+    it('an invalid file never asks and never replaces anything', async () => {
+        stubFile(loaded(TWO_TASKS), loaded('lixo\n'));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.taskCount.value).toBe(2);
+    });
+
+    it('asks too when only the system values were changed', async () => {
+        stubFile(loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+        workspace.applySystem({ algorithm: 'EDF', quantum: 2, cpuCount: 1 });
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+    });
+
+    it('warnings of the loaded file appear only once the replacement is confirmed', async () => {
+        stubFile(loaded(TWO_TASKS), loaded('RM;5;1\n\n1;F0E0D0;0;3;;10\n'));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        expect(workspace.notices.value).toEqual([]);
+
+        workspace.confirmReplace();
+
+        expect(workspace.notices.value).toEqual([
+            expect.objectContaining({ title: 'Período padrão aplicado' }),
+        ]);
     });
 });

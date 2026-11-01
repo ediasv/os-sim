@@ -644,8 +644,8 @@ paineis.
   o futuro gravado ou calcula um passo), "Voltar tick" usa `backward()` e
   "Reiniciar" recarrega o rascunho no snapshot zero (FE-05).
 - Disponibilidade: Carregar configuracao so antes do inicio, porque substituir
-  uma sessao em andamento pede a confirmacao de FE-04, ainda nao implementada.
-  Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
+  uma sessao em andamento pede a confirmacao de FE-04 (implementada na parte 2c,
+  FE-DEC-21). Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
   alerta no ponto da acao e o ultimo snapshot valido permanece (DEC-24,
   DEC-36); erros inesperados seguem so para o banner.
 - Disposicao provisoria: ate o Gantt (#38), o corpo do painel do diagrama
@@ -657,7 +657,8 @@ paineis.
   rascunho usado no inicio; (b) Carregar configuracao so existe antes de
   iniciar e fica desabilitado enquanto o dialogo esta aberto; um arquivo
   escolhido depois do inicio e ignorado, para nao mudar o que Reiniciar
-  recarrega; (c) a disposicao lado a lado e provisoria ate o Gantt (#38).
+  recarrega (item revisto pelo FE-DEC-21); (c) a disposicao lado a lado e
+  provisoria ate o Gantt (#38).
   Justificativa: nao ha ainda a confirmacao de substituicao de FE-04, e iniciar
   sem tarefa ou trocar a sessao em silencio perderia trabalho (FE-05).
   Acordado com o usuario em 2026-11-01 ao delimitar a parte 1 da #36.
@@ -729,18 +730,27 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   sem eles, e a #37 (FE-19) segue dona do ID e da cor na simulacao; (e) desvio
   do Figma: a ajuda do periodo diz "Inteiro >= 1" em vez de "0 = aperiodica",
   pois zero e recusado (DEC-29). Acordado com o usuario em 2026-11-01.
-- Nao feito nesta parte: confirmacao de FE-04 (2c), edicao durante a
-  simulacao e tarefa concluida so com cor (#37), Executar tudo e cancelamento
-  (#27).
+- 2c, coordenacao: `useWorkspace` ganhou o modal `replace`, `confirmReplace` e
+  a regra de quando perguntar; `load-config` passa a ficar disponivel tambem
+  depois do inicio.
+- FE-DEC-21 (REQ-05, REQ-06, REQ-10; FE-04, FE-05): Carregar configuracao
+  funciona tambem depois do inicio. Um arquivo valido que substituiria uma
+  sessao em andamento, tarefas ou valores ja alterados abre a confirmacao de
+  FE-04 ("Substituir a configuracao?"); cancelar preserva tudo e confirmar
+  descarta a sessao, volta a preparacao e so entao mostra os avisos de periodo
+  padrao do arquivo. Arquivo invalido ou ilegivel nunca pede confirmacao nem
+  altera nada. O Figma nao tem tela para essa confirmacao: reaproveita o layout
+  do dialogo de remover. Revisa o item (b) de FE-DEC-18. Acordado com o usuario
+  em 2026-11-01.
+- Nao feito: edicao durante a simulacao e tarefa concluida so com cor (#37),
+  Executar tudo e cancelamento (#27).
 
-Verificacao (2026-11-01, 2b): `npm test` 985 aprovados e 1 ignorado, `npm run
-lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
-adicionar com periodo 15, periodo zero recusado, motivo do nucleo, editar,
-remover com confirmacao e a selecao. No navegador do app (Vite) a 1440 x 924
-foi conferido o fluxo completo do conjunto 2a a 2c: dialogo de tarefa com
-periodo 15, periodo 0 com o motivo junto ao campo, cartoes de tarefa, editar e
-remover. Nao verificado: app Electron, larguras menores, comparacao lado a lado
-com o Figma (#40).
+Verificacao (2026-11-01, 2c): `npm test` 992 aprovados e 1 ignorado em 58
+arquivos, `npm run lint` e `npm run typecheck` sem achados. No navegador do app
+(Vite) a 1440 x 924, com uma sessao iniciada e um tick avancado, carregar um
+arquivo abre "Substituir a configuracao?" e, ao confirmar, volta a preparacao
+com o aviso de periodo padrao. Nao verificado: app Electron com o dialogo real
+de arquivo, larguras menores, comparacao lado a lado com o Figma (#40).
 
 ## Verificacao e pendencias tecnicas
 

@@ -193,6 +193,17 @@ describe('App preparation without a file (#36 part 2)', () => {
         const l = wrapper.findAll('label').find((x) => x.text() === label)!;
         return wrapper.get<HTMLInputElement>(`#${l.attributes('for')}`);
     };
+    const stubFile = () =>
+        Object.defineProperty(window, 'configFile', {
+            configurable: true,
+            value: {
+                openConfigFile: vi.fn().mockResolvedValue({
+                    status: 'loaded',
+                    path: '/c.txt',
+                    text: 'EDF;4;2\n\n1;F0E0D0;0;3;5;5\n',
+                }),
+            },
+        });
 
     async function addDefaultTask(wrapper: ReturnType<typeof mount>) {
         await button(wrapper, 'Adicionar tarefa').trigger('click');
@@ -276,5 +287,45 @@ describe('App preparation without a file (#36 part 2)', () => {
 
         expect(wrapper.text()).toContain('Nenhuma tarefa configurada');
         expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    });
+
+    it('asks before a file replaces what was prepared, and Cancel keeps it', async () => {
+        stubFile();
+        const wrapper = mount(App);
+        await addDefaultTask(wrapper);
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Substituir a configuração?',
+        );
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(chipValue(wrapper, 'Política')).toBe('RM');
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        await button(wrapper, 'Substituir').trigger('click');
+
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(chipValue(wrapper, 'CPUs')).toBe('2');
+    });
+
+    it('a file loaded over a started session returns to preparation', async () => {
+        stubFile();
+        const wrapper = mount(App);
+        await addDefaultTask(wrapper);
+        await button(wrapper, 'Avançar tick').trigger('click');
+        expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'a simulação em andamento é descartada',
+        );
+        await button(wrapper, 'Substituir').trigger('click');
+
+        expect(chipValue(wrapper, 'Tick atual')).toBe('–');
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(wrapper.text()).toContain('Configuração pronta');
     });
 });

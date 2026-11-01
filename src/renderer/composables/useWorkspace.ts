@@ -27,6 +27,14 @@ export interface Notice {
     readonly message: string;
 }
 
+/** A valid file waiting for the user to confirm replacing the draft (FE-04). */
+export interface PendingReplacement {
+    readonly config: SystemConfig;
+    readonly fileName: string | undefined;
+    /** Shown only once the replacement is confirmed. */
+    readonly notices: readonly Notice[];
+}
+
 /** The modal the workspace is showing, if any; at most one at a time. */
 export type WorkspaceDialog =
     | { readonly kind: 'system' }
@@ -36,7 +44,8 @@ export type WorkspaceDialog =
           readonly editing: TaskId | null;
           readonly initial: TaskValues;
       }
-    | { readonly kind: 'remove'; readonly taskId: TaskId };
+    | { readonly kind: 'remove'; readonly taskId: TaskId }
+    | { readonly kind: 'replace'; readonly pending: PendingReplacement };
 
 /**
  * Orchestrates the workspace (#36): which configuration is being prepared,
@@ -79,9 +88,9 @@ export function useWorkspace() {
 
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
+        // A file may replace the draft or the session, after FE-04's confirmation.
         const idle = !loading.value && dialog.value === null;
-        // Replacing a running session needs the confirmation of FE-04.
-        if (!started.value && idle) actions.add('load-config');
+        if (idle) actions.add('load-config');
         // The configuration is edited only before the start; changing it
         // during the simulation belongs to #37.
         if (idle && !started.value) {
@@ -142,9 +151,6 @@ export function useWorkspace() {
         } finally {
             loading.value = false;
         }
-        // The user may have started while the dialog was open: replacing the
-        // draft now would change what Reiniciar reloads (FE-05).
-        if (started.value) return;
         if (result.status === 'canceled') return;
         if (result.status === 'failed') {
             notices.value = [
@@ -177,12 +183,46 @@ export function useWorkspace() {
                     .join('\n'),
             });
         }
-        if (loaded.ok) {
-            draft.value = loaded.config;
-            fileName.value = result.path.split(/[/\\]/).pop();
-            selectedTaskId.value = loaded.config.tasks[0]?.id ?? null;
+        if (!loaded.ok) {
+            notices.value = next;
+            return;
         }
-        notices.value = next;
+        const pending: PendingReplacement = {
+            config: loaded.config,
+            fileName: result.path.split(/[/\\]/).pop(),
+            notices: next,
+        };
+        // The file is valid; only now is there anything to confirm (FE-04).
+        // Something is lost if a session runs or the draft is not the defaults.
+        if (started.value || hasPreparedWork(draft.value)) {
+            dialog.value = { kind: 'replace', pending };
+        } else {
+            replaceWith(pending);
+        }
+    }
+
+    function hasPreparedWork(config: SystemConfig): boolean {
+        return (
+            config.tasks.length > 0 ||
+            config.algorithm !== DEFAULT_CONFIG.algorithm ||
+            config.quantum !== DEFAULT_CONFIG.quantum ||
+            config.cpuCount !== DEFAULT_CONFIG.cpuCount
+        );
+    }
+
+    /** Back to preparation with the file's configuration; no simulator survives. */
+    function replaceWith(pending: PendingReplacement): void {
+        simulation.value = null;
+        started.value = false;
+        draft.value = pending.config;
+        fileName.value = pending.fileName;
+        selectedTaskId.value = pending.config.tasks[0]?.id ?? null;
+        notices.value = [...pending.notices];
+        dialog.value = null;
+    }
+
+    function confirmReplace(): void {
+        if (dialog.value?.kind === 'replace') replaceWith(dialog.value.pending);
     }
 
     function cancelDialog(): void {
@@ -346,6 +386,7 @@ export function useWorkspace() {
         saveTask,
         requestRemove,
         confirmRemove,
+        confirmReplace,
         cancelDialog,
     };
 }
