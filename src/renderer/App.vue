@@ -17,8 +17,16 @@ import { projectSystem } from './features/system/system';
 // prepares a configuration (FE-DEC-14): useWorkspace creates it on the first
 // "Avançar tick". The panels below receive projections of the published
 // snapshot and never hold simulator objects.
-const { snapshot, config, clock, taskCount, available, notices, handle } =
-    useWorkspace();
+const {
+    snapshot,
+    config,
+    clock,
+    taskCount,
+    available,
+    notices,
+    handle,
+    dismissNotice,
+} = useWorkspace();
 
 const inspection = computed(() =>
     snapshot.value === null ? null : projectInspection(snapshot.value),
@@ -54,10 +62,11 @@ const system = computed(() =>
                 :tone="notice.tone"
                 :title="notice.title"
                 :message="notice.message"
-                :dismissible="false"
+                :dismissible="notice.tone === 'success'"
+                @dismiss="dismissNotice(index)"
             />
         </div>
-        <GanttPanel :available="available">
+        <GanttPanel :available="available" @action="handle">
             <div
                 v-if="inspection !== null && system !== null"
                 class="app__details"

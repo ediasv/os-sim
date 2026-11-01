@@ -260,3 +260,62 @@ describe('findInconsistencies: inputs', () => {
         expect(findInconsistencies(state)).toHaveLength(2);
     });
 });
+
+describe('CPU existence consistency', () => {
+    it('accepts historical removed IDs and compares current offSince by ID', () => {
+        const state = createInitialState({ ...DEFAULT_CONFIG, cpuCount: 1 });
+        state.clock = 4;
+        state.cpus[0].offSince = 1;
+        state.events.push(
+            { kind: 'cpu-off', time: 0, cpuId: 2 },
+            { kind: 'cpu-off', time: 1, cpuId: 1 },
+            { kind: 'cpu-removed', time: 2, cpuId: 2 },
+        );
+        expect(findInconsistencies(state)).toEqual([]);
+        state.cpus[0].offSince = 2;
+        expect(findInconsistencies(state)).toContain(
+            'CPU 1 has offSince = 2 but its open off interval starts at 1.',
+        );
+    });
+
+    it('rejects CPU count or IDs inconsistent with configuration', () => {
+        const state = createInitialState(DEFAULT_CONFIG);
+        state.cpus.push({
+            id: 3,
+            running: null,
+            sliceElapsed: 0,
+            offSince: null,
+        });
+        expect(findInconsistencies(state).length).toBeGreaterThan(0);
+    });
+});
+
+describe('findInconsistencies: CPU count and IDs', () => {
+    const message =
+        'Current CPU IDs must be 1..cpuCount and match the configured count.';
+
+    it('accepts CPUs 1..cpuCount', () => {
+        expect(findInconsistencies(stateWith())).not.toContain(message);
+    });
+
+    it('reports a length that differs from the configured count', () => {
+        const state = stateWith();
+        state.cpus.pop();
+
+        expect(findInconsistencies(state)).toContain(message);
+    });
+
+    it.each([
+        ['non-contiguous', [1, 3]],
+        ['shuffled', [2, 1]],
+        ['duplicated', [1, 1]],
+    ])('reports %s IDs with the right length', (_name, ids) => {
+        const state = stateWith();
+        state.cpus = state.cpus.map((cpu, index) => ({
+            ...cpu,
+            id: ids[index],
+        }));
+
+        expect(findInconsistencies(state)).toContain(message);
+    });
+});

@@ -142,6 +142,18 @@ describe('useSimulation', () => {
         expect(Object.isFrozen(second)).toBe(true);
     });
 
+    it('latest returns the newest recorded step while the cursor is behind', () => {
+        const adapter = useSimulation(only(firstAvailable));
+        adapter.load(oneTask);
+        adapter.tick();
+        adapter.tick();
+        adapter.backward();
+        adapter.backward();
+
+        expect(adapter.view.value.clock).toBe(0);
+        expect(adapter.latest().clock).toBe(2);
+    });
+
     it('exposes only the snapshot and the commands', () => {
         const adapter = useSimulation(only(firstAvailable));
         adapter.load(oneTask);
@@ -149,6 +161,7 @@ describe('useSimulation', () => {
         expect(Object.keys(adapter).sort()).toEqual([
             'backward',
             'forward',
+            'latest',
             'load',
             'next',
             'tick',

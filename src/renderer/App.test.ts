@@ -29,6 +29,7 @@ vi.mock('../core/simulator', async (importOriginal) => {
 enableAutoUnmount(afterEach);
 afterEach(() => {
     Reflect.deleteProperty(window, 'configFile');
+    Reflect.deleteProperty(window, 'imageFile');
 });
 
 function chipValue(wrapper: ReturnType<typeof mount>, label: string) {
@@ -123,6 +124,38 @@ describe('App', () => {
             expect(
                 button(wrapper, 'Voltar tick').attributes('disabled'),
             ).toBeDefined();
+        });
+
+        it('"Exportar SVG" is enabled once started and saves the whole history', async () => {
+            const saveImageFile = vi
+                .fn()
+                .mockResolvedValue({ status: 'saved', path: '/o/g.svg' });
+            Object.defineProperty(window, 'imageFile', {
+                configurable: true,
+                value: { saveImageFile },
+            });
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+            expect(
+                button(wrapper, 'Exportar SVG').attributes('disabled'),
+            ).toBeDefined();
+            await button(wrapper, 'Avançar tick').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            await button(wrapper, 'Exportar SVG').trigger('click');
+            await flushPromises();
+
+            expect(saveImageFile).toHaveBeenCalledTimes(1);
+            expect(saveImageFile.mock.calls[0][0].content).toContain(
+                'ticks 0–1',
+            );
+            expect(wrapper.text()).toContain('Imagem salva em "/o/g.svg".');
+
+            await wrapper
+                .get('button[aria-label="Fechar mensagem"]')
+                .trigger('click');
+
+            expect(wrapper.text()).not.toContain('Imagem salva em');
         });
 
         it('advances, goes back and restarts, updating both panels from the snapshot', async () => {

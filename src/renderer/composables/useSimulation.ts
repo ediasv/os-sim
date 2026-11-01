@@ -20,6 +20,7 @@ import { commandFailure, type CommandResult } from '../errors';
  */
 export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     view: ShallowRef<SimulationSnapshot>;
+    latest: () => SimulationSnapshot;
     load: (config: SystemConfig) => CommandResult;
     tick: () => CommandResult;
     forward: () => CommandResult;
@@ -72,5 +73,11 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     const next = (): CommandResult =>
         run(() => (sim.canForward() ? sim.forward() : sim.tick()));
 
-    return { view, load, tick, forward, backward, next };
+    /**
+     * Newest recorded step, wherever the cursor is: the export covers the
+     * whole history, not what the screen shows (FE-18).
+     */
+    const latest = (): SimulationSnapshot => sim.getLatestSnapshot();
+
+    return { view, latest, load, tick, forward, backward, next };
 }

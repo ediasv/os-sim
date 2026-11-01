@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-31. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-11-01. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -486,7 +486,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   (base: 517 em 35), `npm run lint` e `npm run typecheck` aprovados. Defeito do
   plano: os bytes `52 4D 00 FF` ja caem na decodificacao UTF-8 estrita, entao
   foi incluido o caso UTF-16 sem BOM, o unico que falha sem a checagem de NUL.
-  As mensagens seguem o formato atual do nucleo (a #93 pode muda-lo).
+  As mensagens seguem o formato do nucleo da epoca; a #93 depois tirou o
+  valor do prefixo dos problemas do nucleo.
   Verificacao manual no aplicativo nao executada pelo agente: o carregamento
   completo depende da interface (#36); `window.configFile.openConfigFile()` pelo
   DevTools e um arquivo em outro volume (A.3.3.4) ficam com o usuario. Nao
@@ -504,8 +505,15 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   em `main`; falta o aceite do usuario ou a revisao da decisao. Nao executado:
   interface (#36) e ponte main/preload (#33).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
-  nucleo. Aberta (decisao sobre DEC-19); a dependencia do PR #84 ja foi
-  satisfeita (merged, `37ab733`, 2026-10-28).
+  nucleo. Decisao do usuario (2026-11-01): mostrar o valor uma vez; o
+  `loadConfig` acrescenta so linha e campo aos problemas do nucleo, cujas
+  mensagens ja citam o valor, inclusive quando texto e numero convertido
+  diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
+  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Concluida no PR #120
+  (squash merge `220e35c`, 2026-11-01). Evidencia (2026-11-01): os testes
+  de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
+  `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
+  669/669, `npm run lint` e `npm run typecheck` aprovados.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -545,6 +553,26 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
   em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
+  Em andamento, parte 1 (nao fecha a issue): gravacao pelo processo principal
+  (`src/shared/imageFile.ts`, `src/main/imageFile.ts`, `src/preload/imageFileApi.ts`,
+  canal `image-file:save`, mesmo padrao da #33; falha com caminho e motivo,
+  cancelamento nao e erro) e SVG gerado so dos dados do ultimo snapshot do
+  historico (`src/renderer/features/export/ganttSvg.ts`): linhas por tarefa em ID
+  decrescente, trechos de execucao com CPU e job, prontas tracejadas, faixas de
+  CPU desligada, marcadores por evento empilhados no mesmo instante, instante
+  atual e legenda; sem teto de ticks. Acordado com o usuario em 2026-11-01:
+  exportar em qualquer passo (resultado parcial identificado no titulo,
+  FE-18; DEC-41, aceita). Layout do SVG conforme o frame "Exportacao SVG - layout da imagem" da
+  pagina Telas do Figma (eixo no topo, raias por tarefa, divisor PROCESSADORES,
+  raias de CPU, cartao de legenda; 73 px por tick; titulo com nome do arquivo
+  e data da exportacao). Botao "Exportar SVG" ligado em `App` e `useWorkspace`. Pendente (depende da
+  #26, PRs #115 a #119, rascunhos): trechos suspensos e forcados e lacuna de CPU
+  removida; revisar o SVG quando a #38 desenhar o Gantt na tela, para
+  compartilhar a apresentacao em vez de manter duas (hoje o Gantt na tela nao
+  existe). Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
+  `npm run typecheck` aprovados; SVG gerado com `demoConfigs/05` lido como XML
+  bem formado e aberto no painel de navegacao do app, sem conferencia visual
+  detalhada (#40). Nao verificado: gravacao pelo dialogo real do Electron.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
   [spec de apresentacao](../src/renderer/docs/specification.md) e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
@@ -636,9 +664,9 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
   Em andamento (Refs #44, issue aberta; nenhum codigo alterado). Alvos
-  propostos em DEC-39 (aceite do usuario pendente): Windows x64 com o
-  `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, a testar por
-  ediasv; formato no macOS em aberto. Verificacao no Windows (2026-11-01,
+  propostos em DEC-42 (aceite do usuario pendente): Windows x64 com o
+  `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, testado por ediasv
+  (abaixo). Verificacao no Windows (2026-11-01,
   Windows 10 Pro 10.0.19045, Node 24.22.1 (fixado; refeito apos a revisao
   do PR #122, a primeira rodada usou Node 25.8), pacote 1.0.5, `npm ci` e
   `npm run make`, Setup.exe de 146 MiB), sempre com o PATH sem `node.exe` nem
@@ -661,12 +689,16 @@ Requisito: REQ-10; integracao de todos os anteriores.
   690 aprovados (1 ignorado), `npm run lint` e `npm run typecheck` aprovados no
   Node 24.22.1.
   Nao verificado: maquina limpa sem Node (a instalacao em maquina sem essa ACL
-  nao foi testada); macOS (ediasv) e Linux (so fica fora da entrega se a
-  DEC-39 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
+  nao foi testada); Linux (so fica fora da entrega se a
+  DEC-42 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
   desabilitados no app. Um carregamento anterior por engano abriu outro
   arquivo (nao de `demoConfigs/`) e nao conta. Um processo do app
   desapareceu sem causa identificada em duas ocasioes (uma no avanco rapido de
   56 ticks a 60 ms); nao repetiu com 150 ms entre cliques.
+  macOS (2026-11-01): ediasv rodou `npm run make` e relatou ao usuario que
+  funcionou, sem copiar a saida; versao do macOS e do Node, artefato gerado e
+  se o app foi aberto com um cenario nao foram registrados. Formato da entrega
+  no macOS (so ha o zip, vetado pelo portal) segue em aberto.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
   Parcial (Refs #45, issue aberta): 10 arquivos em
   [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
@@ -724,9 +756,11 @@ Issues `[Docs]`, sem fase no Project.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
-  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 aberta. E5: #35, #67, #68, #69, #70, #71, #72 e #73
-  concluidas; #36 a #40 nao iniciados.
+  #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  concluidas; #36 parcial; #37 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
+- #93 concluida no PR #120 (squash merge `220e35c`, 2026-11-01), evidencia
+  em E4 e decisao em DEC-19.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
   evidencia em E5.
@@ -740,29 +774,71 @@ Issues `[Docs]`, sem fase no Project.
   DEC-36; evidencia em E3.
 - #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
   em E3 e decisao em DEC-37.
-- #26 em andamento (iniciada 2026-11-01, branch `feat/26-edicoes-atomicas`):
+- #26 em andamento (iniciada 2026-11-01):
   aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
   do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
   eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
   PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
-  adaptador fica na #37. Primeiro PR (#114, so documental): revisao de
-  DEC-37, em que so o resultado final das edicoes de um tick conta. Nada
-  implementado ainda; baseline `npm test` 669/669.
+  adaptador fica na #37. Baseline `npm test` 669/669 em `b46d09b`; o
+  caminho geral da edicao (algoritmo e quantum) foi entregue no PR #115
+  (squash merge `45869c7`, 2026-11-01).
   Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
-  #26), todos em rascunho:
-    1. #114 revisao de DEC-37 (documental);
-    2. #115 etapa de edicao no passo, edicoes por tick no historico, descarte do
-       futuro, recusa atomica por item, algoritmo e quantum;
-    3. #116 quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
-       sem a CPU;
-    4. #117 estado por tarefa (suspensa, forcada, concluida) e seus eventos;
-    5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
+  #26):
+    1. #114 revisao de DEC-37, em que so o resultado final das edicoes de
+       um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
+       `oxfmt --check` ok e CI `test` aprovado);
+    2. #115 (mergeado, `45869c7`, 2026-11-01) etapa de edicao no passo, edicoes por tick no historico, descarte do
+       futuro, recusa atomica por item, algoritmo e quantum. Baseline
+       `npm test` 669/669, lint e typecheck sem erros; escopo e criterios no
+       corpo do PR; motivo da recusa de regra da configuracao vem de `validateConfig`
+       (escolha do usuario). Codigo integrado na `main` pelo PR #115:
+       `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
+       liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
+       passo em `history.ts`, `Simulator.edit`/`getEdits` com recalculo a
+       partir de `t-1` e politica pelo algoritmo vigente, fatias vencidas
+       depois das ativacoes (DEC-22). Forma registrada em DEC-39
+       (proposta); DEC-14, DEC-22, DEC-25 e DEC-35 revistas. Evidencia
+       (2026-11-01): `npm test` 711/711 em 44 arquivos, `npm run lint` e
+       `npm run typecheck` sem erros; testes em `edit.test.ts`,
+       `history.test.ts`, `simulator.edit.test.ts` e bloco `policy source`
+       de `simulator.test.ts`. Testes que passaram de primeira (recusa
+       atomica, mudanca liquida, descarte do futuro) conferidos com
+       mutacoes: nao restaurar o estado na falha, sorteio de `t` em vez de
+       `t-1`, `rewrite` que mantem passos seguintes e recalculo a partir de
+       `t`; todas derrubam testes. Nao verificado: interface (comando
+       `edit` fica na #37) e pacote. Depois de integrar a `main`
+       (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
+       lint e typecheck sem erros. DEC-39 continua registrada como
+       proposta na arquitetura; seu aceite nao e presumido pelo merge;
+    3. #116 mergeado em `44d9595` (2026-11-01), somente preparacao
+       documental. Implementacao de CPUs em PR de continuacao na branch
+       `feat/26-3-cpus-implementation`: item `cpuCount`, eventos de existencia e
+       mudanca liquida; `wasRunning` derivado de `executions` no primeiro
+       desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
+       consistencia por ID. Forma em DEC-40 (proposta para revisao).
+       Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
+       Evidencia local: `npm test` 794/794 em 48 arquivos, `npm run lint` e
+       `npm run typecheck` aprovados. Testes novos/estendidos em
+       `policy.test.ts`, `policies.test.ts`, `cpuOff.test.ts`,
+       `consistency.test.ts`, `edit.test.ts`, `simulator.cpuEdits.test.ts`
+       e projecoes de sistema/inspecao. RED -> GREEN conferido por tarefa;
+       regressao das projecoes conferida com a consulta antiga e revertida.
+       Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
+       critico; achados importantes corrigidos no proprio PR. Interface
+       interativa e pacote nao verificados; CI do PR #124 pendente.
+       Limite de CPUs contra forcadas fica no #117;
+    4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+    5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
-    6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
-- Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6). #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
-  a issue continua aberta (Refs #36).
-- Proximo passo: plano de implementacao do #115. Fora da #26:
-  aceitar ou rever DEC-34 (#92).
+    6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
+- Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
+- #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
+- #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
+  simulador, navegacao e paineis; a issue continua aberta para o restante.
+- Proximo passo: CI e revisao do PR #124 (implementacao de CPUs); depois do merge, atualizar a branch do #117 com a `main`. A proxima
+  implementacao da serie e #117 (estado por tarefa). Pendencias de decisao:
+  aceite de DEC-40 (PR #124), DEC-39 (#115) e aceitar ou rever
+  DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
