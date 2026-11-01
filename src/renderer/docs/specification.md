@@ -254,7 +254,7 @@ Origem: REQ-05, REQ-10; #25 e #26.
 - Ao editar no passado, explicar antes de aplicar quais ticks futuros serao
   descartados. A invalidacao so ocorre apos aceitacao da edicao inteira.
 - A edicao e referida ao tick selecionado, sem avancar o relogio. Tarefas
-  concluidas continuam inspecionaveis e editaveis conforme o contrato do nucleo.
+  concluidas continuam inspecionaveis, mas nao editaveis (DEC-32).
 - Aceitacao: rejeitar um campo preserva integralmente snapshot e futuro,
   inclusive se outros campos do mesmo formulario estavam validos.
 
@@ -418,8 +418,9 @@ expectativas de integracao relacionadas a Q-02.
   nao substitui a obrigatoriedade do campo no TXT.
 - Antes da primeira ativacao, mostrar a possibilidade de reagendar ingresso
   para o tick inspecionado ou futuro, quando o resultado da validacao permitir.
-  O fluxo discutido espera rejeicao do deslocamento depois da primeira
-  ativacao; apresentar o motivo recebido e manter o ingresso consultavel,
+  Depois do ingresso, o campo fica bloqueado, com a explicacao ao passar o
+  cursor: "O ingresso nao pode ser alterado pois a tarefa ja ingressou."
+  (DEC-32); apresentar o motivo recebido e manter o ingresso consultavel,
   sem implementar essa validacao no componente. Nao confundir ingresso da
   tarefa com ativacoes posteriores de jobs.
 - Aceitacao: uma cor aceita atualiza os trechos antigos sem alterar eventos;

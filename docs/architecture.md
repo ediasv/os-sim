@@ -220,7 +220,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   recebe o periodo padrao com aviso na carga (A.4.4); o comportamento acima
   continua sendo o do nucleo.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
-  de ativacao. Prioridade RM para periodo zero definida por DEC-17.
+  de ativacao. Prioridade RM para periodo zero definida por DEC-17. Encerrar
+  a tarefa durante a simulacao tambem a termina (DEC-32, proposta).
 
 ### DEC-10: Valores padrao e limites da configuracao
 
@@ -1093,32 +1094,38 @@ anterior. Data inicial dos registros: 2026-10-12.
   historico guarda o resultado de cada uma.
 - Matriz das caracteristicas da tarefa:
 
-    | Item             | Editavel          | Efeito                                      |
-    | ---------------- | ----------------- | ------------------------------------------- |
-    | ID               | nao               | identidade da tarefa e ordem do Gantt       |
-    | Cor              | sim               | todo o Gantt da tarefa, inclusive o passado |
-    | Ingresso         | ate a 1a ativacao | reagenda a primeira ativacao                |
-    | Duracao          | sim               | somente ativacoes posteriores a edicao      |
-    | Periodo          | sim               | somente ativacoes posteriores a edicao      |
-    | Prazo relativo   | sim               | somente ativacoes posteriores a edicao      |
-    | Ticks executados | nao               | progresso so muda executando                |
-    1. Ingresso so muda antes da primeira ativacao da tarefa e nunca para
-       antes de `t`; igual a `t` ativa o primeiro job em `t`. Depois da
-       primeira ativacao e recusado com o motivo.
+    | Item             | Editavel           | Efeito                                      |
+    | ---------------- | ------------------ | ------------------------------------------- |
+    | ID               | nao                | identidade da tarefa e ordem do Gantt       |
+    | Cor              | sim                | todo o Gantt da tarefa, inclusive o passado |
+    | Ingresso         | antes de ingressar | reagenda a primeira ativacao                |
+    | Duracao          | sim                | somente ativacoes posteriores a edicao      |
+    | Periodo          | sim                | somente ativacoes posteriores a edicao      |
+    | Prazo relativo   | sim                | somente ativacoes posteriores a edicao      |
+    | Ticks executados | nao                | progresso so muda executando                |
+    1. Ingresso so muda enquanto a tarefa nao ingressou (antes da primeira
+       ativacao) e nunca para antes de `t`; igual a `t` ativa o primeiro job
+       em `t`. Depois do ingresso, a edicao e recusada e a tela (#37) mostra o
+       campo bloqueado, com a explicacao ao passar o cursor: "O ingresso nao
+       pode ser alterado pois a tarefa ja ingressou."
     2. Jobs ja ativados mantem duracao e prazo absoluto que receberam; a tela
        precisa deixar isso claro ao usuario (#37).
-    3. Com periodo editado, a proxima ativacao passa a ser a ultima ativacao
-        - novo periodo, ou `t` se esse instante ja passou (cenarios de FE-12);
-          sem ativacao ainda, ingresso + k * novo periodo. O
-          limite de dez jobs (DEC-09) continua contado desde o ingresso. A
-          formula `ingresso + k * periodo` de DEC-09 deixa de valer para
-          tarefas com periodo editado.
-    4. Limites seguem DEC-10: duracao >= 1, prazo >= 1 e tempos derivados na
-       faixa de inteiros exatos. Periodo zero e recusado (DEC-29, item 3):
-       tornar uma tarefa aperiodica, ou o contrario, fica para o Projeto B.
-    5. Tarefa terminada (DEC-09), ou que ja ativou todos os seus jobs, aceita
-       somente mudanca de cor; duracao, periodo ou prazo sao recusados porque
-       nao teriam efeito.
+    3. Com periodo editado, a proxima ativacao passa a ser a soma da ultima
+       ativacao com o novo periodo, ou `t` se esse instante ja passou
+       (cenarios de FE-12); sem ativacao ainda, ingresso + k * novo periodo.
+       O limite de dez jobs (DEC-09) continua contado desde o ingresso. A
+       formula `ingresso + k * periodo` de DEC-09 deixa de valer para tarefas
+       com periodo editado.
+    4. Cada item respeita os limites de DEC-10: duracao >= 1, prazo
+       relativo >= 1 e tempos derivados na faixa de inteiros exatos. Periodo
+       segue DEC-10 com a restricao de DEC-29 (item 3) para o Projeto A:
+       periodo zero e recusado, e tornar uma tarefa aperiodica, ou o
+       contrario, fica para o Projeto B.
+    5. Tarefa terminada (DEC-09) nao aceita nenhuma edicao, inclusive de cor,
+       e a recusa informa que a tarefa ja terminou; ela ainda pode ser
+       removida (inclusao e remocao, abaixo). Tarefa que ja ativou todos
+       os seus jobs, mas ainda nao terminou, recusa duracao, periodo e prazo,
+       porque nao teriam efeito.
 
 - Estado do job, mudado manualmente pelo usuario:
 
@@ -1129,22 +1136,42 @@ anterior. Data inicial dos registros: 2026-10-12.
     | suspenso   | retoma       | sem efeito       | recusado   | recusado   |
     | concluido  | recusado     | recusado         | recusado   | sem efeito |
     1. Somente o escalonador poe um job em execucao, e o job so conclui
-       executando a duracao. A mudanca para o proprio estado e aceita sem
+       executando a duracao. Levar a tarefa inteira a concluido e a acao de
+       encerrar tarefa, abaixo, e nao uma mudanca de estado de job. A mudanca para o proprio estado e aceita sem
        efeito e sem evento.
     2. Suspender nao pausa o prazo (REQ-08) e nao libera o job seguinte da
        tarefa (DEC-02). Pronto apenas devolve o job a disputa: job posterior
        continua esperando o mais antigo incompleto.
     3. Job que deixa a CPU por edicao encerra seu trecho em `t`.
 
+- Encerrar tarefa (mover para concluido): permitido a qualquer instante
+  para tarefa ainda nao terminada e vale de `t` em diante.
+    1. O job em execucao, se houver, libera a CPU em `t`; jobs incompletos
+       (pronto, executando ou suspenso) sao interrompidos em `t` e nao
+       recebem `completion`, pois nao executaram a duracao; nao ha novas
+       ativacoes.
+    2. Registra `task-finished` em `t`, com o mesmo marcador de termino no
+       Gantt, e a tarefa passa a terminada: nenhuma edicao e aceita depois
+       (item 5 da matriz). Perdas de prazo anteriores a `t` permanecem; jobs
+       interrompidos nao geram perdas depois de `t`.
+    3. A inspecao (#37) nao mostra jobs interrompidos como concluidos
+       normalmente.
+    4. Revisa DEC-09 e DEC-12: a tarefa termina quando o ultimo job conclui
+       ou quando e encerrada; o termino deixa de ser derivado apenas das
+       ativacoes e conclusoes, e a forma de guarda-lo fica com a #26.
 - Inclusao e remocao de tarefas:
     1. Incluir e permitido a qualquer instante, com os limites de DEC-10 e
        DEC-29 (periodo padrao 15, periodo zero recusado). Ingresso menor que
        `t` e recusado; ingresso igual a `t` ativa o primeiro job em `t`. O ID
        e gerado pelo sistema (FE-19) como maior ID ja usado + 1, e nunca
        repete o de uma tarefa da simulacao, inclusive removida.
-    2. Remover e permitido a qualquer instante e remove todos os jobs da
-       tarefa. Job em execucao libera a CPU em `t`. O Gantt mantem o que a
-       tarefa ja executou, ate o instante da remocao.
+    2. Remover e permitido a qualquer instante e vale de `t` em diante:
+       encerra o job em execucao, se houver, liberando a CPU em `t`, e apaga
+       a tarefa e todos os seus jobs do estado. Snapshots anteriores a `t`
+       nao mudam, e o Gantt mantem o que a tarefa ja executou ate a remocao.
+       Tarefa terminada tambem pode ser removida: remover nao e edicao e
+       apenas a retira da lista de tarefas da interface, sem mudar o
+       historico.
 - Parametros do sistema:
     1. Algoritmo (RM ou EDF): escolhido antes da simulacao e editavel
        durante ela; vale a partir da selecao em `t`.
@@ -1169,7 +1196,8 @@ anterior. Data inicial dos registros: 2026-10-12.
     - `cpu-removed` (`cpuId`, `job` ou `null`): CPU removida e o job que
       voltou a pronto.
 - Uso dos eventos: o Gantt (#38) reconstroi o trecho suspenso de
-  `suspension` ate `resumption`, remocao da tarefa ou fim do historico. Nao
+  `suspension` ate `resumption`, encerramento ou remocao da tarefa ou fim
+  do historico. Nao
   ha campo de origem: no Projeto A toda mudanca vem de edicao; o Projeto B o
   acrescenta para a lista de eventos do arquivo (A.3.3.5). Os eventos da
   edicao seguem os do passo em `t` e precedem os do novo despacho (DEC-22).
@@ -1185,12 +1213,15 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Remover a tarefa tambem do Gantt passado: reescreveria o historico.
     - Redesenhar so as fatias futuras com a nova cor: a cor nao e fato da
       simulacao, e duas cores para a mesma tarefa confundiriam a legenda.
+- Revisa DEC-09 e DEC-12 quanto ao termino da tarefa (encerrar tarefa,
+  acima).
 - Revisa expectativas do [renderer](../src/renderer/docs/specification.md):
   ajuste de progresso (FE-14) e edicao de ID (FE-19, FE-DEC-07) saem do
   Projeto A; reagendar o ingresso antes da primeira ativacao (FE-19) e
   mantido; troca de algoritmo durante a simulacao (FE-16) passa a
   ser permitida.
-- Consequencia: #26 implementa a matriz, o recalculo de `t` e os eventos;
+- Consequencia: #26 implementa a matriz, o encerramento de tarefa, o
+  recalculo de `t` e os eventos;
   #37 oferece somente as mudancas permitidas e o aviso sobre jobs ja
   ativados; #38 desenha trechos suspensos e encerra as linhas de tarefas e
   CPUs removidas. Edicoes que deixam jobs suspensos indefinidamente, ou todas
