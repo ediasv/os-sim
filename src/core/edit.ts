@@ -15,7 +15,12 @@
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
-import { validateConfig, type ConfigField, type ConfigInput } from './config';
+import {
+    duplicateColorMessage,
+    validateConfig,
+    type ConfigField,
+    type ConfigInput,
+} from './config';
 import { maxJobs } from './domain';
 import type {
     AlgorithmId,
@@ -136,7 +141,9 @@ type TaskField = 'color' | 'arrival' | 'duration' | 'period' | 'deadline';
  * already valid, and `combined` ones are replaced by the specific checks of
  * each characteristic. The edited task is validated last because
  * `validateConfig` blames the later of two duplicates, and the blame must
- * fall on the task being edited.
+ * fall on the task being edited. That reordering shifts the ordinals in the
+ * duplicate-color message, so it is rebuilt with the wording of config.ts and
+ * the owner's real position.
  */
 function checkTaskField(
     target: EditTarget,
@@ -170,6 +177,23 @@ function checkTaskField(
         }
         const reported = own.filter((issue) => issue.combined !== true);
         if (reported.length > 0) {
+            const owner =
+                typeof value === 'string'
+                    ? live.findIndex(
+                          (d) =>
+                              d.id !== taskId &&
+                              d.color.toUpperCase() === value.toUpperCase(),
+                      )
+                    : -1;
+            if (field === 'color' && owner >= 0) {
+                return {
+                    ok: false,
+                    reason: duplicateColorMessage(
+                        String(value).toUpperCase(),
+                        owner,
+                    ),
+                };
+            }
             return {
                 ok: false,
                 reason: reported.map((issue) => issue.message).join(' '),

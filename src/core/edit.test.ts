@@ -566,6 +566,57 @@ describe('task color edit', () => {
             refusal(expect.stringContaining('cor')),
         );
     });
+    it.each([
+        // edited task, wanted color, expected owner ordinal
+        [1, '445566', '3ª', 'before the owner'],
+        [2, 'f0e0d0', '1ª', 'after the owner'],
+        [2, '445566', '3ª', 'before the owner, edited in the middle'],
+        [3, 'f0e0d0', '1ª', 'last, owner first'],
+        [3, '112233', '2ª', 'last, owner in the middle'],
+        [1, '112233', '2ª', 'first, owner in the middle'],
+    ])('names the real owner for task %i taking %s: %s', (id, wanted, nth) => {
+        const state = createInitialState({
+            ...config,
+            tasks: [
+                config.tasks[0],
+                { ...config.tasks[0], id: 2, color: '112233' },
+                { ...config.tasks[0], id: 3, color: '445566' },
+            ],
+        });
+        const context = { state, hasPolicy: both };
+        expect(
+            foldEdit(
+                readTarget(state),
+                [color(id, wanted.toLowerCase())],
+                context,
+            ),
+        ).toEqual(
+            refusal(
+                `A cor ${wanted.toUpperCase()} já foi usada pela ${nth} tarefa; cada tarefa precisa de uma cor diferente.`,
+            ),
+        );
+    });
+    it('names a concluded task as the owner of the color', () => {
+        const state = createInitialState({
+            ...config,
+            tasks: [
+                config.tasks[0],
+                { ...config.tasks[0], id: 2, color: '112233' },
+                { ...config.tasks[0], id: 3, color: '445566' },
+            ],
+        });
+        state.tasks[2].status = 'concluded';
+        expect(
+            foldEdit(readTarget(state), [color(1, '445566')], {
+                state,
+                hasPolicy: both,
+            }),
+        ).toEqual(
+            refusal(
+                'A cor 445566 já foi usada pela 3ª tarefa; cada tarefa precisa de uma cor diferente.',
+            ),
+        );
+    });
     it('refuses a color used by a concluded task', () => {
         const context = fixture();
         context.state.tasks[1].status = 'concluded';
