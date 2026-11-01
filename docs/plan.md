@@ -403,6 +403,23 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   `outra pasta/sem extensao` carregados, cancelamento como `canceled`,
   arquivo Latin-1 como `not-utf8` e arquivo sem permissao como
   `permission-denied`. Nao verificado: disco externo e outras plataformas.
+  Revisao do PR #99 (2026-10-31, commits `7d731c9` e `0e0ac78`; mudancas
+  em DEC-32 e DEC-33 aceitas pelo usuario): byte NUL rejeitado como
+  `not-utf8` (UTF-16 sem BOM), limite de 1 MiB com motivo `too-large`,
+  codigos de erro herdados de `Object.prototype` tratados como `unknown`,
+  motivo do sistema sem o caminho repetido, canal atendido so para a pagina
+  do app (`src/main/trustedSender.ts`), pedido com dialogo aberto
+  compartilha o resultado e lint impede `core/` de importar `shared/`.
+  Evidencia: testes novos em `src/main/configFile.test.ts` e
+  `src/main/trustedSender.test.ts`; `npm test` 472/472, `npm run lint` e
+  `npm run typecheck` aprovados; regra de lint conferida com arquivo
+  temporario em `src/core/`. Verificacao manual (`npm start`, macOS,
+  2026-10-31) executada pelo usuario pelo console do DevTools, que relatou
+  "tudo funciona", sem copiar a saida. Roteiro: arquivo valido carregado
+  (remetente aceito); opcionais: UTF-16 sem BOM como `not-utf8`, arquivo de
+  1,05 MiB como `too-large`, cancelamento como `canceled` e duas chamadas
+  simultaneas com um so dialogo. Nao verificado: canal no app empacotado (`npm run package`),
+  onde o remetente e conferido pelo `index.html` exato.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
   no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
@@ -571,7 +588,8 @@ Issues `[Docs]`, sem fase no Project.
   evidencia em E5.
 - Em andamento (rascunhos): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio), PR #99 (#33, carga via main e
-  preload; verificacao manual feita e DEC-33 aceita, falta revisao) e PR #100
+  preload; revisao feita e corrigida, mudancas em DEC-32/DEC-33 aceitas e
+  verificadas com `npm start`; falta conferir o app empacotado) e PR #100
   (#72; so o registro de inicio).
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
