@@ -646,7 +646,11 @@ Issues `[Docs]`, sem fase no Project.
   #26/#38. Feito: matriz acordada com o usuario e registrada como DEC-35
   (proposta); Q-02, DEC-12, DEC-08, fluxo do passo e FE-14/FE-16/FE-19 e
   PEND-01 do renderer atualizados; links locais e IDs conferidos, formato
-  verificado com `oxfmt --check`. Pendentes: aceite de DEC-35 e atualizacao
+  verificado com `oxfmt --check`. Em 2026-11-01, rebase sobre a `main`
+  (matriz renumerada de DEC-32 para DEC-35) e revisao do PR #101
+  incorporada: periodo aceito apos a ultima ativacao, fatia nova apos
+  edicao do estado ou remocao de CPU, desvios do enunciado explicitados,
+  nota em DEC-09 e Q-02 alinhada. Pendentes: aceite de DEC-35 e atualizacao
   das issues #26, #37 e #38.
 - Proximo passo: aceite de DEC-35 na #25, pois ela destrava #26 e o Gantt
   (#38); #23 e #24 nao dependem dela e podem seguir em paralelo a ela, nessa

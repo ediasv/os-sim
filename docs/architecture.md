@@ -222,6 +222,10 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
   de ativacao. Prioridade RM para periodo zero definida por DEC-17. Encerrar
   a tarefa durante a simulacao tambem a termina (DEC-35, proposta).
+- Excecao (DEC-35, proposta): periodo editado depois do ingresso recalcula
+  as ativacoes restantes a partir da ultima ativacao, e a formula
+  `ingresso + k * periodo` deixa de valer para essa tarefa; o limite de dez
+  jobs continua.
 
 ### DEC-10: Valores padrao e limites da configuracao
 
@@ -1077,7 +1081,9 @@ anterior. Data inicial dos registros: 2026-10-12.
 ### DEC-35: Matriz de edicao durante a simulacao
 
 - Estado: proposta em 2026-10-31 na #25, com as escolhas do usuario;
-  aguardando aceite. Requisitos: REQ-05, REQ-08, REQ-09. Resolve Q-02 e a
+  revista em 2026-11-01 com a revisao do PR #101 (periodo apos a ultima
+  ativacao, fatia nova apos edicao do estado ou remocao de CPU, desvios do
+  enunciado explicitados); aguardando aceite. Requisitos: REQ-05, REQ-08, REQ-09. Resolve Q-02 e a
   pendencia de suspensao de DEC-12. Detalha DEC-02, DEC-09, DEC-10 e DEC-29.
 - Contexto: o enunciado permite modificar o estado atual ou as
   caracteristicas de qualquer tarefa em qualquer passo (A.1.5.2, A.3.4) e
@@ -1100,26 +1106,34 @@ anterior. Data inicial dos registros: 2026-10-12.
     | Cor              | sim                | todo o Gantt da tarefa, inclusive o passado |
     | Ingresso         | antes de ingressar | reagenda a primeira ativacao                |
     | Duracao          | sim                | somente ativacoes posteriores a edicao      |
-    | Periodo          | sim                | somente ativacoes posteriores a edicao      |
+    | Periodo          | sim                | ativacoes posteriores e prioridade RM       |
     | Prazo relativo   | sim                | somente ativacoes posteriores a edicao      |
     | Ticks executados | nao                | progresso so muda executando                |
     1. Ingresso so muda enquanto a tarefa nao ingressou (antes da primeira
        ativacao) e nunca para antes de `t`; igual a `t` ativa o primeiro job
        em `t`. Depois do ingresso, a edicao e recusada e a tela (#37) mostra o
        campo bloqueado, com a explicacao ao passar o cursor: "O ingresso nao
-       pode ser alterado pois a tarefa ja ingressou."
+       pode ser alterado pois a tarefa ja ingressou." O enunciado nao limita
+       a edicao do ingresso; a restricao e decisao do projeto, porque mudar
+       o ingresso de uma tarefa que ja ingressou reescreveria uma ativacao
+       ocorrida, contra o principio acima.
     2. Jobs ja ativados mantem duracao e prazo absoluto que receberam; a tela
        precisa deixar isso claro ao usuario (#37).
-    3. Com periodo editado, a proxima ativacao passa a ser a soma da ultima
-       ativacao com o novo periodo, ou `t` se esse instante ja passou
-       (cenarios de FE-12); sem ativacao ainda, ingresso + k * novo periodo.
-       O limite de dez jobs (DEC-09) continua contado desde o ingresso. A
-       formula `ingresso + k * periodo` de DEC-09 deixa de valer para tarefas
-       com periodo editado.
-       A prioridade RM, porem, nao fica congelada por job: na selecao refeita
-       em `t` (recalculo, abaixo) e nas seguintes, todos os jobs da tarefa,
-       inclusive os ja ativados, usam o periodo vigente (FE-12). No EDF nada
-       muda para jobs ja ativados, pois o prazo absoluto de cada um e fixo.
+    3. Com periodo editado, as ativacoes restantes passam a seguir o novo
+       periodo (cenarios de FE-12). O limite de dez jobs (DEC-09) continua
+       contado desde o ingresso. A formula `ingresso + k * periodo` de
+       DEC-09 deixa de valer para tarefas com periodo editado depois do
+       ingresso. A prioridade RM, porem, nao fica congelada por job: na
+       selecao refeita em `t` (recalculo, abaixo) e nas seguintes, todos os
+       jobs da tarefa, inclusive os ja ativados, usam o periodo vigente
+       (FE-12). No EDF nada muda para jobs ja ativados, pois o prazo
+       absoluto de cada um e fixo. Ativacoes restantes:
+        - Tarefa que ainda nao ingressou: ativacoes em ingresso + k * novo
+          periodo, com k de 0 a 9, como em DEC-09.
+        - Tarefa que ja ativou algum job: a proxima ativacao e a ultima
+          ativacao + novo periodo. Se esse instante e anterior a `t`, ha uma
+          unica ativacao em `t`, e as seguintes vem a cada novo periodo a
+          partir dela; ativacoes vencidas nao se acumulam.
     4. Cada item respeita os limites de DEC-10: duracao >= 1, prazo
        relativo >= 1 e tempos derivados na faixa de inteiros exatos. Periodo
        segue DEC-10 com a restricao de DEC-29 (itens 3 e 4) para o Projeto
@@ -1130,9 +1144,13 @@ anterior. Data inicial dos registros: 2026-10-12.
        conferido sobre as ativacoes restantes com os valores editados.
     5. Tarefa terminada (DEC-09) nao aceita nenhuma edicao, inclusive de cor,
        e a recusa informa que a tarefa ja terminou; ela ainda pode ser
-       removida (inclusao e remocao, abaixo). Tarefa que ja ativou todos
-       os seus jobs, mas ainda nao terminou, recusa duracao, periodo e prazo,
-       porque nao teriam efeito.
+       removida (inclusao e remocao, abaixo).
+    6. Tarefa que ja ativou todos os seus jobs, mas ainda nao terminou,
+       recusa duracao e prazo, porque jobs ativados mantem os valores que
+       receberam (item 2) e nao ha ativacao futura. Periodo continua aceito
+       e guardado, sem gerar nova ativacao: no RM muda a prioridade dos jobs
+       incompletos a partir da selecao refeita em `t` (item 3); no EDF nao
+       muda a escala, mas o valor vigente vale se o algoritmo voltar a RM.
 
 - Estado do job, mudado manualmente pelo usuario:
 
@@ -1144,12 +1162,22 @@ anterior. Data inicial dos registros: 2026-10-12.
     | concluido  | recusado     | recusado         | recusado   | sem efeito |
     1. Somente o escalonador poe um job em execucao, e o job so conclui
        executando a duracao. Levar a tarefa inteira a concluido e a acao de
-       encerrar tarefa, abaixo, e nao uma mudanca de estado de job. A mudanca para o proprio estado e aceita sem
-       efeito e sem evento.
+       encerrar tarefa, abaixo, e nao uma mudanca de estado de job. A
+       mudanca para o proprio estado e aceita sem efeito e sem evento.
+       Desvio do enunciado, decidido no projeto: o enunciado permite mudar o
+       estado atual de qualquer tarefa (introducao do item 4, A.1.5.2,
+       A.3.4); aqui executando fica com o escalonador e concluido so vem do
+       encerramento da tarefa. Por em execucao a mao contornaria a selecao
+       da politica, e concluir um job sem executar a duracao contradiria
+       DEC-09; ambos quebrariam as invariantes do nucleo.
     2. Suspender nao pausa o prazo (REQ-08) e nao libera o job seguinte da
        tarefa (DEC-02). Pronto apenas devolve o job a disputa: job posterior
        continua esperando o mais antigo incompleto.
     3. Job que deixa a CPU por edicao encerra seu trecho em `t`.
+    4. Job em execucao posto em pronto pode ser escolhido de novo ja na
+       selecao refeita em `t`, na mesma ou em outra CPU. Se for, comeca uma
+       fatia nova, com o quantum inteiro: a edicao do estado zera a fatia em
+       curso.
 
 - Encerrar tarefa (mover para concluido): permitido a qualquer instante
   para tarefa ainda nao terminada e vale de `t` em diante.
@@ -1187,7 +1215,9 @@ anterior. Data inicial dos registros: 2026-10-12.
        em `t`, e o job volta a selecao (DEC-18).
     3. Quantidade de CPUs (>= 1): aumentar acrescenta CPUs com os IDs
        seguintes; reduzir remove as de maior ID, e o job em execucao nelas
-       volta a pronto. O Gantt mantem o passado das CPUs removidas.
+       volta a pronto. O Gantt mantem o passado das CPUs removidas. Job que
+       volta a pronto pela remocao e escolhido de novo em `t`, em outra CPU,
+       comeca uma fatia nova, com o quantum inteiro.
 - Recalculo: apos uma edicao valida, o motor refaz a selecao e o despacho de
   `t` (DEC-07, DEC-13, DEC-27) sobre o estado editado, para que CPU liberada,
   algoritmo novo ou tarefa ingressando em `t` tenham efeito ja em [t, t+1).
@@ -1196,7 +1226,10 @@ anterior. Data inicial dos registros: 2026-10-12.
        `cpu-off`) sao recalculados, nao acumulados. Assim uma CPU nao
        registra desligar e religar no mesmo instante (DEC-21).
     2. Preempcao e criterio "estava executando" (DEC-18) se referem aos jobs
-       que executaram em [t-1, t), nao aos despachados em `t`.
+       que executaram em [t-1, t), nao aos despachados em `t`. Job que
+       deixou a CPU por edicao (`released`, `suspension` ou `cpu-removed`)
+       nao registra `preemption` em `t`, seja ou nao escolhido de novo: o
+       evento da edicao ja explica a saida.
     3. Mudanca so de cor, ou para o proprio estado, nao refaz a selecao nem
        o sorteio; as demais edicoes validas refazem ambos.
     4. Varias edicoes no mesmo `t` geram um snapshot por edicao; o tick `t`

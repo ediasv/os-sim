@@ -170,10 +170,13 @@ Fonte: gerais 5 e 6; A.5.
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
 - Q-02: resolvida em 2026-10-31 por DEC-35 (edicoes valem para o futuro sem
-  alterar o historico executado; cor, duracao, periodo, prazo e estado
-  editaveis; ID, ingresso e ticks executados fixos; inclusao e remocao de
-  tarefas; algoritmo, quantum e CPUs editaveis; eventos de suspensao e
-  retomada para o Gantt).
+  alterar o historico executado; cor, duracao, periodo e prazo editaveis;
+  estado do job entre pronto e suspenso, e tarefa encerrada a qualquer
+  instante; ingresso editavel somente antes de a tarefa ingressar; ID e
+  ticks executados fixos; inclusao e remocao de tarefas; algoritmo, quantum
+  e CPUs editaveis; eventos de suspensao e retomada para o Gantt). Os
+  limites de ingresso e de estado sao decisoes do projeto, nao do
+  enunciado, e estao justificados em DEC-35.
 - Q-03: resolvida em 2026-10-17 por DEC-19. DEC-10 fixou valores padrao, zero,
   campos ausentes, IDs e limites numericos; DEC-19 define diagnosticos do parser,
   numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
