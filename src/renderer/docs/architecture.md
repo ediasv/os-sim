@@ -558,6 +558,67 @@ Worktree `feat/72-area-trabalho-vazia`, Node 24.22.1:
 - Nao executados: pacote no ambiente-alvo e comparacao lado a lado com o
   Figma (#40).
 
+## Estado do sistema e das CPUs (#73)
+
+Componente `SystemInspector` da entrega 2, em
+[features/system](../features/system/). `projectSystem`
+([system.ts](../features/system/system.ts)) e funcao pura sobre o snapshot:
+usa `findEligibleJobs` e `summarizeCpuOff` e apenas agrupa o resultado, sem
+regra propria de elegibilidade, despacho ou intervalos (FE-01, DEC-21). Entrega
+uma linha por CPU na ordem recebida, a fila de prontos e os pendentes; jobs
+concluidos ficam de fora, como na tabela de jobs. Se o snapshot estiver
+inconsistente (job `running` sem CPU, CPU ligada sem job, CPU sem job conhecido,
+sequencia de eventos malformada), a projecao lanca erro em vez de omitir ou
+adivinhar.
+
+Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
+(arquivo `h2kssKC2KiSuN4iAg4K1yU`, card "Estado do sistema", node 96:422):
+
+- FE-DEC-15: a CPU tem so duas condicoes, "Ocupada" (com job) e "Desligada"
+  (sem trabalho elegivel). Nao existe estado "Ociosa": depois de cada despacho
+  uma CPU sem job e desligada (`offSince` recebe o tick, DEC-21), e a
+  projecao falha se encontrar CPU ligada sem job. Cada linha mostra "desde t =
+  N": na CPU desligada, o tick em que desligou (`offSince`); na ocupada, o
+  inicio da corrida ininterrupta do job atual naquela CPU, lido da ultima
+  fatia de `executions` quando ela pertence ao mesmo job e termina no tick
+  inspecionado, senao o proprio tick. Intervalos e total desligado seguem
+  DEC-21 e ficam em linha propria, abaixo da linha principal.
+- FE-DEC-16: o cabecalho mostra "snapshot t = N" (sem parametros de
+  algoritmo, quantum e CPUs, que o protótipo nao traz). A fila e os pendentes
+  seguem em duas listas com os textos do protótipo: "FILA GLOBAL DE PRONTOS"
+  (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES (DEC-02)"
+  (vazia: "Nenhum — cada tarefa tem no maximo um job incompleto."). Prontos
+  traz so jobs elegiveis em estado pronto; pendentes traz jobs nao elegiveis
+  (inclui suspensos), com estado e prazo perdido. Ambas na ordem da
+  configuracao, sem rotulo de prioridade (FE-09).
+- FE-DEC-17: a linha principal da CPU traz nome, condicao, job (com a cor da
+  tarefa) e "desde t". A fatia ("Fatia: x de quantum ticks") aparece so quando
+  ha job, e o progresso do job ("Progresso: y de duracao ticks") em linha
+  secundaria; ambos com rotulos distintos, como antes.
+
+Integracao: nao ha uso em producao. `App` ainda nao chama `useSimulation` e o
+`WorkspaceLayout` nao tem slot para este painel; a composicao fica para a #36
+(a issue pede verificacao isolada e composicao posterior).
+
+### Evidencia da #73 (2026-11-01)
+
+- Figma: card "Estado do sistema" (`96:422`, arquivo `h2kssKC2KiSuN4iAg4K1yU`)
+  lido via MCP (`get_design_context`); colunas de 48/96/flex/80 px e `gap` de
+  12 px conferidos contra o codigo de referencia. A lista de CPUs tambem
+  rola como as duas listas (sem teto de CPUs ou jobs).
+- Testes: `features/system` 25/25 (projecao e componente); `npm test`
+  611 aprovados e 1 ignorado em 38 arquivos; `npm run lint` e
+  `npm run typecheck` sem achados.
+- Visual (Vite temporario fora do commit, dados tipados, navegador do app):
+  1440 x 924 com o cenario do Figma (CPU 1 e 2 desligadas, CPU 3 ocupada,
+  filas vazias) reproduz o card; 390 x 844 com 12 CPUs, 30 prontos e 30
+  pendentes: sem rolagem horizontal (`scrollWidth` 390), as tres listas com
+  rolagem propria e todos os itens no DOM. A 390 px o nome do job quebra em
+  duas linhas.
+- Nao executados: app Electron e pacote, comparacao lado a lado por captura
+  com o Figma, leitura de `projectSystem` com snapshots reais do simulador
+  no app (a #36 liga o `useSimulation`).
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
