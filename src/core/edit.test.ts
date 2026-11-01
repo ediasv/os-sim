@@ -961,6 +961,25 @@ describe('task arrival edit', () => {
             );
         },
     );
+    it('refuses an arrival whose last deadline leaves the exact integers', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        // period 5, deadline 5: the 10th activation adds 9 * 5 + 5 = 50.
+        for (const value of [
+            Number.MAX_SAFE_INTEGER,
+            Number.MAX_SAFE_INTEGER - 49,
+        ]) {
+            expect(
+                reasonOf(foldEdit(base, [arrival(1, value)], context)),
+            ).toMatch(/ultrapassa o maior inteiro exato/);
+        }
+        expect(
+            foldEdit(base, [arrival(1, Number.MAX_SAFE_INTEGER - 50)], context),
+        ).toMatchObject({ ok: true });
+        expect(foldEdit(base, [arrival(1, 8)], context)).toMatchObject({
+            ok: true,
+        });
+    });
     it('refuses a concluded task, also when concluded in the same edit', () => {
         const context = fixture();
         const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';

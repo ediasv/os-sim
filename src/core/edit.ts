@@ -420,6 +420,13 @@ const HANDLERS: Handlers = {
                 reason: `O ingresso deve ser maior ou igual ao tick atual (${context.state.clock}).`,
             };
         }
+        // checkTaskField drops the combined last-deadline issue, so the bound
+        // is checked here against the schedule the new arrival would start.
+        const tooFar = checkRemainingLimit(
+            { ...tcb, nextActivation: checked.definition.arrival },
+            checked.definition,
+        );
+        if (tooFar !== null) return { ok: false, reason: tooFar };
         return {
             ok: true,
             target: {
