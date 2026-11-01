@@ -663,6 +663,42 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #42 Revisar comentarios de componentes/funcoes e justificativas das decisoes.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
+  Em andamento (Refs #44, issue aberta; nenhum codigo alterado). Alvos
+  propostos em DEC-42 (aceite do usuario pendente): Windows x64 com o
+  `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, testado por ediasv
+  (abaixo). Verificacao no Windows (2026-11-01,
+  Windows 10 Pro 10.0.19045, Node 24.22.1 (fixado; refeito apos a revisao
+  do PR #122, a primeira rodada usou Node 25.8), pacote 1.0.5, `npm ci` e
+  `npm run make`, Setup.exe de 146 MiB), sempre com o PATH sem `node.exe` nem
+  `npm` e com uma copia de `demoConfigs/02-edf-figura-2-6.txt` em caminho curto,
+  escolhida pelo dialogo nativo (carrega como EDF, quantum 25, 1 CPU; ao avancar
+  ate t=53, o painel mostra o job 3 da tarefa 1 executando desde 45, sem perda
+  de prazo, como o README dos cenarios): (1) app desempacotado
+  (`out/os-sim-win32-x64/os-sim.exe`): abre e passa no roteiro. (2) `Setup.exe`
+  em modo silencioso instala em `%LOCALAPPDATA%/os_sim/app-1.0.5` e cria atalho,
+  mas **na primeira tentativa o app instalado nao abriu**: saia de imediato com
+  "Sandboxed processes cannot read ... its ACL has an entry for an AppContainer
+  package SID but none for ALL APPLICATION PACKAGES" (Electron 44,
+  `install_dir_access.cc`). A entrada vem herdada de `%LOCALAPPDATA%` e parece
+  propria desta maquina (nao confirmado em outra). Depois de
+  `icacls <pasta> /grant *S-1-15-2-1:(OI)(CI)(RX)`, a correcao sugerida pelo
+  proprio Electron, o app instalado abriu e repetiu o roteiro ate t=53. Ambas as
+  instalacoes foram desfeitas com `Update.exe --uninstall`. Refeito com
+  Node 24.22.1 (`npm ci`, `npm run make`, `Setup.exe` novo): sem o `icacls` o
+  app instalado fecha de novo; com ele abre e chega a t=53 igual. `npm test`
+  690 aprovados (1 ignorado), `npm run lint` e `npm run typecheck` aprovados no
+  Node 24.22.1.
+  Nao verificado: maquina limpa sem Node (a instalacao em maquina sem essa ACL
+  nao foi testada); Linux (so fica fora da entrega se a
+  DEC-42 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
+  desabilitados no app. Um carregamento anterior por engano abriu outro
+  arquivo (nao de `demoConfigs/`) e nao conta. Um processo do app
+  desapareceu sem causa identificada em duas ocasioes (uma no avanco rapido de
+  56 ticks a 60 ms); nao repetiu com 150 ms entre cliques.
+  macOS (2026-11-01): ediasv rodou `npm run make` e relatou ao usuario que
+  funcionou, sem copiar a saida; versao do macOS e do Node, artefato gerado e
+  se o app foi aberto com um cenario nao foram registrados. Formato da entrega
+  no macOS (so ha o zip, vetado pelo portal) segue em aberto.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
   Parcial (Refs #45, issue aberta): 10 arquivos em
   [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
@@ -795,6 +831,7 @@ Issues `[Docs]`, sem fase no Project.
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
+- Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
