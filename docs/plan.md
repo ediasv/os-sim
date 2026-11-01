@@ -639,8 +639,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   propostos em DEC-39 (aceite do usuario pendente): Windows x64 com o
   `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, a testar por
   ediasv; formato no macOS em aberto. Verificacao no Windows (2026-11-01,
-  Windows 10 Pro 10.0.19045, Node 25.8 local, fora do 24.22.1 fixado (build
-  a refazer com o Node fixado antes de valer como evidencia), pacote 1.0.5, `npm ci` e
+  Windows 10 Pro 10.0.19045, Node 24.22.1 (fixado; refeito apos a revisao
+  do PR #122, a primeira rodada usou Node 25.8), pacote 1.0.5, `npm ci` e
   `npm run make`, Setup.exe de 146 MiB), sempre com o PATH sem `node.exe` nem
   `npm` e com uma copia de `demoConfigs/02-edf-figura-2-6.txt` em caminho curto,
   escolhida pelo dialogo nativo (carrega como EDF, quantum 25, 1 CPU; ao avancar
@@ -655,7 +655,11 @@ Requisito: REQ-10; integracao de todos os anteriores.
   propria desta maquina (nao confirmado em outra). Depois de
   `icacls <pasta> /grant *S-1-15-2-1:(OI)(CI)(RX)`, a correcao sugerida pelo
   proprio Electron, o app instalado abriu e repetiu o roteiro ate t=53. Ambas as
-  instalacoes foram desfeitas com `Update.exe --uninstall`.
+  instalacoes foram desfeitas com `Update.exe --uninstall`. Refeito com
+  Node 24.22.1 (`npm ci`, `npm run make`, `Setup.exe` novo): sem o `icacls` o
+  app instalado fecha de novo; com ele abre e chega a t=53 igual. `npm test`
+  690 aprovados (1 ignorado), `npm run lint` e `npm run typecheck` aprovados no
+  Node 24.22.1.
   Nao verificado: maquina limpa sem Node (a instalacao em maquina sem essa ACL
   nao foi testada); macOS (ediasv) e Linux (so fica fora da entrega se a
   DEC-39 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
