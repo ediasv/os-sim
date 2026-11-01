@@ -583,8 +583,11 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   fatia de `executions` quando ela pertence ao mesmo job e termina no tick
   inspecionado, senao o proprio tick. Intervalos e total desligado seguem
   DEC-21 e ficam em linha propria, abaixo da linha principal.
-- FE-DEC-16 (REQ-04, REQ-10; FE-09): o cabecalho mostra "snapshot t = N" (sem parametros de
-  algoritmo, quantum e CPUs, que o protótipo nao traz). A fila e os pendentes
+- FE-DEC-16 (REQ-04, REQ-10; FE-09): o cabecalho mostra "snapshot t = N". Os parametros do
+  sistema (politica, CPUs, quantum) nao aparecem no painel: o protótipo os
+  traz so nos chips da barra ([SimulationToolbar](../components/SimulationToolbar.vue)),
+  e a projecao nao os expoe (decidido com o usuario no PR #110, ao tratar a
+  revisao; a descricao da #73 foi ajustada). A fila e os pendentes
   seguem em duas listas com os textos do protótipo: "FILA GLOBAL DE PRONTOS"
   (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES (DEC-02)"
   (vazia: "Nenhum — cada tarefa tem no maximo um job incompleto."). Prontos

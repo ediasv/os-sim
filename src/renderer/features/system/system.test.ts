@@ -129,15 +129,10 @@ function snapshot(): SimulationState {
 }
 
 describe('projectSystem', () => {
-    it('reports the system parameters and the inspected tick', () => {
+    it('reports the inspected tick', () => {
         const result = projectSystem(snapshot());
 
         expect(result.inspectedTick).toBe(8);
-        expect(result.parameters).toEqual({
-            algorithm: 'EDF',
-            quantum: 5,
-            cpuCount: 3,
-        });
     });
 
     it('gives one row per CPU in received order with its job or off condition', () => {

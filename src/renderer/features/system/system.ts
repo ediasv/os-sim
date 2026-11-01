@@ -1,7 +1,6 @@
 import { summarizeCpuOff, type CpuOffInterval } from '../../../core/cpuOff';
 import { findEligibleJobs } from '../../../core/eligibility';
 import type {
-    AlgorithmId,
     DeepReadonly,
     JobRef,
     JobState,
@@ -22,12 +21,6 @@ import { key } from '../../../core/helpers/key';
  * does not survive a tick boundary: dispatch switches it off (DEC-21).
  */
 export type SystemCpuCondition = 'running' | 'off';
-
-export interface SystemParameters {
-    readonly algorithm: AlgorithmId;
-    readonly quantum: number;
-    readonly cpuCount: number;
-}
 
 export interface SystemJob {
     readonly ref: JobRef;
@@ -63,7 +56,6 @@ export interface SystemCpu {
 
 export interface SystemData {
     readonly inspectedTick: number;
-    readonly parameters: SystemParameters;
     /** One row per CPU, in the order the snapshot gives them. */
     readonly cpus: readonly SystemCpu[];
     /**
@@ -204,11 +196,6 @@ export function projectSystem(
 
     return {
         inspectedTick: snapshot.clock,
-        parameters: {
-            algorithm: snapshot.config.algorithm,
-            quantum: snapshot.config.quantum,
-            cpuCount: snapshot.config.cpuCount,
-        },
         cpus,
         ready,
         pending,

@@ -28,7 +28,6 @@ function job(
 function data(overrides: Partial<SystemData> = {}): SystemData {
     return {
         inspectedTick: 8,
-        parameters: { algorithm: 'RM', quantum: 5, cpuCount: 3 },
         cpus: [
             {
                 id: 1,
