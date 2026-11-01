@@ -1579,6 +1579,27 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Motivo da retirada e alternativa registrados em DEC-02; texto original no
   PR #101 (commit `37f80fa`). Reabriu e depois fechou de novo #11 e #12.
 
+### DEC-39: Ambiente-alvo e formato da entrega empacotada
+
+- Estado: proposta (2026-11-01, #44). Requisitos: REQ-10.
+- Contexto: o enunciado exige software que execute sem instalar nada. Em
+  discussao de turma, o professor respondeu "qualquer um" a quem perguntou
+  qual sistema operacional focar; a fonte e essa resposta, nao o PDF. O portal
+  do aluno veta arquivos compactados na submissao (zip, rar) e exige compilar
+  o projeto na defesa com um sistema de automacao de build.
+- Proposta: ambiente-alvo unico, Windows x64, o da maquina da equipe; o
+  artefato e o `Setup.exe` do Squirrel (arquivo unico, nao compactado), gerado
+  por `npm run make`, que ja esta configurado. O zip portatil nao e usado na
+  entrega. Os makers de macOS (zip) e Linux (deb, rpm) e o workflow de release
+  permanecem, mas esses sistemas ficam fora da entrega e sem verificacao.
+- Build e execucao: compilar na defesa exige Node 24.22.1 e rede (`npm ci`) na
+  maquina de build, que e a da equipe; a execucao do pacote nao exige Node
+  (o runtime vem no Electron). Onde compilar nao e dito pelo portal; assumido
+  na maquina da equipe, a confirmar com o professor.
+- Alternativas: zip portatil no Windows (descartado pelo veto a compactados);
+  entrega em varios sistemas (nao testavel pela equipe).
+- Verificacao e achado: ver #44 no [plano](plan.md#e6-entrega-e-demonstracao).
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.

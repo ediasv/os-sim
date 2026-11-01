@@ -635,6 +635,29 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #42 Revisar comentarios de componentes/funcoes e justificativas das decisoes.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
+  Em andamento (Refs #44, issue aberta; nenhum codigo alterado). Ambiente-alvo
+  e formato propostos em DEC-39 (Windows x64, `Setup.exe` do Squirrel; zip
+  vetado pelo portal), a aceitar pelo usuario. Verificacao (2026-11-01,
+  Windows 10 Pro 10.0.19045, Node 25.8 local, pacote 1.0.5, `npm ci` e
+  `npm run make`, Setup.exe de 146 MiB): (1) app desempacotado
+  (`out/os-sim-win32-x64/os-sim.exe`), aberto com o PATH sem `node.exe`
+  nem `npm`: abre; um `demoConfigs/02-edf-figura-2-6.txt` (copia em caminho
+  curto, pelo dialogo nativo) carrega como EDF, quantum 25, 1 CPU; ao avancar
+  ate t=53, o painel mostra o job 3 da tarefa 1 executando desde 45, sem perda
+  de prazo, como o README dos cenarios. (2) `Setup.exe` executado em modo
+  silencioso: instala em `%LOCALAPPDATA%/os_sim/app-1.0.5` e cria atalho, mas
+  o aplicativo instalado **nao abre** nesta maquina: sai de imediato com
+  "Sandboxed processes cannot read ... its ACL has an entry for an AppContainer
+  package SID but none for ALL APPLICATION PACKAGES" (Electron 44,
+  `install_dir_access.cc`). O ACE vem herdado de `%LOCALAPPDATA%` e parece
+  proprio desta maquina; nao foi corrigido (`icacls`) nem verificado em maquina
+  limpa. Instalacao desfeita com `Update.exe --uninstall`.
+  Nao verificado: maquina limpa sem Node; macOS e Linux (fora da entrega,
+  DEC-39); Executar tudo (#27) e Exportar SVG (#39), desabilitados no app, e o
+  teste de Squirrel apos o ajuste de ACL. Um carregamento anterior por engano
+  abriu outro arquivo (nao de `demoConfigs/`) e nao conta. Um processo do app
+  desapareceu uma vez durante o avanco rapido de 56 ticks (60 ms) sem causa
+  identificada; nao repetiu com 150 ms entre cliques.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
   Parcial (Refs #45, issue aberta): 10 arquivos em
   [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
@@ -727,7 +750,7 @@ Issues `[Docs]`, sem fase no Project.
     5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
-- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
+- Em andamento: #44 (pacote Windows; falha do Setup.exe registrada em E6). #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
   a issue continua aberta (Refs #36).
 - Proximo passo: plano de implementacao do #115. Fora da #26:
   aceitar ou rever DEC-34 (#92).
