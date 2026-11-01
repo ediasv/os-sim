@@ -6,6 +6,9 @@ import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
 import { useSimulation } from './useSimulation';
 
+/** How long the "image saved" confirmation stays on screen. */
+export const SAVED_NOTICE_MS = 3000;
+
 /** Message the workspace shows to the user, in the order it should appear. */
 export interface Notice {
     readonly tone: 'danger' | 'warning' | 'success';
@@ -161,12 +164,16 @@ export function useWorkspace() {
             });
             const result = await window.imageFile.saveImageFile({ content });
             if (result.status === 'saved') {
-                notices.value = [
-                    {
-                        tone: 'success',
-                        message: `Imagem salva em "${result.path}".`,
-                    },
-                ];
+                const saved: Notice = {
+                    tone: 'success',
+                    message: `Imagem salva em "${result.path}".`,
+                };
+                notices.value = [saved];
+                // A confirmation needs no action; only this one goes, so a
+                // newer message is never removed by an older timer.
+                setTimeout(() => {
+                    notices.value = notices.value.filter((n) => n !== saved);
+                }, SAVED_NOTICE_MS);
             } else if (result.status === 'failed') {
                 notices.value = [
                     {

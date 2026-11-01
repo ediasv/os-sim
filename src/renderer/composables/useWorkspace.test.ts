@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigFileResult } from '../../shared/configFile';
 import type { ImageFileResult } from '../../shared/imageFile';
 import { currentError, dismissError } from '../errors';
-import { useWorkspace } from './useWorkspace';
+import { SAVED_NOTICE_MS, useWorkspace } from './useWorkspace';
 
 // Lets a test make `next` fail like a core refusal, which no short
 // configuration reaches (the core only refuses past its length limit).
@@ -334,6 +334,59 @@ describe('useWorkspace export (#39)', () => {
             tone: 'success',
             message: 'Imagem salva em "/o/g.svg".',
         });
+    });
+
+    it('removes the saved confirmation after 3 seconds, and only it', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        stubImage({ status: 'saved', path: '/o/g.svg' });
+        vi.useFakeTimers();
+        try {
+            workspace.handle('export-svg');
+            await vi.advanceTimersByTimeAsync(0);
+            expect(workspace.notices.value).toHaveLength(1);
+
+            await vi.advanceTimersByTimeAsync(SAVED_NOTICE_MS - 1);
+            expect(workspace.notices.value).toHaveLength(1);
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(SAVED_NOTICE_MS).toBe(3000);
+            expect(workspace.notices.value).toEqual([]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('an old timer does not remove a newer message', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        vi.useFakeTimers();
+        try {
+            stubImage(
+                { status: 'saved', path: '/o/a.svg' },
+                {
+                    status: 'failed',
+                    path: '/o/b.svg',
+                    reason: 'unknown',
+                    message: 'Falhou.',
+                },
+            );
+            workspace.handle('export-svg');
+            await vi.advanceTimersByTimeAsync(1000);
+            workspace.handle('export-svg');
+            await vi.advanceTimersByTimeAsync(0);
+            expect(workspace.notices.value[0]).toMatchObject({
+                tone: 'danger',
+            });
+
+            await vi.advanceTimersByTimeAsync(SAVED_NOTICE_MS);
+
+            expect(workspace.notices.value[0]).toMatchObject({
+                tone: 'danger',
+            });
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('explains a write failure and keeps the session', async () => {
