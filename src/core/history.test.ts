@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, type SimulationSnapshot } from './domain';
+import type { Edit } from './edit';
 import { SnapshotHistory } from './history';
 import { createInitialState, takeSnapshot } from './snapshot';
+
+const EDIT: Edit = [{ kind: 'quantum', quantum: 2 }];
 
 function snapshotAt(clock: number): SimulationSnapshot {
     return takeSnapshot({ ...createInitialState(DEFAULT_CONFIG), clock });
@@ -77,5 +80,64 @@ describe('SnapshotHistory', () => {
         snapshots.forEach((snapshot, step) => {
             expect(history.at(step)).toBe(snapshot);
         });
+    });
+
+    it('records an empty edit list with each appended step', () => {
+        const { history } = historyOf(3);
+        for (let step = 0; step < 3; step++) {
+            expect(history.editsAt(step)).toEqual([]);
+        }
+        expect(() => history.editsAt(3)).toThrow(RangeError);
+    });
+
+    it('rewrite replaces the step, drops later steps and their edits, and moves the cursor', () => {
+        const { history, snapshots } = historyOf(5);
+        history.moveTo(1);
+        const replacement = snapshotAt(2);
+        history.rewrite(2, replacement, [EDIT]);
+        expect(history.latestStep).toBe(2);
+        expect(history.cursor).toBe(2);
+        expect(history.at(2)).toBe(replacement);
+        expect(history.at(0)).toBe(snapshots[0]);
+        expect(history.at(1)).toBe(snapshots[1]);
+        expect(history.editsAt(2)).toEqual([EDIT]);
+        expect(history.has(3)).toBe(false);
+        expect(() => history.editsAt(3)).toThrow(RangeError);
+    });
+
+    it('rewrite at the latest step keeps earlier steps', () => {
+        const { history, snapshots } = historyOf(3);
+        history.rewrite(2, snapshotAt(2), [EDIT]);
+        expect(history.latestStep).toBe(2);
+        expect(history.at(0)).toBe(snapshots[0]);
+        expect(history.at(1)).toBe(snapshots[1]);
+        expect(history.editsAt(1)).toEqual([]);
+    });
+
+    it('rewrite refuses an unrecorded step or a mismatched clock without changing anything', () => {
+        const { history, snapshots } = historyOf(3);
+        history.moveTo(1);
+        expect(() => history.rewrite(7, snapshotAt(7), [])).toThrow(RangeError);
+        expect(() => history.rewrite(1, snapshotAt(2), [])).toThrow(
+            'Cannot record a snapshot of clock 2 as step 1.',
+        );
+        expect(history.latestStep).toBe(2);
+        expect(history.cursor).toBe(1);
+        snapshots.forEach((snapshot, step) => {
+            expect(history.at(step)).toBe(snapshot);
+            expect(history.editsAt(step)).toEqual([]);
+        });
+    });
+
+    it('stores a frozen copy of the edits', () => {
+        const { history } = historyOf(2);
+        const item = { kind: 'quantum' as const, quantum: 2 };
+        const edits: Edit[] = [[item]];
+        history.rewrite(1, snapshotAt(1), edits);
+        item.quantum = 9;
+        edits.push([]);
+        expect(history.editsAt(1)).toEqual([EDIT]);
+        expect(Object.isFrozen(history.editsAt(1))).toBe(true);
+        expect(Object.isFrozen(history.editsAt(1)[0])).toBe(true);
     });
 });
