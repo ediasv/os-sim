@@ -1116,11 +1116,18 @@ anterior. Data inicial dos registros: 2026-10-12.
        O limite de dez jobs (DEC-09) continua contado desde o ingresso. A
        formula `ingresso + k * periodo` de DEC-09 deixa de valer para tarefas
        com periodo editado.
+       A prioridade RM, porem, nao fica congelada por job: na selecao refeita
+       em `t` (recalculo, abaixo) e nas seguintes, todos os jobs da tarefa,
+       inclusive os ja ativados, usam o periodo vigente (FE-12). No EDF nada
+       muda para jobs ja ativados, pois o prazo absoluto de cada um e fixo.
     4. Cada item respeita os limites de DEC-10: duracao >= 1, prazo
        relativo >= 1 e tempos derivados na faixa de inteiros exatos. Periodo
-       segue DEC-10 com a restricao de DEC-29 (item 3) para o Projeto A:
-       periodo zero e recusado, e tornar uma tarefa aperiodica, ou o
-       contrario, fica para o Projeto B.
+       segue DEC-10 com a restricao de DEC-29 (itens 3 e 4) para o Projeto
+       A: a validacao das telas recusa periodo zero e parte do padrao 15 em
+       tarefa nova; o nucleo continua aceitando zero. Tornar uma tarefa
+       aperiodica, ou o contrario, fica para o Projeto B. O limite de tempos
+       derivados de DEC-10 (ingresso + 9 * periodo + prazo) passa a ser
+       conferido sobre as ativacoes restantes com os valores editados.
     5. Tarefa terminada (DEC-09) nao aceita nenhuma edicao, inclusive de cor,
        e a recusa informa que a tarefa ja terminou; ela ainda pode ser
        removida (inclusao e remocao, abaixo). Tarefa que ja ativou todos
@@ -1184,6 +1191,17 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Recalculo: apos uma edicao valida, o motor refaz a selecao e o despacho de
   `t` (DEC-07, DEC-13, DEC-27) sobre o estado editado, para que CPU liberada,
   algoritmo novo ou tarefa ingressando em `t` tenham efeito ja em [t, t+1).
+    1. O novo despacho substitui o anterior de `t`, que ainda nao executou:
+       os eventos de despacho de `t` (`tie-break`, `preemption`, `cpu-on`,
+       `cpu-off`) sao recalculados, nao acumulados. Assim uma CPU nao
+       registra desligar e religar no mesmo instante (DEC-21).
+    2. Preempcao e criterio "estava executando" (DEC-18) se referem aos jobs
+       que executaram em [t-1, t), nao aos despachados em `t`.
+    3. Mudanca so de cor, ou para o proprio estado, nao refaz a selecao nem
+       o sorteio; as demais edicoes validas refazem ambos.
+    4. Varias edicoes no mesmo `t` geram um snapshot por edicao; o tick `t`
+       na navegacao mostra o ultimo deles, e editar de novo em `t` parte
+       desse estado. Navegar entre edicoes intermediarias fica com a #24.
 - Rejeicao: edicao com qualquer item invalido e recusada inteira, sem
   aplicacao parcial; a mensagem cita cada item recusado e o motivo.
 - Eventos novos, todos com `time = t`:
@@ -1214,7 +1232,13 @@ anterior. Data inicial dos registros: 2026-10-12.
     - Redesenhar so as fatias futuras com a nova cor: a cor nao e fato da
       simulacao, e duas cores para a mesma tarefa confundiriam a legenda.
 - Revisa DEC-09 e DEC-12 quanto ao termino da tarefa (encerrar tarefa,
-  acima).
+  acima); revisa DEC-12 tambem porque cada job passa a guardar a duracao
+  que recebeu, ja que a da tarefa pode mudar depois (forma com a #26).
+- Revisa DEC-25: a troca de algoritmo durante a simulacao justifica a
+  alternativa ali descartada de o motor resolver a politica pelo algoritmo
+  vigente; a forma fica com a #26.
+- Revisa DEC-21: CPUs removidas continuam com seus intervalos e eventos
+  passados validos na consulta de CPU desligada e em `findInconsistencies`.
 - Revisa expectativas do [renderer](../src/renderer/docs/specification.md):
   ajuste de progresso (FE-14) e edicao de ID (FE-19, FE-DEC-07) saem do
   Projeto A; reagendar o ingresso antes da primeira ativacao (FE-19) e
