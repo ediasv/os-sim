@@ -961,24 +961,36 @@ export function applyNetChange(
     // below like a task whose arrival just moved (DEC-46). The configuration's
     // own task list is left as loaded, as for edited characteristics
     // (DEC-44): `tasks` is the source of truth.
-    const included = new Set(
-        Object.keys(after.definitions)
-            .map(Number)
-            .filter((id) => !Object.hasOwn(before.definitions, id)),
-    );
-    for (const id of [...included].sort((a, b) => a - b)) {
+    const included = Object.keys(after.definitions)
+        .map(Number)
+        .filter((id) => !Object.hasOwn(before.definitions, id))
+        .sort((a, b) => a - b);
+    for (const id of included) {
         state.tasks.push(createTcb(after.definitions[id]));
     }
     state.maxTaskId = after.maxTaskId;
 
+    // The loop compares each task with the start of the edit, where an
+    // included task already had its own definition and `ready` status, so
+    // the loop needs no special case for it.
+    const seeded: EditTarget = {
+        ...before,
+        definitions: {
+            ...before.definitions,
+            ...Object.fromEntries(
+                included.map((id) => [id, after.definitions[id]]),
+            ),
+        },
+        taskStates: {
+            ...before.taskStates,
+            ...Object.fromEntries(included.map((id) => [id, 'ready' as const])),
+        },
+    };
+
     // Task order is observable in the event log; all task changes precede CPUs.
     for (const tcb of state.tasks) {
         const taskId = tcb.definition.id;
-        const isNew = included.has(taskId);
-        // A new task has no earlier definition or status to compare with.
-        const was = isNew
-            ? after.definitions[taskId]
-            : before.definitions[taskId];
+        const was = seeded.definitions[taskId];
         if (after.definitions[taskId] !== was) {
             tcb.definition = after.definitions[taskId];
         }
@@ -999,14 +1011,14 @@ export function applyNetChange(
         applyStatusChange(
             state,
             tcb,
-            isNew ? 'ready' : before.taskStates[taskId],
+            seeded.taskStates[taskId],
             after.taskStates[taskId],
         );
         // An arrival moved to the current tick, or a period whose new next
         // activation is already due, activates here, once, from the net
         // definition: after the task's status events and before any CPU
-        // event (DEC-37, DEC-22, DEC-44).
-        if (rescheduled || isNew) activateTask(state, tcb);
+        // event (DEC-37, DEC-22, DEC-44). Included tasks activate here too.
+        if (rescheduled || included.includes(taskId)) activateTask(state, tcb);
     }
 
     applyCpuChange(state, before, after);
