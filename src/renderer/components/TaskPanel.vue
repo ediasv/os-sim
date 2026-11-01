@@ -7,12 +7,16 @@ import {
     type WorkspaceAction,
 } from './workspaceActions';
 
-// Side panel for the task list. Only the empty state exists for now; #71
-// puts the list between the header and the add button. Outer padding belongs
-// to WorkspaceLayout's sidebar region.
-withDefaults(defineProps<{ available?: ReadonlySet<WorkspaceAction> }>(), {
-    available: () => NO_ACTIONS,
-});
+// Side panel for the task list. Only the empty state and a task count exist
+// for now; #71 puts the list between the header and the add button. Outer
+// padding belongs to WorkspaceLayout's sidebar region.
+withDefaults(
+    defineProps<{
+        available?: ReadonlySet<WorkspaceAction>;
+        taskCount?: number;
+    }>(),
+    { available: () => NO_ACTIONS, taskCount: 0 },
+);
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
 </script>
@@ -22,7 +26,13 @@ const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
         <header class="task-panel__header">
             <h2 class="task-panel__title">Tarefas</h2>
         </header>
-        <p class="task-panel__text">
+        <p v-if="taskCount > 0" class="task-panel__text">
+            {{ taskCount }}
+            {{
+                taskCount === 1 ? 'tarefa configurada' : 'tarefas configuradas'
+            }}.
+        </p>
+        <p v-else class="task-panel__text">
             Nenhuma tarefa. Carregue um arquivo de configuração ou adicione
             tarefas manualmente.
         </p>

@@ -412,12 +412,12 @@ describe('09 and 10: files with errors show line, field and value (DEC-19)', () 
             { line: 4, field: 'id', value: '1', origin: 'core' },
         ]);
         expect(issues.map((issue) => issue.message)).toEqual([
-            'Linha 1, campo quantum (valor 0): O campo quantum deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 3, campo ingresso (valor -1): O campo ingresso deve ser um número inteiro maior ou igual a 0; valor recebido: -1.',
-            'Linha 3, campo cor (valor E41A1C): A cor E41A1C já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
-            'Linha 4, campo duracao (valor 0): O campo duracao deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 4, campo prazo (valor 0): O campo prazo deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
-            'Linha 4, campo id (valor 1): O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+            'Linha 1, campo quantum: O campo quantum deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 3, campo ingresso: O campo ingresso deve ser um número inteiro maior ou igual a 0; valor recebido: -1.',
+            'Linha 3, campo cor: A cor E41A1C já foi usada pela 1ª tarefa; cada tarefa precisa de uma cor diferente.',
+            'Linha 4, campo duracao: O campo duracao deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 4, campo prazo: O campo prazo deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'Linha 4, campo id: O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
         ]);
     });
 
