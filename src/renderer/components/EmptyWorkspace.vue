@@ -2,7 +2,11 @@
 import { computed } from 'vue';
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
-import type { WorkspaceAction } from './workspaceActions';
+import {
+    ACTION_META,
+    NO_ACTIONS,
+    type WorkspaceAction,
+} from './workspaceActions';
 
 // Shown inside the Gantt body while no task is configured. The values come
 // from the owner so the copy stays true if the defaults change.
@@ -13,10 +17,20 @@ const props = withDefaults(
         cpuCount: number;
         available?: ReadonlySet<WorkspaceAction>;
     }>(),
-    { available: () => new Set<WorkspaceAction>() },
+    { available: () => NO_ACTIONS },
 );
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
+
+// Same intents as the toolbar's, but "Sistema" is secondary here per Figma.
+const actions: {
+    id: WorkspaceAction;
+    variant: 'secondary' | 'accent';
+}[] = [
+    { id: 'load-config', variant: 'accent' },
+    { id: 'add-task', variant: 'secondary' },
+    { id: 'configure-system', variant: 'secondary' },
+];
 
 const cpus = computed(
     () => `${props.cpuCount} ${props.cpuCount === 1 ? 'CPU' : 'CPUs'}`,
@@ -34,28 +48,16 @@ const cpus = computed(
         </p>
         <div class="empty-workspace__actions">
             <UiButton
-                variant="accent"
-                :disabled="!available.has('load-config')"
-                @click="emit('action', 'load-config')"
+                v-for="action in actions"
+                :key="action.id"
+                :variant="action.variant"
+                :disabled="!available.has(action.id)"
+                @click="emit('action', action.id)"
             >
-                <template #icon><UiIcon name="folder" /></template>
-                Carregar configuração
-            </UiButton>
-            <UiButton
-                variant="secondary"
-                :disabled="!available.has('add-task')"
-                @click="emit('action', 'add-task')"
-            >
-                <template #icon><UiIcon name="plus" /></template>
-                Adicionar tarefa
-            </UiButton>
-            <UiButton
-                variant="secondary"
-                :disabled="!available.has('configure-system')"
-                @click="emit('action', 'configure-system')"
-            >
-                <template #icon><UiIcon name="settings" /></template>
-                Sistema
+                <template #icon
+                    ><UiIcon :name="ACTION_META[action.id].icon"
+                /></template>
+                {{ ACTION_META[action.id].label }}
             </UiButton>
         </div>
     </div>

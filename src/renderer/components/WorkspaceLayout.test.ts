@@ -2,7 +2,7 @@
 
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ruleBody as cssRuleBody } from './cssRule';
+import { ruleBody as cssRuleBody } from '../testing/cssRule';
 import WorkspaceLayout from './WorkspaceLayout.vue';
 // Raw source: jsdom computes no layout, so scroll rules are pinned in the text.
 import source from './WorkspaceLayout.vue?raw';

@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
-import type { WorkspaceAction } from './workspaceActions';
+import {
+    ACTION_META,
+    NO_ACTIONS,
+    type WorkspaceAction,
+} from './workspaceActions';
 
 // Side panel for the task list. Only the empty state exists for now; #71
 // puts the list between the header and the add button. Outer padding belongs
 // to WorkspaceLayout's sidebar region.
 withDefaults(defineProps<{ available?: ReadonlySet<WorkspaceAction> }>(), {
-    available: () => new Set<WorkspaceAction>(),
+    available: () => NO_ACTIONS,
 });
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
@@ -28,8 +32,10 @@ const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
             :disabled="!available.has('add-task')"
             @click="emit('action', 'add-task')"
         >
-            <template #icon><UiIcon name="plus" /></template>
-            Adicionar tarefa
+            <template #icon
+                ><UiIcon :name="ACTION_META['add-task'].icon"
+            /></template>
+            {{ ACTION_META['add-task'].label }}
         </UiButton>
     </section>
 </template>

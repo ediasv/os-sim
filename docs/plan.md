@@ -408,6 +408,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   de tarefa, SVG). Concluida no PR #76 (merged, `5dd741f`, 2026-10-24);
   apenas documentacao, links e IDs conferidos, sem build.
 - #36 Implementar controles de configuracao, execucao e navegacao no historico.
+  Pendencia herdada da #72: `useSimulation` (adaptador de DEC-23) ficou sem
+  uso em producao desde que `App` deixou de chama-lo; a #36 deve liga-lo ou
+  revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
+  preparacao nao cria simulador.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
   Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
@@ -453,7 +457,11 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   app conferido por CDP a 1440 x 924 e 1024 x 768; pacote, redimensionamento
   real da janela e navegacao por Tab nao executados. Achado de espacamento
   vertical da barra a 1024 px corrigido (`padding-block`), junto com a altura
-  da pagina com o banner de erro. Detalhes em
+  da pagina com o banner de erro. Revisao do PR: tamanho do `UiIcon` por
+  propriedade customizada, altura maxima do banner, rotulos e icones das
+  acoes centralizados (`ACTION_META`, `NO_ACTIONS`), helper de CSS movido
+  para `testing/`; `npm test` 467/467 em 30 arquivos, lint e typecheck
+  aprovados; icones e banner com erro longo conferidos no app pelo usuario. Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
 

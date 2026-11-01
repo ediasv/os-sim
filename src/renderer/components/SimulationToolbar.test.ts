@@ -2,7 +2,7 @@
 
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ruleBody } from './cssRule';
+import { ruleBody } from '../testing/cssRule';
 import SimulationToolbar from './SimulationToolbar.vue';
 // Raw source: jsdom computes no layout, so the wrap rule is pinned in the text.
 import source from './SimulationToolbar.vue?raw';

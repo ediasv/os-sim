@@ -407,7 +407,10 @@ so com `var(--...)` de [tokens.css](../styles/tokens.css) e sem importar
 `DEFAULT_CONFIG` de `core/domain`, e repassa RM, quantum e CPUs por props.
 `App` nao chama `useSimulation()` nem cria simulador: a #36 decide quando
 criar e reconcilia a preparacao com o adaptador de DEC-23, que parte de
-`DEFAULT_CONFIG` em t=0. `useSimulation.ts` nao foi alterado.
+`DEFAULT_CONFIG` em t=0. `useSimulation.ts` nao foi alterado e, ate a #36,
+nao tem uso em producao: so seus testes e o espiao de `App.test.ts` (que
+garante que `App` nao o chama) o importam. A #36 deve liga-lo ou revisar o
+contrato antes de usa-lo (pendencia registrada no plano).
 
 Valores do quadro `99:3895` do Figma (arquivo `h2kssKC2KiSuN4iAg4K1yU`).
 
@@ -445,7 +448,11 @@ implementacao, nao decisao do usuario.
   `step-back`, `step-forward`, `restart`, `run-all`, `zoom-out`, `zoom-in`,
   `export-svg`). Os componentes so emitem intencoes; quem os usa decide a
   disponibilidade e o efeito. Treze botoes na tela mapeiam para dez intencoes
-  (Carregar configuracao, Adicionar tarefa e Sistema aparecem duas vezes).
+  (Carregar configuracao, Adicionar tarefa e Sistema aparecem duas vezes), por
+  isso rotulo e icone de cada intencao ficam so em `ACTION_META`; a variante
+  visual fica em cada tela, pois Sistema e accent na barra e secondary no
+  estado vazio. `NO_ACTIONS` (`ReadonlySet` vazio compartilhado) e o padrao de
+  `available` em todos os componentes e o valor que `App` passa.
 
 `available` vazio por padrao faz um uso ainda nao ligado renderizar tudo com
 `disabled` nativo, em vez de clicavel e inerte. `App` passa o conjunto vazio:
@@ -454,7 +461,9 @@ nenhuma acao existe ate as #36 a #38. Clicar em desabilitado nao emite nada.
 ### Icones e `UiIcon`
 
 `UiIcon` ganhou a prop `size` (`16` padrao ou `32`): a pasta do estado vazio
-tem 32 px no Figma. Nove SVGs novos em [assets/icons](../assets/icons/),
+tem 32 px no Figma. O tamanho vai como propriedade customizada
+(`--ui-icon-size`) lida pela regra `.ui-icon`, e nao como `width`/`height`
+inline, para um componente pai ainda poder redimensionar o icone por CSS. Nove SVGs novos em [assets/icons](../assets/icons/),
 exportados sem edicao da pagina Componentes via `get_design_context` em
 2026-10-31 e registrados em [icons.ts](../components/icons.ts):
 
@@ -487,12 +496,18 @@ quando mudam comportamento; os demais sao so de implementacao:
 - Banner de erro: `Root.vue` o renderiza acima de `App`, em fluxo normal.
   `#app` (em `base.css`) e uma coluna flex de `100vh` e `.workspace` usa
   `flex: 1; min-height: 0`, de modo que o banner reduz a area de trabalho em
-  vez de tornar a pagina mais alta que a janela.
+  vez de tornar a pagina mais alta que a janela. O banner tem
+  `max-height: 40vh` com rolagem propria: uma mensagem longa (pilha de erro)
+  nao comprime a area de trabalho a zero nem faz a pagina rolar.
 - Testes que leem o CSS de um `.vue` usam `import ... from '...?raw'` do Vite:
   `readFileSync` falha sob jsdom e o lint proibe `node:fs` no renderer. O
-  helper de teste `components/cssRule.ts` (`ruleBody(source, seletor)`)
-  extrai o corpo de uma regra, para as assercoes valerem para o seletor certo
-  e nao para qualquer ocorrencia no arquivo.
+  helper de teste [testing/cssRule.ts](../testing/cssRule.ts)
+  (`ruleBody(source, seletor, atRule?)`) extrai o corpo de uma regra, para as
+  assercoes valerem para o seletor certo e nao para qualquer ocorrencia no
+  arquivo. Le so os blocos `<style>` de um `.vue`, aceita seletores agrupados
+  e distingue regras de topo das internas a um `@media` (terceiro argumento).
+  Fica em `testing/`, pasta que o codigo de producao nao importa, com testes
+  proprios.
 - Foco e estados dos botoes seguem [Elementos basicos](#elementos-basicos-70).
   Botoes de accent desabilitados aparecem mais apagados que no Figma, que
   mostra Carregar configuracao e Sistema habilitados.
@@ -507,6 +522,13 @@ Worktree `feat/72-area-trabalho-vazia`, Node 24.22.1:
   tela); `Root.test.ts` inalterado e verde (banner com `App` lancando).
 - `npm test` 460/460 em 29 arquivos (linha de base 422 em 23);
   `npm run lint` e `npm run typecheck` sem achados.
+- Revisao do PR #100 (2026-10-31): tamanho do `UiIcon` por
+  `--ui-icon-size`, altura maxima do banner, `ACTION_META` e `NO_ACTIONS`,
+  helper movido para `testing/` com seletores agrupados e `@media`, pendencia
+  do `useSimulation` registrada. `npm test` 467/467 em 30 arquivos, lint e
+  typecheck sem achados. No app (`npm start`, conferencia manual do
+  usuario): icones intactos (pasta 32 px, demais 16 px) e erro longo com
+  banner limitado e rolagem propria, sem rolagem da pagina.
 - Buscas sem resultado: cor hexadecimal em `components/*.vue` e `core/` em
   `components/*.vue` e `components/*.ts`.
 - Conferencia no app Electron (`npm start`, `--remote-debugging-port`, medicao

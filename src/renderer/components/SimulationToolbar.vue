@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IconName } from './icons';
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
-import type { WorkspaceAction } from './workspaceActions';
+import {
+    ACTION_META,
+    NO_ACTIONS,
+    type WorkspaceAction,
+} from './workspaceActions';
 
 // Top bar: title, the six simulation controls and read-only parameters.
 // It only reports intents; `available` is the owner's decision. It defaults
@@ -17,53 +20,21 @@ const props = withDefaults(
         quantum: number;
         available?: ReadonlySet<WorkspaceAction>;
     }>(),
-    { available: () => new Set<WorkspaceAction>() },
+    { available: () => NO_ACTIONS },
 );
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
 
 const actions: {
     id: WorkspaceAction;
-    label: string;
-    icon: IconName;
     variant: 'primary' | 'secondary' | 'accent';
 }[] = [
-    {
-        id: 'load-config',
-        label: 'Carregar configuração',
-        icon: 'folder',
-        variant: 'accent',
-    },
-    {
-        id: 'configure-system',
-        label: 'Sistema',
-        icon: 'settings',
-        variant: 'accent',
-    },
-    {
-        id: 'step-back',
-        label: 'Voltar tick',
-        icon: 'step-back',
-        variant: 'secondary',
-    },
-    {
-        id: 'step-forward',
-        label: 'Avançar tick',
-        icon: 'step-forward',
-        variant: 'primary',
-    },
-    {
-        id: 'restart',
-        label: 'Reiniciar',
-        icon: 'restart',
-        variant: 'secondary',
-    },
-    {
-        id: 'run-all',
-        label: 'Executar tudo',
-        icon: 'run-all',
-        variant: 'secondary',
-    },
+    { id: 'load-config', variant: 'accent' },
+    { id: 'configure-system', variant: 'accent' },
+    { id: 'step-back', variant: 'secondary' },
+    { id: 'step-forward', variant: 'primary' },
+    { id: 'restart', variant: 'secondary' },
+    { id: 'run-all', variant: 'secondary' },
 ];
 
 // The quantum is always shown: it applies to both RM and EDF (DEC-03).
@@ -90,8 +61,10 @@ const chips = computed(() => [
                 :disabled="!available.has(action.id)"
                 @click="emit('action', action.id)"
             >
-                <template #icon><UiIcon :name="action.icon" /></template>
-                {{ action.label }}
+                <template #icon
+                    ><UiIcon :name="ACTION_META[action.id].icon"
+                /></template>
+                {{ ACTION_META[action.id].label }}
             </UiButton>
         </div>
         <dl class="toolbar__chips">

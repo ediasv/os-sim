@@ -8,12 +8,13 @@ const props = withDefaults(defineProps<{ name: IconName; size?: 16 | 32 }>(), {
     size: 16,
 });
 
+// The size travels as a custom property, not an inline width/height, so a
+// parent can still resize the icon from CSS (inline styles beat any rule).
 // Quoted: small SVGs are inlined as data URLs with single quotes, which an
 // unquoted url() rejects, leaving a solid square instead of the glyph.
 const style = computed(() => ({
     '--ui-icon': `url("${iconUrls[props.name]}")`,
-    width: `${props.size}px`,
-    height: `${props.size}px`,
+    '--ui-icon-size': `${props.size}px`,
 }));
 </script>
 
@@ -25,6 +26,8 @@ const style = computed(() => ({
 .ui-icon {
     display: block;
     flex: none;
+    width: var(--ui-icon-size);
+    height: var(--ui-icon-size);
     background-color: currentColor;
     -webkit-mask: var(--ui-icon) center / contain no-repeat;
     mask: var(--ui-icon) center / contain no-repeat;

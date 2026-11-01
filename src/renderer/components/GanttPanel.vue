@@ -2,14 +2,18 @@
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
 import UiIconButton from './UiIconButton.vue';
-import type { WorkspaceAction } from './workspaceActions';
+import {
+    ACTION_META,
+    NO_ACTIONS,
+    type WorkspaceAction,
+} from './workspaceActions';
 
 // Main-area panel: header with zoom and export, body in the default slot
 // (#38 puts the chart there). The zoom readout is static text because there
 // is no zoom state until the chart exists. Outer padding belongs to
 // WorkspaceLayout's main region.
 withDefaults(defineProps<{ available?: ReadonlySet<WorkspaceAction> }>(), {
-    available: () => new Set<WorkspaceAction>(),
+    available: () => NO_ACTIONS,
 });
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
@@ -21,19 +25,19 @@ const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
             <h2 class="gantt-panel__title">Diagrama de Gantt</h2>
             <div class="gantt-panel__zoom">
                 <UiIconButton
-                    label="Diminuir zoom"
+                    :label="ACTION_META['zoom-out'].label"
                     :disabled="!available.has('zoom-out')"
                     @click="emit('action', 'zoom-out')"
                 >
-                    <UiIcon name="minus" />
+                    <UiIcon :name="ACTION_META['zoom-out'].icon" />
                 </UiIconButton>
                 <span class="gantt-panel__readout">100%</span>
                 <UiIconButton
-                    label="Aumentar zoom"
+                    :label="ACTION_META['zoom-in'].label"
                     :disabled="!available.has('zoom-in')"
                     @click="emit('action', 'zoom-in')"
                 >
-                    <UiIcon name="plus" />
+                    <UiIcon :name="ACTION_META['zoom-in'].icon" />
                 </UiIconButton>
             </div>
             <UiButton
@@ -41,8 +45,10 @@ const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
                 :disabled="!available.has('export-svg')"
                 @click="emit('action', 'export-svg')"
             >
-                <template #icon><UiIcon name="download" /></template>
-                Exportar SVG
+                <template #icon
+                    ><UiIcon :name="ACTION_META['export-svg'].icon"
+                /></template>
+                {{ ACTION_META['export-svg'].label }}
             </UiButton>
         </header>
         <div class="gantt-panel__body"><slot /></div>
