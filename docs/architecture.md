@@ -336,6 +336,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       armazenados originalmente; DEC-43 acrescenta `TaskControlBlock.status`
       e `JobState.interrupted` para encerramento por edicao. `jobs.length`
       conta as ativacoes geradas.
+      DEC-44 acrescenta `Job.duration` (duracao copiada na ativacao) e
+      `TaskControlBlock.nextActivation` (proxima ativacao, ou nulo).
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
       termino de tarefa, CPU desligada/religada, CPU adicionada/removida
@@ -1930,12 +1932,17 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   tarefas diferentes seguem a ordem das tarefas.
 - Revisoes: DEC-09 (calendario guardado em `nextActivation`, nao derivado);
   DEC-16 (criterio 4 usa `Job.duration`, ja anotado em DEC-37).
-- Lacuna conhecida (decisao do usuario, O3): `src/renderer/features/system/system.ts`
-  (linha 87), `src/renderer/features/inspection/inspection.ts` (linha 104)
-  e `TaskDetails.vue` mostram `definition.duration` como duracao do job.
-  Depois de editar a duracao, jobs ja ativados aparecem com valor errado
-  ate a #37/#38 ler `Job.duration`. Fora do escopo desta serie; o nucleo e
-  os testes de nucleo ja expoem `Job.duration`.
+- Lacuna conhecida (decisao do usuario, O3): so um ponto do renderer
+  mostra a duracao de um JOB lida da definicao: `projectJob` em
+  `src/renderer/features/system/system.ts` (linha 87, `duration:
+  definition.duration`), cujo `SystemJob.duration` alimenta
+  `SystemInspector.vue` (CPUs, prontos, pendentes). Depois de editar a
+  duracao, jobs ja ativados aparecem com o valor novo, errado, ate a
+  #37/#38 passarem a ler `Job.duration`. Nao sao lacuna: `copyDefinition`
+  (`inspection.ts`, linha 104) apenas copia a definicao da tarefa para
+  `InspectionTaskDefinition`, e `TaskDetails.vue` (linha 35) imprime
+  `task.definition.duration`, campo da tarefa, correto. Fora do escopo
+  desta serie; o nucleo e os testes de nucleo ja expoem `Job.duration`.
 - Fora do escopo (decisao do usuario, O4): editar periodo 0 (tarefa
   aperiodica) no Projeto A; inclusao e exclusao de tarefas, no PR 6/6 (#119).
 - Justificativa: guardar a duracao no job e a proxima ativacao na tarefa

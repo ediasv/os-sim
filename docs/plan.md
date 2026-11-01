@@ -845,19 +845,21 @@ Issues `[Docs]`, sem fase no Project.
        ativacao causada por edicao registrada depois dos eventos de estado da
        tarefa e antes dos de CPU (decisao do usuario). Forma em DEC-44
        (proposta, aguarda aceite). Baseline 932/932; evidencia local
-       (2026-11-01): `npm test` 1053/1053 em 54 arquivos, `npm run lint`,
+       (2026-11-01): `npm test` 1054/1054 em 54 arquivos, `npm run lint`,
        `npm run typecheck` e `npx oxfmt --check` sem erros. Testes em
        `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts` e
        `consistency.test.ts`. Mutacoes temporarias: remover o
        `max(..., clock)` de `rescheduleNextActivation` derruba 5 testes; fazer
        a ativacao gravar duracao fixa derruba 100; fazer a conclusao usar
-       `definition.duration` em vez de `job.duration` NAO derruba nenhum teste
-       (lacuna: falta teste que conclua um job ja ativado depois de editar a
-       duracao). Lacuna conhecida (O3): `system.ts:87`, `inspection.ts:104`
-       e `TaskDetails.vue` mostram `definition.duration` como duracao do job,
-       errada para jobs ja ativados depois de uma edicao, ate a #37/#38 lerem
-       `Job.duration`. Editar periodo 0 (aperiodica) fica fora do Projeto A
-       (DEC-29). Nao verificado: interface e pacote; Project e corpo do PR
+       `definition.duration` em vez de `job.duration` passou de primeira (0 falhas
+       em 1053), lacuna fechada pelo commit `d9b6426`: agora 2 testes
+       derrubam essa mutacao; `npm test` 54 arquivos / 1054 testes. Lacuna
+       conhecida (O3): so `projectJob` em `system.ts:87` mostra a duracao de
+       um job lida da definicao (alimenta `SystemInspector.vue`), errada para
+       jobs ja ativados depois de uma edicao, ate a #37/#38 lerem
+       `Job.duration`; `copyDefinition` (`inspection.ts:104`) e
+       `TaskDetails.vue:35` mostram a duracao da tarefa, corretas. Editar
+       periodo 0 (aperiodica) fica fora do Projeto A (DEC-29). Nao verificado: interface e pacote; Project e corpo do PR
        #118 ainda nao atualizados;
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
 - Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
@@ -867,8 +869,7 @@ Issues `[Docs]`, sem fase no Project.
 - #117 em implementacao local: estado por tarefa, suspensao, forcamento,
   encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
-- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e a lacuna da
-  conclusao com `job.duration`; depois seguir para #119 (inclusao e exclusao
+- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44; depois seguir para #119 (inclusao e exclusao
   de tarefas, fecha a #26). DEC-34 segue pendente de aceite.
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
