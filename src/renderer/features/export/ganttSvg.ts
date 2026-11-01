@@ -390,25 +390,36 @@ export function buildGanttSvg(
         '<?xml version="1.0" encoding="UTF-8"?>',
         `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" role="img" aria-label="Diagrama de Gantt, ticks 0 a ${snapshot.clock}, ${final ? 'final' : 'parcial'}">`,
         `<title>Diagrama de Gantt, ticks 0 a ${snapshot.clock} (${final ? 'final' : 'parcial'})</title>`,
+        `<defs><pattern id="tick-grid" x="${canvasX}" y="0" width="${TICK}" height="${LANE_HEIGHT}" patternUnits="userSpaceOnUse"><rect width="1" height="${LANE_HEIGHT}" fill="${THEME.border}"/></pattern></defs>`,
         `<rect width="${width}" height="${height}" fill="${THEME.app}"/>`,
         `<text x="${OUTER}" y="${OUTER + 14}" font-size="15" font-weight="600" fill="${THEME.text}">${escapeXml(heading)}</text>`,
         `<text x="${OUTER}" y="${OUTER + 33}" font-size="12" fill="${THEME.textSecondary}" xml:space="preserve">${escapeXml(meta)}</text>`,
         `<rect x="${OUTER + 0.5}" y="${cardTop + 0.5}" width="${cardWidth - 1}" height="${cardHeight - 1}" rx="12" fill="${THEME.surface}" stroke="${THEME.border}"/>`,
     ];
 
-    /** Track and gridlines of one lane, the Figma "Gantt/Lane grid". */
-    const grid = (top: number, laneH: number): string => {
-        const parts = [
-            `<rect x="${canvasX}" y="${top + BAR_TOP}" width="${canvasWidth}" height="${BAR_HEIGHT}" rx="4" fill="${THEME.track}"/>`,
-        ];
-        for (let t = 0; t <= ticks; t++) {
-            const x = t === ticks ? tx(t) - 0.5 : tx(t) + 0.5;
-            parts.push(
-                `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + laneH}" stroke="${THEME.border}"/>`,
-            );
-        }
-        return parts.join('');
-    };
+    /**
+     * Track and gridlines of one lane, the Figma "Gantt/Lane grid". The
+     * boundaries are one repeating pattern instead of a line per tick, so the
+     * file grows with the lanes, not with ticks x lanes.
+     */
+    const grid = (top: number, laneH: number): string =>
+        `<rect x="${canvasX}" y="${top + BAR_TOP}" width="${canvasWidth}" height="${BAR_HEIGHT}" rx="4" fill="${THEME.track}"/>` +
+        `<rect x="${canvasX}" y="${top}" width="${canvasWidth}" height="${laneH}" fill="url(#tick-grid)"/>` +
+        `<line x1="${tx(ticks) - 0.5}" y1="${top}" x2="${tx(ticks) - 0.5}" y2="${top + laneH}" stroke="${THEME.border}"/>`;
+
+    /**
+     * Text clipped to its box, as the Figma bars (overflow-clip): a nested
+     * <svg> clips by default, so a wider fallback font never spills over the
+     * neighbouring bar.
+     */
+    const clippedText = (
+        x: number,
+        top: number,
+        w: number,
+        text: string,
+        color: string,
+    ): string =>
+        `<svg x="${x}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}"><text x="6" y="18" font-size="9" font-weight="700" fill="${color}">${escapeXml(text)}</text></svg>`;
 
     // Time axis: each number centered in its tick cell.
     const axisTop = cardTop + cardInset;
@@ -452,7 +463,13 @@ export function buildGanttSvg(
                 `<g data-state="running"><rect x="${tx(slice.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="${color}"><title>Execução: tarefa ${id} ${jobLabel(slice.job)} na CPU ${slice.cpuId}, [${slice.start}, ${slice.end})</title></rect>`,
                 label === undefined
                     ? ''
-                    : `<text x="${tx(slice.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${textOn(tcb.definition.color)}">${escapeXml(label)}</text>`,
+                    : clippedText(
+                          tx(slice.start) + 1,
+                          top,
+                          w,
+                          label,
+                          textOn(tcb.definition.color),
+                      ),
                 '</g>',
             );
         }
@@ -478,7 +495,13 @@ export function buildGanttSvg(
             const w = (end - interval.start) * TICK - 2;
             out.push(
                 `<rect data-state="cpu-off" x="${tx(interval.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${w - 1.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="${THEME.raised}" stroke="${THEME.border}" stroke-width="1.5" stroke-dasharray="4 3"><title>CPU ${cpu.cpuId} desligada: [${interval.start}, ${end})</title></rect>`,
-                `<text x="${tx(interval.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${THEME.textSecondary}">Desligada</text>`,
+                clippedText(
+                    tx(interval.start) + 1,
+                    top,
+                    w,
+                    'Desligada',
+                    THEME.textSecondary,
+                ),
             );
         }
         out.push('</g>');

@@ -46,7 +46,7 @@ describe('buildGanttSvg', () => {
             ),
         ).toBe(true);
         expect(svg.endsWith('</svg>')).toBe(true);
-        expect(svg).not.toMatch(/<script|href=|<image|url\(/);
+        expect(svg).not.toMatch(/<script|href=|<image|url\((?!#)/);
     });
 
     it('orders task rows by descending ID, lowest next to the CPU lanes', () => {
@@ -255,6 +255,27 @@ describe('buildGanttSvg', () => {
 
         expect(svg).toMatch(/fill="#000000">CPU \d · #1/);
         expect(svg).toMatch(/fill="#ffffff">CPU \d · #1/);
+    });
+
+    it('draws the grid with one repeating pattern, not a line per tick', () => {
+        const lanes = (svg: string) => count(svg, 'fill="url(#tick-grid)"');
+        const shortRun = buildGanttSvg(run(SMALL, 10));
+        const longRun = buildGanttSvg(run(SMALL, 200));
+
+        expect(count(shortRun, '<pattern id="tick-grid"')).toBe(1);
+        expect(lanes(shortRun)).toBe(3); // 2 tasks + 1 CPU
+        expect(lanes(longRun)).toBe(lanes(shortRun));
+        // Per lane: closing boundary only; no line per tick.
+        expect(count(longRun, '<line ')).toBe(count(shortRun, '<line '));
+    });
+
+    it('clips bar and CPU-off labels to their box', () => {
+        const svg = buildGanttSvg(run(SMALL, 12));
+
+        // Each label sits in a nested <svg> exactly as wide as its bar.
+        expect(svg).toMatch(
+            /<svg x="\d+" y="\d+" width="217" height="28"><text[^>]*>CPU 1 · #1<\/text><\/svg>/,
+        );
     });
 
     it('has no current-instant line and no suspended entry (left for #26)', () => {
