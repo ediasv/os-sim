@@ -138,6 +138,7 @@ function snapshot(): SimulationState {
             { kind: 'cpu-off', time: 8, cpuId: 3 },
         ],
         drawState: 1,
+        maxTaskId: 99,
     };
 }
 

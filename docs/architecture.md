@@ -2001,3 +2001,55 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   seria aceito sem valer por inteiro).
 - Evidencia: `simulator.taskEdits.test.ts` (bloco "across submissions") e
   `edit.test.ts` (conclusao com caracteristica, ingresso inalterado).
+
+### DEC-46: Inclusao de tarefas e ID gerado
+
+- Estado: proposta em 2026-11-01 no #119 (#26, 6 de 6), para revisao.
+  Requisitos: REQ-05, REQ-07. Detalha o item Incluir de DEC-37; a exclusao
+  tem decisao propria (DEC-47), no PR seguinte. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
+- Item: `EditItem` ganha `addTask` com `NewTask` (`arrival`, `duration`,
+  `deadline`, `color` e `period` opcionais); o ID nunca vem do chamador.
+  `rawEvents` fica vazio (eventos de arquivo so no Projeto B).
+- Validacao, em ordem sobre o estado da etapa de edicao: ingresso `>= t`
+  (mensagem propria); periodo ausente vira 15 (DEC-29) e zero e recusado; as
+  demais regras de DEC-10 e a cor distinta de todas as tarefas, concluidas e
+  incluidas no tick inclusive, vem de `validateConfig` sobre as definicoes
+  desejadas mais a nova (fonte unica, DEC-28), filtrando os problemas dela.
+  Reaproveita a mesma lista de definicoes que a validacao de caracteristicas
+  de DEC-44 (`liveDefinitions`), entao uma edicao de cor do mesmo tick
+  tambem enxerga a cor da tarefa incluida.
+- Cor: se nao vier, o motor escolhe uma que nenhuma outra tarefa usa
+  (`defaultTaskColor`, `src/core/defaultColor.ts`; pedido do usuario no
+  #119). Parece aleatoria, mas e funcao do ID: cada edicao recalcula o tick
+  a partir de `t-1`, e `Math.random` mudaria a cor a cada nova edicao do
+  mesmo tick, quebrando DEC-37 item 2. Cor informada continua validada.
+- ID: maior ID ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
+  usado em cada snapshot e `EditTarget.maxTaskId` o acompanha dentro do
+  tick; assim descartar o futuro descarta os IDs gerados nele (o recalculo
+  parte do snapshot `t-1` ou da configuracao inicial). Varias inclusoes numa
+  edicao recebem IDs consecutivos. `findInconsistencies` confere que o valor
+  e inteiro e nao fica abaixo de nenhum ID.
+- Aplicacao (mudanca liquida): a tarefa entra no alvo (`definitions` e
+  `taskStates`) e, ao aplicar, no fim de `state.tasks`, nascendo pronta, sem
+  jobs e com `nextActivation` igual ao ingresso (`createTcb`, o unico lugar
+  onde um TCB nasce), sem evento proprio. Estado e caracteristicas pedidos no
+  mesmo tick valem pela definicao e pelo estado liquidos: o estado parte de
+  `ready` e gera os eventos de DEC-43, e o primeiro job usa a duracao e o
+  prazo finais. Ingresso igual a `t` ativa o primeiro job na etapa de edicao
+  (`activateTask`, DEC-44), depois dos eventos de estado da propria tarefa e
+  antes dos de CPU; ingresso maior ativa no tick certo. Ate ser aplicada, a
+  tarefa incluida age como tarefa nunca ativada nas validacoes de
+  caracteristicas do mesmo tick.
+- `config.tasks`: nao e atualizada, como ja nao e nas edicoes de
+  caracteristicas (DEC-44); `tasks` e a fonte de verdade da simulacao e o
+  nucleo nao le mais a lista da configuracao depois do estado inicial.
+  A interface conta as tarefas de `snapshot.tasks` (`useWorkspace.taskCount`),
+  nao de `config.tasks`, que ficaria atras apos uma inclusao.
+- Justificativa: ID no estado, e nao derivado da lista, e o que permite a
+  exclusao futura manter o ID gasto sem rastro.
+- Alternativas descartadas: evento `task-added` (DEC-37 nao o lista; a
+  ativacao ja marca a entrada); cor aleatoria de verdade (nao reproduzivel
+  ao refazer o tick); ativar depois dos eventos de CPU (o evento de ativacao
+  viria depois do `cpu-added` que o explica).
+- Evidencia: `src/core/simulator.addTask.test.ts`,
+  `src/core/defaultColor.test.ts`, `consistency.test.ts` e `edit.test.ts`.

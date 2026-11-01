@@ -60,6 +60,21 @@ const algorithm = (value: string): EditItem => ({
     algorithm: value as AlgorithmId,
 });
 
+describe('edit fold: target and state out of step', () => {
+    it('throws, instead of inventing a task, when a definition has no control block', () => {
+        const context = contextFor();
+        const target = readTarget(context.state);
+        (context.state.tasks as unknown[]).length = 0;
+        expect(() =>
+            foldEdit(
+                target,
+                [{ kind: 'taskDuration', taskId: 1, duration: 3 }],
+                context,
+            ),
+        ).toThrow(/no control block/);
+    });
+});
+
 describe('edit fold', () => {
     it("reads the target from the state's configuration", () => {
         expect(readTarget(createInitialState(config))).toEqual({
@@ -68,6 +83,7 @@ describe('edit fold', () => {
             cpuCount: 1,
             taskStates: { 1: 'ready' },
             definitions: { 1: config.tasks[0] },
+            maxTaskId: 1,
         });
     });
 
@@ -82,6 +98,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
         expect(foldEdit(base, [algorithm('EDF'), quantum(2)], context)).toEqual(
@@ -93,6 +110,7 @@ describe('edit fold', () => {
                     cpuCount: 1,
                     taskStates: { 1: 'ready' },
                     definitions: { 1: config.tasks[0] },
+                    maxTaskId: 1,
                 },
             },
         );
@@ -110,6 +128,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
     });
@@ -278,6 +297,7 @@ describe('CPU count edit', () => {
                 cpuCount: 17,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
     });
