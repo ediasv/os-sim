@@ -825,10 +825,10 @@ Issues `[Docs]`, sem fase no Project.
        Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
        critico; achados importantes corrigidos no proprio PR. Interface
        interativa e pacote nao verificados; PR #124 integrado em `aaaa5f0`.
-       Limite de CPUs contra forcadas entregue no #117 (DEC-41);
+       Limite de CPUs contra forcadas entregue no #117 (DEC-43);
     4. #117 (rascunho), implementacao local: estado por tarefa, eventos,
        limite de forcadas, interrupcao de jobs e recusas em portugues.
-       DEC-41 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
+       DEC-43 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
        pendentes, quantum, prazos, mudanca liquida, historico e consistencia.
        Baseline 794/794; verificacao local 875/875 testes, `npm run lint` e
        `npm run typecheck` sem erros (2026-11-01). Revisao com

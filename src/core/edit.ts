@@ -9,7 +9,7 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-41) also needs its slice of the target
+ * A task-level kind (`taskState`, DEC-43) also needs its slice of the target
  * filled by `readTarget` and applied by `applyNetChange`, which the compiler
  * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
@@ -122,7 +122,7 @@ const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
 
 /**
  * Forced tasks reserve capacity even before their next activation, but not
- * once they have finished: they can never use a CPU again (DEC-41).
+ * once they have finished: they can never use a CPU again (DEC-43).
  */
 function forcedCount(
     target: EditTarget,
@@ -136,7 +136,7 @@ function forcedCount(
 
 /**
  * Whether the task ran every activation it will ever have (DEC-09). Forcing
- * it would reserve a CPU it can never use, so the edit is refused (DEC-41).
+ * it would reserve a CPU it can never use, so the edit is refused (DEC-43).
  * Concluded tasks are already refused by the transition table.
  */
 function hasFinished(
@@ -316,7 +316,7 @@ export function foldEdit(
  * Applies only the difference between the target before and after the
  * tick's edits (DEC-37 item 5). Task status changes come first, in task-list
  * order, with their events (`suspension`, `resumption`, `forced`, `unforced`,
- * `task-finished`; DEC-41); CPU events come after (DEC-22). The configuration
+ * `task-finished`; DEC-43); CPU events come after (DEC-22). The configuration
  * is replaced, never mutated, because snapshots and restored states share it
  * (DEC-35). Algorithm and quantum record no event (DEC-37). A `cpuCount` change removes
  * the highest IDs or appends the next ones, recording `cpu-removed` or
@@ -355,7 +355,7 @@ export function applyNetChange(
                 owner.running = null;
                 owner.sliceElapsed = 0;
             }
-            // A task that already finished naturally has its task-finished event (possibly logged at this same tick, before the edit stage per DEC-22); concluding it must not log a second one (DEC-41).
+            // A task that already finished naturally has its task-finished event (possibly logged at this same tick, before the edit stage per DEC-22); concluding it must not log a second one (DEC-43).
             if (
                 !state.events.some(
                     (event) =>

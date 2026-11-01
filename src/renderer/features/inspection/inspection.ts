@@ -114,7 +114,7 @@ function taskStatus(
     jobs: readonly CurrentInspectionJob[],
     clock: number,
 ): InspectionTaskStatus {
-    // A concluded task never activates again, whatever its jobs say (DEC-41).
+    // A concluded task never activates again, whatever its jobs say (DEC-43).
     if (status === 'concluded') {
         return 'completed';
     }

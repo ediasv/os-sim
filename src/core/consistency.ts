@@ -8,7 +8,7 @@
  * It also rejects a CPU that runs a job while off, a malformed
  * `cpu-off`/`cpu-on` sequence, and a job that ran past its duration (which
  * would have caught a half-applied step re-executing completed jobs). Task
- * status is cross-checked too (DEC-41): forced tasks within the CPU count and
+ * status is cross-checked too (DEC-43): forced tasks within the CPU count and
  * owning a CPU for their oldest unfinished job, no CPU running a suspended or
  * concluded task, interrupted jobs only in concluded tasks, and no open job
  * left in a concluded task.
@@ -70,7 +70,7 @@ export function findInconsistencies(
         }
     }
     const forced = state.tasks.filter((tcb) => tcb.status === 'forced');
-    // A finished forced task can never use a CPU, so it does not count (DEC-41).
+    // A finished forced task can never use a CPU, so it does not count (DEC-43).
     const activeForced = forced.filter(
         (tcb) =>
             tcb.jobs.length !== maxJobs(tcb.definition) ||

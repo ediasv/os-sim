@@ -333,13 +333,13 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   privado; snapshots sao copias profundas congeladas (`DeepReadonly`).
 - Detalhes:
     - Elegibilidade (DEC-02) e termino da tarefa (DEC-09) sao derivados, nao
-      armazenados originalmente; DEC-41 acrescenta `TaskControlBlock.status`
+      armazenados originalmente; DEC-43 acrescenta `TaskControlBlock.status`
       e `JobState.interrupted` para encerramento por edicao. `jobs.length`
       conta as ativacoes geradas.
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
       termino de tarefa, CPU desligada/religada, CPU adicionada/removida
-      (DEC-40), suspensao, retomada, forcamento e fim do forcamento (DEC-41));
+      (DEC-40), suspensao, retomada, forcamento e fim do forcamento (DEC-43));
       execucao fica em intervalos
       [start, end) por CPU.
     - CPUs numeradas de 1 a `cpuCount`; cor em `RRGGBB` sem `#`, como no exemplo
@@ -373,7 +373,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       religamento/desligamento; `findInconsistencies` e aplicado apos cada
       despacho (REQ-02, DEC-05).
     - Suspensao: resolvida no nucleo do #117 por `TaskControlBlock.status`
-      e eventos de tarefa (DEC-41); `JobState.suspended` segue por
+      e eventos de tarefa (DEC-43); `JobState.suspended` segue por
       compatibilidade do modelo, mas a edicao nao o escreve. Consumo no Gantt (#38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
@@ -770,7 +770,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   passa a incluir a `preemption` causada por job forcado.
 - Revista por DEC-39: a ordem ativacoes, etapa de edicao e fatias vencidas
   esta implementada desde a #115; a #117 acrescenta os eventos de estado
-  e a `preemption` por job forcado (DEC-41).
+  e a `preemption` por job forcado (DEC-43).
 
 ### DEC-23: Contrato do adaptador Vue
 
@@ -1828,7 +1828,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   referencia externa). Quando a #38 desenhar o Gantt na tela, alinhar as duas
   apresentacoes para nao manter duas.
 
-### DEC-41: Estado editavel por tarefa e encerramento de jobs
+### DEC-43: Estado editavel por tarefa e encerramento de jobs
 
 - Estado: proposta em 2026-11-01 no #117 (#26, 4 de 6), para revisao.
   Requisitos: REQ-05, REQ-08, REQ-09. Implementa a matriz de DEC-37 e

@@ -71,7 +71,7 @@ export interface JobRef {
  * Lifecycle of a job. Eligibility (only the oldest incomplete job of a task
  * may run, DEC-02) is derived by the engine, not stored, so a later job can be
  * `ready` and still wait for an older one. `interrupted` means the job was cut
- * short by concluding its task and never completed (DEC-41). `suspended` is
+ * short by concluding its task and never completed (DEC-43). `suspended` is
  * kept for compatibility: edits suspend the task (`TaskStatus`), never a job.
  */
 export type JobState =
@@ -96,12 +96,12 @@ export interface Job extends JobRef {
     deadlineMissed: boolean;
 }
 
-/** User-selected task state; independent from the current job (DEC-37, DEC-41). */
+/** User-selected task state; independent from the current job (DEC-37, DEC-43). */
 export type TaskStatus = 'ready' | 'forced' | 'suspended' | 'concluded';
 
 /**
  * Task Control Block: the single structure holding a task's characteristics,
- * the state the user chose for it (`status`, DEC-41) and every activation it
+ * the state the user chose for it (`status`, DEC-43) and every activation it
  * generated (A.1.3). `jobs.length` is the number of activations so far; the
  * task has finished when its last job completes, or when an edit concludes it.
  */
@@ -141,12 +141,12 @@ export type SimulationEvent =
           readonly taskId: TaskId;
           /**
            * CPU that was running the task's job when it was suspended, even if
-           * that job just completed at this tick; null when none was (DEC-41).
+           * that job just completed at this tick; null when none was (DEC-43).
            */
           readonly cpuId: number | null;
       }
     | {
-          /** Task state changes chosen by the user at an edit (DEC-41). */
+          /** Task state changes chosen by the user at an edit (DEC-43). */
           readonly kind: 'resumption' | 'forced' | 'unforced';
           readonly time: number;
           readonly taskId: TaskId;
@@ -192,7 +192,7 @@ export type SimulationEvent =
       }
     | {
           readonly kind: 'task-finished';
-          /** Jobs cut short by concluding the task; empty on a natural finish (DEC-41). */
+          /** Jobs cut short by concluding the task; empty on a natural finish (DEC-43). */
           readonly interrupted: readonly JobRef[];
           readonly time: number;
           readonly taskId: TaskId;

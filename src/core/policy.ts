@@ -163,7 +163,7 @@ export function selectedRefs(decision: PolicyDecision): JobRef[] {
  * when the engine offers a job that does not exist, has completed, was
  * interrupted, is suspended or appears twice, since a policy could only make
  * a wrong choice from it. `cpuCount` is the number of CPUs left to the policy
- * after forced jobs took theirs (DEC-41); `eligible` must already exclude
+ * after forced jobs took theirs (DEC-43); `eligible` must already exclude
  * those jobs.
  */
 export function buildPolicyView(
