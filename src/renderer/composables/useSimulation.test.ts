@@ -266,11 +266,13 @@ describe('useSimulation navigation (DEC-36)', () => {
 
     it('refuses navigation before any load', () => {
         const sim = useSimulation();
+        const zero = sim.view.value;
         const result = sim.backward();
         expect(!result.ok && result.error.kind).toBe('refused');
         const forward = sim.forward();
         expect(!forward.ok && forward.error.kind).toBe('refused');
-        expect(sim.view.value.clock).toBe(0);
+        expect(sim.view.value).toBe(zero);
+        expect(currentError.value).toBeNull();
     });
 
     it('starts a loaded config at its step 0 after navigating back', () => {

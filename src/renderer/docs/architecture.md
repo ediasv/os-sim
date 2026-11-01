@@ -96,8 +96,9 @@ acrescentar campos em Job ou prescrever como o nucleo os representa.
 
 `useSimulation` ja expoe `view`, `load`, `tick`, `forward`, `backward` e
 `next`, com `CommandResult` (DEC-23/DEC-24/DEC-36, #17/#65/#24); `view` e o
-snapshot do cursor e recusas chegam como `refused`. Preservar esse contrato e o tratamento
-central de erros; nao duplicar banner, handlers ou classificacao por painel.
+snapshot do cursor e recusas chegam como `refused`. Preservar esse contrato e
+o tratamento central de erros; nao duplicar banner, handlers ou classificacao
+por painel.
 `load` ja inicializa t=0, enquanto FE-02/FE-04 exigem preparacao antes de
 iniciar. Essa integracao precisa ser fechada antes da entrega 3: nao chamar
 `load` ao importar/preparar e esconder o snapshot como se o motor nao tivesse

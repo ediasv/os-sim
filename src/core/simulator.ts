@@ -69,10 +69,10 @@ function copyTie(raw: unknown): PolicyTie {
     return { candidates, slots };
 }
 
-export interface ExecutionGuardResult {
-    ready: boolean;
-    reason?: string;
-}
+/** Whether tick() may run; a refusal always carries its reason (DEC-36). */
+export type ExecutionGuardResult =
+    | { ready: true }
+    | { ready: false; reason: string };
 
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
@@ -101,9 +101,7 @@ export class Simulator {
     public tick(): void {
         const guardResult = this.executionGuard();
         if (!guardResult.ready) {
-            throw new SimulationRefusal(
-                guardResult.reason ?? 'tick() refused.',
-            );
+            throw new SimulationRefusal(guardResult.reason);
         }
 
         // DEC-14: mutate a working copy and commit it only if the whole step
@@ -155,7 +153,7 @@ export class Simulator {
      */
     public forward(): void {
         const cursor = this.history.cursor;
-        if (!this.history.isBehind) {
+        if (!this.canForward()) {
             throw new SimulationRefusal(
                 `Step ${cursor} is the latest recorded step; use tick() to compute step ${cursor + 1}.`,
             );
@@ -172,6 +170,14 @@ export class Simulator {
             );
         }
         this.restore(cursor - 1);
+    }
+
+    /**
+     * True when a recorded step lies ahead of the cursor, so forward() would
+     * reuse it; false at the latest step, where only tick() advances.
+     */
+    public canForward(): boolean {
+        return this.history.isBehind;
     }
 
     public getCursor(): number {

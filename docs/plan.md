@@ -291,13 +291,13 @@ Requisitos: REQ-04, REQ-05.
   passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
   DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
-  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, sem PR
-  ainda): `Simulator.forward()`/`backward()` e `SimulationRefusal`
-  (`src/core/refusal.ts`); `useSimulation` com `forward`, `backward` e
-  `next`, publicando o snapshot do cursor; categoria `refused` em
+  Implementada no branch `feat/24-navegacao-historico` (2026-11-01, PR
+  #112): `Simulator.forward()`/`backward()`, `canForward()` e
+  `SimulationRefusal` (`src/core/refusal.ts`); `useSimulation` com `forward`,
+  `backward` e `next`, publicando o snapshot do cursor; categoria `refused` em
   `commandFailure`. Contrato em DEC-36. Testes em
   `src/core/simulator.navigation.test.ts`, `useSimulation.test.ts` e
-  `errors.test.ts`. `npm test` 668/668 em 42 arquivos (base: main com 653 em
+  `errors.test.ts`. `npm test` 669/669 em 42 arquivos (base: main com 653 em
   41), `npm run lint` e `npm run typecheck` sem erros. Botoes ficam na #36 e
   recusar `tick()` com tudo terminado na #27.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.

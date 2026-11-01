@@ -70,11 +70,7 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
      * step when there is one ahead, otherwise computes a new one.
      */
     const next = (): CommandResult =>
-        run(() =>
-            sim.getCursor() < sim.getLatestSnapshot().clock
-                ? sim.forward()
-                : sim.tick(),
-        );
+        run(() => (sim.canForward() ? sim.forward() : sim.tick()));
 
     return { view, load, tick, forward, backward, next };
 }

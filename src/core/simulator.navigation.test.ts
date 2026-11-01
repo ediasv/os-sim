@@ -148,6 +148,17 @@ describe('Simulator navigation', () => {
         expect(sim.getCurrentSnapshot()).toBe(zero);
     });
 
+    it('canForward tells whether a recorded step is ahead of the cursor', () => {
+        const sim = new Simulator(config, rmPolicy);
+        expect(sim.canForward()).toBe(false);
+        recordRun(sim, 2);
+        expect(sim.canForward()).toBe(false);
+        sim.backward();
+        expect(sim.canForward()).toBe(true);
+        sim.forward();
+        expect(sim.canForward()).toBe(false);
+    });
+
     it('refuses tick behind the cursor as a refusal', () => {
         const sim = new Simulator(config, rmPolicy);
         recordRun(sim);

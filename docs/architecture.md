@@ -52,7 +52,7 @@ afirma que os modulos planejados ja existem.
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
   (DEC-15); mantem cursor sobre o historico e restaura passos registrados
   (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35); navega por eles sem
-  recalcular (`forward`, `backward`) e recusa pedido impossivel com
+  recalcular (`forward`, `backward`, `canForward`) e recusa pedido impossivel com
   `SimulationRefusal` (DEC-36).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica o snapshot do cursor via `shallowRef` e oferece os comandos
@@ -1153,7 +1153,8 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Decisao: navegar e calcular sao comandos separados no `Simulator`.
   `forward()` move o cursor ao proximo passo registrado e `backward()` ao
   anterior, ambos por `restore` (DEC-35), reutilizando o snapshot gravado sem
-  consultar a politica nem o sorteio. `tick()` so calcula a partir do ultimo
+  consultar a politica nem o sorteio. `canForward()` diz se ha passo
+  registrado a frente do cursor. `tick()` so calcula a partir do ultimo
   passo (DEC-11).
 - Recusas: pedido impossivel lanca `SimulationRefusal`
   (`src/core/refusal.ts`) antes de mudar qualquer coisa, com as mensagens:
@@ -1165,8 +1166,8 @@ anterior. Data inicial dos registros: 2026-10-12.
       forward() instead of tick().`.
 - Interface: `AppError` ganha a categoria `refused` (DEC-24), que fica so no
   resultado do comando, fora do banner. `useSimulation` expoe `forward`,
-  `backward` e `next`, que chama `forward` quando ha passo registrado a
-  frente e `tick` no ultimo, para um unico botao "proximo" na #36; `view` e
+  `backward` e `next`, que chama `forward` quando `canForward()` e `tick` no
+  ultimo passo, para um unico botao "proximo" na #36; `view` e
   sempre o snapshot do cursor (`getCurrentSnapshot`).
 - Fora: recusar `tick()` quando todas as tarefas terminaram (#27); botoes e
   atalhos (#36).
