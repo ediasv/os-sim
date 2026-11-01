@@ -1777,8 +1777,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-41: Exportacao do Gantt em SVG pelo processo principal
 
-- Estado: proposta em 2026-11-01 no PR #121 (#39), para aceite do usuario na
-  revisao. Requisitos: REQ-09, REQ-10. Detalha DEC-08 e DEC-19; nao altera o
+- Estado: aceita em 2026-11-01 pelo usuario, na revisao do PR #121 (#39).
+  Requisitos: REQ-09, REQ-10. Detalha DEC-08 e DEC-19; nao altera o
   nucleo.
 - Decisao:
     1. A imagem e gerada no renderer por funcao pura sobre o ultimo snapshot do

@@ -562,7 +562,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   CPU desligada, marcadores por evento empilhados no mesmo instante, instante
   atual e legenda; sem teto de ticks. Acordado com o usuario em 2026-11-01:
   exportar em qualquer passo (resultado parcial identificado no titulo,
-  FE-18; DEC-41, proposta). Layout do SVG conforme o frame "Exportacao SVG - layout da imagem" da
+  FE-18; DEC-41, aceita). Layout do SVG conforme o frame "Exportacao SVG - layout da imagem" da
   pagina Telas do Figma (eixo no topo, raias por tarefa, divisor PROCESSADORES,
   raias de CPU, cartao de legenda; 73 px por tick; titulo com nome do arquivo
   e data da exportacao). Botao "Exportar SVG" ligado em `App` e `useWorkspace`. Pendente (depende da
