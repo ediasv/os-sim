@@ -574,7 +574,7 @@ adivinhar.
 Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
 (arquivo `h2kssKC2KiSuN4iAg4K1yU`, card "Estado do sistema", node 96:422):
 
-- FE-DEC-15: a CPU tem so duas condicoes, "Ocupada" (com job) e "Desligada"
+- FE-DEC-15 (REQ-02, REQ-10; DEC-21): a CPU tem so duas condicoes, "Ocupada" (com job) e "Desligada"
   (sem trabalho elegivel). Nao existe estado "Ociosa": depois de cada despacho
   uma CPU sem job e desligada (`offSince` recebe o tick, DEC-21), e a
   projecao falha se encontrar CPU ligada sem job. Cada linha mostra "desde t =
@@ -583,7 +583,7 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   fatia de `executions` quando ela pertence ao mesmo job e termina no tick
   inspecionado, senao o proprio tick. Intervalos e total desligado seguem
   DEC-21 e ficam em linha propria, abaixo da linha principal.
-- FE-DEC-16: o cabecalho mostra "snapshot t = N" (sem parametros de
+- FE-DEC-16 (REQ-04, REQ-10; FE-09): o cabecalho mostra "snapshot t = N" (sem parametros de
   algoritmo, quantum e CPUs, que o protótipo nao traz). A fila e os pendentes
   seguem em duas listas com os textos do protótipo: "FILA GLOBAL DE PRONTOS"
   (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES (DEC-02)"
@@ -591,7 +591,7 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   traz so jobs elegiveis em estado pronto; pendentes traz jobs nao elegiveis
   (inclui suspensos), com estado e prazo perdido. Ambas na ordem da
   configuracao, sem rotulo de prioridade (FE-09).
-- FE-DEC-17: a linha principal da CPU traz nome, condicao, job (com a cor da
+- FE-DEC-17 (REQ-02, REQ-10; FE-09): a linha principal da CPU traz nome, condicao, job (com a cor da
   tarefa) e "desde t". A fatia ("Fatia: x de quantum ticks") aparece so quando
   ha job, e o progresso do job ("Progresso: y de duracao ticks") em linha
   secundaria; ambos com rotulos distintos, como antes.
