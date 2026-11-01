@@ -148,7 +148,7 @@ export function validateConfig(input: ConfigInput): ConfigResult {
                 issues.push({
                     field: 'color',
                     taskIndex,
-                    message: `A ${FILE_LABELS.color} ${color} já foi usada pela ${ordinalTask(previous)}; cada tarefa precisa de uma cor diferente.`,
+                    message: duplicateColorMessage(color, previous),
                 });
             }
         } else {
@@ -242,6 +242,17 @@ function checkLastDeadline(
         combined: true,
         message: `O prazo da última ativação (${formula}) ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`,
     });
+}
+
+/**
+ * Wording of the duplicate-color refusal, shared with the edit stage, which
+ * knows the real position of the task that already owns the color (DEC-28).
+ */
+export function duplicateColorMessage(
+    color: string,
+    previousIndex: number,
+): string {
+    return `A ${FILE_LABELS.color} ${color} já foi usada pela ${ordinalTask(previousIndex)}; cada tarefa precisa de uma cor diferente.`;
 }
 
 function ordinalTask(taskIndex: number): string {

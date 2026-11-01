@@ -837,8 +837,34 @@ Issues `[Docs]`, sem fase no Project.
        identificador de tarefa inteiro, forcar tarefa terminada recusado e
        comentarios. Interface e pacote nao verificados; commit `WIP` ja
        enviado ao PR;
-    5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
-       ingresso, cor);
+    5. #118 (rascunho, implementacao local concluida; PR ainda nao marcado
+       pronto) caracteristicas da tarefa. Itens `taskColor`, `taskDuration`,
+       `taskDeadline`, `taskArrival` e `taskPeriod`, `EditTarget.definitions`,
+       `Job.duration`, `TaskControlBlock.nextActivation` e `src/core/activation.ts`
+       (`activateDueJobs`, `activateTask`, `rescheduleNextActivation`);
+       ativacao causada por edicao registrada depois dos eventos de estado da
+       tarefa e antes dos de CPU (decisao do usuario). Forma em DEC-44
+       (proposta, aguarda aceite) e DEC-45 (envios do mesmo tick e
+       conclusao, decisoes do usuario na revisao). Baseline 932/932; evidencia
+       local (2026-11-01): `npm test` 1067/1067 em 54 arquivos, `npm run lint`,
+       `npm run typecheck` e `npx oxfmt --check` sem erros. Testes em
+       `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts` e
+       `consistency.test.ts`. Mutacoes temporarias: remover o
+       `max(..., clock)` de `rescheduleNextActivation` derruba 5 testes; fazer
+       a ativacao gravar duracao fixa derruba 100; fazer a conclusao usar
+       `definition.duration` em vez de `job.duration` passou de primeira (0 falhas
+       em 1053), lacuna fechada pelo commit `d9b6426`: agora 2 testes
+       derrubam essa mutacao. DEC-45: remover a recusa de conclusao com
+       caracteristica derruba 3 testes; remover a guarda de job criado por
+       envio anterior derruba 4. `npm test` 54 arquivos / 1067 testes. Lacuna
+       conhecida (O3): so `projectJob` em `system.ts:87` mostra a duracao de
+       um job lida da definicao (alimenta `SystemInspector.vue`), errada para
+       jobs ja ativados depois de uma edicao, ate a #37/#38 lerem
+       `Job.duration`; `copyDefinition` (`inspection.ts:104`) e
+       `TaskDetails.vue:35` mostram a duracao da tarefa, corretas. Editar
+       periodo 0 (aperiodica) fica fora do Projeto A (DEC-29). Nao verificado: interface e pacote. Acompanhamento em issues
+       novas (`projectJob`; refactors do `edit.ts`); Project e corpo do PR
+       #118 a atualizar com o aceite do usuario;
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
 - Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
@@ -847,8 +873,8 @@ Issues `[Docs]`, sem fase no Project.
 - #117 em implementacao local: estado por tarefa, suspensao, forcamento,
   encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
-- Proximo passo: concluir gates e revisao independente do #117; depois
-  seguir para #118 (caracteristicas da tarefa). DEC-34 segue pendente de aceite.
+- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao e exclusao
+  de tarefas, fecha a #26). DEC-34 segue pendente de aceite.
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

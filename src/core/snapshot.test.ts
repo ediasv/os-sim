@@ -81,6 +81,7 @@ describe('takeSnapshot', () => {
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
+            duration: 2,
             executed: 0,
             state: 'running',
             completedAt: null,

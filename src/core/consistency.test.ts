@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
+    maxJobs,
     type Job,
     type SimulationState,
     type TaskDefinition,
@@ -24,6 +25,7 @@ function job(overrides: Partial<Job> = {}): Job {
         index: 0,
         activation: 0,
         absoluteDeadline: 5,
+        duration: 2,
         executed: 0,
         state: 'ready',
         completedAt: null,
@@ -40,6 +42,13 @@ function stateWith(...jobs: Job[]): SimulationState {
         tasks: [definition],
     });
     state.tasks[0].jobs.push(...jobs);
+    if (jobs.length > 0) {
+        // Keep the next activation coherent with the jobs given.
+        state.tasks[0].nextActivation =
+            jobs.length === maxJobs(definition)
+                ? null
+                : jobs[jobs.length - 1].activation + definition.period;
+    }
     return state;
 }
 
@@ -231,6 +240,67 @@ describe('findInconsistencies: execution budget', () => {
         );
 
         expect(findInconsistencies(state)).toEqual([]);
+    });
+});
+
+describe('findInconsistencies: next activation', () => {
+    it('accepts a task whose next activation follows its last job', () => {
+        expect(findInconsistencies(stateWith(job()))).toEqual([]);
+    });
+
+    it('reports a null next activation while the task can still activate', () => {
+        const state = stateWith(job());
+        state.tasks[0].nextActivation = null;
+
+        expect(findInconsistencies(state)).toEqual([
+            'Task 1 has 1 of 10 jobs but no next activation.',
+        ]);
+    });
+
+    it('reports a next activation not after the last job activation', () => {
+        const state = stateWith(job({ activation: 5 }));
+        state.tasks[0].nextActivation = 5;
+
+        expect(findInconsistencies(state)).toEqual([
+            'Task 1 next activation 5 is not after its last job activation 5.',
+        ]);
+    });
+
+    it('reports a next activation on a task with every job activated', () => {
+        const state = stateWith(
+            ...Array.from({ length: 10 }, (_, index) =>
+                job({
+                    index,
+                    activation: index * 5,
+                    state: 'completed',
+                    completedAt: index * 5 + 1,
+                    executed: 2,
+                }),
+            ),
+        );
+        expect(findInconsistencies(state)).toEqual([]);
+
+        state.tasks[0].nextActivation = 50;
+
+        expect(findInconsistencies(state)).toEqual([
+            'Task 1 activated all 10 jobs but still has next activation 50.',
+        ]);
+    });
+
+    it('does not require a next activation from a concluded task', () => {
+        const state = stateWith(job({ state: 'interrupted' }));
+        state.tasks[0].status = 'concluded';
+        state.tasks[0].nextActivation = null;
+
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+
+    it('uses the duration of the job in the budget message', () => {
+        const state = stateWith(job({ duration: 4, executed: 5 }));
+
+        expect(findInconsistencies(state)).toEqual([
+            'Job 1.0 executed 5 ticks, more than its duration of 4.',
+        ]);
     });
 });
 

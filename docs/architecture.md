@@ -307,7 +307,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
 - Revista por DEC-37: na edicao, periodo zero e recusado e os
   tempos derivados sao conferidos sobre as ativacoes restantes, com os
-  valores editados.
+  valores editados. Forma na DEC-44.
 
 ### DEC-11: Passo de um tick e snapshot inicial
 
@@ -336,6 +336,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       armazenados originalmente; DEC-43 acrescenta `TaskControlBlock.status`
       e `JobState.interrupted` para encerramento por edicao. `jobs.length`
       conta as ativacoes geradas.
+      DEC-44 acrescenta `Job.duration` (duracao copiada na ativacao) e
+      `TaskControlBlock.nextActivation` (proxima ativacao, ou nulo).
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
       termino de tarefa, CPU desligada/religada, CPU adicionada/removida
@@ -522,7 +524,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
   ou ordem das candidatas (DEC-13).
 - Revista por DEC-37: o criterio (4) usa a duracao do proprio
-  job, que pode diferir da duracao vigente da tarefa depois de uma edicao.
+  job, que pode diferir da duracao vigente da tarefa depois de uma edicao
+  (DEC-44).
 
 ### DEC-17: Prioridade RM de tarefas aperiodicas
 
@@ -1542,7 +1545,8 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Estado escolhido de cada tarefa (pronta, forcada, suspensa, concluida) e os
   jobs interrompidos pelo encerramento, sem confundi-los com jobs concluidos.
 - Duracao de cada job e instante da proxima ativacao, que deixa de seguir
-  `ingresso + k * periodo` depois de uma edicao de periodo.
+  `ingresso + k * periodo` depois de uma edicao de periodo. Forma na DEC-44 (`Job.duration`,
+  `TaskControlBlock.nextActivation`).
 - Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
@@ -1553,7 +1557,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - DEC-02: o estado da tarefa vale para o job atual; suspender ou forcar nao
   libera nem paraleliza os jobs pendentes.
 - DEC-09: periodo editado recalcula as ativacoes restantes (item 4 das
-  caracteristicas); termino tambem por encerramento.
+  caracteristicas); termino tambem por encerramento. Forma na DEC-44.
 - DEC-35 e DEC-36: o historico passa a guardar a lista de edicoes de cada
   tick e a descartar os passos e edicoes posteriores a uma edicao em tick
   anterior ao ultimo (#26, como DEC-35 ja previa); `forward()`/`backward()`
@@ -1565,7 +1569,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - DEC-10 e DEC-29: periodo zero recusado na edicao.
 - DEC-12: eventos acima e estado por tarefa.
 - DEC-16: o criterio (4) usa a duracao do job, que pode diferir da duracao
-  vigente da tarefa.
+  vigente da tarefa. Forma na DEC-44.
 - DEC-18: job forcado nao tem quantum.
 - DEC-21: `cpu-removed`/`cpu-added` delimitam a existencia da CPU; a
   sequencia desligar/religar e conferida por periodo de existencia.
@@ -1882,3 +1886,118 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Evidencia: matriz em `edit.test.ts`, cenarios em
   `simulator.taskState.test.ts`, invariantes em `consistency.test.ts`;
   testes de termino normal e projecoes existentes atualizados.
+
+### DEC-44: Caracteristicas editaveis da tarefa e calendario de ativacoes
+
+- Estado: proposta em 2026-11-01 no #118 (#26, 5 de 6), para revisao do
+  usuario. Requisitos: REQ-05, REQ-07, REQ-08. Detalha DEC-37 (item
+  "Caracteristicas da tarefa") e DEC-39; revisa DEC-09 e DEC-16 (ver abaixo).
+- Itens: `EditItem` ganha `taskColor`, `taskDuration`, `taskDeadline`,
+  `taskArrival` e `taskPeriod`, cada um com `taskId` e o valor novo. ID e
+  ticks executados nao tem item (nao editaveis). `EditTarget.definitions`
+  guarda a `TaskDefinition` desejada de cada tarefa por ID; cada edicao
+  troca a definicao por um objeto novo congelado, nunca a muta, pois
+  snapshots a compartilham. `applyNetChange` compara as definicoes antes e
+  depois do tick (mudanca liquida, DEC-37 item 5): editar e desfazer no
+  mesmo tick nao deixa efeito.
+- Duracao do job: `Job.duration` e copiada de `definition.duration` na
+  ativacao (`src/core/activation.ts`). Conclusao
+  (`completeJobsAndRecordDeadlineMisses`), criterio (4) de DEC-16
+  (`policies.ts`) e consistencia (`executed <= duration`) leem a duracao do
+  job, nao a da definicao. Job ja ativado tambem mantem o prazo absoluto.
+- Calendario: `TaskControlBlock.nextActivation` e o tick da proxima
+  ativacao, ou `null` quando a tarefa recebeu todos os jobs. Substitui
+  `ingresso + k * periodo` (DEC-09) e e conferido por `findInconsistencies`
+  (nulo so com todas as ativacoes, e depois da ultima ativacao). `activation.ts`
+  concentra `activateDueJobs` (todas as tarefas, no passo),
+  `activateTask` (uma tarefa; tarefa concluida nunca ativa) e
+  `rescheduleNextActivation`. Sem job, o calendario segue o ingresso da
+  definicao; com jobs, `max(ultima ativacao + novo periodo, tick atual)`,
+  de modo que uma proxima ativacao vencida vira uma unica ativacao em `t` e
+  as seguintes seguem a cada periodo, sem acumular vencidas (exemplos de
+  DEC-37 item 4). Nao ha caso aperiodico: periodo 0 e recusado na edicao e
+  a edicao de tarefa aperiodica fica fora do Projeto A (DEC-29).
+- Recusas (em portugues, citando o item): tarefa inexistente ou ID nao
+  inteiro; tarefa concluida (so a cor), tambem a concluida por
+  item anterior do mesmo envio, e conclusao no mesmo envio de uma mudanca
+  de caracteristica, em qualquer ordem (DEC-45); ingresso de tarefa que ja
+  ingressou, com valor diferente do atual (DEC-45), ou menor que o tick atual;
+  duracao e prazo de tarefa sem ativacoes restantes; periodo menor que 1;
+  prazo da ultima ativacao restante fora do inteiro exato (DEC-10),
+  calculado sobre o alvo liquido (ingresso e periodo pendentes do mesmo
+  envio) para nao depender da ordem dos itens. Regras de campo e mensagens
+  vem de `validateConfig` (DEC-28). Cor repetida considera tarefas
+  concluidas; a cor e normalizada para maiusculas.
+- Ordem na etapa de edicao (decisao do usuario, O1): a ativacao causada por
+  edicao (ingresso movido para `t`, periodo cuja proxima ativacao ja passou)
+  e registrada depois dos eventos de estado da mesma tarefa e antes dos
+  eventos de CPU, concretizando o texto de DEC-37 e DEC-22. Eventos de
+  tarefas diferentes seguem a ordem das tarefas.
+- Revisoes: DEC-09 (calendario guardado em `nextActivation`, nao derivado);
+  DEC-16 (criterio 4 usa `Job.duration`, ja anotado em DEC-37).
+- Semantica entre envios do mesmo tick: resolvida na DEC-45 (decisao do
+  usuario em 2026-11-01); a primeira redacao, que julgava os jobs pelo
+  estado de antes do tick, foi substituida.
+- Lacuna conhecida (decisao do usuario, O3): so um ponto do renderer
+  mostra a duracao de um JOB lida da definicao: `projectJob` em
+  `src/renderer/features/system/system.ts` (linha 87, `duration:
+  definition.duration`), cujo `SystemJob.duration` alimenta
+  `SystemInspector.vue` (CPUs, prontos, pendentes). Depois de editar a
+  duracao, jobs ja ativados aparecem com o valor novo, errado, ate a
+  #37/#38 passarem a ler `Job.duration`. Nao sao lacuna: `copyDefinition`
+  (`inspection.ts`, linha 104) apenas copia a definicao da tarefa para
+  `InspectionTaskDefinition`, e `TaskDetails.vue` (linha 35) imprime
+  `task.definition.duration`, campo da tarefa, correto. Fora do escopo
+  desta serie; o nucleo e os testes de nucleo ja expoem `Job.duration`.
+- Fora do escopo (decisao do usuario, O4): editar periodo 0 (tarefa
+  aperiodica) no Projeto A; inclusao e exclusao de tarefas, no PR 6/6 (#119).
+- Justificativa: guardar a duracao no job e a proxima ativacao na tarefa
+  e o minimo para que edicoes valham so para ativacoes futuras (DEC-37) sem
+  reescrever jobs, e deixa a ativacao em um modulo compartilhado pelo passo
+  e pela edicao.
+- Alternativas descartadas: ler a duracao da definicao no job (alteraria
+  jobs ja ativados); recalcular o calendario por `ingresso + k * periodo`
+  (nao representa a edicao de periodo depois de ativar); acumular ativacoes
+  vencidas (contraria DEC-37 item 4).
+- Evidencia: `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts`
+  e `consistency.test.ts`; resultados no plano (#26, 5 de 6).
+
+### DEC-45: Envios do mesmo tick e conclusao de tarefa
+
+- Estado: proposta em 2026-11-01 no #118 (#26, 5 de 6), decisao do usuario
+  na revisao do PR. Requisitos: REQ-05, REQ-07. Fecha o ponto aberto da
+  DEC-44 e esclarece DEC-37 itens 2 a 5 e DEC-43.
+- Envios do mesmo tick: cada envio e julgado contra o estado que os
+  anteriores deixaram, inclusive jobs criados por eles. O simulador monta,
+  para cada envio depois do primeiro, uma copia do estado de `t-1` com a
+  mudanca liquida dos envios anteriores aplicada; so a validacao a enxerga.
+  A mudanca liquida continua sendo aplicada uma vez, ao estado de `t-1`
+  (DEC-37 item 5): suspender e retomar em envios diferentes nao registra
+  eventos. Consequencia: depois que um envio cria um job (ingresso movido
+  para `t`, periodo cuja proxima ativacao ja passou), um envio seguinte
+  recusa alterar ingresso, periodo, duracao ou prazo da tarefa com valor
+  diferente do vigente, pois a definicao liquida alcancaria aquele job; o
+  mesmo valor e a cor continuam aceitos. A validacao e deterministica na
+  reexecucao dos envios gravados (voltar e editar de novo).
+- Conclusao: um envio que muda uma caracteristica (ingresso, duracao,
+  periodo ou prazo) e conclui a mesma tarefa e recusado por inteiro, em
+  qualquer ordem dos itens, com o motivo "so a cor pode ser alterada"
+  (DEC-43). Mudanca de caracteristica em um envio e conclusao em outro,
+  posterior, e valida: cada envio e julgado em sequencia. Excecao: a
+  conclusao e recusada se um envio anterior do mesmo tick criou um job da
+  tarefa, pois concluir cancelaria a ativacao que ele ja tornou visivel
+  (achado da revisao final; escolha do implementador, a confirmar).
+- Ingresso inalterado: depois que a tarefa ingressou, um item de ingresso
+  com o valor vigente e aceito sem efeito, como os demais campos; so uma
+  mudanca real e recusada ("ja ingressou"). Assim o formulario pode enviar
+  todos os campos (#37).
+- Justificativa: o usuario fixou que o estado aceito pelo primeiro envio e o
+  que o seguinte altera; a projecao so para validar preserva a mudanca
+  liquida e os eventos de DEC-37 item 5 (escolha do implementador, a
+  confirmar na revisao).
+- Alternativas descartadas: aplicar cada envio ao estado real (registraria
+  eventos de suspensao e retomada que a mudanca liquida omite); aceitar a
+  conclusao e descartar em silencio a mudanca de caracteristica (o envio
+  seria aceito sem valer por inteiro).
+- Evidencia: `simulator.taskEdits.test.ts` (bloco "across submissions") e
+  `edit.test.ts` (conclusao com caracteristica, ingresso inalterado).

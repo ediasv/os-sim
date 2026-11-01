@@ -39,6 +39,7 @@ function job(taskId: number, overrides: Partial<Job> = {}): Job {
         index: 0,
         activation: 0,
         absoluteDeadline: 5,
+        duration: taskId === 1 ? first.duration : second.duration,
         executed: 0,
         state: 'ready',
         completedAt: null,

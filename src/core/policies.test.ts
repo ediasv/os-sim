@@ -29,13 +29,16 @@ function cand(
         previousCpu?: number | null;
         wasRunning?: boolean;
         executed?: number;
+        index?: number;
+        duration?: number;
     } = {},
 ): PolicyCandidate {
     const job: Job = {
         taskId: t.id,
-        index: 0,
+        index: extra.index ?? 0,
         activation: extra.activation ?? 0,
         absoluteDeadline,
+        duration: extra.duration ?? t.duration,
         executed: extra.executed ?? 0,
         state: 'ready',
         completedAt: null,
@@ -82,6 +85,18 @@ describe('RM', () => {
 
     it('picks the smallest period on one CPU', () => {
         expect(ids(view(1, [a, b, c]))).toEqual([2]);
+    });
+
+    it('ranks by the period of the task definition, not of the job (period edit, REQ-05)', () => {
+        const job = { activation: 0, index: 0 };
+        const before = [cand(task(1, 10), 10, job), cand(task(2, 20), 20, job)];
+        expect(ids(view(1, before))).toEqual([1]);
+        // Same jobs, task 1 edited to a longer period: the winner flips.
+        const after = [cand(task(1, 30), 10, job), before[1]];
+        expect(ids(view(1, after))).toEqual([2]);
+        // EDF reads absolute deadlines only, so the same edit changes nothing.
+        expect(ids(view(1, before), edfPolicy)).toEqual([1]);
+        expect(ids(view(1, after), edfPolicy)).toEqual([1]);
     });
 
     it('picks the smallest periods on several CPUs, in any order', () => {
@@ -171,6 +186,16 @@ describe('RM', () => {
             const x = cand(task(1, 5, 10, 4), 10, { executed: 3 });
             const y = cand(task(2, 5, 10, 2), 10);
             expect(decide(view(1, [x, y]))).toEqual({ selected: ['2.0'] });
+        });
+
+        it('criterion 4: compares the duration each job copied, not the definition', () => {
+            // Same task, edited between two activations (DEC-37, DEC-16).
+            const edited = task(1, 5, 10, 1);
+            const early = cand(edited, 10, { index: 0, duration: 3 });
+            const late = cand(edited, 10, { index: 1, duration: 1 });
+            expect(decide(view(1, [early, late]))).toEqual({
+                selected: ['1.1'],
+            });
         });
 
         it('applies the criteria in order', () => {
