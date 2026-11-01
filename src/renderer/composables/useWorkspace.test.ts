@@ -318,7 +318,7 @@ describe('useWorkspace export (#39)', () => {
         await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
 
         const { content } = save.mock.calls[0][0] as { content: string };
-        expect(content).toContain('t = 0 a 4');
+        expect(content).toContain('ticks 0–4');
         expect(workspace.clock.value).toBe(2);
     });
 

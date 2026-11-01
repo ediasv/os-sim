@@ -1,18 +1,24 @@
 /**
  * Builds the exported Gantt image as SVG text (#39, DEC-08, FE-17, FE-18).
  *
+ * The layout follows the Figma frame "Exportação SVG — layout da imagem"
+ * (Telas page): header, a card with the tick axis on top, one lane per task
+ * (highest ID on top, lowest next to the CPU lanes), a "PROCESSADORES"
+ * divider, one lane per CPU, and a legend card. Lane geometry is the one of
+ * the Figma components (73 px per tick, 44 px lanes, 28 px bars, 90 px label
+ * column); the width is 98 + 90 + 9 + ticks x 73 px, with no tick ceiling.
+ *
  * The image comes only from a snapshot, never from the screen: it has no zoom,
  * scroll or window size, covers ticks `0..clock` whatever the history cursor
- * shows, and has no tick ceiling (A.2.4). The caller passes the latest
- * snapshot of the history.
+ * shows (A.2.4). The caller passes the latest snapshot of the history.
  *
- * Scope of this version: execution slices, ready intervals, CPU-off bands and
- * the events the core records today. Suspended and forced segments, and CPU
- * gaps from removal, are left out because they need the events of #26
- * (DEC-37); `LEGEND_EVENTS` and the state samples list only what is drawn.
+ * Scope of this version: execution, ready intervals, CPU-off intervals and the
+ * events the core records today. Suspended and forced segments, and CPU gaps
+ * from removal, are left out because they need the events of #26 (DEC-37);
+ * the legend lists only what is drawn.
  *
  * The file is standalone, so colors are literals (the CSS tokens do not
- * exist outside the app); they match the dark theme of `tokens.css`.
+ * exist outside the app); they are the dark-theme values of `tokens.css`.
  */
 import type {
     DeepReadonly,
@@ -25,34 +31,52 @@ import { cpuOffSummary } from '../../snapshotQueries';
 
 type Snapshot = DeepReadonly<SimulationSnapshot>;
 
-const TICK_WIDTH = 28;
-const MIN_ROW_HEIGHT = 40;
-const LABEL_WIDTH = 96;
-const MARGIN = 16;
-const TITLE_HEIGHT = 32;
-const RULER_HEIGHT = 24;
-const CPU_ROW_HEIGHT = 24;
-const SECTION_GAP = 16;
-const BAR_INSET = 8;
-const MARKER_SIZE = 9;
-const LEGEND_ROW_HEIGHT = 22;
-const LEGEND_COLUMN_WIDTH = 240;
-/** Narrowest picture, so a short history still fits title and legend. */
+export interface GanttSvgOptions {
+    /** Name of the configuration file, shown in the title when known. */
+    readonly fileName?: string;
+    /** Instant shown in the header; omitted keeps the output reproducible. */
+    readonly exportedAt?: Date;
+}
+
+const TICK = 73;
+const LABEL_WIDTH = 90;
+/** Right slack of a lane, as in the Figma frame (lane 1048 = 90 + 13 x 73 + 9). */
+const LANE_SLACK = 9;
+const LANE_HEIGHT = 44;
+const BAR_TOP = 8;
+const BAR_HEIGHT = 28;
+const AXIS_HEIGHT = 24;
+const DIVIDER_HEIGHT = 28;
+const OUTER = 32;
+const CARD_BORDER = 1;
+const CARD_PAD = 16;
+const HEADER_HEIGHT = 37;
+const BLOCK_GAP = 16;
+const MARKER = 12;
+/** Vertical step between markers that share a lane and an instant (FE-17). */
+const MARKER_STEP = 13;
+const LEGEND_PAD_X = 16;
+const LEGEND_PAD_Y = 12;
+const LEGEND_GAP_X = 16;
+const LEGEND_GAP_Y = 10;
+const LEGEND_ROW = 15;
 const MIN_WIDTH = 760;
 
 const THEME = {
-    background: '#171a21',
+    app: '#171a21',
+    surface: '#21242e',
+    raised: '#292b38',
     track: '#1c1f29',
     border: '#3d404f',
     text: '#edf0f5',
     textSecondary: '#9ea3b2',
+    success: '#4dbd78',
     danger: '#e55454',
     warning: '#f2b840',
     accent: '#548cfa',
-    off: '#141419',
 } as const;
 
-const FONT = "'Inter Variable', system-ui, 'Segoe UI', sans-serif";
+const FONT = "Inter, 'Inter Variable', system-ui, 'Segoe UI', sans-serif";
 
 export type MarkerKind =
     | 'activation'
@@ -65,61 +89,59 @@ export type MarkerKind =
 
 interface MarkerStyle {
     readonly label: string;
-    /** Path centered on (0, 0) within `MARKER_SIZE`. */
-    readonly path: string;
-    readonly filled: boolean;
-    readonly stroke: string;
+    readonly legend: string;
+    /** Shape inside a 12 x 12 box (the exported assets of the Figma markers). */
+    readonly shape: string;
 }
 
-const h = MARKER_SIZE / 2;
-
-// A different shape per kind, so color is never the only cue (FE-17).
 const MARKERS: Readonly<Record<MarkerKind, MarkerStyle>> = {
     activation: {
         label: 'Ingresso / ativação',
-        path: `M0 ${-h} L${h} ${h} L${-h} ${h} Z`,
-        filled: true,
-        stroke: THEME.accent,
+        legend: 'Ingresso / ativação',
+        shape: `<path d="M6 0.5L11.1962 8.75H0.803848L6 0.5Z" fill="${THEME.text}"/>`,
     },
     completion: {
         label: 'Término do job',
-        path: `M${-h} ${-h} L${h} ${-h} L0 ${h} Z`,
-        filled: true,
-        stroke: THEME.text,
-    },
-    'task-finished': {
-        label: 'Fim da tarefa',
-        path: `M${-h} ${-h} H${h} V${h} H${-h} Z`,
-        filled: true,
-        stroke: THEME.text,
+        legend: 'Término do job',
+        shape: `<circle cx="6" cy="6" r="5" fill="${THEME.success}"/>`,
     },
     'deadline-miss': {
         label: 'Perda de prazo',
-        path: `M${-h} ${-h} L${h} ${h} M${h} ${-h} L${-h} ${h}`,
-        filled: false,
-        stroke: THEME.danger,
+        legend: 'Perda de prazo',
+        shape: `<path d="M6 0L12 6L6 12L0 6L6 0Z" fill="${THEME.danger}"/>`,
     },
     'tie-break': {
         label: 'Sorteio',
-        path: `M0 ${-h} L${h} 0 L0 ${h} L${-h} 0 Z`,
-        filled: true,
-        stroke: THEME.warning,
+        legend: 'Sorteio (desempate)',
+        shape: `<path d="M6 0L7.58702 3.81565L11.7063 4.1459L8.56785 6.83435L9.52671 10.8541L6 8.7L2.47329 10.8541L3.43215 6.83435L0.293661 4.1459L4.41298 3.81565L6 0Z" fill="${THEME.warning}"/>`,
     },
     preemption: {
         label: 'Preempção',
-        path: `M${-h} 0 L0 ${-h} L${h} 0 M${-h} ${h} L0 0 L${h} ${h}`,
-        filled: false,
-        stroke: THEME.warning,
+        legend: 'Preempção',
+        shape: `<path d="M6 11L0.803848 2.75L11.1962 2.75L6 11Z" fill="${THEME.accent}"/>`,
     },
     'quantum-expired': {
         label: 'Quantum vencido',
-        path: `M${h} 0 A${h} ${h} 0 1 1 ${-h} 0 A${h} ${h} 0 1 1 ${h} 0 Z`,
-        filled: false,
-        stroke: THEME.warning,
+        legend: 'Quantum vencido',
+        shape: `<circle cx="6" cy="6" r="4.5" fill="none" stroke="${THEME.text}" stroke-width="2"/>`,
+    },
+    'task-finished': {
+        label: 'Fim da tarefa',
+        legend: 'Fim da tarefa (último job)',
+        shape: `<rect x="1" y="1" width="10" height="10" rx="1" fill="${THEME.success}"/>`,
     },
 };
 
-const LEGEND_EVENTS = Object.keys(MARKERS) as MarkerKind[];
+/** Legend order of the Figma frame. */
+const LEGEND_MARKERS: readonly MarkerKind[] = [
+    'activation',
+    'completion',
+    'deadline-miss',
+    'tie-break',
+    'preemption',
+    'quantum-expired',
+    'task-finished',
+];
 
 const escapeXml = (text: string): string =>
     text
@@ -152,7 +174,7 @@ function textOn(color: string): string {
         : '#ffffff';
 }
 
-/** Task whose row carries the marker of this event; null for CPU events. */
+/** Task whose lane carries the marker of this event; null for CPU events. */
 function eventTask(event: DeepReadonly<SimulationEvent>): TaskId | null {
     switch (event.kind) {
         case 'activation':
@@ -172,23 +194,22 @@ function eventTask(event: DeepReadonly<SimulationEvent>): TaskId | null {
 }
 
 function eventDescription(event: DeepReadonly<SimulationEvent>): string {
-    const label = MARKERS[event.kind as MarkerKind].label;
     const at = `t = ${event.time}`;
     switch (event.kind) {
         case 'task-finished':
-            return `${label}: tarefa ${event.taskId}, ${at}`;
+            return `${MARKERS[event.kind].label}: tarefa ${event.taskId}, ${at}`;
         case 'preemption':
-            return `${label}: tarefa ${event.preempted.taskId} ${jobLabel(event.preempted)} cedeu a CPU ${event.cpuId} à tarefa ${event.by.taskId} ${jobLabel(event.by)}, ${at}`;
+            return `${MARKERS[event.kind].label}: tarefa ${event.preempted.taskId} ${jobLabel(event.preempted)} cedeu a CPU ${event.cpuId} à tarefa ${event.by.taskId} ${jobLabel(event.by)}, ${at}`;
         case 'tie-break':
-            return `${label}: venceu tarefa ${event.winner.taskId} ${jobLabel(event.winner)} entre ${event.candidates.length} candidatos, ${at}`;
+            return `${MARKERS[event.kind].label}: venceu tarefa ${event.winner.taskId} ${jobLabel(event.winner)} entre ${event.candidates.length} candidatos, ${at}`;
         case 'quantum-expired':
-            return `${label}: tarefa ${event.job.taskId} ${jobLabel(event.job)} na CPU ${event.cpuId}, ${at}`;
+            return `${MARKERS[event.kind].label}: tarefa ${event.job.taskId} ${jobLabel(event.job)} na CPU ${event.cpuId}, ${at}`;
         case 'activation':
         case 'completion':
         case 'deadline-miss':
-            return `${label}: tarefa ${event.job.taskId} ${jobLabel(event.job)}, ${at}`;
+            return `${MARKERS[event.kind].label}: tarefa ${event.job.taskId} ${jobLabel(event.job)}, ${at}`;
         default:
-            return `${label}, ${at}`;
+            return at;
     }
 }
 
@@ -208,6 +229,7 @@ function readySpans(
     snapshot: Snapshot,
     taskIndex: number,
     jobIndex: number,
+    slices: readonly Span[],
 ): Span[] {
     const jobs = snapshot.tasks[taskIndex].jobs;
     const job = jobs[jobIndex];
@@ -217,16 +239,9 @@ function readySpans(
     }
     const from = Math.max(job.activation, previous?.completedAt ?? 0);
     const to = job.completedAt ?? snapshot.clock;
-    const ran = snapshot.executions
-        .filter(
-            (slice) =>
-                slice.job.taskId === job.taskId &&
-                slice.job.index === job.index,
-        )
-        .sort((a, b) => a.start - b.start);
     const spans: Span[] = [];
     let cursor = from;
-    for (const slice of ran) {
+    for (const slice of slices) {
         if (slice.start > cursor) {
             spans.push({ start: cursor, end: Math.min(slice.start, to) });
         }
@@ -247,196 +262,277 @@ export function isFinalSnapshot(snapshot: Snapshot): boolean {
     return snapshot.tasks.length > 0 && finished.size === snapshot.tasks.length;
 }
 
-function marker(kind: MarkerKind, x: number, y: number, title: string): string {
-    const style = MARKERS[kind];
-    return (
-        `<path d="${style.path}" transform="translate(${x} ${y})" ` +
-        `fill="${style.filled ? style.stroke : 'none'}" stroke="${style.stroke}" ` +
-        `stroke-width="1.5" data-event="${kind}"><title>${escapeXml(title)}</title></path>`
-    );
+/** Estimated advance of Inter text; viewers without the font differ a little. */
+const textWidth = (text: string, size: number): number =>
+    text.length * size * 0.52;
+
+const two = (n: number): string => String(n).padStart(2, '0');
+
+function formatInstant(date: Date): string {
+    return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-export function buildGanttSvg(snapshot: Snapshot): string {
-    const ticks = Math.max(snapshot.clock, 1);
+const plural = (n: number, one: string, many: string): string =>
+    `${n} ${n === 1 ? one : many}`;
 
-    // Events sharing a row and an instant stack vertically (FE-17); the row
-    // grows to hold the deepest stack instead of clipping or overlapping.
+function markerShape(
+    kind: MarkerKind,
+    x: number,
+    y: number,
+    title: string,
+): string {
+    return `<g transform="translate(${x} ${y})" data-event="${kind}"><title>${escapeXml(title)}</title>${MARKERS[kind].shape}</g>`;
+}
+
+export function buildGanttSvg(
+    snapshot: Snapshot,
+    options: GanttSvgOptions = {},
+): string {
+    const ticks = Math.max(snapshot.clock, 1);
+    const canvasWidth = ticks * TICK;
+    const laneWidth = LABEL_WIDTH + canvasWidth + LANE_SLACK;
+    const cardInset = CARD_BORDER + CARD_PAD;
+    const cardWidth = Math.max(
+        laneWidth + 2 * cardInset,
+        MIN_WIDTH - 2 * OUTER,
+    );
+    const width = cardWidth + 2 * OUTER;
+    const laneX = OUTER + cardInset;
+    const canvasX = laneX + LABEL_WIDTH;
+    const tx = (time: number): number => canvasX + time * TICK;
+
+    // Events sharing a lane and an instant stack vertically (FE-17); the lane
+    // grows to hold the deepest stack instead of overlapping the next one.
     const stackKey = (event: DeepReadonly<SimulationEvent>): string | null => {
         const task = eventTask(event);
         return task === null ? null : `${task}:${event.time}`;
     };
     const depth = new Map<string, number>();
+    const laneDepth = new Map<TaskId, number>();
     for (const event of snapshot.events) {
         const key = stackKey(event);
-        if (key !== null) depth.set(key, (depth.get(key) ?? 0) + 1);
+        const task = eventTask(event);
+        if (key === null || task === null) continue;
+        const next = (depth.get(key) ?? 0) + 1;
+        depth.set(key, next);
+        laneDepth.set(task, Math.max(laneDepth.get(task) ?? 1, next));
     }
-    const deepest = Math.max(1, ...depth.values());
-    const rowHeight = Math.max(
-        MIN_ROW_HEIGHT,
-        deepest * (MARKER_SIZE + 3) + 2 * BAR_INSET,
-    );
-    const plotWidth = ticks * TICK_WIDTH;
-    const width = Math.max(MIN_WIDTH, LABEL_WIDTH + plotWidth + 2 * MARGIN);
-    const x0 = MARGIN + LABEL_WIDTH;
-    const tx = (time: number): number => x0 + time * TICK_WIDTH;
 
-    // Highest ID at the top, lowest next to the X axis (A.2.5).
+    // Highest ID at the top, lowest next to the CPU lanes (A.2.5).
     const order = snapshot.tasks
         .map((tcb, index) => ({ tcb, index }))
         .sort((a, b) => b.tcb.definition.id - a.tcb.definition.id);
-    const rowTop = new Map<TaskId, number>();
-    order.forEach(({ tcb }, row) => {
-        rowTop.set(tcb.definition.id, MARGIN + TITLE_HEIGHT + row * rowHeight);
-    });
-    const rowsBottom = MARGIN + TITLE_HEIGHT + order.length * rowHeight;
-    const cpuTop = rowsBottom + RULER_HEIGHT + SECTION_GAP;
+    const laneTop = new Map<TaskId, number>();
+    const laneHeight = (id: TaskId): number =>
+        LANE_HEIGHT + ((laneDepth.get(id) ?? 1) - 1) * MARKER_STEP;
+    const cardTop = OUTER + HEADER_HEIGHT + BLOCK_GAP;
+    let y = cardTop + cardInset + AXIS_HEIGHT;
+    for (const { tcb } of order) {
+        laneTop.set(tcb.definition.id, y);
+        y += laneHeight(tcb.definition.id);
+    }
+    const dividerTop = y;
     const cpus = cpuOffSummary(snapshot);
-    const cpusBottom = cpuTop + cpus.length * CPU_ROW_HEIGHT;
-    const legendTop = cpusBottom + SECTION_GAP;
-    const perLine = Math.max(
-        1,
-        Math.floor((width - 2 * MARGIN) / LEGEND_COLUMN_WIDTH),
-    );
-    const legendItems = LEGEND_EVENTS.length + 4;
-    const height =
-        legendTop +
-        Math.ceil(legendItems / perLine) * LEGEND_ROW_HEIGHT +
-        MARGIN;
+    const cpuTop = dividerTop + DIVIDER_HEIGHT;
+    const cardBottom = cpuTop + cpus.length * LANE_HEIGHT + cardInset;
+    const cardHeight = cardBottom - cardTop;
 
-    const out: string[] = [];
+    // Legend: items flow and wrap like the Figma auto-layout.
+    const legendItems: { key: string; text: string; glyph: number }[] = [
+        { key: 'running', text: 'Executando (cor da tarefa)', glyph: 12 },
+        { key: 'ready', text: 'Pronto (contorno tracejado)', glyph: 12 },
+        ...LEGEND_MARKERS.map((kind) => ({
+            key: kind,
+            text: MARKERS[kind].legend,
+            glyph: 12,
+        })),
+        { key: 'cpu-off', text: 'CPU desligada', glyph: 16 },
+    ];
+    const legendTop = cardBottom + BLOCK_GAP;
+    const legendInner = cardWidth - 2 * CARD_BORDER - 2 * LEGEND_PAD_X;
+    const placed: { x: number; row: number; item: (typeof legendItems)[0] }[] =
+        [];
+    let rowX = 0;
+    let row = 0;
+    for (const item of legendItems) {
+        const w = item.glyph + 8 + Math.ceil(textWidth(item.text, 12)) + 4;
+        if (rowX > 0 && rowX + w > legendInner) {
+            row++;
+            rowX = 0;
+        }
+        placed.push({ x: rowX, row, item });
+        rowX += w + LEGEND_GAP_X;
+    }
+    const legendHeight =
+        2 * CARD_BORDER +
+        2 * LEGEND_PAD_Y +
+        (row + 1) * LEGEND_ROW +
+        row * LEGEND_GAP_Y;
+    const height = legendTop + legendHeight + OUTER;
+
     const final = isFinalSnapshot(snapshot);
-    const status = final ? 'final' : 'parcial';
-    out.push(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" role="img" aria-label="Diagrama de Gantt, t = 0 a ${snapshot.clock}, ${status}">`,
-        `<title>Diagrama de Gantt, t = 0 a ${snapshot.clock} (${status})</title>`,
-        `<rect width="${width}" height="${height}" fill="${THEME.background}"/>`,
-        `<text x="${MARGIN}" y="${MARGIN + 16}" font-size="15" font-weight="600" fill="${THEME.text}">Diagrama de Gantt · ${snapshot.config.algorithm} · ${snapshot.config.cpuCount} CPU(s) · t = 0 a ${snapshot.clock} · ${status}</text>`,
-    );
+    const sample = order.at(-1)?.tcb.definition.color;
+    const sampleColor = sample === undefined ? THEME.accent : fill(sample);
+    const heading = `os-sim${options.fileName ? ` — ${options.fileName}` : ''}`;
+    const meta = [
+        snapshot.config.algorithm,
+        `quantum ${snapshot.config.quantum}`,
+        plural(snapshot.config.cpuCount, 'CPU', 'CPUs'),
+        plural(snapshot.tasks.length, 'tarefa', 'tarefas'),
+        `ticks 0–${snapshot.clock}`,
+        ...(final ? [] : ['resultado parcial']),
+        ...(options.exportedAt
+            ? [`exportado em ${formatInstant(options.exportedAt)}`]
+            : []),
+    ].join('  ·  ');
 
-    // Task rows: track, label, slices, ready outlines.
+    const out: string[] = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" role="img" aria-label="Diagrama de Gantt, ticks 0 a ${snapshot.clock}, ${final ? 'final' : 'parcial'}">`,
+        `<title>Diagrama de Gantt, ticks 0 a ${snapshot.clock} (${final ? 'final' : 'parcial'})</title>`,
+        `<rect width="${width}" height="${height}" fill="${THEME.app}"/>`,
+        `<text x="${OUTER}" y="${OUTER + 14}" font-size="15" font-weight="600" fill="${THEME.text}">${escapeXml(heading)}</text>`,
+        `<text x="${OUTER}" y="${OUTER + 33}" font-size="12" fill="${THEME.textSecondary}" xml:space="preserve">${escapeXml(meta)}</text>`,
+        `<rect x="${OUTER + 0.5}" y="${cardTop + 0.5}" width="${cardWidth - 1}" height="${cardHeight - 1}" rx="12" fill="${THEME.surface}" stroke="${THEME.border}"/>`,
+    ];
+
+    /** Track and gridlines of one lane, the Figma "Gantt/Lane grid". */
+    const grid = (top: number, laneH: number): string => {
+        const parts = [
+            `<rect x="${canvasX}" y="${top + BAR_TOP}" width="${canvasWidth}" height="${BAR_HEIGHT}" rx="4" fill="${THEME.track}"/>`,
+        ];
+        for (let t = 0; t <= ticks; t++) {
+            const x = t === ticks ? tx(t) - 0.5 : tx(t) + 0.5;
+            parts.push(
+                `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + laneH}" stroke="${THEME.border}"/>`,
+            );
+        }
+        return parts.join('');
+    };
+
+    // Time axis: each number centered in its tick cell.
+    const axisTop = cardTop + cardInset;
+    for (let t = 0; t < ticks; t++) {
+        out.push(
+            `<text x="${tx(t) + TICK / 2}" y="${axisTop + 16}" font-size="10" text-anchor="middle" fill="${THEME.textSecondary}">${t}</text>`,
+        );
+    }
+
+    // Task lanes: grid, ready outlines, execution bars.
     for (const { tcb, index } of order) {
         const id = tcb.definition.id;
-        const top = rowTop.get(id)!;
+        const top = laneTop.get(id)!;
         const color = fill(tcb.definition.color);
+        const slices = snapshot.executions
+            .filter((slice) => slice.job.taskId === id)
+            .sort((a, b) => a.start - b.start);
         out.push(
             `<g data-task="${id}">`,
-            `<rect x="${x0}" y="${top}" width="${plotWidth}" height="${rowHeight}" fill="${THEME.track}" stroke="${THEME.border}"/>`,
-            `<rect x="${MARGIN}" y="${top + 12}" width="14" height="14" rx="3" fill="${color}"/>`,
-            `<text x="${MARGIN + 20}" y="${top + rowHeight / 2 + 4}" font-size="12" fill="${THEME.text}">Tarefa ${id}</text>`,
+            grid(top, laneHeight(id)),
+            `<rect x="${laneX}" y="${top + 16}" width="12" height="12" rx="3" fill="${color}"/>`,
+            `<text x="${laneX + 18}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.text}">Tarefa ${id}</text>`,
         );
-        tcb.jobs.forEach((_, jobIndex) => {
-            for (const span of readySpans(snapshot, index, jobIndex)) {
+        tcb.jobs.forEach((job, jobIndex) => {
+            const own = slices.filter((slice) => slice.job.index === job.index);
+            for (const span of readySpans(snapshot, index, jobIndex, own)) {
                 out.push(
-                    `<rect data-state="ready" x="${tx(span.start)}" y="${top + BAR_INSET}" width="${(span.end - span.start) * TICK_WIDTH}" height="${rowHeight - 2 * BAR_INSET}" rx="3" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${id} ${jobLabel({ taskId: id, index: jobIndex })}, [${span.start}, ${span.end})</title></rect>`,
+                    `<rect data-state="ready" x="${tx(span.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${(span.end - span.start) * TICK - 3.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${id} ${jobLabel({ taskId: id, index: jobIndex })}, [${span.start}, ${span.end})</title></rect>`,
                 );
             }
         });
-        const slices = snapshot.executions.filter(
-            (slice) => slice.job.taskId === id,
-        );
         for (const slice of slices) {
-            const w = (slice.end - slice.start) * TICK_WIDTH;
-            const text = `CPU ${slice.cpuId} · ${jobLabel(slice.job)}`;
+            const w = (slice.end - slice.start) * TICK - 2;
+            const full = `CPU ${slice.cpuId} · ${jobLabel(slice.job)}`;
+            const short = `CPU ${slice.cpuId}`;
+            // The longest label that fits; the title carries it otherwise.
+            const label = [full, short].find(
+                (text) => textWidth(text, 9) * 1.15 + 12 <= w,
+            );
             out.push(
-                `<g data-state="running"><rect x="${tx(slice.start)}" y="${top + BAR_INSET}" width="${w}" height="${rowHeight - 2 * BAR_INSET}" rx="3" fill="${color}"><title>Execução: tarefa ${id} ${jobLabel(slice.job)} na CPU ${slice.cpuId}, [${slice.start}, ${slice.end})</title></rect>`,
-                // Label only where it fits; the title carries it otherwise.
-                w >= text.length * 5.5 + 4
-                    ? `<text x="${tx(slice.start) + w / 2}" y="${top + rowHeight / 2 + 4}" font-size="10" text-anchor="middle" fill="${textOn(tcb.definition.color)}">${escapeXml(text)}</text>`
-                    : '',
+                `<g data-state="running"><rect x="${tx(slice.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="${color}"><title>Execução: tarefa ${id} ${jobLabel(slice.job)} na CPU ${slice.cpuId}, [${slice.start}, ${slice.end})</title></rect>`,
+                label === undefined
+                    ? ''
+                    : `<text x="${tx(slice.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${textOn(tcb.definition.color)}">${escapeXml(label)}</text>`,
                 '</g>',
             );
         }
         out.push('</g>');
     }
 
-    // Events: stacked vertically when they share row and instant (FE-17).
-    const stacked = new Map<string, number>();
-    for (const event of snapshot.events) {
-        const task = eventTask(event);
-        const key = stackKey(event);
-        if (task === null || key === null || !rowTop.has(task)) continue;
-        const level = stacked.get(key) ?? 0;
-        stacked.set(key, level + 1);
-        const y =
-            rowTop.get(task)! + MARKER_SIZE / 2 + 2 + level * (MARKER_SIZE + 3);
-        out.push(
-            marker(
-                event.kind as MarkerKind,
-                tx(event.time),
-                y,
-                eventDescription(event),
-            ),
-        );
-    }
-
-    // X axis: each number centered in its tick cell, ticks on the boundaries.
+    // CPU divider and CPU lanes: the off intervals, an open one ending at the
+    // clock (DEC-08).
     out.push(
-        `<line x1="${x0}" y1="${rowsBottom}" x2="${x0 + plotWidth}" y2="${rowsBottom}" stroke="${THEME.border}"/>`,
+        `<text x="${laneX}" y="${dividerTop + 22}" font-size="10" font-weight="500" fill="${THEME.textSecondary}">PROCESSADORES</text>`,
+        `<line x1="${laneX + 96}" y1="${dividerTop + 17.5}" x2="${laneX + laneWidth}" y2="${dividerTop + 17.5}" stroke="${THEME.border}"/>`,
     );
-    for (let t = 0; t <= ticks; t++) {
+    cpus.forEach((cpu, i) => {
+        const top = cpuTop + i * LANE_HEIGHT;
         out.push(
-            `<line x1="${tx(t)}" y1="${rowsBottom}" x2="${tx(t)}" y2="${rowsBottom + 4}" stroke="${THEME.textSecondary}"/>`,
-        );
-        if (t < ticks) {
-            out.push(
-                `<text x="${tx(t) + TICK_WIDTH / 2}" y="${rowsBottom + 17}" font-size="10" text-anchor="middle" fill="${THEME.textSecondary}">${t}</text>`,
-            );
-        }
-    }
-    // Current instant: the last calculated boundary.
-    out.push(
-        `<line x1="${tx(snapshot.clock)}" y1="${MARGIN + TITLE_HEIGHT}" x2="${tx(snapshot.clock)}" y2="${rowsBottom + 4}" stroke="${THEME.accent}" stroke-width="2" data-current="${snapshot.clock}"><title>Instante atual: t = ${snapshot.clock}</title></line>`,
-    );
-
-    // CPU strips: the off intervals; an open one ends at the clock (DEC-08).
-    cpus.forEach((cpu, row) => {
-        const top = cpuTop + row * CPU_ROW_HEIGHT;
-        out.push(
-            `<g data-cpu="${cpu.cpuId}"><rect x="${x0}" y="${top}" width="${plotWidth}" height="${CPU_ROW_HEIGHT}" fill="${THEME.track}" stroke="${THEME.border}"/>`,
-            `<text x="${MARGIN}" y="${top + 16}" font-size="12" fill="${THEME.text}">CPU ${cpu.cpuId}</text>`,
+            `<g data-cpu="${cpu.cpuId}">`,
+            grid(top, LANE_HEIGHT),
+            `<text x="${laneX}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.textSecondary}">CPU ${cpu.cpuId}</text>`,
         );
         for (const interval of cpu.intervals) {
             const end = interval.end ?? snapshot.clock;
             if (end <= interval.start) continue;
+            const w = (end - interval.start) * TICK - 2;
             out.push(
-                `<rect data-state="cpu-off" x="${tx(interval.start)}" y="${top + 3}" width="${(end - interval.start) * TICK_WIDTH}" height="${CPU_ROW_HEIGHT - 6}" fill="${THEME.off}" stroke="${THEME.textSecondary}" stroke-dasharray="2 2"><title>CPU ${cpu.cpuId} desligada: [${interval.start}, ${end})</title></rect>`,
+                `<rect data-state="cpu-off" x="${tx(interval.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${w - 1.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="${THEME.raised}" stroke="${THEME.border}" stroke-width="1.5" stroke-dasharray="4 3"><title>CPU ${cpu.cpuId} desligada: [${interval.start}, ${end})</title></rect>`,
+                `<text x="${tx(interval.start) + 7}" y="${top + BAR_TOP + 18}" font-size="9" font-weight="700" fill="${THEME.textSecondary}">${end - interval.start === 1 ? 'Off' : 'Desligada'}</text>`,
             );
         }
         out.push('</g>');
     });
 
-    // Legend: every marker kind, plus the states drawn above.
-    const entries: string[] = [];
-    for (const kind of LEGEND_EVENTS) {
-        entries.push(`${kind}|${MARKERS[kind].label}`);
+    // Markers last, so no lane covers them. They sit on the tick boundary,
+    // centered 40 px below the lane top; coincident ones stack downward.
+    const level = new Map<string, number>();
+    for (const event of snapshot.events) {
+        const task = eventTask(event);
+        const key = stackKey(event);
+        if (task === null || key === null || !laneTop.has(task)) continue;
+        const at = level.get(key) ?? 0;
+        level.set(key, at + 1);
+        out.push(
+            markerShape(
+                event.kind as MarkerKind,
+                tx(event.time) - MARKER / 2,
+                laneTop.get(task)! + 34 + at * MARKER_STEP,
+                eventDescription(event),
+            ),
+        );
     }
-    entries.push(
-        'running|Execução (cor da tarefa, CPU · job)',
-        'ready|Pronta (contorno tracejado)',
-        'cpu-off|CPU desligada',
-        'current|Instante atual',
+
+    // Legend card.
+    out.push(
+        `<rect x="${OUTER + 0.5}" y="${legendTop + 0.5}" width="${cardWidth - 1}" height="${legendHeight - 1}" rx="12" fill="${THEME.surface}" stroke="${THEME.border}"/>`,
     );
-    entries.forEach((entry, i) => {
-        const [key, label] = entry.split('|');
-        const x = MARGIN + (i % perLine) * LEGEND_COLUMN_WIDTH;
-        const y = legendTop + Math.floor(i / perLine) * LEGEND_ROW_HEIGHT + 11;
-        let sample: string;
-        if (key in MARKERS) {
-            sample = marker(key as MarkerKind, x + 8, y, label);
-        } else if (key === 'running') {
-            sample = `<rect x="${x}" y="${y - 6}" width="16" height="12" rx="2" fill="${THEME.accent}"/>`;
-        } else if (key === 'ready') {
-            sample = `<rect x="${x}" y="${y - 6}" width="16" height="12" rx="2" fill="none" stroke="${THEME.accent}" stroke-dasharray="4 3"/>`;
-        } else if (key === 'cpu-off') {
-            sample = `<rect x="${x}" y="${y - 6}" width="16" height="12" fill="${THEME.off}" stroke="${THEME.textSecondary}" stroke-dasharray="2 2"/>`;
+    for (const { x, row: r, item } of placed) {
+        const gx = OUTER + CARD_BORDER + LEGEND_PAD_X + x;
+        const gy =
+            legendTop +
+            CARD_BORDER +
+            LEGEND_PAD_Y +
+            r * (LEGEND_ROW + LEGEND_GAP_Y);
+        let glyph: string;
+        if (item.key in MARKERS) {
+            glyph = markerShape(
+                item.key as MarkerKind,
+                gx,
+                gy + 1.5,
+                MARKERS[item.key as MarkerKind].label,
+            );
+        } else if (item.key === 'running') {
+            glyph = `<rect x="${gx}" y="${gy + 1.5}" width="12" height="12" rx="3" fill="${sampleColor}"/>`;
+        } else if (item.key === 'ready') {
+            glyph = `<rect x="${gx + 0.75}" y="${gy + 2.25}" width="10.5" height="10.5" rx="3" fill="none" stroke="${sampleColor}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
         } else {
-            sample = `<line x1="${x + 8}" y1="${y - 7}" x2="${x + 8}" y2="${y + 7}" stroke="${THEME.accent}" stroke-width="2"/>`;
+            glyph = `<rect x="${gx + 0.75}" y="${gy + 2.25}" width="14.5" height="10.5" rx="4" fill="${THEME.raised}" stroke="${THEME.border}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
         }
         out.push(
-            sample,
-            `<text x="${x + 24}" y="${y + 4}" font-size="11" fill="${THEME.text}">${escapeXml(label)}</text>`,
+            glyph,
+            `<text x="${gx + item.glyph + 8}" y="${gy + 11.5}" font-size="12" fill="${THEME.textSecondary}">${escapeXml(item.text)}</text>`,
         );
-    });
+    }
 
     out.push('</svg>');
     return out.join('\n');

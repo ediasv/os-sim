@@ -34,6 +34,8 @@ export function useWorkspace() {
     const loading = ref(false);
     /** A save dialog is open; a second export waits for it. */
     const exporting = ref(false);
+    /** Base name of the loaded configuration file, shown in the exported title. */
+    const fileName = ref<string | undefined>();
     const notices = shallowRef<readonly Notice[]>([]);
 
     /** Snapshot at the history cursor; null while preparing. */
@@ -137,7 +139,10 @@ export function useWorkspace() {
                     .join('\n'),
             });
         }
-        if (loaded.ok) draft.value = loaded.config;
+        if (loaded.ok) {
+            draft.value = loaded.config;
+            fileName.value = result.path.split(/[\/]/).pop();
+        }
         notices.value = next;
     }
 
@@ -148,7 +153,10 @@ export function useWorkspace() {
     async function exportSvg(): Promise<void> {
         exporting.value = true;
         try {
-            const content = buildGanttSvg(simulation.value!.latest());
+            const content = buildGanttSvg(simulation.value!.latest(), {
+                fileName: fileName.value,
+                exportedAt: new Date(),
+            });
             const result = await window.imageFile.saveImageFile({ content });
             if (result.status === 'saved') {
                 notices.value = [

@@ -147,7 +147,7 @@ describe('App', () => {
 
             expect(saveImageFile).toHaveBeenCalledTimes(1);
             expect(saveImageFile.mock.calls[0][0].content).toContain(
-                't = 0 a 1',
+                'ticks 0–1',
             );
             expect(wrapper.text()).toContain('Imagem salva em "/o/g.svg".');
         });

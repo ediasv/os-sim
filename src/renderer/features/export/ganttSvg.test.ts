@@ -47,20 +47,34 @@ describe('buildGanttSvg', () => {
         expect(svg).not.toMatch(/<script|href=|<image|url\(/);
     });
 
-    it('orders task rows by descending ID, lowest next to the axis', () => {
+    it('orders task rows by descending ID, lowest next to the CPU lanes', () => {
         const svg = buildGanttSvg(run(SMALL, 6));
-        const rows = [
-            ...svg.matchAll(/<g data-task="(\d+)">\n<rect x="\d+" y="(\d+)"/g),
-        ].map((m) => ({ id: Number(m[1]), y: Number(m[2]) }));
-        const axisY = Number(
-            svg.match(
-                /<line x1="\d+" y1="(\d+)" x2="\d+" y2="\d+" stroke="#3d404f"/,
-            )![1],
-        );
+        const labelY = (text: string) =>
+            Number(
+                svg.match(new RegExp(`y="([0-9.]+)"[^>]*>${text}</text>`))![1],
+            );
 
-        expect(rows.map((r) => r.id)).toEqual([2, 1]);
-        expect(rows[0].y).toBeLessThan(rows[1].y);
-        expect(rows[1].y).toBeLessThan(axisY);
+        expect(labelY('Tarefa 2')).toBeLessThan(labelY('Tarefa 1'));
+        expect(labelY('Tarefa 1')).toBeLessThan(labelY('PROCESSADORES'));
+        expect(labelY('PROCESSADORES')).toBeLessThan(labelY('CPU 1'));
+    });
+
+    it('puts the tick axis above the lanes, each number centered in its cell', () => {
+        const svg = buildGanttSvg(run(SMALL, 6));
+        const axis = svg.match(
+            /<text x="([\d.]+)" y="([\d.]+)"[^>]*text-anchor="middle"[^>]*>0<\/text>/,
+        )!;
+        const lane = svg.match(/y="([\d.]+)"[^>]*>Tarefa 2<\/text>/)!;
+
+        // 32 outer + 17 card inset + 90 labels, plus half a 73 px cell.
+        expect(Number(axis[1])).toBe(32 + 17 + 90 + 36.5);
+        expect(Number(axis[2])).toBeLessThan(Number(lane[1]));
+    });
+
+    it('sizes the image from the data only: 98 + 90 + 9 + ticks x 73', () => {
+        const svg = buildGanttSvg(run(SMALL, 12));
+
+        expect(svg).toContain(`width="${197 + 12 * 73}"`);
     });
 
     it('draws one running bar per execution slice, labelled with CPU and job', () => {
@@ -73,6 +87,9 @@ describe('buildGanttSvg', () => {
         expect(svg).toContain('Execução: tarefa 1 #1 na CPU 1, [0, 3)');
         expect(svg).toContain('Execução: tarefa 2 #1 na CPU 1, [3, 5)');
         expect(svg).toContain('fill="#FF0000"');
+        // [0, 3): x = tick 0 + 1, width = 3 x 73 - 2, as the Figma bars.
+        expect(svg).toContain(`x="${139 + 1}" y="`);
+        expect(svg).toContain('width="217" height="28"');
         expect(svg).toContain('>CPU 1 · #1</text>');
     });
 
@@ -105,7 +122,7 @@ describe('buildGanttSvg', () => {
             markersOf(snapshot) + LEGEND_SAMPLES,
         );
         // Activation of T1 job 2 at t = 5 sits on boundary 5: x0 + 5 * 28.
-        const x = 16 + 96 + 5 * 28;
+        const x = 32 + 17 + 90 + 5 * 73 - 6;
         expect(svg).toMatch(
             new RegExp(
                 `translate\\(${x} [\\d.]+\\)"[^>]*data-event="activation"><title>Ingresso / ativação: tarefa 1 #2, t = 5`,
@@ -117,7 +134,7 @@ describe('buildGanttSvg', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
         const atZero = [
             ...svg.matchAll(
-                /translate\((\d+) ([\d.]+)\)"[^>]*data-event="[^"]+"><title>[^<]*tarefa 1[^<]*t = 0</g,
+                /translate\((\d+) ([\d.]+)\)" data-event="[^"]+"><title>[^<]*tarefa 1[^<]*t = 0</g,
             ),
         ];
 
@@ -156,17 +173,16 @@ describe('buildGanttSvg', () => {
         const svg = buildGanttSvg(run(SMALL, 3));
 
         for (const label of [
+            'Executando (cor da tarefa)',
+            'Pronto (contorno tracejado)',
             'Ingresso / ativação',
             'Término do job',
-            'Fim da tarefa',
             'Perda de prazo',
-            'Sorteio',
+            'Sorteio (desempate)',
             'Preempção',
             'Quantum vencido',
-            'Execução (cor da tarefa, CPU · job)',
-            'Pronta (contorno tracejado)',
+            'Fim da tarefa (último job)',
             'CPU desligada',
-            'Instante atual',
         ]) {
             expect(svg).toContain(`>${label}</text>`);
         }
@@ -181,7 +197,7 @@ describe('buildGanttSvg', () => {
         sim.backward();
 
         expect(buildGanttSvg(sim.getLatestSnapshot())).toBe(atEnd);
-        expect(atEnd).toContain('t = 0 a 10');
+        expect(atEnd).toContain('ticks 0–10');
     });
 
     it('covers a long simulation with every slice, event and tick', () => {
@@ -208,8 +224,8 @@ describe('buildGanttSvg', () => {
             markersOf(snapshot) + LEGEND_SAMPLES,
         );
         expect(svg).toContain(`>${snapshot.clock - 1}</text>`);
-        expect(svg).toContain(`width="${96 + snapshot.clock * 28 + 32}"`);
-        expect(svg).toContain('· parcial</text>');
+        expect(svg).toContain(`width="${197 + snapshot.clock * 73}"`);
+        expect(svg).toContain('resultado parcial');
     }, 60_000); // the simulation, not the SVG, dominates the time
 
     it('identifies a partial result and a final one from the snapshot alone', () => {
@@ -217,9 +233,9 @@ describe('buildGanttSvg', () => {
         const final = run(SMALL, 400);
 
         expect(isFinalSnapshot(partial)).toBe(false);
-        expect(buildGanttSvg(partial)).toContain('· parcial</text>');
+        expect(buildGanttSvg(partial)).toContain('resultado parcial');
         expect(isFinalSnapshot(final)).toBe(true);
-        expect(buildGanttSvg(final)).toContain('· final</text>');
+        expect(buildGanttSvg(final)).not.toContain('resultado parcial');
     });
 
     it('chooses black or white text for contrast with the task color', () => {
@@ -239,10 +255,47 @@ describe('buildGanttSvg', () => {
         expect(svg).toMatch(/fill="#ffffff">CPU \d · #1/);
     });
 
+    it('has no current-instant line and no suspended entry (left for #26)', () => {
+        const svg = buildGanttSvg(run(SMALL, 12));
+
+        expect(svg).not.toContain('data-current');
+        expect(svg).not.toContain('Instante atual');
+        expect(svg).not.toContain('Suspenso');
+    });
+
+    it('labels a one-tick CPU-off interval "Off" and longer ones "Desligada"', () => {
+        const idle: SystemConfig = {
+            algorithm: 'RM',
+            quantum: 5,
+            cpuCount: 2,
+            tasks: [task(1, 'FF0000', 2, 10)],
+        };
+        const svg = buildGanttSvg(run(idle, 4));
+
+        expect(svg).toContain('>Desligada</text>');
+        expect(buildGanttSvg(run(idle, 1))).toContain('>Off</text>');
+    });
+
+    it('shows the file name and the export instant in the header when given', () => {
+        const snapshot = run(SMALL, 12);
+        const svg = buildGanttSvg(snapshot, {
+            fileName: 'tarefas.txt',
+            exportedAt: new Date(2026, 9, 17, 14, 32),
+        });
+
+        expect(svg).toContain('>os-sim — tarefas.txt</text>');
+        expect(svg).toContain(
+            'RM  ·  quantum 5  ·  1 CPU  ·  2 tarefas  ·  ticks 0–12',
+        );
+        expect(svg).toContain('exportado em 17/10/2026 14:32');
+        expect(buildGanttSvg(snapshot)).toContain('>os-sim</text>');
+        expect(buildGanttSvg(snapshot)).not.toContain('exportado em');
+    });
+
     it('renders an empty simulation at t = 0', () => {
         const svg = buildGanttSvg(run(SMALL, 0));
 
-        expect(svg).toContain('t = 0 a 0');
+        expect(svg).toContain('ticks 0–0');
         expect(count(svg, 'data-state="running"')).toBe(0);
     });
 });
