@@ -167,7 +167,9 @@ export class Simulator {
      */
     public edit(items: readonly EditItem[]): void {
         if (items.length === 0) {
-            throw new SimulationRefusal('An edit needs at least one item.');
+            throw new SimulationRefusal(
+                'Uma edição precisa de pelo menos um item.',
+            );
         }
         const step = this.history.cursor;
         const edits = [...this.history.editsAt(step), freezeCopy(items)];
@@ -278,7 +280,7 @@ export class Simulator {
         const cursor = this.history.cursor;
         if (!this.canForward()) {
             throw new SimulationRefusal(
-                `Step ${cursor} is the latest recorded step; use tick() to compute step ${cursor + 1}.`,
+                `O passo ${cursor} é o último passo registrado; use tick() para calcular o passo ${cursor + 1}.`,
             );
         }
         this.restore(cursor + 1);
@@ -289,7 +291,7 @@ export class Simulator {
         const cursor = this.history.cursor;
         if (cursor === 0) {
             throw new SimulationRefusal(
-                'Step 0 is the first recorded step; there is no earlier step to go back to.',
+                'O passo 0 é o primeiro passo registrado; não há passo anterior para voltar.',
             );
         }
         this.restore(cursor - 1);
@@ -377,6 +379,7 @@ export class Simulator {
             for (const job of tcb.jobs) {
                 if (
                     job.state !== 'completed' &&
+                    job.state !== 'interrupted' &&
                     job.executed >= tcb.definition.duration
                 ) {
                     job.state = 'completed';
@@ -394,6 +397,7 @@ export class Simulator {
                     ) {
                         this.state.events.push({
                             kind: 'task-finished',
+                            interrupted: [],
                             time: this.state.clock,
                             taskId: tcb.definition.id,
                         });
@@ -406,6 +410,7 @@ export class Simulator {
             for (const job of tcb.jobs) {
                 if (
                     job.state !== 'completed' &&
+                    job.state !== 'interrupted' &&
                     !job.deadlineMissed &&
                     job.absoluteDeadline <= this.state.clock
                 ) {
@@ -424,7 +429,8 @@ export class Simulator {
      * Renews every slice that used the whole quantum (DEC-03). The job keeps
      * its CPU until dispatch, so the view still counts it as running before
      * the selection (DEC-18); a job completing now is skipped, since DEC-03
-     * only returns incomplete jobs to the selection. Runs after activations
+     * only returns incomplete jobs to the selection, and a forced job never
+     * expires: it keeps its CPU outside the policy (DEC-43). Runs after activations
      * and the edit stage, so an edited quantum already decides expiry at this
      * boundary (DEC-22 as revised by DEC-37).
      */
@@ -437,7 +443,12 @@ export class Simulator {
                 continue;
             }
             const job = this.findJob(cpu.running);
-            if (job === undefined || job.state === 'completed') {
+            if (
+                job === undefined ||
+                job.state === 'completed' ||
+                this.state.tasks.find((tcb) => tcb.definition.id === job.taskId)
+                    ?.status === 'forced'
+            ) {
                 continue;
             }
             this.state.events.push({
@@ -454,14 +465,28 @@ export class Simulator {
      * Copies one global policy decision once and validates that copy (DEC-14),
      * so a policy cannot return different values to the check and to dispatch.
      * A reported residual tie is drawn here and logged as `tie-break` events
-     * (DEC-27). Selected jobs stay on their current CPUs where possible; any remaining
+     * (DEC-27). Forced jobs take CPUs first and the policy fills the remaining
+     * ones (DEC-43). Selected jobs stay on their current CPUs where possible; any remaining
      * jobs are assigned to available CPUs. It also emits the preemption,
      * cpu-on and cpu-off events of the change and ends with the
      * `findInconsistencies` check of the resulting state (DEC-12, DEC-14).
      */
     private dispatch(): void {
         const eligible = findEligibleJobs(this.state);
-        const view = buildPolicyView(this.state, eligible);
+        // Forced current jobs bypass policy selection, without reserving idle
+        // CPUs for forced tasks whose next activation has not arrived yet.
+        const forcedIds = new Set(
+            this.state.tasks
+                .filter((tcb) => tcb.status === 'forced')
+                .map((tcb) => tcb.definition.id),
+        );
+        const forced = eligible.filter((ref) => forcedIds.has(ref.taskId));
+        const remaining = eligible.filter((ref) => !forcedIds.has(ref.taskId));
+        const view = buildPolicyView(
+            this.state,
+            remaining,
+            this.state.config.cpuCount - forced.length,
+        );
         // Without candidates nothing is selected, so a lookup lacking the
         // algorithm is fine there; with candidates, construction and edits
         // have already refused an algorithm without a policy.
@@ -500,7 +525,7 @@ export class Simulator {
             ]),
         );
         const toCandidate = (ref: JobRef) => candidateByKey.get(key(ref))!;
-        const selected = copied.map(toCandidate);
+        const selected = [...forced, ...copied.map(toCandidate)];
         if (tie !== undefined) {
             // DEC-27: the engine owns the generator; every winner is logged,
             // even one that keeps running, before the per-CPU events (DEC-22).
@@ -641,7 +666,7 @@ export class Simulator {
         if (this.history.isBehind) {
             return {
                 ready: false,
-                reason: `Step ${this.history.cursor + 1} is already computed; use forward() instead of tick().`,
+                reason: `O passo ${this.history.cursor + 1} já foi calculado; use forward() em vez de tick().`,
             };
         }
         return { ready: true };
@@ -708,6 +733,7 @@ export class Simulator {
      */
     private activateDueJobs(): void {
         for (const tcb of this.state.tasks) {
+            if (tcb.status === 'concluded') continue;
             const { arrival, period, deadline } = tcb.definition;
             while (
                 tcb.jobs.length < maxJobs(tcb.definition) &&

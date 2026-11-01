@@ -808,14 +808,13 @@ Issues `[Docs]`, sem fase no Project.
        `t`; todas derrubam testes. Nao verificado: interface (comando
        `edit` fica na #37) e pacote. Depois de integrar a `main`
        (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
-       lint e typecheck sem erros. DEC-39 continua registrada como
-       proposta na arquitetura; seu aceite nao e presumido pelo merge;
+       lint e typecheck sem erros. DEC-39 aceita pelo usuario em 2026-11-01 (registrado ao abrir o #117);
     3. #116 mergeado em `44d9595` (2026-11-01), somente preparacao
        documental. Implementacao de CPUs em PR de continuacao na branch
        `feat/26-3-cpus-implementation`: item `cpuCount`, eventos de existencia e
        mudanca liquida; `wasRunning` derivado de `executions` no primeiro
        desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
-       consistencia por ID. Forma em DEC-40 (proposta para revisao).
+       consistencia por ID. Forma em DEC-40 (aceita pelo usuario em 2026-11-01, registrado ao abrir o #117).
        Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
        Evidencia local: `npm test` 794/794 em 48 arquivos, `npm run lint` e
        `npm run typecheck` aprovados. Testes novos/estendidos em
@@ -825,9 +824,19 @@ Issues `[Docs]`, sem fase no Project.
        regressao das projecoes conferida com a consulta antiga e revertida.
        Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
        critico; achados importantes corrigidos no proprio PR. Interface
-       interativa e pacote nao verificados; CI do PR #124 pendente.
-       Limite de CPUs contra forcadas fica no #117;
-    4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+       interativa e pacote nao verificados; PR #124 integrado em `aaaa5f0`.
+       Limite de CPUs contra forcadas entregue no #117 (DEC-43);
+    4. #117 (rascunho), implementacao local: estado por tarefa, eventos,
+       limite de forcadas, interrupcao de jobs e recusas em portugues.
+       DEC-43 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
+       pendentes, quantum, prazos, mudanca liquida, historico e consistencia.
+       Baseline 794/794; verificacao local 875/875 testes, `npm run lint` e
+       `npm run typecheck` sem erros (2026-11-01). Revisao com
+       pr-review-toolkit (5 agentes) aplicada: inspecao de tarefa concluida,
+       lacunas de testes conferidas por mutacao, invariantes de consistencia,
+       identificador de tarefa inteiro, forcar tarefa terminada recusado e
+       comentarios. Interface e pacote nao verificados; commit `WIP` ja
+       enviado ao PR;
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
@@ -835,10 +844,11 @@ Issues `[Docs]`, sem fase no Project.
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
-- Proximo passo: CI e revisao do PR #124 (implementacao de CPUs); depois do merge, atualizar a branch do #117 com a `main`. A proxima
-  implementacao da serie e #117 (estado por tarefa). Pendencias de decisao:
-  aceite de DEC-40 (PR #124), DEC-39 (#115) e aceitar ou rever
-  DEC-34 (#92).
+- #117 em implementacao local: estado por tarefa, suspensao, forcamento,
+  encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
+  pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
+- Proximo passo: concluir gates e revisao independente do #117; depois
+  seguir para #118 (caracteristicas da tarefa). DEC-34 segue pendente de aceite.
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

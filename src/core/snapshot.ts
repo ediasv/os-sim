@@ -24,7 +24,11 @@ export function createInitialState(config: SystemConfig): SimulationState {
     return {
         clock: 0,
         config,
-        tasks: config.tasks.map((definition) => ({ definition, jobs: [] })),
+        tasks: config.tasks.map((definition) => ({
+            definition,
+            status: 'ready',
+            jobs: [],
+        })),
         cpus: Array.from({ length: config.cpuCount }, (_, i) => ({
             id: i + 1,
             running: null,
@@ -72,6 +76,7 @@ export function restoreState(snapshot: SimulationSnapshot): SimulationState {
         config: config as SystemConfig,
         tasks: tasks.map((tcb) => ({
             definition: tcb.definition as TaskDefinition,
+            status: tcb.status,
             jobs: thaw(tcb.jobs) as Job[],
         })),
     };

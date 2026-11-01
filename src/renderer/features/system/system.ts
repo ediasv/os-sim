@@ -173,7 +173,11 @@ export function projectSystem(
     const pending: SystemJob[] = [];
     for (const job of jobs) {
         const jobKey = key(job.ref);
-        if (job.state === 'completed' || ownedKeys.has(jobKey)) {
+        if (
+            job.state === 'completed' ||
+            job.state === 'interrupted' ||
+            ownedKeys.has(jobKey)
+        ) {
             continue;
         }
         if (job.state === 'running') {

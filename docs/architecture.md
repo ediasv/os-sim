@@ -47,8 +47,8 @@ afirma que os modulos planejados ja existem.
   congelados (passo k no indice k), a lista de edicoes de cada passo e o
   cursor; so acrescenta com o cursor no ultimo passo, e `rewrite` troca um
   passo editado e descarta os seguintes com suas edicoes (DEC-35, DEC-39).
-- [Edicao](../src/core/edit.ts): tipos de item (algoritmo, quantum e
-  quantidade de CPUs), dobra em ordem sobre o alvo pedido, validacao por
+- [Edicao](../src/core/edit.ts): tipos de item (algoritmo, quantum,
+  quantidade de CPUs e estado da tarefa), dobra em ordem sobre o alvo pedido, validacao por
   item e aplicacao da mudanca liquida do tick (DEC-37, DEC-39, DEC-40).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
@@ -333,11 +333,14 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   privado; snapshots sao copias profundas congeladas (`DeepReadonly`).
 - Detalhes:
     - Elegibilidade (DEC-02) e termino da tarefa (DEC-09) sao derivados, nao
-      armazenados: `JobState` tem apenas `ready`, `running`, `suspended` e
-      `completed`; `jobs.length` conta as ativacoes geradas.
+      armazenados originalmente; DEC-43 acrescenta `TaskControlBlock.status`
+      e `JobState.interrupted` para encerramento por edicao. `jobs.length`
+      conta as ativacoes geradas.
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
-      termino de tarefa, CPU desligada/religada); execucao fica em intervalos
+      termino de tarefa, CPU desligada/religada, CPU adicionada/removida
+      (DEC-40), suspensao, retomada, forcamento e fim do forcamento (DEC-43));
+      execucao fica em intervalos
       [start, end) por CPU.
     - CPUs numeradas de 1 a `cpuCount`; cor em `RRGGBB` sem `#`, como no exemplo
       do enunciado (A.3.3), normalizada para maiusculas e comparada sem caixa.
@@ -369,10 +372,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       (`offSince: 0`) e registra `cpu-off`. Despachos seguintes registram
       religamento/desligamento; `findInconsistencies` e aplicado apos cada
       despacho (REQ-02, DEC-05).
-    - Suspensao: `JobState` tem `suspended`, mas ainda nao ha eventos de
-      suspensao e retomada; a partir dos eventos e intervalos registrados nao
-      se reconstroem os trechos suspensos que o Gantt exige (REQ-09). Eventos
-      definidos em DEC-37 (#25); registro na #26 e consumo no Gantt (#38).
+    - Suspensao: resolvida no nucleo do #117 por `TaskControlBlock.status`
+      e eventos de tarefa (DEC-43); `JobState.suspended` segue por
+      compatibilidade do modelo, mas a edicao nao o escreve. Consumo no Gantt (#38).
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
 
@@ -767,8 +769,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   fatias vencidas passa a vir depois das ativacoes; o despacho
   passa a incluir a `preemption` causada por job forcado.
 - Revista por DEC-39: a ordem ativacoes, etapa de edicao e fatias vencidas
-  esta implementada desde a #115 (a `preemption` por job forcado fica para a
-  #117).
+  esta implementada desde a #115; a #117 acrescenta os eventos de estado
+  e a `preemption` por job forcado (DEC-43).
 
 ### DEC-23: Contrato do adaptador Vue
 
@@ -1203,8 +1205,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   com `RangeError` e nada muda. `getCursor()` e `getCurrentSnapshot()` leem a
   posicao; `getLatestSnapshot()` fica inalterado.
 - Avanco: `tick()` com o cursor atras do ultimo passo e recusado; desde a #24
-  a recusa e `SimulationRefusal` com a mensagem `Step ${cursor + 1} is already
-  computed; use forward() instead of tick().` e o futuro registrado e
+  a recusa e `SimulationRefusal` com a mensagem `O passo ${cursor + 1} já foi
+  calculado; use forward() em vez de tick().` e o futuro registrado e
   reutilizado por `forward()` (DEC-36). Descartar o futuro fica na #26; a #23
   nao conhece edicoes.
 - Prova: teste copia o estado vivo instalado por `restore(k)` num simulador
@@ -1264,12 +1266,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   passo (DEC-11).
 - Recusas: pedido impossivel lanca `SimulationRefusal`
   (`src/core/refusal.ts`) antes de mudar qualquer coisa, com as mensagens:
-    - `backward()` no passo 0: `Step 0 is the first recorded step; there is
-      no earlier step to go back to.`;
-    - `forward()` no ultimo passo k: `Step ${k} is the latest recorded step;
-      use tick() to compute step ${k + 1}.`;
-    - `tick()` com o cursor k atras: `Step ${k + 1} is already computed; use
-      forward() instead of tick().`.
+    - `backward()` no passo 0: `O passo 0 é o primeiro passo registrado; não há passo anterior para voltar.`;
+    - `forward()` no ultimo passo k: `O passo ${k} é o último passo registrado; use tick() para calcular o passo ${k + 1}.`;
+    - `tick()` com o cursor k atras: `O passo ${k + 1} já foi calculado; use forward() em vez de tick().`.
 - Interface: `AppError` ganha a categoria `refused` (DEC-24), que fica so no
   resultado do comando, fora do banner. `useSimulation` expoe `forward`,
   `backward` e `next`, que chama `forward` quando `canForward()` e `tick` no
@@ -1626,8 +1625,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 
 ### DEC-39: Caminho da edicao no nucleo
 
-- Estado: proposta em 2026-11-01 no PR #115 (#26, 2 de 6), para aceite do
-  usuario na revisao. Requisitos: REQ-04, REQ-05, REQ-07. Detalha DEC-37;
+- Estado: aceita em 2026-11-01 pelo usuario (PR #115, #26, 2 de 6). Requisitos: REQ-04, REQ-05, REQ-07. Detalha DEC-37;
   revisa DEC-14, DEC-22, DEC-25 e DEC-35.
 - Contexto: DEC-37 define o que cada edicao faz, mas nao a forma no nucleo.
   A #26 sai em varios PRs; este cria o caminho geral, provado com algoritmo
@@ -1659,10 +1657,11 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
        `reason`) e mensagem com uma linha por item, `Item ${index + 1}
        (${kind}): ${reason}`. Regra da configuracao (quantum, algoritmo) e
        julgada por `validateConfig`, e o motivo e a mensagem dele (fonte
-       unica, DEC-28; escolha do usuario na #115). Motivos sem regra da
-       configuracao ficam em ingles: `No scheduling policy is registered for
-       algorithm ${algorithm}.`, `Unknown edit item kind ...`. Edicao vazia e
-       recusada com `SimulationRefusal('An edit needs at least one item.')`.
+       unica, DEC-28; escolha do usuario na #115). Toda recusa ao usuario e em portugues, incluindo falta de politica,
+       tipo de item desconhecido e edicao vazia (`Uma edição precisa de pelo
+       menos um item.`). O item citado pode depender da ordem dos itens
+       (decisoes do usuario no #117). `Error`/`TypeError` por defeito do motor
+       e os `TypeError` do construtor (DEC-25) continuam em ingles.
        Edicao ja registrada recusada ao ser refeita e defeito do motor
        (`Error`), pois o recalculo e deterministico.
     5. Atomicidade: `edit` e transacional como `tick()` (DEC-14): recusa ou
@@ -1671,7 +1670,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
        passo, guarda copia congelada da lista de edicoes e descarta os passos
        seguintes com suas edicoes; `append` registra passo sem edicoes. Toda
        edicao aceita descarta o futuro, mesmo com mudanca liquida nula
-       (DEC-37 item 1, escolha do autor); o cursor fica no passo editado.
+       (DEC-37 item 1, decisao do usuario); o cursor fica no passo editado.
     7. Politica: o construtor recebe `SchedulingPolicy` ou `{ policies }`
        (`PolicySource`); a fabrica passa o registro inteiro. O motor busca a
        politica pelo `config.algorithm` vigente a cada despacho, sem guardar
@@ -1751,8 +1750,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-40: Edicao de CPUs e execucao anterior independente da posse
 
-- Estado: proposta em 2026-11-01 no PR #124 (#26, 3 de 6), para aceite do
-  usuario na revisao; o #116 integrou somente documentacao. Requisitos: REQ-02, REQ-04, REQ-05,
+- Estado: aceita em 2026-11-01 pelo usuario (PR #124, #26, 3 de 6); o #116 integrou somente documentacao. Requisitos: REQ-02, REQ-04, REQ-05,
   REQ-07 e REQ-09. Detalha DEC-37; revisa DEC-13 e DEC-21. Nao altera o
   estado de aceite de DEC-39.
 - Contexto: remover CPU nao apaga o trabalho de [t-1, t), e uma CPU ausente
@@ -1829,3 +1827,58 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   exportacao; o SVG e autonomo (cores literais do tema escuro, sem script nem
   referencia externa). Quando a #38 desenhar o Gantt na tela, alinhar as duas
   apresentacoes para nao manter duas.
+
+### DEC-43: Estado editavel por tarefa e encerramento de jobs
+
+- Estado: proposta em 2026-11-01 no #117 (#26, 4 de 6), para revisao.
+  Requisitos: REQ-05, REQ-08, REQ-09. Implementa a matriz de DEC-37 e
+  complementa DEC-12, DEC-13, DEC-22, DEC-39 e DEC-40.
+- Modelo: `TaskControlBlock.status` guarda `ready`, `forced`, `suspended`
+  ou `concluded`, inicialmente `ready`. E o estado escolhido; executar
+  pela politica nao torna a tarefa forcada. `EditItem.taskState` recebe
+  `taskId` e `state`; `EditTarget.taskStates` guarda o alvo por ID.
+  Snapshots copiam e restauram esse estado. A tabela de transicoes valida
+  itens em ordem; forcadas sem job atual contam no limite de CPUs.
+- Aplicacao: somente a mudanca liquida do tick, em ordem de tarefas e
+  depois de CPUs. Suspender libera o job atual sem preempcao; retomar
+  devolve-o a disputa. O job mais antigo incompleto continua bloqueando
+  os posteriores; prazo e calendario seguem correndo. Forcados recebem
+  CPU antes da politica, cuja visao recebe apenas as vagas restantes.
+  Nao vencem quantum; desforcar renova a fatia se mantiver a CPU.
+- Encerramento: jobs incompletos passam a `interrupted`, sem `completion`
+  nem perdas de prazo futuras; preservam progresso e perdas anteriores.
+  Tarefa `concluded` nao ativa novos jobs nem aceita outro estado.
+  Encerrar uma tarefa naturalmente terminada e aceito sem duplicar seu
+  `task-finished`. `interrupted` e vazio no termino normal ou sem jobs
+  incompletos; nos demais casos lista os jobs por indice. Forcar uma tarefa
+  que ja terminou (todas as ativacoes concluidas) e recusado com motivo,
+  porque reservaria uma CPU que ela nao pode usar (decisao do usuario no
+  #117); suspende-la ou concluí-la continua aceito. Tarefa forcada que
+  termina sozinha mantem `status: forced`, mas deixa de contar no limite de
+  forcadas (na edicao e em `findInconsistencies`), pois nao usa mais CPU
+  (decisao do usuario no #117).
+- Eventos: `suspension` tem `taskId` e `cpuId`, a CPU que executava o job
+  da tarefa (mesmo que ele tenha acabado de concluir no tick), ou `null`
+  se nenhuma (decisao do usuario no #117);
+  `resumption`, `forced` e `unforced` tem `taskId`. Todos tem `time`.
+  Na mesma tarefa, `unforced` precede `suspension`, e `resumption`
+  precede `forced` (ordem acordada com o usuario). Encerrar emite apenas
+  `task-finished`, sem `unforced` ou `resumption` adicional.
+- Consistencia: o limite de forcadas e a posse do job atual forcado sao
+  conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
+  jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
+  concluida nao guarda job aberto e o `status` pertence ao conjunto
+  conhecido. Identificador de tarefa que nao e inteiro e recusado na edicao.
+  A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
+  e os rotula como Interrompido; o restante da apresentacao fica na
+  #37/#38.
+- Justificativa: estado por tarefa atende A.3.4 e permite suspender/forcar
+  antes do ingresso ou entre ativacoes sem inventar um job. O estado
+  interrompido distingue encerramento de execucao completa.
+- Alternativas descartadas: guardar a suspensao somente no job (nao
+  representa intervalos sem job); marcar interrompido como `completed`
+  (afirma execucao que nao ocorreu); duplicar `task-finished` ao encerrar
+  tarefa naturalmente terminada (dois marcadores para o mesmo termino).
+- Evidencia: matriz em `edit.test.ts`, cenarios em
+  `simulator.taskState.test.ts`, invariantes em `consistency.test.ts`;
+  testes de termino normal e projecoes existentes atualizados.

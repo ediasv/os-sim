@@ -20,6 +20,7 @@ const stateLabels: Readonly<Record<JobState, string>> = {
     running: 'Executando',
     suspended: 'Suspenso',
     completed: 'Concluído',
+    interrupted: 'Interrompido',
 };
 
 function jobLabel(job: SystemJob): string {

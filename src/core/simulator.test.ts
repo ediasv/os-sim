@@ -1112,7 +1112,9 @@ describe('Simulator', () => {
         });
         expect(
             snapshot.events.filter((event) => event.kind === 'task-finished'),
-        ).toEqual([{ kind: 'task-finished', time: 3, taskId: 2 }]);
+        ).toEqual([
+            { kind: 'task-finished', time: 3, taskId: 2, interrupted: [] },
+        ]);
         // Events of the two CPUs interleave; each keeps its own intervals.
         expect(summarizeCpuOff(snapshot)).toEqual([
             { cpuId: 1, intervals: [], totalOff: 0 },
@@ -1174,7 +1176,9 @@ describe('Simulator', () => {
         ).toEqual([{ kind: 'cpu-off', time: 20, cpuId: 1 }]);
         expect(
             snapshot.events.filter((event) => event.kind === 'task-finished'),
-        ).toEqual([{ kind: 'task-finished', time: 20, taskId: 1 }]);
+        ).toEqual([
+            { kind: 'task-finished', time: 20, taskId: 1, interrupted: [] },
+        ]);
         expect(
             snapshot.events.filter((event) => event.kind === 'completion'),
         ).toHaveLength(10);
@@ -1272,8 +1276,8 @@ describe('Simulator', () => {
         }
 
         expect(finished()).toEqual([
-            { kind: 'task-finished', time: 28, taskId: 1 },
-            { kind: 'task-finished', time: 29, taskId: 2 },
+            { kind: 'task-finished', time: 28, taskId: 1, interrupted: [] },
+            { kind: 'task-finished', time: 29, taskId: 2, interrupted: [] },
         ]);
         const late = sim.getLatestSnapshot().tasks[1].jobs;
         expect(late).toHaveLength(10);
@@ -1379,7 +1383,7 @@ describe('Simulator', () => {
             sim.getLatestSnapshot().events.filter((event) => event.time === 2),
         ).toEqual([
             { kind: 'completion', time: 2, job: { taskId: 2, index: 0 } },
-            { kind: 'task-finished', time: 2, taskId: 2 },
+            { kind: 'task-finished', time: 2, taskId: 2, interrupted: [] },
             { kind: 'deadline-miss', time: 2, job: { taskId: 1, index: 0 } },
             { kind: 'activation', time: 2, job: { taskId: 3, index: 0 } },
         ]);
@@ -1729,7 +1733,7 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
         // (DEC-22 as revised by DEC-37: the edit stage sits between the last two).
         expect(eventsAt(sim, 2)).toEqual([
             { kind: 'completion', time: 2, job: ref(1) },
-            { kind: 'task-finished', time: 2, taskId: 1 },
+            { kind: 'task-finished', time: 2, taskId: 1, interrupted: [] },
             { kind: 'deadline-miss', time: 2, job: ref(3) },
             { kind: 'activation', time: 2, job: ref(4) },
             { kind: 'quantum-expired', time: 2, cpuId: 2, job: ref(2) },
@@ -1746,9 +1750,9 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
         // A CPU released by completions is powered off after them.
         expect(eventsAt(sim, 3)).toEqual([
             { kind: 'completion', time: 3, job: ref(3) },
-            { kind: 'task-finished', time: 3, taskId: 3 },
+            { kind: 'task-finished', time: 3, taskId: 3, interrupted: [] },
             { kind: 'completion', time: 3, job: ref(4) },
-            { kind: 'task-finished', time: 3, taskId: 4 },
+            { kind: 'task-finished', time: 3, taskId: 4, interrupted: [] },
             { kind: 'cpu-off', time: 3, cpuId: 2 },
         ]);
 
@@ -1763,9 +1767,9 @@ describe('Simulator boundaries, overlap and multiple CPUs (#16)', () => {
         // Task 2 ends exactly where its slice would expire: no expiry logged.
         expect(eventsAt(sim, 5)).toEqual([
             { kind: 'completion', time: 5, job: ref(2) },
-            { kind: 'task-finished', time: 5, taskId: 2 },
+            { kind: 'task-finished', time: 5, taskId: 2, interrupted: [] },
             { kind: 'completion', time: 5, job: ref(5) },
-            { kind: 'task-finished', time: 5, taskId: 5 },
+            { kind: 'task-finished', time: 5, taskId: 5, interrupted: [] },
             { kind: 'cpu-off', time: 5, cpuId: 1 },
             { kind: 'cpu-off', time: 5, cpuId: 2 },
         ]);
@@ -2176,4 +2180,14 @@ describe('policy source', () => {
                 }),
         ).toThrow(/select method is required/);
     });
+});
+
+it('starts every task ready before its first activation', () => {
+    const sim = new Simulator(
+        { ...DEFAULT_CONFIG, tasks: [periodicTask] },
+        firstAvailable,
+    );
+    expect(sim.getCurrentSnapshot().tasks.map((t) => t.status)).toEqual([
+        'ready',
+    ]);
 });

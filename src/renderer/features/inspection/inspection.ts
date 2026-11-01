@@ -8,6 +8,7 @@ import {
     type SimulationSnapshot,
     type TaskDefinition,
     type TaskId,
+    type TaskStatus,
 } from '../../../core/domain';
 
 export type { JobRef, TaskId } from '../../../core/domain';
@@ -109,16 +110,23 @@ function copyDefinition(
 
 function taskStatus(
     definition: DeepReadonly<TaskDefinition>,
+    status: TaskStatus,
     jobs: readonly CurrentInspectionJob[],
     clock: number,
 ): InspectionTaskStatus {
+    // A concluded task never activates again, whatever its jobs say (DEC-43).
+    if (status === 'concluded') {
+        return 'completed';
+    }
     if (jobs.length === 0) {
         return definition.arrival > clock
             ? 'awaiting-activation'
             : 'awaiting-next-activation';
     }
 
-    const hasIncompleteJob = jobs.some((job) => job.state !== 'completed');
+    const hasIncompleteJob = jobs.some(
+        (job) => job.state !== 'completed' && job.state !== 'interrupted',
+    );
     if (hasIncompleteJob) {
         return 'active';
     }
@@ -189,7 +197,12 @@ export function projectInspection(
 
         return {
             definition,
-            status: taskStatus(tcb.definition, jobs, snapshot.clock),
+            status: taskStatus(
+                tcb.definition,
+                tcb.status,
+                jobs,
+                snapshot.clock,
+            ),
             jobs,
         };
     });

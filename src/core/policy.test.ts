@@ -168,6 +168,14 @@ describe('buildPolicyView', () => {
             },
         ],
         [
+            'is interrupted',
+            /2\.0 is interrupted/,
+            (state) => {
+                state.tasks[1].jobs[0].state = 'interrupted';
+                return [{ taskId: 2, index: 0 }];
+            },
+        ],
+        [
             'is suspended',
             /2\.0 is suspended/,
             (state) => {

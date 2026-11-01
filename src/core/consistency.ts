@@ -7,9 +7,18 @@
  * issue (DEC-14); engine tests also assert an empty list after every step.
  * It also rejects a CPU that runs a job while off, a malformed
  * `cpu-off`/`cpu-on` sequence, and a job that ran past its duration (which
- * would have caught a half-applied step re-executing completed jobs).
+ * would have caught a half-applied step re-executing completed jobs). Task
+ * status is cross-checked too (DEC-43): forced tasks within the CPU count and
+ * owning a CPU for their oldest unfinished job, no CPU running a suspended or
+ * concluded task, interrupted jobs only in concluded tasks, and no open job
+ * left in a concluded task.
  */
-import type { DeepReadonly, Job, SimulationState } from './domain';
+import {
+    maxJobs,
+    type DeepReadonly,
+    type Job,
+    type SimulationState,
+} from './domain';
 import {
     CpuEventSequenceError,
     summarizeCpuOff,
@@ -30,6 +39,48 @@ export function findInconsistencies(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
     }
+    const statuses: readonly string[] = [
+        'ready',
+        'forced',
+        'suspended',
+        'concluded',
+    ];
+    for (const tcb of state.tasks) {
+        const id = tcb.definition.id;
+        if (!statuses.includes(tcb.status)) {
+            issues.push(
+                `Task ${id} has an unknown status ${JSON.stringify(tcb.status)}.`,
+            );
+        }
+        for (const job of tcb.jobs) {
+            if (job.state === 'interrupted' && tcb.status !== 'concluded') {
+                issues.push(
+                    `Job ${key(job)} is interrupted but task ${id} is not concluded.`,
+                );
+            }
+            if (
+                tcb.status === 'concluded' &&
+                job.state !== 'completed' &&
+                job.state !== 'interrupted'
+            ) {
+                issues.push(
+                    `Task ${id} is concluded but job ${key(job)} is ${job.state}.`,
+                );
+            }
+        }
+    }
+    const forced = state.tasks.filter((tcb) => tcb.status === 'forced');
+    // A finished forced task can never use a CPU, so it does not count (DEC-43).
+    const activeForced = forced.filter(
+        (tcb) =>
+            tcb.jobs.length !== maxJobs(tcb.definition) ||
+            tcb.jobs.some((job) => job.state !== 'completed'),
+    );
+    if (activeForced.length > state.config.cpuCount) {
+        issues.push(
+            `There are ${activeForced.length} forced tasks for ${state.config.cpuCount} CPUs.`,
+        );
+    }
     const jobs = new Map<string, DeepReadonly<Job>>();
     for (const tcb of state.tasks) {
         for (const job of tcb.jobs) {
@@ -47,6 +98,14 @@ export function findInconsistencies(
     for (const cpu of state.cpus) {
         if (cpu.running === null) {
             continue;
+        }
+        const task = state.tasks.find(
+            (tcb) => tcb.definition.id === cpu.running!.taskId,
+        );
+        if (task?.status === 'suspended' || task?.status === 'concluded') {
+            issues.push(
+                `CPU ${cpu.id} runs task ${task.definition.id}, whose status is ${task.status}.`,
+            );
         }
         const ref = key(cpu.running);
         const job = jobs.get(ref);
@@ -67,6 +126,16 @@ export function findInconsistencies(
     for (const [ref, job] of jobs) {
         if (job.state === 'running' && !ownerByJob.has(ref)) {
             issues.push(`Job ${ref} is running but no CPU owns it.`);
+        }
+    }
+
+    // Only the oldest unfinished activation must own a CPU when forced.
+    for (const tcb of forced) {
+        const current = tcb.jobs.find(
+            (job) => job.state !== 'completed' && job.state !== 'interrupted',
+        );
+        if (current !== undefined && !ownerByJob.has(key(current))) {
+            issues.push(`Forced job ${key(current)} has no CPU.`);
         }
     }
 

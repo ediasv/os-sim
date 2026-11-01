@@ -319,3 +319,93 @@ describe('findInconsistencies: CPU count and IDs', () => {
         expect(findInconsistencies(state)).toContain(message);
     });
 });
+
+describe('task state consistency', () => {
+    it('reports more forced tasks than configured CPUs even without jobs', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [definition, { ...definition, id: 2 }],
+        });
+        state.tasks.forEach((t) => {
+            t.status = 'forced';
+        });
+        expect(findInconsistencies(state)).toContain(
+            'There are 2 forced tasks for 1 CPUs.',
+        );
+    });
+    it.each(['suspended', 'concluded'] as const)(
+        'reports a CPU running a %s task',
+        (status) => {
+            const state = stateWith(job({ state: 'running' }));
+            state.tasks[0].status = status;
+            state.cpus[0].running = { taskId: 1, index: 0 };
+            expect(findInconsistencies(state)).toContain(
+                `CPU 1 runs task 1, whose status is ${status}.`,
+            );
+        },
+    );
+    it('reports an interrupted job on a CPU', () => {
+        const state = stateWith(job({ state: 'interrupted' }));
+        state.cpus[0].running = { taskId: 1, index: 0 };
+        expect(findInconsistencies(state)).toContain(
+            'CPU 1 runs job 1.0, whose state is interrupted.',
+        );
+    });
+    it('reports a forced current job without a CPU', () => {
+        const state = stateWith(job());
+        state.tasks[0].status = 'forced';
+        expect(findInconsistencies(state)).toContain(
+            'Forced job 1.0 has no CPU.',
+        );
+    });
+});
+
+describe('task status cross-checks', () => {
+    it('reports a concluded task that still has an open job', () => {
+        const state = stateWith(job());
+        state.tasks[0].status = 'concluded';
+        expect(findInconsistencies(state)).toContain(
+            'Task 1 is concluded but job 1.0 is ready.',
+        );
+    });
+
+    it('reports an interrupted job of a task that is not concluded', () => {
+        const state = stateWith(job({ state: 'interrupted' }));
+        expect(findInconsistencies(state)).toContain(
+            'Job 1.0 is interrupted but task 1 is not concluded.',
+        );
+    });
+
+    it('reports a task status outside the known set', () => {
+        const state = stateWith();
+        (state.tasks[0] as { status: string }).status = 'bogus';
+        expect(findInconsistencies(state)).toContain(
+            'Task 1 has an unknown status "bogus".',
+        );
+    });
+});
+
+describe('forced limit and finished tasks', () => {
+    it('does not count a forced task that already finished', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [
+                { ...definition, period: 0 },
+                { ...definition, id: 2, period: 0 },
+            ],
+        });
+        state.tasks[0].jobs.push(
+            job({ state: 'completed', completedAt: 2, executed: 2 }),
+        );
+        state.tasks.forEach((t) => {
+            t.status = 'forced';
+        });
+        state.tasks[1].jobs.push(job({ taskId: 2, state: 'running' }));
+        state.cpus[0].running = { taskId: 2, index: 0 };
+        expect(
+            findInconsistencies(state).filter((i) =>
+                i.includes('forced tasks'),
+            ),
+        ).toEqual([]);
+    });
+});

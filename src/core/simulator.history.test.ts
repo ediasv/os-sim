@@ -236,7 +236,7 @@ describe('Simulator history cursor', () => {
         const recorded = recordRun(sim);
         sim.restore(5);
         expect(() => sim.tick()).toThrow(
-            'Step 6 is already computed; use forward() instead of tick().',
+            'O passo 6 já foi calculado; use forward() em vez de tick().',
         );
         expect(sim.getCursor()).toBe(5);
         expect(sim.getCurrentSnapshot()).toBe(recorded[5]);

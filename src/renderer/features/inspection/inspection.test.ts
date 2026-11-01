@@ -34,6 +34,7 @@ function snapshot(): SimulationState {
         },
         tasks: [
             {
+                status: 'ready',
                 definition: {
                     id: 1,
                     color: 'F0E0D0',
@@ -67,6 +68,7 @@ function snapshot(): SimulationState {
                 ],
             },
             {
+                status: 'ready',
                 definition: {
                     id: 2,
                     color: 'D0E0F0',
@@ -192,4 +194,30 @@ it('projects the CPU history kept after removing CPUs', () => {
         { cpuId: 3, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
         { cpuId: 4, intervals: [{ start: 0, end: 1 }], totalOff: 1 },
     ]);
+});
+
+it('does not count interrupted jobs as incomplete', () => {
+    const state = snapshot();
+    state.tasks[1].jobs[0].state = 'interrupted';
+    expect(projectInspection(state).tasks[1].status).toBe('completed');
+});
+
+describe('concluded tasks in the inspection', () => {
+    it('shows a task concluded before its arrival as completed, not awaiting activation', () => {
+        const state = snapshot();
+        state.tasks[1].definition = {
+            ...state.tasks[1].definition,
+            arrival: 20,
+        };
+        state.tasks[1].jobs = [];
+        state.tasks[1].status = 'concluded';
+        expect(projectInspection(state).tasks[1].status).toBe('completed');
+    });
+
+    it('shows a task concluded between jobs as completed, not awaiting the next activation', () => {
+        const state = snapshot();
+        state.tasks[0].jobs[1].state = 'interrupted';
+        state.tasks[0].status = 'concluded';
+        expect(projectInspection(state).tasks[0].status).toBe('completed');
+    });
 });
