@@ -479,3 +479,29 @@ describe('forced limit and finished tasks', () => {
         ).toEqual([]);
     });
 });
+
+describe('findInconsistencies: highest used task ID (DEC-44)', () => {
+    it('accepts the initial value and a value above every task ID', () => {
+        const state = stateWith();
+        expect(state.maxTaskId).toBe(1);
+        expect(findInconsistencies(state)).toEqual([]);
+        state.maxTaskId = 9;
+        expect(findInconsistencies(state)).toEqual([]);
+    });
+
+    it('rejects a value below a task ID or not an integer', () => {
+        for (const value of [0, 1.5, Number.NaN]) {
+            const state = stateWith();
+            state.tasks.push({
+                ...state.tasks[0],
+                definition: { ...definition, id: 3 },
+            });
+            state.maxTaskId = value;
+            expect(
+                findInconsistencies(state).filter((i) =>
+                    i.includes('highest used task ID'),
+                ),
+            ).toHaveLength(1);
+        }
+    });
+});

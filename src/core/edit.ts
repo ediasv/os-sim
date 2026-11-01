@@ -14,6 +14,7 @@
  * the target filled by `readTarget` and applied by `applyNetChange`, which the
  * compiler does not check: statuses live in `EditTarget.taskStates` and
  * characteristics in `EditTarget.definitions` (replaced, never mutated).
+ * A task is included (`addTask`, DEC-46) by adding its entry to both records.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
  * removes the highest IDs and records `cpu-added`/`cpu-removed` (DEC-40).
  */
@@ -24,7 +25,8 @@ import {
     type ConfigInput,
 } from './config';
 import { activateTask, rescheduleNextActivation } from './activation';
-import { maxJobs } from './domain';
+import { defaultTaskColor } from './defaultColor';
+import { DEFAULT_TASK_PERIOD, maxJobs } from './domain';
 import type {
     AlgorithmId,
     DeepReadonly,
@@ -37,6 +39,21 @@ import type {
     TaskStatus,
 } from './domain';
 import type { EditItemRefusal } from './refusal';
+import { createTcb } from './snapshot';
+
+/**
+ * A task to include: everything but the ID, which the engine generates, and
+ * the raw event list, which Project A never runs (DEC-46). Missing period and
+ * color take defaults (DEC-29, DEC-46).
+ */
+export interface NewTask {
+    readonly arrival: number;
+    readonly duration: number;
+    readonly deadline: number;
+    readonly period?: number;
+    /** Missing: the engine picks one unlike every other task's. */
+    readonly color?: string;
+}
 
 /** One change the user asks for. */
 export type EditItem =
@@ -72,7 +89,8 @@ export type EditItem =
           readonly kind: 'taskPeriod';
           readonly taskId: TaskId;
           readonly period: number;
-      };
+      }
+    | { readonly kind: 'addTask'; readonly task: NewTask };
 
 /** One edit (one form submission): its items, in order. */
 export type Edit = readonly EditItem[];
@@ -94,11 +112,18 @@ export type EditTarget = Readonly<
      * object on each edit, never mutated, because snapshots share definitions.
      */
     readonly definitions: Readonly<Record<TaskId, TaskDefinition>>;
+    /**
+     * Highest task ID ever used, so IDs are never reused (DEC-46).
+     */
+    readonly maxTaskId: number;
 };
 
 /** System fields of the target; task states must never leak into configuration. */
 const TARGET_FIELDS: Readonly<
-    Record<keyof Omit<EditTarget, 'taskStates' | 'definitions'>, true>
+    Record<
+        keyof Omit<EditTarget, 'taskStates' | 'definitions' | 'maxTaskId'>,
+        true
+    >
 > = {
     algorithm: true,
     quantum: true,
@@ -166,6 +191,26 @@ function checkSystemField<F extends 'algorithm' | 'quantum' | 'cpuCount'>(
 type TaskField = 'color' | 'arrival' | 'duration' | 'period' | 'deadline';
 
 /**
+ * Every task's wanted definition: the live tasks in their order, then the
+ * ones included earlier in this tick, which have no control block yet.
+ */
+function liveDefinitions(
+    target: EditTarget,
+    context: EditContext,
+): TaskDefinition[] {
+    const live = context.state.tasks.map(
+        (tcb) => target.definitions[tcb.definition.id] ?? tcb.definition,
+    );
+    const known = new Set(live.map((definition) => definition.id));
+    return [
+        ...live,
+        ...Object.values(target.definitions).filter(
+            (definition) => !known.has(definition.id),
+        ),
+    ];
+}
+
+/**
  * Checks one task field with `validateConfig`, the single source of its rule
  * and wording (DEC-28), over the live definitions (concluded tasks included,
  * so their colors stay taken) with the target's wanted definitions on top.
@@ -184,9 +229,7 @@ function checkTaskField(
     field: TaskField,
     value: unknown,
 ): { ok: true; definition: TaskDefinition } | { ok: false; reason: string } {
-    const live = context.state.tasks.map(
-        (tcb) => target.definitions[tcb.definition.id] ?? tcb.definition,
-    );
+    const live = liveDefinitions(target, context);
     const edited = { ...target.definitions[taskId], [field]: value };
     const tasks = [...live.filter((d) => d.id !== taskId), edited];
     const result = validateConfig({
@@ -353,12 +396,11 @@ function editableTask(
     if (unknown !== undefined) return unknown;
     const concluded = refuseIfConcluded(context, taskId, target);
     if (concluded !== undefined) return concluded;
-    const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
-    if (tcb === undefined) {
-        throw new Error(
-            `Task ${taskId} has a definition but no control block.`,
-        );
-    }
+    // A task included earlier in this tick has no control block yet; until
+    // it is applied it behaves as one never activated (DEC-46).
+    const tcb =
+        context.state.tasks.find((t) => t.definition.id === taskId) ??
+        createTcb(target.definitions[taskId]);
     return { ok: true, tcb };
 }
 
@@ -502,7 +544,87 @@ function hasFinished(
     );
 }
 
+/**
+ * Includes a task (DEC-46): the arrival must not be in the past, the period
+ * defaults to 15 and zero is refused, a missing color is picked by the
+ * engine, and every other rule of DEC-10 is judged by `validateConfig` over
+ * the tasks as the earlier items left them, so the new task is checked
+ * against all others, concluded ones included.
+ */
+function includeTask(
+    target: EditTarget,
+    item: Extract<EditItem, { kind: 'addTask' }>,
+    context: EditContext,
+): ItemResult {
+    const given: unknown = item.task;
+    if (given === null || typeof given !== 'object' || Array.isArray(given)) {
+        return { ok: false, reason: 'Faltam os dados da tarefa a incluir.' };
+    }
+    const input = given as Partial<NewTask>;
+    const clock = context.state.clock;
+    const reasons: string[] = [];
+    if (typeof input.arrival === 'number' && input.arrival < clock) {
+        reasons.push(
+            `O ingresso deve ser maior ou igual ao instante atual (${clock}); valor recebido: ${input.arrival}.`,
+        );
+    }
+    if (input.period === 0) {
+        reasons.push('O período deve ser maior que zero; valor recebido: 0.');
+    }
+    const id = target.maxTaskId + 1;
+    const known = liveDefinitions(target, context);
+    const definition: TaskDefinition = {
+        id,
+        color:
+            input.color === undefined
+                ? defaultTaskColor(
+                      id,
+                      new Set(known.map((t) => t.color.toUpperCase())),
+                  )
+                : input.color,
+        arrival: input.arrival as number,
+        duration: input.duration as number,
+        period: input.period === undefined ? DEFAULT_TASK_PERIOD : input.period,
+        deadline: input.deadline as number,
+        rawEvents: '',
+    };
+    const tasks = [...known, definition];
+    const result = validateConfig({
+        ...context.state.config,
+        algorithm: target.algorithm,
+        quantum: target.quantum,
+        cpuCount: target.cpuCount,
+        tasks,
+    } as unknown as ConfigInput);
+    if (!result.ok) {
+        reasons.push(
+            ...result.issues
+                .filter((issue) => issue.taskIndex === tasks.length - 1)
+                .map((issue) => issue.message),
+        );
+    }
+    if (reasons.length > 0) {
+        return { ok: false, reason: reasons.join(' ') };
+    }
+    if (!result.ok) {
+        throw new Error(
+            `The configuration at the edit stage is invalid:\n${result.issues.map((issue) => issue.message).join('\n')}`,
+        );
+    }
+    const included = result.config.tasks[tasks.length - 1];
+    return {
+        ok: true,
+        target: {
+            ...target,
+            maxTaskId: included.id,
+            definitions: { ...target.definitions, [included.id]: included },
+            taskStates: { ...target.taskStates, [included.id]: 'ready' },
+        },
+    };
+}
+
 const HANDLERS: Handlers = {
+    addTask: includeTask,
     taskPeriod: (target, item, context) => {
         const editable = editableTask(target, context, item.taskId);
         if (!editable.ok) return editable;
@@ -755,6 +877,7 @@ export function readTarget(state: DeepReadonly<SimulationState>): EditTarget {
         definitions: Object.fromEntries(
             state.tasks.map((tcb) => [tcb.definition.id, tcb.definition]),
         ),
+        maxTaskId: state.maxTaskId,
     };
 }
 
@@ -830,10 +953,29 @@ export function applyNetChange(
         });
     }
 
+    // Included tasks are born ready and appended in ID order, and activate
+    // below like a task whose arrival just moved (DEC-46). The configuration's
+    // own task list is left as loaded, as for edited characteristics
+    // (DEC-44): `tasks` is the source of truth.
+    const included = new Set(
+        Object.keys(after.definitions)
+            .map(Number)
+            .filter((id) => !Object.hasOwn(before.definitions, id)),
+    );
+    for (const id of [...included].sort((a, b) => a - b)) {
+        state.tasks.push(createTcb(after.definitions[id]));
+    }
+    state.maxTaskId = after.maxTaskId;
+
     // Task order is observable in the event log; all task changes precede CPUs.
     for (const tcb of state.tasks) {
         const taskId = tcb.definition.id;
-        if (after.definitions[taskId] !== before.definitions[taskId]) {
+        const isNew = included.has(taskId);
+        // A new task has no earlier definition or status to compare with.
+        const was = isNew
+            ? after.definitions[taskId]
+            : before.definitions[taskId];
+        if (after.definitions[taskId] !== was) {
             tcb.definition = after.definitions[taskId];
         }
         // Judged on the net definitions, so a period or arrival that returns
@@ -841,10 +983,8 @@ export function applyNetChange(
         // first activation follows the arrival; later ones follow the period.
         const rescheduled =
             (tcb.jobs.length === 0 &&
-                after.definitions[taskId].arrival !==
-                    before.definitions[taskId].arrival) ||
-            after.definitions[taskId].period !==
-                before.definitions[taskId].period;
+                after.definitions[taskId].arrival !== was.arrival) ||
+            after.definitions[taskId].period !== was.period;
         if (rescheduled) {
             tcb.nextActivation = rescheduleNextActivation(
                 tcb,
@@ -855,14 +995,14 @@ export function applyNetChange(
         applyStatusChange(
             state,
             tcb,
-            before.taskStates[taskId],
+            isNew ? 'ready' : before.taskStates[taskId],
             after.taskStates[taskId],
         );
         // An arrival moved to the current tick, or a period whose new next
         // activation is already due, activates here, once, from the net
         // definition: after the task's status events and before any CPU
         // event (DEC-37, DEC-22, DEC-44).
-        if (rescheduled) activateTask(state, tcb);
+        if (rescheduled || isNew) activateTask(state, tcb);
     }
 
     applyCpuChange(state, before, after);

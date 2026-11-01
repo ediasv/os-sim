@@ -68,6 +68,7 @@ describe('edit fold', () => {
             cpuCount: 1,
             taskStates: { 1: 'ready' },
             definitions: { 1: config.tasks[0] },
+            maxTaskId: 1,
         });
     });
 
@@ -82,6 +83,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
         expect(foldEdit(base, [algorithm('EDF'), quantum(2)], context)).toEqual(
@@ -93,6 +95,7 @@ describe('edit fold', () => {
                     cpuCount: 1,
                     taskStates: { 1: 'ready' },
                     definitions: { 1: config.tasks[0] },
+                    maxTaskId: 1,
                 },
             },
         );
@@ -110,6 +113,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
     });
@@ -278,6 +282,7 @@ describe('CPU count edit', () => {
                 cpuCount: 17,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
+                maxTaskId: 1,
             },
         });
     });
