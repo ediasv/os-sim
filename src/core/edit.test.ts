@@ -927,7 +927,7 @@ describe('task arrival edit', () => {
             ),
         ).toBe('O ingresso deve ser maior ou igual ao tick atual (3).');
     });
-    it('refuses once the task has a job, even when the arrival equals the clock', () => {
+    it('refuses a changed arrival once the task has a job, and accepts the unchanged one (DEC-45)', () => {
         const context = fixture({ arrival: 0 });
         context.state.clock = 0;
         context.state.tasks[0].jobs.push({
@@ -943,9 +943,19 @@ describe('task arrival edit', () => {
         });
         expect(
             reasonOf(
-                foldEdit(readTarget(context.state), [arrival(1, 0)], context),
+                foldEdit(readTarget(context.state), [arrival(1, 1)], context),
             ),
         ).toBe('O ingresso não pode ser alterado pois a tarefa já ingressou.');
+        const unchanged = foldEdit(
+            readTarget(context.state),
+            [arrival(1, 0)],
+            context,
+        );
+        expect(unchanged).toMatchObject({ ok: true });
+        if (!unchanged.ok) return;
+        expect(unchanged.target.definitions[1]).toBe(
+            context.state.tasks[0].definition,
+        );
     });
     it.each([-1, 1.5, Number.NaN, '3', null, undefined])(
         'refuses the invalid value %j with the validateConfig wording',
@@ -1483,5 +1493,45 @@ describe('editable characteristics (DEC-37 matrix)', () => {
                 },
             ],
         });
+    });
+});
+
+describe('characteristic edit together with conclusion in one submission (DEC-45)', () => {
+    const concluded = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
+    const fold = (items: EditItem[]) => {
+        const context = contextFor();
+        return foldEdit(readTarget(context.state), items, context);
+    };
+    const period: EditItem = { kind: 'taskPeriod', taskId: 1, period: 3 };
+    const conclude: EditItem = {
+        kind: 'taskState',
+        taskId: 1,
+        state: 'concluded',
+    };
+
+    it('refuses the submission when the conclusion follows a characteristic', () => {
+        expect(fold([period, conclude])).toEqual({
+            ok: false,
+            refusals: [{ index: 1, kind: 'taskState', reason: concluded }],
+        });
+    });
+    it('refuses the submission when a characteristic follows the conclusion', () => {
+        expect(fold([conclude, period])).toEqual({
+            ok: false,
+            refusals: [{ index: 1, kind: 'taskPeriod', reason: concluded }],
+        });
+    });
+    it('accepts a color change with the conclusion, in either order', () => {
+        const color: EditItem = {
+            kind: 'taskColor',
+            taskId: 1,
+            color: 'aabbcc',
+        };
+        expect(fold([color, conclude])).toMatchObject({ ok: true });
+        expect(fold([conclude, color])).toMatchObject({ ok: true });
+    });
+    it('accepts the conclusion after a characteristic that returned to its value', () => {
+        const back: EditItem = { kind: 'taskPeriod', taskId: 1, period: 5 };
+        expect(fold([period, back, conclude])).toMatchObject({ ok: true });
     });
 });

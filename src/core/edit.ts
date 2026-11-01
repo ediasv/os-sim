@@ -363,6 +363,28 @@ function editableTask(
 }
 
 /**
+ * Whether the target changes any characteristic other than the color of a
+ * task, against the definition in force in the judged state (DEC-45).
+ */
+function changesCharacteristics(
+    target: EditTarget,
+    context: EditContext,
+    taskId: TaskId,
+): boolean {
+    const current = context.state.tasks.find(
+        (t) => t.definition.id === taskId,
+    )?.definition;
+    const wanted = target.definitions[taskId];
+    if (current === undefined) return false;
+    return (
+        current.arrival !== wanted.arrival ||
+        current.duration !== wanted.duration ||
+        current.period !== wanted.period ||
+        current.deadline !== wanted.deadline
+    );
+}
+
+/**
  * A characteristic edit must not rewrite a job that an earlier submission of
  * the same tick created: the net definition would reach back into it (DEC-45).
  * Re-sending the value already in force changes nothing and is accepted.
@@ -523,6 +545,10 @@ const HANDLERS: Handlers = {
         if (!editable.ok) return editable;
         const { tcb } = editable;
         if (tcb.jobs.length > 0) {
+            // Re-sending the arrival in force changes nothing (DEC-45).
+            if (item.arrival === target.definitions[item.taskId].arrival) {
+                return { ok: true, target };
+            }
             return {
                 ok: false,
                 reason: 'O ingresso não pode ser alterado pois a tarefa já ingressou.',
@@ -617,6 +643,18 @@ const HANDLERS: Handlers = {
             return {
                 ok: false,
                 reason: `A tarefa ${item.taskId} está concluída e não pode mudar de estado.`,
+            };
+        }
+        // A concluded task keeps only its color (DEC-43); concluding after a
+        // characteristic in the same submission would end up the same way
+        // whatever the order of the items (DEC-45).
+        if (
+            item.state === 'concluded' &&
+            changesCharacteristics(target, context, item.taskId)
+        ) {
+            return {
+                ok: false,
+                reason: `A tarefa ${item.taskId} está concluída; só a cor pode ser alterada.`,
             };
         }
         if (

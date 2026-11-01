@@ -164,10 +164,10 @@ describe('task arrival edit in the engine', () => {
             sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 1 }]),
         ).toThrow(/maior ou igual ao tick atual \(2\)/);
     });
-    it('refuses after the first activation, even at the arrival tick', () => {
+    it('refuses a changed arrival after the first activation, even at the arrival tick', () => {
         const sim = make();
         expect(() =>
-            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 0 }]),
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 1 }]),
         ).toThrow(
             'O ingresso não pode ser alterado pois a tarefa já ingressou.',
         );
@@ -536,34 +536,39 @@ describe('characteristic edits together (DEC-37, DEC-39)', () => {
             expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
         });
 
-        it('conclusion cancels the activation the period edit would cause', () => {
+        it('refuses a period edit together with the conclusion, whatever the order (DEC-45)', () => {
             const sim = busy();
             advanceTo(sim, 13);
-            sim.edit([
-                { kind: 'taskPeriod', taskId: 1, period: 2 },
-                { kind: 'taskState', taskId: 1, state: 'concluded' },
-            ]);
-            const snapshot = sim.getCurrentSnapshot();
-            expect(activationsOf(sim)).toEqual([0, 5, 10]);
-            expect(snapshot.tasks[0].jobs).toHaveLength(3);
-            expect(snapshot.tasks[0].status).toBe('concluded');
-            expect(findInconsistencies(snapshot)).toEqual([]);
+            const before = sim.getCurrentSnapshot();
+            for (const items of [
+                [
+                    { kind: 'taskPeriod', taskId: 1, period: 2 },
+                    { kind: 'taskState', taskId: 1, state: 'concluded' },
+                ],
+                [
+                    { kind: 'taskState', taskId: 1, state: 'concluded' },
+                    { kind: 'taskPeriod', taskId: 1, period: 2 },
+                ],
+            ] as const) {
+                expect(() => sim.edit(items)).toThrow(
+                    'A tarefa 1 está concluída; só a cor pode ser alterada.',
+                );
+            }
+            expect(sim.getCurrentSnapshot()).toEqual(before);
         });
 
-        it('conclusion after an arrival edit leaves no activation', () => {
+        it('refuses an arrival edit together with the conclusion (DEC-45)', () => {
             const sim = periodic([
                 task(1, { arrival: 5, period: 20, deadline: 20 }),
             ]);
             advanceTo(sim, 2);
-            sim.edit([
-                { kind: 'taskArrival', taskId: 1, arrival: 2 },
-                { kind: 'taskState', taskId: 1, state: 'concluded' },
-            ]);
-            const snapshot = sim.getCurrentSnapshot();
-            expect(activationsOf(sim)).toEqual([]);
-            expect(snapshot.tasks[0].jobs).toEqual([]);
-            expect(snapshot.tasks[0].status).toBe('concluded');
-            expect(findInconsistencies(snapshot)).toEqual([]);
+            expect(() =>
+                sim.edit([
+                    { kind: 'taskArrival', taskId: 1, arrival: 2 },
+                    { kind: 'taskState', taskId: 1, state: 'concluded' },
+                ]),
+            ).toThrow(EditRefusal);
+            expect(sim.getCurrentSnapshot().tasks[0].jobs).toEqual([]);
         });
 
         it('orders events per task in list order, then CPU events', () => {
@@ -691,5 +696,29 @@ describe('edits to one task across submissions of the same tick (DEC-45)', () =>
         ).toThrow(EditRefusal);
         sim.edit([{ kind: 'taskColor', taskId: 1, color: 'aabbcc' }]);
         expect(sim.getCurrentSnapshot().tasks[0].jobs).toHaveLength(3);
+    });
+
+    it('accepts the conclusion in a later submission than the characteristic', () => {
+        const sim = periodSim();
+        sim.edit([{ kind: 'taskDuration', taskId: 1, duration: 2 }]);
+        sim.edit([{ kind: 'taskState', taskId: 1, state: 'concluded' }]);
+        const task1 = sim.getCurrentSnapshot().tasks[0];
+        expect(task1.status).toBe('concluded');
+        expect(task1.definition.duration).toBe(2);
+    });
+
+    it('accepts an unchanged arrival after the task joined and refuses a changed one', () => {
+        const sim = arrivalSim();
+        sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 3 }]);
+        sim.edit([
+            { kind: 'taskArrival', taskId: 1, arrival: 3 },
+            { kind: 'taskColor', taskId: 1, color: 'aabbcc' },
+        ]);
+        expect(sim.getCurrentSnapshot().tasks[0].definition.color).toBe(
+            'AABBCC',
+        );
+        expect(() =>
+            sim.edit([{ kind: 'taskArrival', taskId: 1, arrival: 4 }]),
+        ).toThrow(EditRefusal);
     });
 });
