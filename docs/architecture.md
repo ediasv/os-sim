@@ -2043,6 +2043,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - `config.tasks`: nao e atualizada, como ja nao e nas edicoes de
   caracteristicas (DEC-44); `tasks` e a fonte de verdade da simulacao e o
   nucleo nao le mais a lista da configuracao depois do estado inicial.
+  A interface conta as tarefas de `snapshot.tasks` (`useWorkspace.taskCount`),
+  nao de `config.tasks`, que ficaria atras apos uma inclusao.
 - Justificativa: ID no estado, e nao derivado da lista, e o que permite a
   exclusao futura manter o ID gasto sem rastro.
 - Alternativas descartadas: evento `task-added` (DEC-37 nao o lista; a

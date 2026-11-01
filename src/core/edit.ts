@@ -42,18 +42,16 @@ import type { EditItemRefusal } from './refusal';
 import { createTcb } from './snapshot';
 
 /**
- * A task to include: everything but the ID, which the engine generates, and
- * the raw event list, which Project A never runs (DEC-46). Missing period and
- * color take defaults (DEC-29, DEC-46).
+ * A task to include: a `TaskDefinition` without the ID, which the engine
+ * generates, and without the raw event list, which Project A never runs
+ * (DEC-46). Derived so a new definition field cannot be forgotten here. A
+ * missing period takes the default (DEC-29) and a missing color is picked by
+ * the engine, unlike every other task's.
  */
-export interface NewTask {
-    readonly arrival: number;
-    readonly duration: number;
-    readonly deadline: number;
-    readonly period?: number;
-    /** Missing: the engine picks one unlike every other task's. */
-    readonly color?: string;
-}
+export type NewTask = Readonly<
+    Omit<TaskDefinition, 'id' | 'rawEvents' | 'period' | 'color'> &
+        Partial<Pick<TaskDefinition, 'period' | 'color'>>
+>;
 
 /** One change the user asks for. */
 export type EditItem =
@@ -396,12 +394,18 @@ function editableTask(
     if (unknown !== undefined) return unknown;
     const concluded = refuseIfConcluded(context, taskId, target);
     if (concluded !== undefined) return concluded;
+    const live = context.state.tasks.find((t) => t.definition.id === taskId);
+    if (live !== undefined) return { ok: true, tcb: live };
     // A task included earlier in this tick has no control block yet; until
-    // it is applied it behaves as one never activated (DEC-46).
-    const tcb =
-        context.state.tasks.find((t) => t.definition.id === taskId) ??
-        createTcb(target.definitions[taskId]);
-    return { ok: true, tcb };
+    // it is applied it behaves as one never activated (DEC-46). Included IDs
+    // are always above the state's highest used ID, so any other definition
+    // without a control block is a corrupted target, not a new task.
+    if (taskId <= context.state.maxTaskId) {
+        throw new Error(
+            `Task ${taskId} has a definition but no control block.`,
+        );
+    }
+    return { ok: true, tcb: createTcb(target.definitions[taskId]) };
 }
 
 /**

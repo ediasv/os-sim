@@ -60,6 +60,21 @@ const algorithm = (value: string): EditItem => ({
     algorithm: value as AlgorithmId,
 });
 
+describe('edit fold: target and state out of step', () => {
+    it('throws, instead of inventing a task, when a definition has no control block', () => {
+        const context = contextFor();
+        const target = readTarget(context.state);
+        (context.state.tasks as unknown[]).length = 0;
+        expect(() =>
+            foldEdit(
+                target,
+                [{ kind: 'taskDuration', taskId: 1, duration: 3 }],
+                context,
+            ),
+        ).toThrow(/no control block/);
+    });
+});
+
 describe('edit fold', () => {
     it("reads the target from the state's configuration", () => {
         expect(readTarget(createInitialState(config))).toEqual({
