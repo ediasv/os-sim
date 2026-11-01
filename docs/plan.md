@@ -881,8 +881,10 @@ Issues `[Docs]`, sem fase no Project.
        edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
        temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
        derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
-       `npm test` 1098 passam e 1 ignorado em 56 arquivos (baseline 1096 mais
-       os 2 testes novos); `npm run lint` e `npm run typecheck` sem erros.
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos antes de integrar a
+       `main` (baseline 1096 mais os 2 testes novos); depois de integrar
+       `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
+       `npm run lint` e `npm run typecheck` sem erros.
        Interface e pacote nao verificados.
 - #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
   do sistema mostra a duracao de cada job a partir de `Job.duration`
