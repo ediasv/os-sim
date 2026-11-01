@@ -9,7 +9,7 @@
  *
  * Adding a kind means adding a member to `EditItem`, a field to `EditTarget`
  * (system fields also enter `TARGET_FIELDS`) and a handler to `HANDLERS`.
- * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`, `taskArrival`) also needs its slice of the target
+ * A task-level kind (`taskState`, DEC-43; `taskColor`, `taskDuration`, `taskDeadline`, `taskArrival`, `taskPeriod`) also needs its slice of the target
  * filled by `readTarget` and applied by `applyNetChange`, which the compiler
  * does not check.
  * A `cpuCount` change also edits the CPU list: `applyNetChange` appends or
@@ -21,7 +21,7 @@ import {
     type ConfigField,
     type ConfigInput,
 } from './config';
-import { activateTask } from './activation';
+import { activateTask, rescheduleNextActivation } from './activation';
 import { maxJobs } from './domain';
 import type {
     AlgorithmId,
@@ -65,6 +65,11 @@ export type EditItem =
           readonly kind: 'taskArrival';
           readonly taskId: TaskId;
           readonly arrival: number;
+      }
+    | {
+          readonly kind: 'taskPeriod';
+          readonly taskId: TaskId;
+          readonly period: number;
       };
 
 /** One edit (one form submission): its items, in order. */
@@ -279,20 +284,30 @@ export function checkRemainingLimit(
 }
 
 /**
- * The task as the net target would schedule it: before the first activation
- * the next activation is the pending arrival, which an earlier item of the
- * same edit may have moved, so limit checks must not read the live one.
+ * The task as the net target would schedule it, so limit checks do not depend
+ * on the order of the items in one submission. The next activation is the one
+ * `applyNetChange` will set: the pending arrival before the first activation
+ * (an earlier item may have moved it), or the rescheduled one when a pending
+ * period differs from the live one. The target definition replaces the live
+ * one for the same reason.
  */
 function withPendingArrival(
     tcb: DeepReadonly<TaskControlBlock>,
     target: EditTarget,
+    clock: number,
 ): DeepReadonly<TaskControlBlock> {
-    return tcb.jobs.length === 0
-        ? {
-              ...tcb,
-              nextActivation: target.definitions[tcb.definition.id].arrival,
-          }
-        : tcb;
+    const wanted = target.definitions[tcb.definition.id];
+    const pending = { ...tcb, definition: wanted };
+    return wanted.period === tcb.definition.period && tcb.jobs.length > 0
+        ? tcb
+        : {
+              ...pending,
+              nextActivation: rescheduleNextActivation(
+                  pending,
+                  clock,
+                  wanted.period,
+              ),
+          };
 }
 
 /** Refuses an identifier that is not an integer or names no task. */
@@ -346,7 +361,7 @@ function editCharacteristic(
     const checked = checkTaskField(target, context, taskId, field, value);
     if (!checked.ok) return checked;
     const tooFar = checkRemainingLimit(
-        withPendingArrival(tcb, target),
+        withPendingArrival(tcb, target, context.state.clock),
         checked.definition,
     );
     if (tooFar !== null) return { ok: false, reason: tooFar };
@@ -402,6 +417,58 @@ function hasFinished(
 }
 
 const HANDLERS: Handlers = {
+    taskPeriod: (target, item, context) => {
+        const unknown = refuseUnknownTask(target, item.taskId);
+        if (unknown !== undefined) return unknown;
+        const concluded = refuseIfConcluded(
+            context,
+            item.taskId,
+            'period',
+            target,
+        );
+        if (concluded !== undefined) return concluded;
+        const tcb = context.state.tasks.find(
+            (t) => t.definition.id === item.taskId,
+        );
+        if (tcb === undefined) {
+            throw new Error(
+                `Task ${item.taskId} has a definition but no control block.`,
+            );
+        }
+        const checked = checkTaskField(
+            target,
+            context,
+            item.taskId,
+            'period',
+            item.period,
+        );
+        if (!checked.ok) return checked;
+        // validateConfig accepts 0 (aperiodic, a file concern); Projeto A does
+        // not run aperiodic tasks (DEC-29), so the edit stage refuses it.
+        if (checked.definition.period < 1) {
+            return {
+                ok: false,
+                reason: `O campo periodo deve ser um número inteiro maior ou igual a 1; valor recebido: ${checked.definition.period}. Tarefas aperiódicas (período 0) pertencem ao Projeto B (DEC-29).`,
+            };
+        }
+        const next: EditTarget = {
+            ...target,
+            definitions: {
+                ...target.definitions,
+                [item.taskId]: checked.definition,
+            },
+        };
+        // The new period only reaches activations not yet made; with none left
+        // it changes the RM priority alone, so there is nothing to bound.
+        if (remainingActivations(tcb) > 0) {
+            const tooFar = checkRemainingLimit(
+                withPendingArrival(tcb, next, context.state.clock),
+                checked.definition,
+            );
+            if (tooFar !== null) return { ok: false, reason: tooFar };
+        }
+        return { ok: true, target: next };
+    },
     taskArrival: (target, item, context) => {
         const unknown = refuseUnknownTask(target, item.taskId);
         if (unknown !== undefined) return unknown;
@@ -688,11 +755,22 @@ export function applyNetChange(
         if (after.definitions[taskId] !== before.definitions[taskId]) {
             tcb.definition = after.definitions[taskId];
         }
+        // Judged on the net definitions, so a period or arrival that returns
+        // to its original value in the same tick reschedules nothing. The
+        // first activation follows the arrival; later ones follow the period.
         const rescheduled =
-            tcb.jobs.length === 0 &&
-            after.definitions[taskId].arrival !==
-                before.definitions[taskId].arrival;
-        if (rescheduled) tcb.nextActivation = after.definitions[taskId].arrival;
+            (tcb.jobs.length === 0 &&
+                after.definitions[taskId].arrival !==
+                    before.definitions[taskId].arrival) ||
+            after.definitions[taskId].period !==
+                before.definitions[taskId].period;
+        if (rescheduled) {
+            tcb.nextActivation = rescheduleNextActivation(
+                tcb,
+                state.clock,
+                after.definitions[taskId].period,
+            );
+        }
         applyStatusChange(
             state,
             tcb,

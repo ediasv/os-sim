@@ -1106,6 +1106,295 @@ describe('task arrival edit', () => {
     });
 });
 
+describe('task period edit', () => {
+    const period = (taskId: number, value: unknown): EditItem =>
+        ({ kind: 'taskPeriod', taskId, period: value }) as EditItem;
+    const deadline = (value: number): EditItem => ({
+        kind: 'taskDeadline',
+        taskId: 1,
+        deadline: value,
+    });
+    const arrival = (value: number): EditItem => ({
+        kind: 'taskArrival',
+        taskId: 1,
+        arrival: value,
+    });
+    const fixture = (task: Partial<(typeof config.tasks)[number]> = {}) => {
+        const state = createInitialState({
+            ...config,
+            tasks: [{ ...config.tasks[0], ...task }],
+        });
+        return { state, hasPolicy: both };
+    };
+    /** Gives the task `count` jobs at its period, as the engine would. */
+    const activate = (context: ReturnType<typeof fixture>, count: number) => {
+        const tcb = context.state.tasks[0];
+        const { period: p, deadline: d, duration } = tcb.definition;
+        for (let index = 0; index < count; index++) {
+            tcb.jobs.push({
+                taskId: 1,
+                index,
+                activation: index * p,
+                absoluteDeadline: index * p + d,
+                duration,
+                executed: 0,
+                state: 'ready',
+                completedAt: null,
+                deadlineMissed: false,
+            });
+        }
+        tcb.nextActivation = count >= 10 ? null : count * p;
+    };
+    const reasonOf = (result: ReturnType<typeof foldEdit>): string => {
+        expect(result).toMatchObject({
+            ok: false,
+            refusals: [{ kind: 'taskPeriod' }],
+        });
+        if (result.ok) throw new Error('expected a refusal');
+        return result.refusals[0].reason;
+    };
+
+    it('accepts a new period, replacing the definition without mutating it', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        const result = foldEdit(base, [period(1, 8)], context);
+        expect(result).toMatchObject({ ok: true });
+        if (!result.ok) return;
+        expect(result.target.definitions[1].period).toBe(8);
+        expect(Object.isFrozen(result.target.definitions[1])).toBe(true);
+        expect(base.definitions[1].period).toBe(5);
+    });
+    it('refuses zero naming the Projeto A rule and DEC-29', () => {
+        const context = fixture();
+        const reason = reasonOf(
+            foldEdit(readTarget(context.state), [period(1, 0)], context),
+        );
+        expect(reason).toMatch(/maior ou igual a 1/);
+        expect(reason).toMatch(/Projeto B/);
+        expect(reason).toMatch(/DEC-29/);
+    });
+    it.each([-3, 2.5, Number.NaN, '3', null, undefined])(
+        'refuses the invalid value %j with the validateConfig wording',
+        (value) => {
+            const context = fixture();
+            expect(
+                reasonOf(
+                    foldEdit(
+                        readTarget(context.state),
+                        [period(1, value)],
+                        context,
+                    ),
+                ),
+            ).toBe(
+                issue({
+                    ...config,
+                    tasks: [{ ...config.tasks[0], period: value }],
+                } as ConfigInput),
+            );
+        },
+    );
+    it('refuses a period whose remaining last deadline leaves the exact integers', () => {
+        for (const jobs of [0, 4, 9]) {
+            const context = fixture();
+            activate(context, jobs);
+            expect(
+                reasonOf(
+                    foldEdit(
+                        readTarget(context.state),
+                        [period(1, Number.MAX_SAFE_INTEGER)],
+                        context,
+                    ),
+                ),
+            ).toMatch(/ultrapassa o maior inteiro exato/);
+        }
+    });
+    it('accepts any period after the ten activations', () => {
+        const context = fixture();
+        activate(context, 10);
+        expect(
+            foldEdit(
+                readTarget(context.state),
+                [period(1, Number.MAX_SAFE_INTEGER)],
+                context,
+            ),
+        ).toMatchObject({ ok: true });
+    });
+    it('refuses a concluded task, also when concluded in the same edit', () => {
+        const reason = 'A tarefa 1 está concluída; só a cor pode ser alterada.';
+        const context = fixture();
+        context.state.tasks[0].status = 'concluded';
+        expect(
+            reasonOf(
+                foldEdit(readTarget(context.state), [period(1, 8)], context),
+            ),
+        ).toBe(reason);
+        const live = fixture();
+        expect(
+            foldEdit(
+                readTarget(live.state),
+                [
+                    { kind: 'taskState', taskId: 1, state: 'concluded' },
+                    period(1, 8),
+                ],
+                live,
+            ),
+        ).toEqual({
+            ok: false,
+            refusals: [{ index: 1, kind: 'taskPeriod', reason }],
+        });
+    });
+    it('refuses unknown and non-integer task identifiers', () => {
+        const context = fixture();
+        const base = readTarget(context.state);
+        expect(reasonOf(foldEdit(base, [period(9, 8)], context))).toBe(
+            'Não existe a tarefa 9.',
+        );
+        expect(
+            reasonOf(
+                foldEdit(base, [period('1' as unknown as number, 8)], context),
+            ),
+        ).toContain('O identificador da tarefa deve ser um número inteiro');
+    });
+
+    describe('limit with the other items of the same submission', () => {
+        /** Both orders of the pair must agree, so order never matters. */
+        const bothOrders = (
+            context: ReturnType<typeof fixture>,
+            a: EditItem,
+            b: EditItem,
+        ) => [
+            foldEdit(readTarget(context.state), [a, b], context),
+            foldEdit(readTarget(context.state), [b, a], context),
+        ];
+        const expectUnsafe = (results: ReturnType<typeof foldEdit>[]) => {
+            for (const result of results) {
+                expect(result).toMatchObject({ ok: false });
+                if (result.ok) return;
+                expect(result.refusals).toHaveLength(1);
+                expect(result.refusals[0].reason).toMatch(
+                    /ultrapassa o maior inteiro exato/,
+                );
+            }
+        };
+
+        it('bounds the period by the pending deadline, in either order', () => {
+            const context = fixture();
+            activate(context, 4);
+            // Last job at 15, period 8: next 23, six remaining, last 23 + 40.
+            expectUnsafe(
+                bothOrders(
+                    context,
+                    period(1, 8),
+                    deadline(Number.MAX_SAFE_INTEGER - 62),
+                ),
+            );
+            for (const result of bothOrders(
+                context,
+                period(1, 8),
+                deadline(Number.MAX_SAFE_INTEGER - 63),
+            )) {
+                expect(result).toMatchObject({ ok: true });
+            }
+        });
+        it('bounds the period by the pending arrival before the first activation, in either order', () => {
+            const context = fixture();
+            // arrival + 9 * 8 + deadline 5 must fit.
+            expectUnsafe(
+                bothOrders(
+                    context,
+                    period(1, 8),
+                    arrival(Number.MAX_SAFE_INTEGER - 76),
+                ),
+            );
+            for (const result of bothOrders(
+                context,
+                period(1, 8),
+                arrival(Number.MAX_SAFE_INTEGER - 77),
+            )) {
+                expect(result).toMatchObject({ ok: true });
+            }
+        });
+        it('judges a deadline against the next activation the pending period gives', () => {
+            const context = fixture();
+            activate(context, 1);
+            // Next becomes 0 + 8, nine remain: last 8 + 8 * 8 = 72. The live
+            // next activation (5) would let a deadline 3 too large through.
+            expectUnsafe(
+                bothOrders(
+                    context,
+                    period(1, 8),
+                    deadline(Number.MAX_SAFE_INTEGER - 71),
+                ),
+            );
+            for (const result of bothOrders(
+                context,
+                period(1, 8),
+                deadline(Number.MAX_SAFE_INTEGER - 72),
+            )) {
+                expect(result).toMatchObject({ ok: true });
+            }
+        });
+    });
+
+    describe('net change', () => {
+        const apply = (
+            context: ReturnType<typeof fixture>,
+            items: EditItem[],
+        ) => {
+            const before = readTarget(context.state);
+            const result = foldEdit(before, items, context);
+            if (!result.ok) throw new Error('expected acceptance');
+            applyNetChange(context.state, before, result.target);
+        };
+
+        it('moves the next activation to the last activation plus the new period', () => {
+            const context = fixture({ period: 5 });
+            activate(context, 3); // last activation 10, next 15
+            context.state.clock = 13;
+            apply(context, [period(1, 8)]);
+            expect(context.state.tasks[0].nextActivation).toBe(18);
+            expect(context.state.tasks[0].jobs).toHaveLength(3);
+            expect(context.state.events).toEqual([]);
+        });
+        it('activates at the clock when the new period is already overdue', () => {
+            const context = fixture({ period: 5 });
+            activate(context, 3);
+            context.state.clock = 13;
+            apply(context, [period(1, 2)]);
+            expect(context.state.tasks[0].jobs).toHaveLength(4);
+            expect(context.state.tasks[0].jobs[3].activation).toBe(13);
+            expect(context.state.events).toEqual([
+                { kind: 'activation', time: 13, job: { taskId: 1, index: 3 } },
+            ]);
+            expect(context.state.tasks[0].nextActivation).toBe(15);
+        });
+        it('leaves no trace when the period returns to the original', () => {
+            const context = fixture({ period: 5 });
+            activate(context, 3);
+            context.state.clock = 13;
+            apply(context, [period(1, 8), period(1, 5)]);
+            expect(context.state.tasks[0].jobs).toHaveLength(3);
+            expect(context.state.tasks[0].nextActivation).toBe(15);
+            expect(context.state.events).toEqual([]);
+        });
+        it('leaves nextActivation null after the ten activations', () => {
+            const context = fixture({ period: 5 });
+            activate(context, 10);
+            context.state.clock = 60;
+            apply(context, [period(1, 2)]);
+            expect(context.state.tasks[0].nextActivation).toBeNull();
+            expect(context.state.tasks[0].jobs).toHaveLength(10);
+            expect(context.state.tasks[0].definition.period).toBe(2);
+            expect(context.state.events).toEqual([]);
+        });
+        it('keeps the arrival as the first activation before any job', () => {
+            const context = fixture({ arrival: 4, period: 3 });
+            apply(context, [period(1, 6)]);
+            expect(context.state.tasks[0].nextActivation).toBe(4);
+        });
+    });
+});
+
 describe('task identifier validation', () => {
     it.each([['1'], [[1]], [1.5], [Number.NaN]])(
         'refuses the non-integer task identifier %j',

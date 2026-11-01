@@ -87,6 +87,18 @@ describe('RM', () => {
         expect(ids(view(1, [a, b, c]))).toEqual([2]);
     });
 
+    it('ranks by the period of the task definition, not of the job (period edit, REQ-05)', () => {
+        const job = { activation: 0, index: 0 };
+        const before = [cand(task(1, 10), 10, job), cand(task(2, 20), 20, job)];
+        expect(ids(view(1, before))).toEqual([1]);
+        // Same jobs, task 1 edited to a longer period: the winner flips.
+        const after = [cand(task(1, 30), 10, job), before[1]];
+        expect(ids(view(1, after))).toEqual([2]);
+        // EDF reads absolute deadlines only, so the same edit changes nothing.
+        expect(ids(view(1, before), edfPolicy)).toEqual([1]);
+        expect(ids(view(1, after), edfPolicy)).toEqual([1]);
+    });
+
     it('picks the smallest periods on several CPUs, in any order', () => {
         expect(ids(view(2, [a, b, c]))).toEqual([2, 3]);
         expect(ids(view(2, [c, b, a]))).toEqual([2, 3]);

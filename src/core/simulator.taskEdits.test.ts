@@ -186,3 +186,136 @@ describe('task arrival edit in the engine', () => {
         expect(activations(sim)).toMatchObject([{ time: 5 }]);
     });
 });
+
+describe('task period edit in the engine', () => {
+    const periodic = (changes: Partial<TaskDefinition> = {}) =>
+        createSimulator({
+            ...DEFAULT_CONFIG,
+            tasks: [
+                task(1, { period: 5, deadline: 5, duration: 1, ...changes }),
+            ],
+        });
+    const advanceTo = (
+        sim: Pick<ReturnType<typeof periodic>, 'tick' | 'getCurrentSnapshot'>,
+        clock: number,
+    ) => {
+        while (sim.getCurrentSnapshot().clock < clock) {
+            sim.tick();
+            expect(findInconsistencies(sim.getCurrentSnapshot())).toEqual([]);
+        }
+    };
+    const activationTimes = (sim: ReturnType<typeof periodic>) =>
+        sim
+            .getCurrentSnapshot()
+            .events.filter((event) => event.kind === 'activation')
+            .map((event) => event.time);
+
+    it('pushes the next activation to the last one plus the new period (DEC-37)', () => {
+        const sim = periodic();
+        advanceTo(sim, 13);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 8 }]);
+        expect(sim.getCurrentSnapshot().tasks[0].nextActivation).toBe(18);
+        advanceTo(sim, 20);
+        expect(activationTimes(sim)).toEqual([0, 5, 10, 18]);
+    });
+    it('activates at the edit tick when the new period is overdue, then every period', () => {
+        const sim = periodic();
+        advanceTo(sim, 13);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 2 }]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(
+            snapshot.events.filter(
+                (event) => event.kind === 'activation' && event.time === 13,
+            ),
+        ).toMatchObject([{ kind: 'activation', job: { taskId: 1, index: 3 } }]);
+        expect(snapshot.tasks[0].nextActivation).toBe(15);
+        advanceTo(sim, 18);
+        expect(activationTimes(sim)).toEqual([0, 5, 10, 13, 15, 17]);
+    });
+    it('leaves no trace when the period returns to the original in the same tick', () => {
+        const sim = periodic();
+        advanceTo(sim, 13);
+        const before = sim.getCurrentSnapshot();
+        sim.edit([
+            { kind: 'taskPeriod', taskId: 1, period: 8 },
+            { kind: 'taskPeriod', taskId: 1, period: 5 },
+        ]);
+        const after = sim.getCurrentSnapshot();
+        expect(after.events).toHaveLength(before.events.length);
+        expect(after.tasks[0].nextActivation).toBe(15);
+        expect(after.tasks[0].jobs).toHaveLength(3);
+    });
+    it('keeps the arrival as the first activation, then ten at the new period', () => {
+        const sim = periodic({ arrival: 4, period: 3, deadline: 3 });
+        advanceTo(sim, 2);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 6 }]);
+        advanceTo(sim, 70);
+        expect(activationTimes(sim)).toEqual([
+            4, 10, 16, 22, 28, 34, 40, 46, 52, 58,
+        ]);
+        expect(sim.getCurrentSnapshot().tasks[0].nextActivation).toBeNull();
+    });
+    it('keeps the older incomplete job as the only eligible one (DEC-02)', () => {
+        const sim = periodic({ duration: 20, deadline: 100 });
+        advanceTo(sim, 13);
+        sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 2 }]);
+        const snapshot = sim.getCurrentSnapshot();
+        expect(snapshot.tasks[0].jobs.at(-1)).toMatchObject({
+            index: 3,
+            activation: 13,
+            state: 'ready',
+        });
+        expect(snapshot.cpus[0].running).toEqual({ taskId: 1, index: 0 });
+        expect(findInconsistencies(snapshot)).toEqual([]);
+    });
+
+    describe('after the ten activations', () => {
+        const overloaded = (algorithm: 'RM' | 'EDF') =>
+            createSimulator({
+                ...DEFAULT_CONFIG,
+                algorithm,
+                tasks: [
+                    task(1, { period: 2, deadline: 100, duration: 5 }),
+                    task(2, { period: 3, deadline: 90, duration: 3 }),
+                ],
+            });
+        const running = (sim: ReturnType<typeof overloaded>) =>
+            sim.getCurrentSnapshot().cpus[0].running?.taskId;
+
+        it('accepts the edit, keeps nextActivation null and flips the RM winner at once', () => {
+            const sim = overloaded('RM');
+            advanceTo(sim, 30);
+            expect(
+                sim.getCurrentSnapshot().tasks.map((t) => t.nextActivation),
+            ).toEqual([null, null]);
+            expect(running(sim)).toBe(1);
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 5 }]);
+            const snapshot = sim.getCurrentSnapshot();
+            expect(snapshot.tasks[0].nextActivation).toBeNull();
+            expect(snapshot.tasks[0].jobs).toHaveLength(10);
+            expect(running(sim)).toBe(2);
+            expect(findInconsistencies(snapshot)).toEqual([]);
+        });
+        it('does not change the EDF selection', () => {
+            const sim = overloaded('EDF');
+            advanceTo(sim, 30);
+            const winner = running(sim);
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 5 }]);
+            expect(running(sim)).toBe(winner);
+        });
+    });
+
+    it('refuses zero, an invalid value and a concluded task', () => {
+        const sim = periodic();
+        expect(() =>
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 0 }]),
+        ).toThrow(/Projeto B/);
+        expect(() =>
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 2.5 }]),
+        ).toThrow(/número inteiro/);
+        sim.edit([{ kind: 'taskState', taskId: 1, state: 'concluded' }]);
+        expect(() =>
+            sim.edit([{ kind: 'taskPeriod', taskId: 1, period: 3 }]),
+        ).toThrow(/concluída/);
+    });
+});
