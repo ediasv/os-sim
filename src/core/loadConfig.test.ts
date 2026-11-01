@@ -121,7 +121,7 @@ describe('loadConfig', () => {
 
         expect(issues.map(where)).toEqual([expected]);
         expect(issues[0].message).toBe(
-            `Linha ${expected.line}, campo ${expected.field} (valor ${expected.value}): ${coreMessage}`,
+            `Linha ${expected.line}, campo ${expected.field}: ${coreMessage}`,
         );
     });
 
@@ -192,7 +192,7 @@ describe('loadConfig', () => {
             { line: 5, field: 'id', value: '1' },
         ]);
         expect(issues[5].message).toBe(
-            'Linha 5, campo id (valor 1): O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+            'Linha 5, campo id: O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
         );
     });
 
@@ -404,7 +404,7 @@ describe('loadConfig: integer rule in every numeric field (DEC-10)', () => {
         expect(where(issues[0])).toEqual({ line, field, value });
         expect(issues[0].origin).toBe('core');
         expect(issues[0].message).toBe(
-            `Linha ${line}, campo ${field} (valor ${value}): O campo ${field} deve ser um número inteiro maior ou igual a ${minimum[field]}; valor recebido: ${shown}.`,
+            `Linha ${line}, campo ${field}: O campo ${field} deve ser um número inteiro maior ou igual a ${minimum[field]}; valor recebido: ${shown}.`,
         );
     }
 

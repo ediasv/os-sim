@@ -18,8 +18,8 @@ afirma que os modulos planejados ja existem.
   `analyzeConfig` devolve os erros de sintaxe ou, sem eles, a configuracao com
   linhas e textos recebidos; `parseConfig` descarta os textos.
 - [Carregamento](../src/core/loadConfig.ts): `loadConfig` envia ao
-  `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha,
-  campo e valor recebido aos problemas do nucleo (DEC-19); nao repete regras
+  `validateConfig` somente arquivo sem erros de sintaxe e acrescenta linha e
+  campo aos problemas do nucleo, cujas mensagens ja citam o valor (DEC-19); nao repete regras
   semanticas. Antes do `validateConfig`, aplica o periodo padrao a tarefa com
   periodo zero e devolve `warnings` no sucesso ou junto dos problemas do nucleo
   (DEC-29, DEC-34).
@@ -28,7 +28,8 @@ afirma que os modulos planejados ja existem.
 - [Consistencia](../src/core/consistency.ts): `findInconsistencies` confere os
   fatos registrados em dobro no dominio (DEC-12, DEC-21).
 - [CPUs desligadas](../src/core/cpuOff.ts): `summarizeCpuOff` deriva de um
-  snapshot os intervalos e o total desligado de cada CPU (DEC-21).
+  snapshot os intervalos e o total desligado de cada CPU, inclusive
+  removida, sem contar ausencia como desligamento (DEC-21, DEC-40).
 - [Elegibilidade](../src/core/eligibility.ts): seleciona o job incompleto mais
   antigo de cada tarefa, sem liberar jobs posteriores quando ele esta suspenso
   (DEC-02).
@@ -40,20 +41,28 @@ afirma que os modulos planejados ja existem.
 - [Sorteio](../src/core/draw.ts): gerador pseudoaleatorio com semente fixa e
   sorteio dos vencedores do empate residual (DEC-06, DEC-27).
 - [Fabrica do simulador](../src/core/createSimulator.ts): `createSimulator`
-  resolve `config.algorithm` no registro e constroi o `Simulator` (DEC-25).
+  confere que o registro tem `config.algorithm` e constroi o `Simulator` com o
+  registro inteiro (DEC-25, DEC-39).
 - [Historico](../src/core/history.ts): `SnapshotHistory` guarda os snapshots
-  congelados (passo k no indice k) e o cursor; so acrescenta com o cursor no
-  ultimo passo e nunca altera nem descarta um passo (DEC-35).
+  congelados (passo k no indice k), a lista de edicoes de cada passo e o
+  cursor; so acrescenta com o cursor no ultimo passo, e `rewrite` troca um
+  passo editado e descarta os seguintes com suas edicoes (DEC-35, DEC-39).
+- [Edicao](../src/core/edit.ts): tipos de item (algoritmo, quantum e
+  quantidade de CPUs), dobra em ordem sobre o alvo pedido, validacao por
+  item e aplicacao da mudanca liquida do tick (DEC-37, DEC-39, DEC-40).
 - [Simulator](../src/core/simulator.ts): valida configuracao, registra ativacoes
   nos limites de tick, executa jobs, registra conclusoes/perdas de prazo
-  (ordem dos eventos em DEC-22) e faz despacho global pela politica injetada,
+  (ordem dos eventos em DEC-22) e faz despacho global pela politica do
+  algoritmo vigente (DEC-39),
   sorteando o empate residual relatado (DEC-27), antes de publicar snapshots
   completos (DEC-07, DEC-14); rejeita configuracao invalida com
   `ConfigValidationError` e expoe os jobs elegiveis somente para leitura
   (DEC-15); mantem cursor sobre o historico e restaura passos registrados
   (`restore`, `getCursor`, `getCurrentSnapshot`, DEC-35); navega por eles sem
   recalcular (`forward`, `backward`, `canForward`) e recusa pedido impossivel com
-  `SimulationRefusal` (DEC-36).
+  `SimulationRefusal` (DEC-36); edita o tick do cursor recalculando-o a
+  partir de `t-1` (`edit`, `getEdits`) e recusa edicao invalida com
+  `EditRefusal`, um motivo por item (DEC-37, DEC-39).
 - [useSimulation](../src/renderer/composables/useSimulation.ts): mantem instancia
   privada, publica o snapshot do cursor via `shallowRef` e oferece os comandos
   `load`, `tick`, `forward`, `backward` e `next`, que devolvem resultado
@@ -422,6 +431,10 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   jobs. Job cuja CPU de [t-1, t) foi removida continua com o primeiro
   desempate; a visao precisa representa-lo sem uma CPU vigente (forma na
   #26).
+- Revista por DEC-40 (#116): `wasRunning` representa a execucao em
+  [t-1, t), derivada de `executions`; `previousCpu` permanece como posse
+  antes do despacho e pode ser nulo mesmo com `wasRunning: true`. RM/EDF
+  usam `wasRunning` no primeiro desempate.
 - Alternativas descartadas: ordenacao completa das candidatas, inclusive dos
   empates fora do corte (forca sorteios sem efeito alem do corte); visao
   apenas tipada sobre o estado vivo (um cast permitiria mutar o motor);
@@ -457,6 +470,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       copia-las, o que preserva a guarda de imutabilidade e reduz o custo.
 - Alternativa descartada: bloquear o simulador apos um erro, o que perde um
   estado valido que poderia continuar.
+- Revista por DEC-39: `edit` tambem e transacional; recusa ou falha no
+  recalculo deixam estado, cursor e historico inalterados.
 
 ### DEC-15: Rejeicao de configuracao e consultas do Simulator
 
@@ -544,7 +559,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 - Consequencia:
     - Visao da politica sem mudanca (DEC-13): `previousCpu` do job vencido traz
       a CPU que ele ocupava, porque o motor monta a visao antes de liberar as
-      CPUs.
+      CPUs. Revista por DEC-40: o primeiro desempate passou a vir de
+      `wasRunning` (execucao em [t-1, t)), e `previousCpu` deixou de decidi-lo.
     - Como a politica e consultada a cada tick (DEC-07), job de prioridade maior
       ja preempta sem esperar o quantum, e no empate o job vencido fica pelo
       criterio (1). Com politicas por prioridade (RM, EDF), o vencimento renova
@@ -565,8 +581,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 
 ### DEC-19: Diagnosticos do parser de configuracao
 
-- Estado: aceita em 2026-10-17 e revista em 2026-10-18 e em 2026-10-28 (revisao
-  do PR #84, #31, e decisao da #94) pelo usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
+- Estado: aceita em 2026-10-17 e revista em 2026-10-18, em 2026-10-28 (revisao
+  do PR #84, #31, e decisao da #94) e em 2026-11-01 (decisao da #93) pelo
+  usuario. Requisitos: REQ-06, REQ-10. Resolve Q-03;
   detalha DEC-10, DEC-12 e DEC-15.
 - Decisao:
     1. Diagnosticos de conteudo identificam linha original (base 1), campo,
@@ -584,16 +601,18 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
        incluir todos os problemas retornados pelo nucleo; havendo erro de
        sintaxe, reportar somente os erros de sintaxe (revisao de 2026-10-28).
        Nao repetir as regras semanticas do nucleo. Acrescentar ao texto
-       original de cada mensagem do nucleo o contexto da linha e do campo (e
-       o valor recebido quando disponivel), sem alterar nem reescrever a
-       mensagem. Em particular,
+       original de cada mensagem do nucleo o contexto da linha e do campo,
+       sem alterar nem reescrever a mensagem. O valor recebido nao entra no
+       texto acrescentado, porque toda mensagem do nucleo ja cita o valor;
+       o texto como escrito continua no campo `value` do diagnostico
+       (decisao da #93, 2026-11-01). Em particular,
        referencias ordinais a outras tarefas permanecem como o nucleo as
        produziu; nao sao substituidas pela linha original da tarefa referida.
        A linha e o campo adicionados correspondem a tarefa que tem o problema,
        associados pelo indice da tarefa (DEC-10, DEC-15). Problema causado
        por varios campos juntos (o nucleo o marca como `combined`, por
        exemplo o prazo da ultima ativacao) recebe linha e campo, sem valor
-       recebido, porque o texto de um so campo apontaria um valor que pode
+       recebido nem `value`, porque o texto de um so campo apontaria um valor que pode
        ser valido. O parser entrega a cor como foi escrita; compara-la sem
        caixa e converte-la para maiusculas fica com o nucleo, para que a
        mensagem de cor invalida mostre o valor recebido; a de cor repetida
@@ -612,8 +631,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
        de conteudo nem de leitura, conforme #33.
 - Exemplos:
     - Sintaxe: `Linha 4, campo duracao, valor "x": esperado um numero.`
-    - Regra do nucleo: `Linha 6, campo id (valor 2): O id 2 já foi usado
-      pela 1ª tarefa; cada tarefa precisa de um id único.`
+    - Regra do nucleo: `Linha 6, campo id: O id 2 já foi usado pela 1ª
+      tarefa; cada tarefa precisa de um id único.`
     - Falha de acesso: `Nao foi possivel abrir o arquivo "<caminho>":
       permissao negada.`
 - Justificativa: linhas originais permitem localizar erros mesmo quando o
@@ -622,7 +641,15 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   alterar referencias ordinais. O nucleo numera as tarefas pela posicao na
   lista que recebe; validar sem uma linha descartada deslocaria esses
   ordinais e esconderia conflitos com ela, entao uma segunda rodada de
-  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28). O
+  correcao e preferivel a mensagens enganosas (revisao de 2026-10-28).
+  Repetir o valor no prefixo e na mensagem do nucleo
+  (`campo quantum (valor 0): ... valor recebido: 0.`) so acrescenta ruido; o
+  usuario preferiu mostrar o valor uma vez, inclusive quando o texto escrito
+  e o numero convertido diferem (`2.50` e `2.5`, ou um inteiro alem do limite
+  exato), caso em que fica o numero citado pelo nucleo. Mudar a mensagem do
+  nucleo tiraria o valor da edicao durante a simulacao (DEC-15), que nao tem
+  prefixo, entao a mudanca fica no carregamento (decisao da #93,
+  2026-11-01). O
   algoritmo valido e uma regra semantica (DEC-10, DEC-15): checa-lo no parser
   duplicava a regra com outra mensagem e tornava inalcancavel a do nucleo
   para arquivos; com a cor, ficou uma so regra e uma so mensagem (#94). Falhas
@@ -705,6 +732,11 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   o tempo fora do sistema nao conta como desligado, e a sequencia
   desligar/religar e conferida dentro de cada periodo de existencia; CPU
   removida deixa de ser "inexistente" para os eventos anteriores.
+- Revista por DEC-40 (#116): retorno inclui todos os IDs historicos em
+  ordem crescente; `cpu-removed` fecha o intervalo aberto sem `cpu-on`,
+  `cpu-added` inicia outro periodo de existencia. `summarizeCpuOff` reconstroi a
+  presenca inicial a partir das CPUs atuais e eventos de existencia.
+  Consistencia compara `offSince` por ID, somente para CPUs vigentes.
 
 ### DEC-22: Ordem dos eventos numa fronteira
 
@@ -734,6 +766,9 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   da lista de tarefas e depois das CPUs (revisao de 2026-11-01), e a etapa de
   fatias vencidas passa a vir depois das ativacoes; o despacho
   passa a incluir a `preemption` causada por job forcado.
+- Revista por DEC-39: a ordem ativacoes, etapa de edicao e fatias vencidas
+  esta implementada desde a #115 (a `preemption` por job forcado fica para a
+  #117).
 
 ### DEC-23: Contrato do adaptador Vue
 
@@ -831,6 +866,12 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       a fabrica concentra a resolucao e vira resolvedor na #26.
     - Empate de prioridade no corte de CPUs segue DEC-16 e, se residual, o
       sorteio de DEC-27 (#20); nao cai mais na ordem do arquivo.
+- Revista por DEC-39: o item 2 muda. A fabrica passa o registro inteiro
+  (`{ policies }`) e o `Simulator` busca a politica pelo algoritmo vigente a
+  cada despacho; a alternativa "resolvedor no motor" foi adotada, porque a
+  troca de algoritmo durante a simulacao passou a existir. O motor continua
+  sem ramificar pelo nome (DEC-01), e a politica unica injetada continua
+  valendo para os testes do motor.
 
 ### DEC-26: Sem testes de escalonabilidade
 
@@ -1200,6 +1241,10 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
     abordagem, tarefas nao registradas) foi substituida por esta, por nao ser
     reproduzivel nas condicoes de `devEngines`.
 
+- Revista por DEC-39: o historico guarda a lista de edicoes de cada passo e
+  descarta passos so por `rewrite`, que troca o passo editado e apaga os
+  seguintes com suas edicoes; "descartar o futuro fica na #26" foi feito na
+  #115. `append` continua recusado com o cursor atras do ultimo passo.
 - Alternativas descartadas: expor recalculo/descarte publico na #23 (fora do
   escopo; pertence a #24/#26). PR #106 (mesma issue) fazia `tick()` atras do
   cursor descartar os passos seguintes e `getLatestSnapshot()` devolver o
@@ -1579,6 +1624,83 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Motivo da retirada e alternativa registrados em DEC-02; texto original no
   PR #101 (commit `37f80fa`). Reabriu e depois fechou de novo #11 e #12.
 
+### DEC-39: Caminho da edicao no nucleo
+
+- Estado: proposta em 2026-11-01 no PR #115 (#26, 2 de 6), para aceite do
+  usuario na revisao. Requisitos: REQ-04, REQ-05, REQ-07. Detalha DEC-37;
+  revisa DEC-14, DEC-22, DEC-25 e DEC-35.
+- Contexto: DEC-37 define o que cada edicao faz, mas nao a forma no nucleo.
+  A #26 sai em varios PRs; este cria o caminho geral, provado com algoritmo
+  e quantum, para que os seguintes so acrescentem tipos de item.
+- Decisao:
+    1. API: `Simulator.edit(items)` edita o tick do cursor; `getEdits(step)`
+       devolve as edicoes aceitas no passo, congeladas, na ordem em que foram
+       aceitas (`RangeError` para passo nao registrado, como `restore`).
+       `EditItem` (`src/core/edit.ts`) e uma uniao por `kind`; a #115 cria
+       `algorithm` e `quantum`. Um tipo novo e um membro da uniao, um campo
+       de `EditTarget` e um tratador em `HANDLERS`, cujo tipo exige um
+       tratador por tipo, entao o compilador acusa o que faltar.
+    2. Recalculo: `edit` recalcula o passo `t-1 -> t` a partir do snapshot
+       `t-1` (no tick 0, do estado inicial da configuracao validada no
+       construtor) com todas as edicoes de `t` mais a nova. `tick()`, o
+       construtor e `edit` compartilham as etapas do Fluxo de um passo, com a
+       etapa de edicao entre as ativacoes e as fatias vencidas (DEC-37).
+    3. Mudanca liquida: os itens sao dobrados sobre um `EditTarget` (o que o
+       usuario pediu), validados em ordem sobre o estado da etapa de edicao;
+       a etapa aplica so a diferenca entre o alvo antes e depois das edicoes
+       do tick (DEC-37 item 5). Item recusado nao entra na dobra, e os
+       seguintes sao julgados sem ele, para que todos os recusados recebam
+       motivo de uma vez (escolha do autor). Algoritmo e quantum trocam a
+       `config` por um objeto novo congelado, nunca a mutam, pois snapshots e
+       estados restaurados a compartilham (DEC-35); nao registram evento.
+    4. Recusa: qualquer item recusado recusa a edicao inteira com
+       `EditRefusal` (`src/core/refusal.ts`), subclasse de
+       `SimulationRefusal` com `items` (`index` a partir de 0, `kind`,
+       `reason`) e mensagem com uma linha por item, `Item ${index + 1}
+       (${kind}): ${reason}`. Regra da configuracao (quantum, algoritmo) e
+       julgada por `validateConfig`, e o motivo e a mensagem dele (fonte
+       unica, DEC-28; escolha do usuario na #115). Motivos sem regra da
+       configuracao ficam em ingles: `No scheduling policy is registered for
+       algorithm ${algorithm}.`, `Unknown edit item kind ...`. Edicao vazia e
+       recusada com `SimulationRefusal('An edit needs at least one item.')`.
+       Edicao ja registrada recusada ao ser refeita e defeito do motor
+       (`Error`), pois o recalculo e deterministico.
+    5. Atomicidade: `edit` e transacional como `tick()` (DEC-14): recusa ou
+       falha da politica deixam estado, cursor e historico identicos.
+    6. Historico: `SnapshotHistory.rewrite(step, snapshot, edits)` troca o
+       passo, guarda copia congelada da lista de edicoes e descarta os passos
+       seguintes com suas edicoes; `append` registra passo sem edicoes. Toda
+       edicao aceita descarta o futuro, mesmo com mudanca liquida nula
+       (DEC-37 item 1, escolha do autor); o cursor fica no passo editado.
+    7. Politica: o construtor recebe `SchedulingPolicy` ou `{ policies }`
+       (`PolicySource`); a fabrica passa o registro inteiro. O motor busca a
+       politica pelo `config.algorithm` vigente a cada despacho, sem guardar
+       em cache, entao um passo restaurado usa o proprio algoritmo. Politica
+       unica injetada (testes do motor) vale para qualquer algoritmo. Sem
+       candidatas e sem politica para o algoritmo, usa a politica que nao
+       seleciona nada. DEC-01 continua: o motor busca pelo nome, nao ramifica
+       por ele.
+- Nota para a #116: "executou em [t-1, t)" (primeiro desempate, DEC-18) ja e
+  derivavel de `executions`, pelo trecho do job com `end === clock` que a
+  execucao do passo recalculado escreve antes da etapa de edicao; nao e
+  preciso guardar fato novo quando a CPU for removida.
+- Justificativa: um caminho unico de edicao, com tipos de item isolados em
+  tratadores, deixa os PRs seguintes da #26 sem mexer no recalculo, no
+  historico nem na recusa. Dobrar sobre o alvo, e nao sobre o estado, e o
+  que torna o snapshot `t` dependente so de `t-1` e do estado final pedido.
+- Alternativas descartadas:
+    - Registro direto como segundo argumento do construtor: `{}` ficaria
+      ambiguo entre registro vazio e politica sem `select`, que DEC-14 manda
+      rejeitar.
+    - Guardar a politica escolhida no estado: duplicaria `config.algorithm`.
+    - Parar a validacao no primeiro item recusado: a mensagem nao citaria
+      cada item recusado (DEC-37 item 4).
+    - Mensagens de recusa em ingles para as regras da configuracao:
+      duplicariam o texto de `validateConfig` (DEC-28).
+- Evidencia: `src/core/edit.test.ts`, `src/core/history.test.ts`,
+  `src/core/simulator.edit.test.ts` e o bloco `policy source` de
+  `src/core/simulator.test.ts`.
+
 ## Fluxo de um passo
 
 1. Executar [t, t+1) em cada CPU ocupada e registrar os intervalos.
@@ -1601,3 +1723,84 @@ Snapshot inicial e fronteiras seguem DEC-11; quantidade de jobs e termino seguem
 DEC-09 e DEC-37. Fixar ambos em testes antes de expor a API. Editar em `t`
 recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 `t` (DEC-37); no tick 0, o estado inicial passa pelas etapas 4, 5 e 7.
+
+### DEC-40: Edicao de CPUs e execucao anterior independente da posse
+
+- Estado: proposta em 2026-11-01 no PR #124 (#26, 3 de 6), para aceite do
+  usuario na revisao; o #116 integrou somente documentacao. Requisitos: REQ-02, REQ-04, REQ-05,
+  REQ-07 e REQ-09. Detalha DEC-37; revisa DEC-13 e DEC-21. Nao altera o
+  estado de aceite de DEC-39.
+- Contexto: remover CPU nao apaga o trabalho de [t-1, t), e uma CPU ausente
+  nao esta desligada. A posse vigente e o array atual de CPUs nao bastam
+  para derivar esses fatos.
+- Decisao de implementacao:
+    1. `EditItem` ganha `cpuCount` e `EditTarget` guarda a quantidade final.
+       O tratador usa `validateConfig`, incluindo as mensagens existentes.
+       `applyNetChange` troca a configuracao congelada, remove maiores IDs
+       ou acrescenta os seguintes, reutilizando IDs, somente pela diferenca
+       final do tick. Eventos `cpu-removed`/`cpu-added` saem por ID crescente
+       na etapa de edicao; a remocao nao registra `cpu-off`/`cpu-on` nem
+       `preemption` ficticios.
+    2. CPU nova ou reincluida tem `running: null`, `sliceElapsed: 0` e
+       `offSince: null`; o despacho a marca desligada se nao houver trabalho.
+       Job incompleto da CPU removida volta a pronto, sem perder identidade,
+       progresso ou prazo. Se selecionado em outra CPU, inicia fatia nova;
+       CPUs sobreviventes preservam consumo, salvo vencimento real.
+    3. `PolicyCandidate.wasRunning` e verdadeiro se `executions` tem trecho
+       do job com `start < clock` e `end === clock`. O conjunto e montado uma
+       vez por visao e congelado com ela; nao se guarda flag no snapshot.
+       Em t=0 ninguem executou. `previousCpu` segue descrevendo a posse
+       antes do despacho, nao o primeiro desempate. Prioridade RM/EDF vem
+       antes de `wasRunning`; os criterios seguintes e sorteio nao mudam.
+    4. `summarizeCpuOff` devolve todos os IDs que existiram naquele snapshot,
+       em ID crescente, incluindo removidos e CPUs nunca desligadas. Deriva
+       a presenca inicial desfazendo os eventos de existencia sobre os IDs
+       atuais e depois percorre o historico de potencia/existencia. Remover
+       fecha eventual intervalo aberto; reincluir nao soma o tempo ausente.
+       Eventos futuros, tempos invalidos/regressivos, transicoes sem par e
+       eventos de potencia durante ausencia lancam `CpuEventSequenceError`.
+       Nao existe consulta ao historico futuro nem registro mutavel extra.
+    5. `findInconsistencies` confere IDs atuais 1..`cpuCount` e compara
+       intervalos abertos por ID, nao por indice; apenas CPUs vigentes podem
+       ter intervalo aberto. Continua convertendo somente
+       `CpuEventSequenceError` em inconsistencia.
+- Justificativa: preservar o desempate de DEC-18 quando a CPU desaparece e
+  manter toda a evidencia de CPU desligada para inspecao/Gantt, sem inventar
+  desligamento durante ausencia. Historico e transacoes do #115 bastam:
+  nao foi necessario mudar `Simulator`, `SnapshotHistory` ou o renderer.
+- Alternativas descartadas: guardar outro fato por job/snapshot para execucao
+  anterior (ja derivavel dos trechos); manter CPU removida no array vigente;
+  filtrar resumos pelas CPUs atuais (apagaria evidencia); guardar intervalos
+  desligados em paralelo aos eventos (mais um fato duplicado).
+- Fora: limite contra tarefas forcadas (#117), comando no adaptador (#37) e
+  desenho de lacunas no Gantt (#38). #26 permanece aberta.
+
+### DEC-41: Exportacao do Gantt em SVG pelo processo principal
+
+- Estado: proposta em 2026-11-01 no PR #121 (#39), para aceite do usuario na
+  revisao. Requisitos: REQ-09, REQ-10. Detalha DEC-08 e DEC-19; nao altera o
+  nucleo.
+- Decisao:
+    1. A imagem e gerada no renderer por funcao pura sobre o ultimo snapshot do
+       historico (`features/export/ganttSvg.ts`): independe do cursor, de zoom,
+       rolagem e janela, e nao tem teto de ticks. O layout segue o frame
+       "Exportacao SVG" da pagina Telas do Figma (73 px por tick, eixo no topo,
+       raias por tarefa, divisor de processadores, raias de CPU, legenda). Rotulo
+       do trecho: "CPU n · #job" quando cabe, senao "CPU n".
+    2. Exportar vale em qualquer passo, nao so no final (acordado com o usuario
+       em 2026-11-01, proposta da #39); resultado sem todas as tarefas
+       terminadas e identificado como parcial no cabecalho (FE-18).
+    3. A gravacao fica no main (`main/imageFile.ts`), pelo canal
+       `image-file:save`: o renderer envia so o texto do SVG, nunca o caminho; o
+       destino vem do dialogo "salvar como" do main, que acrescenta `.svg` se o
+       nome nao tiver extensao. Falha de gravacao devolve caminho e motivo
+       (REQ-10); cancelar nao e erro; nao altera a sessao. Pedidos simultaneos
+       aguardam o dialogo aberto. Mesma checagem de origem da DEC-19.
+    4. Suspenso, forcado e lacuna de CPU removida ficam fora ate a #26 registrar
+       os eventos de DEC-37; a legenda lista so o que e desenhado.
+- Justificativa: SVG a partir dos dados evita captura de tela e limites de
+  canvas (A.2.4); a gravacao exige o main (regras de importacao do README).
+- Consequencia: o cabecalho traz nome do arquivo de configuracao e data da
+  exportacao; o SVG e autonomo (cores literais do tema escuro, sem script nem
+  referencia externa). Quando a #38 desenhar o Gantt na tela, alinhar as duas
+  apresentacoes para nao manter duas.

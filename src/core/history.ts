@@ -1,16 +1,23 @@
 import type { SimulationSnapshot } from './domain';
+import type { Edit } from './edit';
+import { freezeCopy } from './helpers/freezeCopy';
 
 /**
- * Recorded steps of a simulation and the cursor that marks the current one
- * (REQ-04, DEC-35). Step `k` is stored at index `k` and has `clock === k`
- * (DEC-11). Holds only the frozen snapshots the engine publishes and never
- * changes or drops one: a step can be added only when the cursor is on the
- * latest step. Knows nothing about the engine; restoring live state from a
- * step is the simulator's job. The recorded future is reused by
- * `Simulator.forward()` (DEC-36); discarding it is #26.
+ * Recorded steps of a simulation, the edits accepted at each step and the
+ * cursor that marks the current step (REQ-04, REQ-05, DEC-35, DEC-39). Step
+ * `k` is stored at index `k` and has `clock === k` (DEC-11). Holds only the
+ * frozen snapshots the engine publishes. A step is added only when the cursor
+ * is on the latest step (`append`, with no edits), and a step is replaced
+ * only by `rewrite`, which drops every later step with its edits: an edit in
+ * the past discards the future (DEC-37). Knows nothing about the engine;
+ * restoring live state from a step and recomputing an edited step are the
+ * simulator's job. The recorded future is reused by `Simulator.forward()`
+ * (DEC-36).
  */
 export class SnapshotHistory {
     private readonly snapshots: SimulationSnapshot[] = [];
+    /** Edits accepted at each step, in acceptance order; index = step. */
+    private readonly edits: (readonly Edit[])[] = [];
     private position = -1;
 
     /** Step the cursor points at; -1 only before the first append. */
@@ -47,6 +54,12 @@ export class SnapshotHistory {
         return this.snapshots[step];
     }
 
+    /** Frozen edits accepted at `step`; same RangeError as `at`. */
+    editsAt(step: number): readonly Edit[] {
+        this.at(step);
+        return this.edits[step];
+    }
+
     current(): SimulationSnapshot {
         return this.at(this.position);
     }
@@ -62,8 +75,9 @@ export class SnapshotHistory {
     }
 
     /**
-     * Records the step after the latest one and moves the cursor to it.
-     * Refused while the cursor is behind, so no recorded step is overwritten.
+     * Records the step after the latest one, with no edits, and moves the
+     * cursor to it. Refused while the cursor is behind, so no recorded step is
+     * overwritten.
      */
     append(snapshot: SimulationSnapshot): void {
         if (this.isBehind) {
@@ -72,6 +86,32 @@ export class SnapshotHistory {
             );
         }
         this.snapshots.push(snapshot);
+        this.edits.push(Object.freeze([]));
         this.position = this.latestStep;
+    }
+
+    /**
+     * Replaces a recorded step with its recomputed snapshot and the full list
+     * of edits accepted at it, drops every later step and its edits, and moves
+     * the cursor to `step` (DEC-37, DEC-39). Stores a frozen copy of the
+     * edits, so the caller cannot change them afterwards. Nothing changes
+     * when the step is not recorded or the snapshot is of another clock.
+     */
+    rewrite(
+        step: number,
+        snapshot: SimulationSnapshot,
+        edits: readonly Edit[],
+    ): void {
+        this.at(step);
+        if (snapshot.clock !== step) {
+            throw new Error(
+                `Cannot record a snapshot of clock ${snapshot.clock} as step ${step}.`,
+            );
+        }
+        this.snapshots.length = step;
+        this.edits.length = step;
+        this.snapshots.push(snapshot);
+        this.edits.push(freezeCopy(edits));
+        this.position = step;
     }
 }

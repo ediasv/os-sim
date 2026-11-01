@@ -173,6 +173,16 @@ export type SimulationEvent =
           readonly cpuId: number;
       }
     | {
+          readonly kind: 'cpu-added';
+          readonly time: number;
+          readonly cpuId: number;
+      }
+    | {
+          readonly kind: 'cpu-removed';
+          readonly time: number;
+          readonly cpuId: number;
+      }
+    | {
           readonly kind: 'cpu-on';
           readonly time: number;
           readonly cpuId: number;

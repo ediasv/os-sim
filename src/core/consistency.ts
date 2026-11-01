@@ -22,6 +22,14 @@ export function findInconsistencies(
     state: DeepReadonly<SimulationState>,
 ): string[] {
     const issues: string[] = [];
+    if (
+        state.cpus.length !== state.config.cpuCount ||
+        state.cpus.some((cpu, index) => cpu.id !== index + 1)
+    ) {
+        issues.push(
+            'Current CPU IDs must be 1..cpuCount and match the configured count.',
+        );
+    }
     const jobs = new Map<string, DeepReadonly<Job>>();
     for (const tcb of state.tasks) {
         for (const job of tcb.jobs) {
@@ -106,8 +114,16 @@ export function findInconsistencies(
     }
     // Without valid intervals there is no open interval to compare offSince to.
     if (summaries !== undefined) {
-        for (const [index, cpu] of state.cpus.entries()) {
-            const last = summaries[index].intervals.at(-1);
+        const byId = new Map(
+            summaries.map((summary) => [summary.cpuId, summary]),
+        );
+        for (const cpu of state.cpus) {
+            const summary = byId.get(cpu.id);
+            if (summary === undefined) {
+                issues.push(`CPU ${cpu.id} has no off-summary.`);
+                continue;
+            }
+            const last = summary.intervals.at(-1);
             if (last?.end !== null) {
                 if (cpu.offSince !== null) {
                     issues.push(
