@@ -185,6 +185,47 @@ describe('task inclusion (DEC-46)', () => {
         expect(ids(sim)).toEqual([1]);
     });
 
+    it('refuses a second task with the color of the first one in the same edit', () => {
+        const sim = make();
+        const refused = refusal(
+            sim,
+            add({ color: 'ABCDEF' }),
+            add({ color: 'abcdef', arrival: 1 }),
+        );
+        expect(refused.items).toHaveLength(1);
+        expect(refused.items[0]).toMatchObject({ index: 1, kind: 'addTask' });
+        expect(refused.items[0].reason).toContain('cor');
+        expect(ids(sim)).toEqual([1]);
+        expect(sim.getCurrentSnapshot().maxTaskId).toBe(1);
+    });
+
+    it('refuses invalid task inputs with EditRefusal, never an engine error', () => {
+        const sim = make();
+        const { duration: _duration, ...withoutDuration } = newTask();
+        const invalid: EditItem[] = [
+            add({ period: -1 }),
+            add({ period: 1.5 }),
+            add({ arrival: 2.5 }),
+            { kind: 'addTask', task: withoutDuration } as unknown as EditItem,
+        ];
+        for (const item of invalid) {
+            const refused = refusal(sim, item);
+            expect(refused.items).toHaveLength(1);
+            expect(refused.items[0]).toMatchObject({
+                index: 0,
+                kind: 'addTask',
+            });
+            expect(refused.items[0].reason).not.toBe('');
+        }
+        const empty = refusal(sim, {
+            kind: 'addTask',
+            task: [],
+        } as unknown as EditItem);
+        expect(empty.items[0].reason).toContain('tarefa');
+        expect(ids(sim)).toEqual([1]);
+        expect(sim.getEdits(0)).toEqual([]);
+    });
+
     it('generates consecutive IDs inside one edit, after the highest used', () => {
         const sim = make([base, { ...base, id: 7, color: '334455' }]);
         edit(sim, add({ color: '000001' }), add({ color: '000002' }));
