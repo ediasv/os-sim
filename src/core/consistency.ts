@@ -13,7 +13,12 @@
  * concluded task, interrupted jobs only in concluded tasks, and no open job
  * left in a concluded task.
  */
-import type { DeepReadonly, Job, SimulationState } from './domain';
+import {
+    maxJobs,
+    type DeepReadonly,
+    type Job,
+    type SimulationState,
+} from './domain';
 import {
     CpuEventSequenceError,
     summarizeCpuOff,
@@ -65,9 +70,15 @@ export function findInconsistencies(
         }
     }
     const forced = state.tasks.filter((tcb) => tcb.status === 'forced');
-    if (forced.length > state.config.cpuCount) {
+    // A finished forced task can never use a CPU, so it does not count (DEC-41).
+    const activeForced = forced.filter(
+        (tcb) =>
+            tcb.jobs.length !== maxJobs(tcb.definition) ||
+            tcb.jobs.some((job) => job.state !== 'completed'),
+    );
+    if (activeForced.length > state.config.cpuCount) {
         issues.push(
-            `There are ${forced.length} forced tasks for ${state.config.cpuCount} CPUs.`,
+            `There are ${activeForced.length} forced tasks for ${state.config.cpuCount} CPUs.`,
         );
     }
     const jobs = new Map<string, DeepReadonly<Job>>();

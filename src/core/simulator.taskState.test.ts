@@ -559,3 +559,54 @@ describe('review follow-ups: refusals through the simulator', () => {
         expect(sim.getCurrentSnapshot().tasks[0].status).toBe('forced');
     });
 });
+
+describe('forced limit ignores finished tasks', () => {
+    const finishedForced = () => {
+        const sim = make(
+            [
+                task(1, { period: 0, duration: 1 }),
+                task(2, { duration: 10, period: 20, deadline: 20 }),
+            ],
+            { cpuCount: 1 },
+        );
+        edit(sim, 'forced', 1);
+        advance(sim, 1);
+        expect(sim.getCurrentSnapshot().tasks[0].status).toBe('forced');
+        return sim;
+    };
+
+    it('lets another task be forced once the forced one has finished', () => {
+        const sim = finishedForced();
+        edit(sim, 'forced', 2);
+        expect(sim.getCurrentSnapshot().cpus[0].running?.taskId).toBe(2);
+    });
+
+    it('lets the CPU count drop below the forced tasks when some have finished', () => {
+        const sim = make(
+            [
+                task(1, { period: 0, duration: 1 }),
+                task(2, { duration: 10, period: 20, deadline: 20 }),
+            ],
+            { cpuCount: 2 },
+        );
+        edit(sim, 'forced', 1);
+        edit(sim, 'forced', 2);
+        advance(sim, 1);
+        sim.edit([{ kind: 'cpuCount', cpuCount: 1 }]);
+        expect(sim.getCurrentSnapshot().config.cpuCount).toBe(1);
+    });
+
+    it('still refuses forcing beyond the CPUs while the forced task is unfinished', () => {
+        const sim = make(
+            [
+                task(1, { duration: 10, period: 20, deadline: 20 }),
+                task(2, { duration: 10, period: 20, deadline: 20 }),
+            ],
+            { cpuCount: 1 },
+        );
+        edit(sim, 'forced', 1);
+        expect(() =>
+            sim.edit([{ kind: 'taskState', taskId: 2, state: 'forced' }]),
+        ).toThrow('Não há CPUs para forçar a tarefa 2');
+    });
+});

@@ -830,7 +830,7 @@ Issues `[Docs]`, sem fase no Project.
        limite de forcadas, interrupcao de jobs e recusas em portugues.
        DEC-41 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
        pendentes, quantum, prazos, mudanca liquida, historico e consistencia.
-       Baseline 794/794; verificacao local 871/871 testes, `npm run lint` e
+       Baseline 794/794; verificacao local 875/875 testes, `npm run lint` e
        `npm run typecheck` sem erros (2026-11-01). Revisao com
        pr-review-toolkit (5 agentes) aplicada: inspecao de tarefa concluida,
        lacunas de testes conferidas por mutacao, invariantes de consistencia,

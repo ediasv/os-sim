@@ -120,10 +120,17 @@ const TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
     concluded: ['concluded'],
 };
 
-/** Forced tasks reserve capacity even before their next activation. */
-function forcedCount(target: EditTarget): number {
-    return Object.values(target.taskStates).filter(
-        (status) => status === 'forced',
+/**
+ * Forced tasks reserve capacity even before their next activation, but not
+ * once they have finished: they can never use a CPU again (DEC-41).
+ */
+function forcedCount(
+    target: EditTarget,
+    state: DeepReadonly<SimulationState>,
+): number {
+    return Object.entries(target.taskStates).filter(
+        ([id, status]) =>
+            status === 'forced' && !hasFinished(state, Number(id)),
     ).length;
 }
 
@@ -182,7 +189,7 @@ const HANDLERS: Handlers = {
                 reason: `A tarefa ${item.taskId} já terminou e não pode ser forçada.`,
             };
         }
-        const count = forcedCount(target);
+        const count = forcedCount(target, context.state);
         if (
             item.state === 'forced' &&
             previous !== 'forced' &&
@@ -209,7 +216,7 @@ const HANDLERS: Handlers = {
             context,
         );
         if (!checked.ok) return checked;
-        const count = forcedCount(target);
+        const count = forcedCount(target, context.state);
         if (checked.value < count) {
             return {
                 ok: false,

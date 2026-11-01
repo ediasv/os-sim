@@ -1853,7 +1853,10 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   incompletos; nos demais casos lista os jobs por indice. Forcar uma tarefa
   que ja terminou (todas as ativacoes concluidas) e recusado com motivo,
   porque reservaria uma CPU que ela nao pode usar (decisao do usuario no
-  #117); suspende-la ou concluí-la continua aceito.
+  #117); suspende-la ou concluí-la continua aceito. Tarefa forcada que
+  termina sozinha mantem `status: forced`, mas deixa de contar no limite de
+  forcadas (na edicao e em `findInconsistencies`), pois nao usa mais CPU
+  (decisao do usuario no #117).
 - Eventos: `suspension` tem `taskId` e `cpuId`, a CPU que executava o job
   da tarefa (mesmo que ele tenha acabado de concluir no tick), ou `null`
   se nenhuma (decisao do usuario no #117);

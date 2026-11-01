@@ -384,3 +384,28 @@ describe('task status cross-checks', () => {
         );
     });
 });
+
+describe('forced limit and finished tasks', () => {
+    it('does not count a forced task that already finished', () => {
+        const state = createInitialState({
+            ...DEFAULT_CONFIG,
+            tasks: [
+                { ...definition, period: 0 },
+                { ...definition, id: 2, period: 0 },
+            ],
+        });
+        state.tasks[0].jobs.push(
+            job({ state: 'completed', completedAt: 2, executed: 2 }),
+        );
+        state.tasks.forEach((t) => {
+            t.status = 'forced';
+        });
+        state.tasks[1].jobs.push(job({ taskId: 2, state: 'running' }));
+        state.cpus[0].running = { taskId: 2, index: 0 };
+        expect(
+            findInconsistencies(state).filter((i) =>
+                i.includes('forced tasks'),
+            ),
+        ).toEqual([]);
+    });
+});
