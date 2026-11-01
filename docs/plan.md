@@ -326,8 +326,8 @@ Requisitos: REQ-04, REQ-05.
   `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
   suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
   Inclusao e exclusao de tarefas (DEC-46 e DEC-47) no nucleo; interface e
-  comando `edit` do adaptador ficam na #37. Entregue em 7 PRs (#115 a este);
-  conferencia dos criterios em "Trabalho atual".
+  comando `edit` do adaptador ficam na #37. Entregue em 7 PRs da serie;
+  conferencia dos criterios em "Trabalho atual" (item 7).
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
@@ -914,8 +914,12 @@ Issues `[Docs]`, sem fase no Project.
           `consistency.test.ts` e o helper `edit` dos testes, que confere
           `findInconsistencies` depois de cada edicao.
           Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
-          (nao por mutacao de cada criterio). Verificacao executada
-          nesta entrega: ver o PR. NAO verificado aqui: interface e o comando
+          (nao por mutacao de cada criterio). Verificacao executada apos o
+          rebase em `1be7da1`: `npm test` 1112 passou e 1 ignorado em 57
+          arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
+          na maquina); baseline da `main` sem os 15 novos nao reexecutado.
+          NAO verificado aqui: interface e o comando
           `edit` do adaptador (#37), a tela (#38) e o pacote (#26 nao o cobre).
           Mudanca de DEC-47 se o usuario recusar as decisoes de eventos ou de
           exclusao; a conferencia depende dos testes atuais.
