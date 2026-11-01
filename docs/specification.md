@@ -52,11 +52,9 @@ Fonte: A.1.3, A.1.4; A.4.4 para aperiodicas no Projeto A.
   telas rejeitam periodo zero (A.4.4, DEC-29).
 - Todo job executa ate completar a duracao, mesmo com prazo perdido; a tarefa
   termina quando seu ultimo job conclui.
-- No maximo um job incompleto por tarefa: o seguinte ativa no instante
-  previsto ou, se o anterior atrasar, na conclusao dele (DEC-36, proposta).
-- Aceitacao: ativar conforme ingresso e periodo, adiando a ativacao enquanto o
-  job anterior estiver incompleto; nao gerar 11a ativacao periodica nem segunda
-  ativacao aperiodica. Ver DEC-02 e DEC-36.
+- Aceitacao: ativar conforme ingresso e periodo, mantendo jobs anteriores intactos
+  quando novas ativacoes chegarem; nao gerar 11a ativacao periodica nem segunda
+  ativacao aperiodica. Ver DEC-02 para elegibilidade sequencial.
 
 ### REQ-04: Modos de execucao e historico
 
@@ -171,14 +169,15 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: resolvida em 2026-11-01 por DEC-35 e DEC-36 (propostas): edicao no
-  tick `t` vale ja em [t, t+1) sem mudar o passado; estado por tarefa
-  (pronta, executando forcada, suspensa, concluida); duracao e prazo na
-  proxima ativacao; periodo no calendario e na prioridade RM imediata;
-  ingresso so antes da primeira ativacao; cor sempre; ID e ticks executados
-  fixos; inclusao a qualquer tick e exclusao so de tarefa nunca ativada;
-  algoritmo, quantum e CPUs editaveis; eventos de suspensao, retomada,
-  forcamento e CPUs para o Gantt. Recusas seguem A.3.1 e A.3.4.
+- Q-02: resolvida em 2026-11-01 por DEC-35 (proposta): edicao no tick `t`
+  vale ja em [t, t+1) sem mudar o passado; estado por tarefa (pronta,
+  executando forcada, suspensa, concluida), aplicado ao job mais antigo
+  incompleto; duracao e prazo na proxima ativacao; periodo no calendario e
+  na prioridade RM imediata; ingresso so antes da primeira ativacao; cor
+  sempre; ID e ticks executados fixos; inclusao a qualquer tick e exclusao
+  so de tarefa nunca ativada; algoritmo, quantum e CPUs editaveis; eventos
+  de suspensao, retomada, forcamento e CPUs para o Gantt. Recusas seguem
+  A.3.1 e A.3.4.
 - Q-03: resolvida em 2026-10-17 por DEC-19. DEC-10 fixou valores padrao, zero,
   campos ausentes, IDs e limites numericos; DEC-19 define diagnosticos do parser,
   numeracao de linhas, acumulacao de erros e distincao de falhas de acesso.
@@ -201,8 +200,8 @@ Fonte: gerais 5 e 6; A.5.
 ## Invariantes do nucleo
 
 - Um job executa em no maximo uma CPU por tick.
-- Uma tarefa tem no maximo um job incompleto (DEC-36); tarefa suspensa nao
-  disputa CPU, e o prazo do job continua correndo.
+- Somente o job mais antigo incompleto de uma tarefa pode ser elegivel; suspensao
+  da tarefa (DEC-35) nao permite ao posterior ultrapassa-lo.
 - Preempcao muda posse da CPU, nao identidade, progresso ou prazo do job.
 - Snapshots nao compartilham dados mutaveis com o estado vivo.
 - Restauracao inclui configuracao, jobs, CPUs, eventos e estado do sorteio.

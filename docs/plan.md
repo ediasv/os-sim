@@ -54,8 +54,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
-  Reaberta em 2026-11-01 pela #25: calendario de uma ativacao por vez,
-  registrado como DEC-36 (proposta) no PR #101.
+  Reaberta em 2026-11-01 pela #25 para registrar DEC-36 (uma ativacao por
+  vez) e fechada de novo no mesmo dia: DEC-36 foi retirada do PR #101, e
+  DEC-09 e DEC-02 continuam valendo (justificativa em DEC-02).
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   Concluida no PR #49 (merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
@@ -63,9 +64,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
-  aprovados. Lacunas da revisao seguem na #51. Reaberta em 2026-11-01 para
-  implementar DEC-36 (ativacao so apos a conclusao do job anterior); deve
-  preceder a #26.
+  aprovados. Lacunas da revisao seguem na #51. Reaberta e fechada de novo em
+  2026-11-01: DEC-36 foi retirada, e o codigo e os testes atuais continuam
+  corretos.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
   valida a decisao, despacha globalmente, executa cada tick, registra
@@ -285,8 +286,8 @@ Requisitos: REQ-04, REQ-05.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
   Em andamento no PR #101: DEC-35 reescrita com o usuario em 2026-11-01
-  (estado por tarefa, recalculo do tick a partir de `t-1`) e DEC-36
-  (proposta, #11); aguardando aceite.
+  (estado por tarefa aplicado ao job mais antigo incompleto, recalculo do
+  tick a partir de `t-1`); aguardando aceite. DEC-36 foi retirada.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
   Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
@@ -664,10 +665,15 @@ Issues `[Docs]`, sem fase no Project.
   de `t-1`) e DEC-36 (uma ativacao por vez), que reabriu #11 e #12. Notas
   de revisao em DEC-02, 08, 09, 10, 13, 16, 18, 21 e 22; Q-02, REQ-03,
   REQ-07, invariantes e FE-10 a FE-16 e FE-19 do renderer atualizados;
-  `oxfmt --check` ok. Pendentes: aceite de DEC-35 e DEC-36 e atualizacao
-  das issues #26, #37 e #38.
-- Proximo passo: aceite de DEC-35 e DEC-36; depois #12 (DEC-36) antes da
-  #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
+  `oxfmt --check` ok. Ainda em 2026-11-01, DEC-36 foi retirada antes do
+  aceite: adiava ativacoes e prazos do calendario, contra A.3.3 e as secoes
+  2.2 e 2.5.3 do material de tempo real, e o estado por tarefa nao a exige.
+  DEC-35 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
+  DEC-02 ganhou a justificativa completa; REQ-03, invariantes e notas de
+  DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
+  fechadas de novo. Pendentes: aceite de DEC-35 e atualizacao das issues
+  #26, #37 e #38.
+- Proximo passo: aceite de DEC-35; depois #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
   seguir em paralelo, nessa ordem (a #24 depende da #23). Aceitar ou rever
   DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
