@@ -85,7 +85,7 @@ function selectJob(job: JobRef): void {
 </script>
 
 <template>
-    <main class="inspection-panel">
+    <section class="inspection-panel">
         <p class="inspection-panel__tick">
             Tick inspecionado: <strong>{{ data.inspectedTick }}</strong>
         </p>
@@ -106,7 +106,7 @@ function selectJob(job: JobRef): void {
             :inspected-tick="data.inspectedTick"
             @select="selectJob"
         />
-    </main>
+    </section>
 </template>
 
 <style scoped>

@@ -515,7 +515,10 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Pendencia herdada da #72: `useSimulation` (adaptador de DEC-23) ficou sem
   uso em producao desde que `App` deixou de chama-lo; a #36 deve liga-lo ou
   revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
-  preparacao nao cria simulador.
+  preparacao nao cria simulador. Parte 1 (carregar, iniciar, avancar, voltar,
+  reiniciar, paineis #73/#69/#71 montados): ver
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fluxo-da-area-de-trabalho-36-parte-1).
+  Faltam Executar tudo (#27), Sistema, Adicionar tarefa e confirmacao de FE-04.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
   Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
@@ -691,6 +694,8 @@ Issues `[Docs]`, sem fase no Project.
   cursor. Escopo acordado com o usuario em 2026-11-01: nucleo e adaptador;
   botoes na #36; recusar `tick()` com tudo terminado na #27; sem ir direto a
   um passo k. Passos: nucleo e testes, adaptador e testes, DEC-36 e gates.
+- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis); a
+  issue continua aberta (Refs #36).
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38). Aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem

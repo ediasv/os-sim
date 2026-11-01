@@ -624,6 +624,46 @@ Integracao: nao ha uso em producao. `App` ainda nao chama `useSimulation` e o
   com o Figma, leitura de `projectSystem` com snapshots reais do simulador
   no app (a #36 liga o `useSimulation`).
 
+## Fluxo da area de trabalho (#36, parte 1)
+
+`App` passa a compor o fluxo de preparar, iniciar e navegar. A logica fica em
+[useWorkspace](../composables/useWorkspace.ts), que nao guarda objetos do
+simulador: le o snapshot publicado por `useSimulation()` (DEC-23) e envia
+comandos; `App` so liga projecoes (`projectSystem`, `projectInspection`) aos
+paineis.
+
+- Preparacao: `load-config` abre o dialogo da #33, passa o texto a
+  `loadConfig` e guarda a configuracao como rascunho; carregar nao cria
+  simulador nem avanca ticks (FE-02, FE-DEC-14). Erros de conteudo e avisos de
+  periodo padrao (DEC-29) aparecem em alertas separados, com linha e motivo
+  vindos do nucleo; falha de leitura mostra a frase do main.
+- Inicio: o primeiro "Avancar tick" cria o simulador (`useSimulation()`
+  chamado so ai, por isso o `App` continua sem simulador em preparacao),
+  carrega o rascunho e publica o snapshot zero, sem executar `[0, 1)`. Exige
+  ao menos uma tarefa (FE-02). Depois, "Avancar tick" usa `next()` (reaproveita
+  o futuro gravado ou calcula um passo), "Voltar tick" usa `backward()` e
+  "Reiniciar" recarrega o rascunho no snapshot zero (FE-05).
+- Disponibilidade: Carregar configuracao so antes do inicio, porque substituir
+  uma sessao em andamento pede a confirmacao de FE-04, ainda nao implementada.
+  Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
+  alerta no ponto da acao e o ultimo snapshot valido permanece (DEC-24,
+  DEC-36); erros inesperados seguem so para o banner.
+- Disposicao provisoria: ate o Gantt (#38), o corpo do painel do diagrama
+  mostra lado a lado o estado do sistema (#73) e a inspecao (#69/#71), que no
+  Figma ficam na regiao "Detalhes" sob o diagrama. `InspectionPanel` deixou de
+  usar `<main>` como raiz, pois ja ha um `<main>` no layout.
+- Fora desta parte: Executar tudo e cancelamento (#27), tarefas e sistema
+  editaveis (#37 e restante da #36: Sistema e Adicionar tarefa seguem
+  desabilitados) e a confirmacao de substituicao (FE-04).
+
+Verificacao (2026-11-01): `npm test` 685 aprovados e 1 ignorado em 44 arquivos,
+`npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, com um
+`window.configFile` simulado no navegador do app) a 1440 x 924: carregar um
+arquivo com periodo ausente mostra o aviso, o primeiro avancar mostra t = 0,
+avancar ate t = 5 atualiza relogio, estado do sistema e inspecao, sem rolagem
+horizontal. Nao verificado: app Electron com o dialogo real, 390 px, voltar e
+reiniciar no navegador (cobertos por testes de componente).
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente
