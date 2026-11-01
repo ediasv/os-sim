@@ -285,11 +285,13 @@ Requisitos: REQ-04, REQ-05.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
-  Em andamento no PR #101: DEC-35 reescrita com o usuario em 2026-11-01
-  (estado por tarefa aplicado ao job mais antigo incompleto, recalculo do
-  tick a partir de `t-1`); aguardando aceite. DEC-36 foi retirada.
+  DEC-35 aceita em 2026-11-01 no PR #101 (estado por tarefa aplicado ao job
+  mais antigo incompleto, recalculo do tick a partir de `t-1`); DEC-36 foi
+  retirada. Fecha com o merge do PR #101.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
-  Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
+  Implementa DEC-35: etapa de edicao no passo, recalculo do tick a partir de
+  `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
+  suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
 - #27 Implementar execucao completa cancelavel e tratar Q-06.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
@@ -500,9 +502,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   revisar o contrato, ja que ele parte de `DEFAULT_CONFIG` em t=0 e a
   preparacao nao cria simulador.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
+  Oferece as edicoes de DEC-35 com recusas e avisos (FE-10 a FE-16, FE-19);
+  issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
-  trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
+  Depende dos eventos de DEC-35 registrados pela #26: trechos suspensos e
+  forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
+  em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
@@ -671,9 +676,9 @@ Issues `[Docs]`, sem fase no Project.
   DEC-35 passa a aplicar o estado ao job mais antigo incompleto (DEC-02);
   DEC-02 ganhou a justificativa completa; REQ-03, invariantes e notas de
   DEC-08, 09, 10 e 16 voltaram ao calendario de DEC-09; #11 e #12
-  fechadas de novo. Pendentes: aceite de DEC-35 e atualizacao das issues
-  #26, #37 e #38.
-- Proximo passo: aceite de DEC-35; depois #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
+  fechadas de novo. DEC-35 aceita pelo usuario em 2026-11-01; #26, #37 e
+  #38 atualizadas com a decisao. Pendente: merge do PR #101.
+- Proximo passo: merge do PR #101; depois #26, que destrava o Gantt (#38); #23 e #24 nao dependem delas e podem
   seguir em paralelo, nessa ordem (a #24 depende da #23). Aceitar ou rever
   DEC-34 (#92).
 - Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem

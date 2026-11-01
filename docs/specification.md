@@ -169,7 +169,7 @@ Fonte: gerais 5 e 6; A.5.
 
 - Q-01: resolvida em 2026-10-16 por DEC-09 (no maximo dez jobs, todos drenados,
   inclusive atrasados).
-- Q-02: resolvida em 2026-11-01 por DEC-35 (proposta): edicao no tick `t`
+- Q-02: resolvida em 2026-11-01 por DEC-35: edicao no tick `t`
   vale ja em [t, t+1) sem mudar o passado; estado por tarefa (pronta,
   executando forcada, suspensa, concluida), aplicado ao job mais antigo
   incompleto; duracao e prazo na proxima ativacao; periodo no calendario e

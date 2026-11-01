@@ -217,7 +217,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   diferente" do enunciado no tema escuro. Tarefa ainda nao ativada ou ja
   terminada fica vazia, delimitada pelos marcadores. Estado suspenso so pode ser
   desenhado com os eventos de suspensao e retomada de DEC-35, registrados
-  pela #26. DEC-35 (proposta) acrescenta o trecho forcado e a lacuna de CPU
+  pela #26. DEC-35 acrescenta o trecho forcado e a lacuna de CPU
   removida.
 - Eventos (A.2.2): marcadores com forma distinta e legenda para ingresso/ativacao,
   termino do job, fim da tarefa (ultimo job, DEC-09), perda de prazo, sorteio,
@@ -253,8 +253,8 @@ anterior. Data inicial dos registros: 2026-10-12.
   continua sendo o do nucleo.
 - Consequencia: TCB conta ativacoes geradas; termino depende de conclusao, nao
   de ativacao. Prioridade RM para periodo zero definida por DEC-17. Encerrar
-  a tarefa durante a simulacao tambem a termina (DEC-35, proposta).
-- Excecao (DEC-35, proposta): periodo editado depois da primeira ativacao
+  a tarefa durante a simulacao tambem a termina (DEC-35).
+- Excecao (DEC-35): periodo editado depois da primeira ativacao
   recalcula as ativacoes restantes a partir da ultima, e a formula
   `ingresso + k * periodo` deixa de valer para essa tarefa; o limite de dez
   jobs continua.
@@ -286,7 +286,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   (DEC-15).
 - Justificativa: valores e limites definidos pelo usuario; sem tetos arbitrarios.
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
-- Revista por DEC-35 (proposta): na edicao, periodo zero e recusado e os
+- Revista por DEC-35: na edicao, periodo zero e recusado e os
   tempos derivados sao conferidos sobre as ativacoes restantes, com os
   valores editados.
 
@@ -406,7 +406,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: custo de copiar as candidatas a cada selecao, pequeno frente
   ao snapshot completo por passo. `freezeCopy` (em `helpers/`) e
   reutilizada.
-- Revista por DEC-35 (proposta): jobs forcados recebem CPU antes da politica,
+- Revista por DEC-35: jobs forcados recebem CPU antes da politica,
   que seleciona para as CPUs restantes; `cpuCount` da visao desconta esses
   jobs. Job cuja CPU de [t-1, t) foi removida continua com o primeiro
   desempate; a visao precisa representa-lo sem uma CPU vigente (forma na
@@ -492,7 +492,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Consequencia: no EDF a prioridade ja e o prazo absoluto, entao o criterio
   (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
   ou ordem das candidatas (DEC-13).
-- Revista por DEC-35 (proposta): o criterio (4) usa a duracao do proprio
+- Revista por DEC-35: o criterio (4) usa a duracao do proprio
   job, que pode diferir da duracao vigente da tarefa depois de uma edicao.
 
 ### DEC-17: Prioridade RM de tarefas aperiodicas
@@ -548,7 +548,7 @@ anterior. Data inicial dos registros: 2026-10-12.
       usuario na #14 para manter o criterio (1) e evitar a troca de contexto.
     - Usar "executava antes" so para atribuir CPU: contraria A.4.3 (1); empates
       totais seriam sorteados a cada tick.
-- Revista por DEC-35 (proposta): job forcado nao tem quantum; o quantum
+- Revista por DEC-35: job forcado nao tem quantum; o quantum
   editado vale ja para a fatia em curso.
 
 ### DEC-19: Diagnosticos do parser de configuracao
@@ -688,7 +688,7 @@ anterior. Data inicial dos registros: 2026-10-12.
 - Alternativas descartadas: intervalos e totais guardados em `CpuState`
   (muda DEC-12 e duplica os eventos) e derivacao pela interface (regra do
   dominio fora do nucleo e sem `findInconsistencies`).
-- Revista por DEC-35 (proposta): `cpu-removed` e `cpu-added` delimitam os
+- Revista por DEC-35: `cpu-removed` e `cpu-added` delimitam os
   periodos em que a CPU existe. A remocao fecha o intervalo desligado aberto,
   o tempo fora do sistema nao conta como desligado, e a sequencia
   desligar/religar e conferida dentro de cada periodo de existencia; CPU
@@ -717,7 +717,7 @@ anterior. Data inicial dos registros: 2026-10-12.
   da lista de eventos.
 - Alternativa descartada: manter a ordem job a job e restringir DEC-04 a cada
   job; deixaria a ordem do log depender da posicao das tarefas na lista.
-- Revista por DEC-35 (proposta): os eventos de edicao formam uma etapa entre
+- Revista por DEC-35: os eventos de edicao formam uma etapa entre
   as ativacoes e as fatias vencidas, na ordem das edicoes, e a etapa de
   fatias vencidas passa a vir depois das ativacoes; o despacho
   passa a incluir a `preemption` causada por job forcado.
@@ -1133,11 +1133,13 @@ anterior. Data inicial dos registros: 2026-10-12.
 
 ### DEC-35: Edicao durante a simulacao
 
-- Estado: proposta em 2026-10-31 na #25; reescrita em 2026-11-01 com as
-  escolhas do usuario, depois da revisao adversarial do PR #101, que achou
-  contradicoes na versao anterior (despacho corrigido depois de feito,
-  sorteio refeito a cada edicao, remocao de tarefa com historico, CPUs
-  removidas). Aguardando aceite. Requisitos: REQ-05, REQ-07, REQ-08,
+- Estado: aceita em 2026-11-01 pelo usuario no PR #101. Proposta em
+  2026-10-31 na #25 e reescrita em 2026-11-01 com as escolhas do usuario,
+  depois da revisao adversarial do PR #101, que achou contradicoes na
+  versao anterior (despacho corrigido depois de feito, sorteio refeito a
+  cada edicao, remocao de tarefa com historico, CPUs removidas); o estado
+  por tarefa passou a valer para o job mais antigo incompleto quando a
+  DEC-36 foi retirada. Requisitos: REQ-05, REQ-07, REQ-08,
   REQ-09. Resolve Q-02 e a pendencia de suspensao de DEC-12. Mantem o
   calendario de DEC-09 e a elegibilidade de DEC-02.
 - Contexto: o enunciado pede que o usuario mude o estado atual ou as
