@@ -716,29 +716,51 @@ Issues `[Docs]`, sem fase no Project.
   DEC-36; evidencia em E3.
 - #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
   em E3 e decisao em DEC-37.
-- #26 em andamento (iniciada 2026-11-01, branch `feat/26-edicoes-atomicas`):
+- #26 em andamento (iniciada 2026-11-01):
   aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
   do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
   eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
   PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
-  adaptador fica na #37. Primeiro PR (#114, so documental): revisao de
-  DEC-37, em que so o resultado final das edicoes de um tick conta. Nada
-  implementado ainda; baseline `npm test` 669/669.
+  adaptador fica na #37. Baseline `npm test` 669/669 em `b46d09b`; o
+  caminho geral da edicao (algoritmo e quantum) esta no PR #115.
   Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
-  #26), todos em rascunho:
-    1. #114 revisao de DEC-37 (documental);
-    2. #115 etapa de edicao no passo, edicoes por tick no historico, descarte do
-       futuro, recusa atomica por item, algoritmo e quantum;
-    3. #116 quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
+  #26):
+    1. #114 revisao de DEC-37, em que so o resultado final das edicoes de
+       um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
+       `oxfmt --check` ok e CI `test` aprovado);
+    2. #115 (rascunho, em andamento) etapa de edicao no passo, edicoes por tick no historico, descarte do
+       futuro, recusa atomica por item, algoritmo e quantum. Implementacao
+       iniciada em 2026-11-01 sobre `1075b0a` (baseline `npm test` 669/669,
+       lint e typecheck sem erros); escopo e criterios no corpo do PR;
+       motivo da recusa de regra da configuracao vem de `validateConfig`
+       (escolha do usuario). Codigo no branch do PR (`cf04c9e`):
+       `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
+       liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
+       passo em `history.ts`, `Simulator.edit`/`getEdits` com recalculo a
+       partir de `t-1` e politica pelo algoritmo vigente, fatias vencidas
+       depois das ativacoes (DEC-22). Forma registrada em DEC-39
+       (proposta); DEC-14, DEC-22, DEC-25 e DEC-35 revistas. Evidencia
+       (2026-11-01): `npm test` 711/711 em 44 arquivos, `npm run lint` e
+       `npm run typecheck` sem erros; testes em `edit.test.ts`,
+       `history.test.ts`, `simulator.edit.test.ts` e bloco `policy source`
+       de `simulator.test.ts`. Testes que passaram de primeira (recusa
+       atomica, mudanca liquida, descarte do futuro) conferidos com
+       mutacoes: nao restaurar o estado na falha, sorteio de `t` em vez de
+       `t-1`, `rewrite` que mantem passos seguintes e recalculo a partir de
+       `t`; todas derrubam testes. Nao verificado: interface (comando
+       `edit` fica na #37) e pacote. Depois de integrar a `main`
+       (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
+       lint e typecheck sem erros. Proximo passo: revisao do PR e #116;
+    3. #116 (rascunho) quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
        sem a CPU;
-    4. #117 estado por tarefa (suspensa, forcada, concluida) e seus eventos;
-    5. #118 caracteristicas da tarefa (duracao por job, calendario, periodo,
+    4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
+    5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
-    6. #119 inclusao e exclusao de tarefas e verificacao final da #26.
+    6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
 - Em andamento: #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
   a issue continua aberta (Refs #36).
-- Proximo passo: plano de implementacao do #115. Fora da #26:
-  aceitar ou rever DEC-34 (#92).
+- Proximo passo: revisao do PR #115 (aceite de DEC-39) e depois #116. Fora
+  da #26: aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.

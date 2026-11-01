@@ -5,6 +5,7 @@
  * so swapping RM for EDF never touches the simulation loop (REQ-07).
  */
 import type {
+    AlgorithmId,
     DeepReadonly,
     Job,
     JobRef,
@@ -73,6 +74,15 @@ export interface PolicyTie {
 export interface SchedulingPolicy {
     select(view: PolicyView): PolicyDecision;
 }
+
+/**
+ * Policies the engine may run, by algorithm. Partial so a test can register
+ * only some; `PolicyRegistry` (policies.ts) is the complete one used in
+ * production (DEC-25, DEC-39).
+ */
+export type PolicyLookup = Readonly<
+    Partial<Record<AlgorithmId, SchedulingPolicy>>
+>;
 
 /**
  * Lists every way a decision breaks the contract; an empty list means the
