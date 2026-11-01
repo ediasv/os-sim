@@ -431,7 +431,7 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   ganhou a regra de inteiros em cada campo numerico (fracionario e alem da faixa
   exata nos 7 campos, zero CPUs), campos obrigatorios vazios e 300 tarefas;
   `src/main/configLoad.test.ts` (novo, 46 testes) le arquivos reais de
-  diretorio temporario e passa por `openConfigFile` e `loadConfig`: validos
+  diretorio temporario e passa por `readConfigFile` e `loadConfig` (e `openConfigFile` nos testes de dialogo e cancelamento): validos
   (CRLF, CR, BOM, espacos, linhas em branco, `;` final), invalidos (sintaxe e
   nucleo, linha original apos linhas em branco e CR), falhas de leitura
   (inexistente, diretorio, sem permissao real, nao UTF-8, UTF-16 sem BOM,
