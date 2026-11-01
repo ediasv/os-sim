@@ -240,11 +240,12 @@ export interface SimulationState {
     /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-27). */
     drawState: number;
     /**
-     * Highest task ID ever used up to this snapshot; the next included task
-     * gets this plus one. Kept in the state so discarding the future discards
-     * the IDs generated in it (DEC-46).
+     * Every task ID ever used up to this snapshot, in the order they were
+     * first used, including those of removed tasks, so no ID is reused and the
+     * next suggestion is the highest number used plus one (DEC-46, DEC-48).
+     * Kept in the state so discarding the future discards the IDs created in it.
      */
-    maxTaskId: number;
+    usedTaskIds: TaskId[];
 }
 
 /** Recursively read-only view, used so snapshot consumers cannot mutate them. */

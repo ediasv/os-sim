@@ -68,7 +68,7 @@ describe('edit fold: target and state out of step', () => {
         expect(() =>
             foldEdit(
                 target,
-                [{ kind: 'taskDuration', taskId: 1, duration: 3 }],
+                [{ kind: 'taskDuration', taskId: '1', duration: 3 }],
                 context,
             ),
         ).toThrow(/no control block/);
@@ -83,7 +83,7 @@ describe('edit fold', () => {
             cpuCount: 1,
             taskStates: { 1: 'ready' },
             definitions: { 1: config.tasks[0] },
-            maxTaskId: 1,
+            usedTaskIds: ['1'],
         });
     });
 
@@ -98,7 +98,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
-                maxTaskId: 1,
+                usedTaskIds: ['1'],
             },
         });
         expect(foldEdit(base, [algorithm('EDF'), quantum(2)], context)).toEqual(
@@ -110,7 +110,7 @@ describe('edit fold', () => {
                     cpuCount: 1,
                     taskStates: { 1: 'ready' },
                     definitions: { 1: config.tasks[0] },
-                    maxTaskId: 1,
+                    usedTaskIds: ['1'],
                 },
             },
         );
@@ -128,7 +128,7 @@ describe('edit fold', () => {
                 cpuCount: 1,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
-                maxTaskId: 1,
+                usedTaskIds: ['1'],
             },
         });
     });
@@ -297,7 +297,7 @@ describe('CPU count edit', () => {
                 cpuCount: 17,
                 taskStates: { 1: 'ready' },
                 definitions: { 1: config.tasks[0] },
-                maxTaskId: 1,
+                usedTaskIds: ['1'],
             },
         });
     });
@@ -1581,5 +1581,49 @@ describe('characteristic edit together with conclusion in one submission (DEC-45
     it('accepts the conclusion after a characteristic that returned to its value', () => {
         const back: EditItem = { kind: 'taskPeriod', taskId: '1', period: 5 };
         expect(fold([period, back, conclude])).toMatchObject({ ok: true });
+    });
+});
+
+describe('task inclusion keeps spent IDs (DEC-48)', () => {
+    it('refuses the ID of a task that no longer exists', () => {
+        const state = createInitialState(config);
+        state.usedTaskIds.push('Gone');
+        const context = { state, baseline: state, hasPolicy: both };
+        const result = foldEdit(
+            readTarget(state),
+            [
+                {
+                    kind: 'addTask',
+                    task: {
+                        id: 'gone',
+                        arrival: 0,
+                        duration: 1,
+                        deadline: 2,
+                    },
+                },
+            ],
+            context,
+        );
+        expect(result).toMatchObject({
+            ok: false,
+            refusals: [{ reason: expect.stringContaining('já foi usado') }],
+        });
+    });
+
+    it('never suggests a number spent by a removed task', () => {
+        const state = createInitialState(config);
+        state.usedTaskIds.push('5');
+        const context = { state, baseline: state, hasPolicy: both };
+        const result = foldEdit(
+            readTarget(state),
+            [
+                {
+                    kind: 'addTask',
+                    task: { arrival: 0, duration: 1, deadline: 2 },
+                },
+            ],
+            context,
+        );
+        expect(result.ok && result.target.usedTaskIds).toEqual(['1', '5', '6']);
     });
 });

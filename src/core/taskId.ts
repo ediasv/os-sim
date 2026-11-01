@@ -47,6 +47,11 @@ export function taskIdKey(id: string): string {
     return id.trim().toLowerCase();
 }
 
+/** Whether two IDs are the same ID, ignoring case (DEC-48). */
+export function sameTaskId(a: string, b: string): boolean {
+    return taskIdKey(a) === taskIdKey(b);
+}
+
 const DIGITS_ONLY = /^[0-9]+$/;
 
 /** Digit-only ID without leading zeros; comparing digit strings avoids precision loss on huge numbers. */

@@ -480,28 +480,30 @@ describe('forced limit and finished tasks', () => {
     });
 });
 
-describe('findInconsistencies: highest used task ID (DEC-44)', () => {
-    it('accepts the initial value and a value above every task ID', () => {
+describe('findInconsistencies: used task IDs (DEC-48)', () => {
+    const usedIssues = (state: ReturnType<typeof stateWith>) =>
+        findInconsistencies(state).filter((i) => i.includes('used task IDs'));
+
+    it('accepts the initial value and extra IDs of removed tasks', () => {
         const state = stateWith();
-        expect(state.maxTaskId).toBe(1);
+        expect(state.usedTaskIds).toEqual(['1']);
         expect(findInconsistencies(state)).toEqual([]);
-        state.maxTaskId = 9;
+        state.usedTaskIds.push('9', 'Gone');
         expect(findInconsistencies(state)).toEqual([]);
     });
 
-    it('rejects a value below a task ID or not an integer', () => {
-        for (const value of [0, 1.5, Number.NaN]) {
-            const state = stateWith();
-            state.tasks.push({
-                ...state.tasks[0],
-                definition: { ...definition, id: 3 },
-            });
-            state.maxTaskId = value;
-            expect(
-                findInconsistencies(state).filter((i) =>
-                    i.includes('highest used task ID'),
-                ),
-            ).toHaveLength(1);
-        }
+    it('rejects a task ID missing from the used IDs', () => {
+        const state = stateWith();
+        state.tasks.push({
+            ...state.tasks[0],
+            definition: { ...definition, id: '3' },
+        });
+        expect(usedIssues(state)).toHaveLength(1);
+    });
+
+    it('rejects used IDs that repeat ignoring case', () => {
+        const state = stateWith();
+        state.usedTaskIds.push('1', 'a', 'A');
+        expect(usedIssues(state)).toHaveLength(1);
     });
 });

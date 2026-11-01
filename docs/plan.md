@@ -760,11 +760,12 @@ Issues `[Docs]`, sem fase no Project.
   natural, inclusao com ID sugerido ou digitado, rotulos), criterios na
   [specification.md](specification.md#req-06-arquivo-texto), `TaskId` como
   texto no nucleo (parser, validacao, ordem natural, edicao) e no SVG (escape
-  e rotulo longo). Verificacao: `npm test` 1143/1143 (baseline 1067),
+  e rotulo longo). Verificacao: `npm test` 1143/1143 antes da inclusao (baseline 1067),
   `npm run lint` e `npm run typecheck` sem erros; trace e SVG de IDs
   numericos iguais aos de antes (testes de caracterizacao).
-  Falta: inclusao com ID sugerido ou digitado (depende do PR #119, que traz
-  `addTask` e o maior ID usado), revisao final e ver a interface rodando.
+  Inclusao com ID sugerido ou digitado entregue depois do merge do PR #119
+  (`usedTaskIds` no lugar de `maxTaskId`); `npm test` 1189/1189.
+  Falta: revisao final e ver a interface rodando.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,

@@ -2007,7 +2007,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   Requisitos: REQ-05, REQ-07. Detalha o item Incluir de DEC-37; a exclusao
   tem decisao propria (DEC-47), no PR seguinte. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
 - Item: `EditItem` ganha `addTask` com `NewTask` (`arrival`, `duration`,
-  `deadline`, `color` e `period` opcionais); o ID nunca vem do chamador.
+  `deadline`, `color` e `period` opcionais); o ID e gerado (revisto por DEC-48:
+  o chamador pode informar o ID, e `usedTaskIds` substitui `maxTaskId`).
   `rawEvents` fica vazio (eventos de arquivo so no Projeto B).
 - Validacao, em ordem sobre o estado da etapa de edicao: ingresso `>= t`
   (mensagem propria); periodo ausente vira 15 (DEC-29) e zero e recusado; as
@@ -2022,7 +2023,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   #119). Parece aleatoria, mas e funcao do ID: cada edicao recalcula o tick
   a partir de `t-1`, e `Math.random` mudaria a cor a cada nova edicao do
   mesmo tick, quebrando DEC-37 item 2. Cor informada continua validada.
-- ID: maior ID ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
+- ID (revisto por DEC-48: `usedTaskIds`, ID sugerido ou digitado): maior ID
+  ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
   usado em cada snapshot e `EditTarget.maxTaskId` o acompanha dentro do
   tick; assim descartar o futuro descarta os IDs gerados nele (o recalculo
   parte do snapshot `t-1` ou da configuracao inicial). Varias inclusoes numa
@@ -2059,9 +2061,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   brainstorming; itens marcados "escolha do autor" aguardam confirmacao na
   revisao. Requisitos: REQ-03, REQ-05, REQ-06, REQ-09. Revisa DEC-08
   (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
-  ID) e DEC-37 (ID gerado na inclusao), e a DEC-46 do PR #119 (inclusao e ID
-  gerado), que deve estar mergeado antes do codigo desta decisao. Nao muda FE-19: o ID segue fixo na
-  edicao.
+  ID) e DEC-37 e DEC-46 (ID gerado na inclusao). Nao muda FE-19: o ID segue
+  fixo na edicao.
 - Contexto: o professor quer que o ID deixe de ser so numero. O enunciado
   chama `id` de "identificador unico da tarefa" (A.3.3) sem dizer que e
   numerico; so A.2.5 liga ordem a ID (menor ID junto ao eixo X). O
@@ -2084,9 +2085,16 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   decimal (`-3`, `2.5`) e texto (escolha do autor).
 - Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
   e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
-  um ID digitado. Um ID usado, inclusive o de tarefa excluida, e recusado.
-  O estado de cada snapshot guarda os IDs ja usados (hoje, o maior ID
-  numerico, DEC-37); descartar o futuro descarta os IDs criados nele.
+  um ID digitado. Um ID usado, inclusive o de tarefa excluida, e recusado
+  (a comparacao ignora caixa). Forma: `NewTask.id` opcional; sem ele, o
+  nucleo usa `suggestTaskId`; a interface pode chamar a mesma funcao com
+  `snapshot.usedTaskIds` para preencher a sugestao. `SimulationState.usedTaskIds`
+  (e `EditTarget.usedTaskIds`) substitui o `maxTaskId` da DEC-46: lista, em
+  ordem de uso, de todo ID ja usado; descartar o futuro descarta os IDs
+  criados nele. A cor padrao de um ID textual usa um hash do texto como
+  semente; IDs numericos mantem as cores de antes. `findInconsistencies`
+  confere que os IDs usados sao unicos sem distincao de caixa e incluem o
+  ID de toda tarefa.
 - Rotulos (escolha do autor): Gantt, snapshots e SVG mostram o ID como
   digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
   tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
@@ -2114,5 +2122,6 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   natural no sorteio, nomes como `constructor`), `ganttSvg.test.ts`
   (ordem, escape, rotulo longo), `numericIds.golden.test.ts` e
   `renderer/.../numericIds.golden.test.ts` (trace e SVG de IDs numericos
-  iguais aos de antes). Inclusao de tarefa (ID sugerido ou digitado):
-  pendente do PR #119.
+  iguais aos de antes), `simulator.addTask.test.ts` e `edit.test.ts` (ID
+  sugerido ou digitado, recusa de ID usado, inclusive o de tarefa excluida,
+  e IDs invalidos) e `consistency.test.ts` (IDs usados).

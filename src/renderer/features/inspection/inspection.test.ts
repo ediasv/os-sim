@@ -111,7 +111,7 @@ function snapshot(): SimulationState {
             { kind: 'cpu-on', time: 2, cpuId: 1 },
         ],
         drawState: 1,
-        maxTaskId: 99,
+        usedTaskIds: [],
     };
 }
 
