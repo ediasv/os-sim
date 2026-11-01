@@ -652,6 +652,19 @@ paineis.
   mostra lado a lado o estado do sistema (#73) e a inspecao (#69/#71), que no
   Figma ficam na regiao "Detalhes" sob o diagrama. `InspectionPanel` deixou de
   usar `<main>` como raiz, pois ja ha um `<main>` no layout.
+- FE-DEC-18 (REQ-04, REQ-05, REQ-10; FE-02, FE-04, FE-05): nesta parte, (a) o
+  simulador so e criado no primeiro "Avancar tick" e Reiniciar recarrega o
+  rascunho usado no inicio; (b) Carregar configuracao so existe antes de
+  iniciar e fica desabilitado enquanto o dialogo esta aberto; um arquivo
+  escolhido depois do inicio e ignorado, para nao mudar o que Reiniciar
+  recarrega; (c) a disposicao lado a lado e provisoria ate o Gantt (#38).
+  Justificativa: nao ha ainda a confirmacao de substituicao de FE-04, e iniciar
+  sem tarefa ou trocar a sessao em silencio perderia trabalho (FE-05).
+  Acordado com o usuario em 2026-11-01 ao delimitar a parte 1 da #36.
+- Consultas compartilhadas: [snapshotQueries](../snapshotQueries.ts) guarda por
+  snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
+  para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
+  a cada tick. Nao decide regra; so evita repetir a consulta.
 - Fora desta parte: Executar tudo e cancelamento (#27), tarefas e sistema
   editaveis (#37 e restante da #36: Sistema e Adicionar tarefa seguem
   desabilitados) e a confirmacao de substituicao (FE-04).
