@@ -1,7 +1,20 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { WorkspaceAction } from '../components/workspaceActions';
-import { DEFAULT_CONFIG, type SystemConfig } from '../../core/domain';
+import type { ConfigIssue } from '../../core/config';
+import {
+    DEFAULT_CONFIG,
+    type SystemConfig,
+    type TaskId,
+} from '../../core/domain';
 import { loadConfig } from '../../core/loadConfig';
+import {
+    applySystem as applySystemEdit,
+    newTaskValues,
+    removeTask,
+    saveTask as saveTaskEdit,
+    type SystemValues,
+    type TaskValues,
+} from '../features/configuration/draft';
 import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
 import { useSimulation } from './useSimulation';
@@ -13,6 +26,26 @@ export interface Notice {
     /** One line per problem, separated by `\n`. */
     readonly message: string;
 }
+
+/** A valid file waiting for the user to confirm replacing the draft (FE-04). */
+export interface PendingReplacement {
+    readonly config: SystemConfig;
+    readonly fileName: string | undefined;
+    /** Shown only once the replacement is confirmed. */
+    readonly notices: readonly Notice[];
+}
+
+/** The modal the workspace is showing, if any; at most one at a time. */
+export type WorkspaceDialog =
+    | { readonly kind: 'system' }
+    /** `editing` is the id being edited, `null` when adding. */
+    | {
+          readonly kind: 'task';
+          readonly editing: TaskId | null;
+          readonly initial: TaskValues;
+      }
+    | { readonly kind: 'remove'; readonly taskId: TaskId }
+    | { readonly kind: 'replace'; readonly pending: PendingReplacement };
 
 /**
  * Orchestrates the workspace (#36): which configuration is being prepared,
@@ -37,6 +70,9 @@ export function useWorkspace() {
     /** Base name of the loaded configuration file, shown in the exported title. */
     const fileName = ref<string | undefined>();
     const notices = shallowRef<readonly Notice[]>([]);
+    const dialog = shallowRef<WorkspaceDialog | null>(null);
+    /** Task chosen in the preparation list; the target of "Editar tarefa". */
+    const selectedTaskId = ref<TaskId | null>(null);
 
     /** Snapshot at the history cursor; null while preparing. */
     const snapshot = computed(() =>
@@ -47,10 +83,21 @@ export function useWorkspace() {
     const clock = computed(() => snapshot.value?.clock ?? null);
     const taskCount = computed(() => config.value.tasks.length);
 
+    /** Tasks of the configuration being prepared; empty once it started. */
+    const draftTasks = computed(() => (started.value ? [] : draft.value.tasks));
+
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
-        // Replacing a running session needs the confirmation of FE-04.
-        if (!started.value && !loading.value) actions.add('load-config');
+        // A file may replace the draft or the session, after FE-04's confirmation.
+        const idle = !loading.value && dialog.value === null;
+        if (idle) actions.add('load-config');
+        // The configuration is edited only before the start; changing it
+        // during the simulation belongs to #37.
+        if (idle && !started.value) {
+            actions.add('configure-system');
+            actions.add('add-task');
+            if (selectedTaskId.value !== null) actions.add('edit-task');
+        }
         // Starting needs at least one task (FE-02).
         if (started.value || draft.value.tasks.length > 0) {
             actions.add('step-forward');
@@ -104,9 +151,6 @@ export function useWorkspace() {
         } finally {
             loading.value = false;
         }
-        // The user may have started while the dialog was open: replacing the
-        // draft now would change what Reiniciar reloads (FE-05).
-        if (started.value) return;
         if (result.status === 'canceled') return;
         if (result.status === 'failed') {
             notices.value = [
@@ -139,11 +183,115 @@ export function useWorkspace() {
                     .join('\n'),
             });
         }
-        if (loaded.ok) {
-            draft.value = loaded.config;
-            fileName.value = result.path.split(/[/\\]/).pop();
+        if (!loaded.ok) {
+            notices.value = next;
+            return;
         }
-        notices.value = next;
+        const pending: PendingReplacement = {
+            config: loaded.config,
+            fileName: result.path.split(/[/\\]/).pop(),
+            notices: next,
+        };
+        // The file is valid; only now is there anything to confirm (FE-04).
+        // Something is lost if a session runs or the draft is not the defaults.
+        if (started.value || hasPreparedWork(draft.value)) {
+            dialog.value = { kind: 'replace', pending };
+        } else {
+            replaceWith(pending);
+        }
+    }
+
+    function hasPreparedWork(config: SystemConfig): boolean {
+        return (
+            config.tasks.length > 0 ||
+            config.algorithm !== DEFAULT_CONFIG.algorithm ||
+            config.quantum !== DEFAULT_CONFIG.quantum ||
+            config.cpuCount !== DEFAULT_CONFIG.cpuCount
+        );
+    }
+
+    /** Back to preparation with the file's configuration; no simulator survives. */
+    function replaceWith(pending: PendingReplacement): void {
+        simulation.value = null;
+        started.value = false;
+        draft.value = pending.config;
+        fileName.value = pending.fileName;
+        selectedTaskId.value = pending.config.tasks[0]?.id ?? null;
+        notices.value = [...pending.notices];
+        dialog.value = null;
+    }
+
+    function confirmReplace(): void {
+        if (dialog.value?.kind === 'replace') replaceWith(dialog.value.pending);
+    }
+
+    function cancelDialog(): void {
+        dialog.value = null;
+    }
+
+    function selectTask(id: TaskId): void {
+        if (draft.value.tasks.some((task) => task.id === id)) {
+            selectedTaskId.value = id;
+        }
+    }
+
+    function openTaskDialog(editing: TaskId | null): void {
+        const existing = draft.value.tasks.find((task) => task.id === editing);
+        dialog.value = {
+            kind: 'task',
+            editing: existing?.id ?? null,
+            initial:
+                existing === undefined
+                    ? newTaskValues(draft.value)
+                    : {
+                          id: existing.id,
+                          color: existing.color,
+                          arrival: existing.arrival,
+                          duration: existing.duration,
+                          period: existing.period,
+                          deadline: existing.deadline,
+                      },
+        };
+    }
+
+    /**
+     * Applies the system form. The core's reasons come back for the form to
+     * show; on a refusal the dialog and the draft stay as they were (FE-11).
+     */
+    function applySystem(values: SystemValues): readonly ConfigIssue[] {
+        const result = applySystemEdit(draft.value, values);
+        if (!result.ok) return result.issues;
+        draft.value = result.config;
+        dialog.value = null;
+        return [];
+    }
+
+    /** Applies the task form, adding or editing as the open dialog says. */
+    function saveTask(values: TaskValues): readonly ConfigIssue[] {
+        const current = dialog.value;
+        if (current?.kind !== 'task') return [];
+        const result = saveTaskEdit(draft.value, values, current.editing);
+        if (!result.ok) return result.issues;
+        draft.value = result.config;
+        selectedTaskId.value = values.id;
+        dialog.value = null;
+        return [];
+    }
+
+    /** From the edit dialog to the confirmation of removal. */
+    function requestRemove(): void {
+        const current = dialog.value;
+        if (current?.kind === 'task' && current.editing !== null) {
+            dialog.value = { kind: 'remove', taskId: current.editing };
+        }
+    }
+
+    function confirmRemove(): void {
+        const current = dialog.value;
+        if (current?.kind !== 'remove') return;
+        draft.value = removeTask(draft.value, current.taskId);
+        selectedTaskId.value = draft.value.tasks[0]?.id ?? null;
+        dialog.value = null;
     }
 
     /**
@@ -194,6 +342,15 @@ export function useWorkspace() {
             case 'load-config':
                 void openConfigFile();
                 break;
+            case 'configure-system':
+                dialog.value = { kind: 'system' };
+                break;
+            case 'add-task':
+                openTaskDialog(null);
+                break;
+            case 'edit-task':
+                openTaskDialog(selectedTaskId.value);
+                break;
             case 'step-forward':
                 if (!started.value) start();
                 else settle(simulation.value!.next());
@@ -219,7 +376,17 @@ export function useWorkspace() {
         taskCount,
         available,
         notices,
+        dialog,
+        draftTasks,
+        selectedTaskId,
         handle,
         dismissNotice,
+        selectTask,
+        applySystem,
+        saveTask,
+        requestRemove,
+        confirmRemove,
+        confirmReplace,
+        cancelDialog,
     };
 }

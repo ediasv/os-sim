@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe('useWorkspace', () => {
-    it('opens in preparation: defaults, no snapshot, only loading available', () => {
+    it('opens in preparation: defaults, no snapshot, loading and editing available', () => {
         const workspace = useWorkspace();
 
         expect(workspace.snapshot.value).toBeNull();
@@ -77,7 +77,11 @@ describe('useWorkspace', () => {
             quantum: 5,
             cpuCount: 1,
         });
-        expect([...workspace.available.value]).toEqual(['load-config']);
+        expect([...workspace.available.value].sort()).toEqual([
+            'add-task',
+            'configure-system',
+            'load-config',
+        ]);
     });
 
     it('loading a file prepares its configuration without starting', async () => {
@@ -97,7 +101,8 @@ describe('useWorkspace', () => {
 
         expect(workspace.clock.value).toBe(0);
         expect(workspace.snapshot.value?.executions).toEqual([]);
-        expect(workspace.available.value.has('load-config')).toBe(false);
+        expect(workspace.available.value.has('configure-system')).toBe(false);
+        expect(workspace.available.value.has('add-task')).toBe(false);
         expect(workspace.available.value.has('step-back')).toBe(false);
     });
 
@@ -242,35 +247,6 @@ describe('useWorkspace', () => {
         workspace.handle('step-forward');
 
         expect(workspace.notices.value).toEqual([]);
-    });
-
-    it('ignores a file chosen after the session started, so Reiniciar keeps the session configuration', async () => {
-        let choose: (result: ConfigFileResult) => void = () => {};
-        const openConfigFile = vi
-            .fn<() => Promise<ConfigFileResult>>()
-            .mockResolvedValueOnce(loaded(TWO_TASKS))
-            .mockImplementationOnce(
-                () => new Promise((resolve) => (choose = resolve)),
-            );
-        vi.stubGlobal('window', { configFile: { openConfigFile } });
-        const workspace = useWorkspace();
-        workspace.handle('load-config');
-        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
-
-        workspace.handle('load-config');
-        expect(workspace.available.value.has('load-config')).toBe(false);
-        workspace.handle('step-forward');
-        expect(workspace.clock.value).toBe(0);
-        choose(loaded('EDF;9;4\n\n1;FFFFFF;0;1;5;5\n'));
-        await vi.waitFor(() => expect(openConfigFile).toHaveBeenCalledTimes(2));
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        workspace.handle('restart');
-
-        expect(workspace.config.value).toMatchObject({
-            algorithm: 'RM',
-            cpuCount: 2,
-        });
-        expect(workspace.taskCount.value).toBe(2);
     });
 
     it('does not open a second dialog while one is open', () => {
@@ -459,4 +435,254 @@ describe('useWorkspace export file name (#39)', () => {
             );
         },
     );
+});
+
+describe('useWorkspace preparation edits (#36 part 2)', () => {
+    const task = (overrides = {}) => ({
+        id: 1,
+        color: 'F0E0D0',
+        arrival: 0,
+        duration: 3,
+        period: 15,
+        deadline: 10,
+        ...overrides,
+    });
+
+    it('opens the system dialog and applies new values to the draft', () => {
+        const workspace = useWorkspace();
+
+        workspace.handle('configure-system');
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+
+        const issues = workspace.applySystem({
+            algorithm: 'EDF',
+            quantum: 2,
+            cpuCount: 3,
+        });
+
+        expect(issues).toEqual([]);
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'EDF',
+            quantum: 2,
+            cpuCount: 3,
+        });
+        expect(workspace.snapshot.value).toBeNull();
+    });
+
+    it('an invalid system edit returns the core reasons, keeps the dialog and the draft', () => {
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+
+        const issues = workspace.applySystem({
+            algorithm: 'RM',
+            quantum: 0,
+            cpuCount: 1,
+        });
+
+        expect(issues).toHaveLength(1);
+        expect(issues[0].message).toContain('quantum');
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+        expect(workspace.config.value.quantum).toBe(5);
+    });
+
+    it('adding a task starts from period 15, selects it and enables starting', () => {
+        const workspace = useWorkspace();
+
+        workspace.handle('add-task');
+
+        expect(workspace.dialog.value).toEqual({
+            kind: 'task',
+            editing: null,
+            initial: expect.objectContaining({ id: 1, period: 15 }),
+        });
+        expect(workspace.saveTask(task())).toEqual([]);
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.selectedTaskId.value).toBe(1);
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.available.value.has('step-forward')).toBe(true);
+        expect(workspace.available.value.has('edit-task')).toBe(true);
+    });
+
+    it('period zero is refused with its reason and nothing changes', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+
+        const issues = workspace.saveTask(task({ period: 0 }));
+
+        expect(issues).toEqual([
+            expect.objectContaining({
+                field: 'period',
+                message: expect.stringContaining('maior que zero'),
+            }),
+        ]);
+        expect(workspace.taskCount.value).toBe(0);
+        expect(workspace.dialog.value).not.toBeNull();
+    });
+
+    it('edits the selected task in place', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('add-task');
+        workspace.saveTask(task({ id: 2, color: 'A0B0C0' }));
+        workspace.selectTask(1);
+
+        workspace.handle('edit-task');
+        expect(workspace.dialog.value).toMatchObject({
+            kind: 'task',
+            editing: 1,
+            initial: expect.objectContaining({ id: 1, duration: 3 }),
+        });
+        expect(workspace.saveTask(task({ duration: 7 }))).toEqual([]);
+
+        expect(workspace.config.value.tasks.map((t) => t.duration)).toEqual([
+            7, 3,
+        ]);
+    });
+
+    it('removal asks first; confirming drops the task, cancelling keeps it', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('edit-task');
+
+        workspace.requestRemove();
+        expect(workspace.dialog.value).toEqual({ kind: 'remove', taskId: 1 });
+        workspace.cancelDialog();
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.dialog.value).toBeNull();
+
+        workspace.handle('edit-task');
+        workspace.requestRemove();
+        workspace.confirmRemove();
+
+        expect(workspace.taskCount.value).toBe(0);
+        expect(workspace.selectedTaskId.value).toBeNull();
+        expect(workspace.available.value.has('step-forward')).toBe(false);
+    });
+
+    it('does not open another dialog while one is open', () => {
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+
+        expect(workspace.available.value.has('add-task')).toBe(false);
+        workspace.handle('add-task');
+
+        expect(workspace.dialog.value).toEqual({ kind: 'system' });
+    });
+
+    it('edits made in preparation survive a restart of the session (FE-05)', () => {
+        const workspace = useWorkspace();
+        workspace.handle('add-task');
+        workspace.saveTask(task());
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+
+        workspace.handle('restart');
+
+        expect(workspace.clock.value).toBe(0);
+        expect(workspace.taskCount.value).toBe(1);
+    });
+});
+
+describe('useWorkspace replacing a configuration (FE-04)', () => {
+    const OTHER = 'EDF;9;4\n\n1;FFFFFF;0;1;5;5\n';
+
+    it('loads straight into an empty preparation, without asking', async () => {
+        const workspace = await prepared();
+
+        expect(workspace.dialog.value).toBeNull();
+    });
+
+    it('asks before replacing a prepared configuration; cancelling keeps everything', async () => {
+        stubFile(loaded(TWO_TASKS), loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        workspace.cancelDialog();
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'RM',
+            cpuCount: 2,
+        });
+        expect(workspace.taskCount.value).toBe(2);
+    });
+
+    it('confirming replaces everything and discards a started session', async () => {
+        stubFile(loaded(TWO_TASKS), loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+        expect(workspace.clock.value).toBe(1);
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        workspace.confirmReplace();
+
+        expect(workspace.snapshot.value).toBeNull();
+        expect(workspace.clock.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'EDF',
+            quantum: 9,
+            cpuCount: 4,
+        });
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.available.value.has('configure-system')).toBe(true);
+        workspace.handle('restart');
+        expect(workspace.clock.value).toBeNull();
+    });
+
+    it('an invalid file never asks and never replaces anything', async () => {
+        stubFile(loaded(TWO_TASKS), loaded('lixo\n'));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.taskCount.value).toBe(2);
+    });
+
+    it('asks too when only the system values were changed', async () => {
+        stubFile(loaded(OTHER));
+        const workspace = useWorkspace();
+        workspace.handle('configure-system');
+        workspace.applySystem({ algorithm: 'EDF', quantum: 2, cpuCount: 1 });
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+    });
+
+    it('warnings of the loaded file appear only once the replacement is confirmed', async () => {
+        stubFile(loaded(TWO_TASKS), loaded('RM;5;1\n\n1;F0E0D0;0;3;;10\n'));
+        const workspace = useWorkspace();
+        workspace.handle('load-config');
+        await vi.waitFor(() => expect(workspace.taskCount.value).toBe(2));
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        expect(workspace.notices.value).toEqual([]);
+
+        workspace.confirmReplace();
+
+        expect(workspace.notices.value).toEqual([
+            expect.objectContaining({ title: 'Período padrão aplicado' }),
+        ]);
+    });
 });

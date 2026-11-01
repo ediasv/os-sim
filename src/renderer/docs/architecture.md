@@ -644,7 +644,8 @@ paineis.
   o futuro gravado ou calcula um passo), "Voltar tick" usa `backward()` e
   "Reiniciar" recarrega o rascunho no snapshot zero (FE-05).
 - Disponibilidade: Carregar configuracao so antes do inicio, porque substituir
-  uma sessao em andamento pede a confirmacao de FE-04, ainda nao implementada.
+  uma sessao em andamento pede a confirmacao de FE-04 (implementada na parte 2:
+  ver [FE-DEC-19](#preparacao-da-configuracao-36-parte-2)).
   Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
   alerta no ponto da acao e o ultimo snapshot valido permanece (DEC-24,
   DEC-36); erros inesperados seguem so para o banner.
@@ -657,7 +658,8 @@ paineis.
   rascunho usado no inicio; (b) Carregar configuracao so existe antes de
   iniciar e fica desabilitado enquanto o dialogo esta aberto; um arquivo
   escolhido depois do inicio e ignorado, para nao mudar o que Reiniciar
-  recarrega; (c) a disposicao lado a lado e provisoria ate o Gantt (#38).
+  recarrega (item revisto pelo FE-DEC-19); (c) a disposicao lado a lado e
+  provisoria ate o Gantt (#38).
   Justificativa: nao ha ainda a confirmacao de substituicao de FE-04, e iniciar
   sem tarefa ou trocar a sessao em silencio perderia trabalho (FE-05).
   Acordado com o usuario em 2026-11-01 ao delimitar a parte 1 da #36.
@@ -665,9 +667,9 @@ paineis.
   snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
   para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
   a cada tick. Nao decide regra; so evita repetir a consulta.
-- Fora desta parte: Executar tudo e cancelamento (#27), tarefas e sistema
-  editaveis (#37 e restante da #36: Sistema e Adicionar tarefa seguem
-  desabilitados) e a confirmacao de substituicao (FE-04).
+- Fora desta parte: Executar tudo e cancelamento (#27) e a edicao durante a
+  simulacao (#37). Sistema, tarefas do rascunho e a confirmacao de FE-04 ficaram
+  para a parte 2, abaixo.
 
 Verificacao (2026-11-01): `npm test` 685 aprovados e 1 ignorado em 44 arquivos,
 `npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, com um
@@ -676,6 +678,69 @@ arquivo com periodo ausente mostra o aviso, o primeiro avancar mostra t = 0,
 avancar ate t = 5 atualiza relogio, estado do sistema e inspecao, sem rolagem
 horizontal. Nao verificado: app Electron com o dialogo real, 390 px, voltar e
 reiniciar no navegador (cobertos por testes de componente).
+
+## Preparacao da configuracao (#36, parte 2)
+
+Antes de iniciar, o usuario ve e altera o sistema (algoritmo, quantum e CPUs) e
+as tarefas do rascunho. Telas do Figma (arquivo `h2kssKC2KiSuN4iAg4K1yU`, pagina
+Telas): "Dialogo — Configurar sistema" (`98:1180`), "Dialogo — Editar tarefa"
+(`99:1089`), "Dialogo — Remover tarefa" (`99:1607`) e "Tela — Pronta para
+iniciar" (`204:2821`).
+
+- Logica: [draft.ts](../features/configuration/draft.ts) monta a configuracao
+  candidata de cada edicao e a entrega a `validateConfig`; limites de DEC-10 e
+  motivos vem do nucleo, e uma edicao recusada devolve as `issues` sem mudar o
+  rascunho (FE-03, FE-11). So uma regra e do renderer: periodo zero informado na
+  tela e recusado com o motivo "Toda tarefa precisa de periodo maior que zero",
+  porque o nucleo ainda o aceita como aperiodico (DEC-29 item 3). Tarefa nova:
+  ID igual ao maior usado mais 1 (nunca reaproveitado no rascunho), cor sugerida
+  (primeira de uma paleta ainda livre, editavel) e periodo 15 (DEC-29).
+- Coordenacao: `useWorkspace` ganhou `dialog` (um modal por vez), `selectedTaskId`,
+  `applySystem`, `saveTask`, `requestRemove`/`confirmRemove`,
+  `confirmReplace`/`cancelDialog` e as acoes `configure-system`, `add-task` e
+  `edit-task`. Sistema e tarefas so ficam disponiveis antes do inicio; durante a
+  simulacao seguem desabilitados ate a #37.
+- Componentes: `SystemDialog` e `TaskDialog` (formularios com rascunho proprio,
+  valores digitados mantidos e motivos junto ao campo), `ConfirmDialog` (remover
+  tarefa e substituir configuracao), `UiDialog` e `UiField`. `TaskPanel` lista as
+  tarefas do rascunho como cartoes, com "Editar tarefa selecionada" e "Adicionar
+  tarefa" como no Figma.
+- FE-DEC-19 (REQ-05, REQ-06, REQ-10; FE-02, FE-03, FE-04, FE-11; DEC-29):
+  (a) a recusa do periodo zero nas telas fica no renderer, com texto proprio,
+  e e o unico check de dominio alem do nucleo; (b) "Editar tarefa selecionada"
+  atua na tarefa escolhida na lista e "Remover tarefa" fica dentro do dialogo de
+  edicao, com confirmacao propria, como no Figma; (c) `TaskDialog` e um
+  formulario de apresentacao (props e eventos), reaproveitavel pela #37, que
+  decidira como aplicar edicoes durante a simulacao (sem a faixa "Editando no
+  tick" nem a secao "Job atual" do Figma, que nao existem aqui); (d) Carregar
+  configuracao tambem funciona depois do inicio: um arquivo valido que
+  substituiria uma sessao em andamento, tarefas ou valores ja alterados abre a
+  confirmacao de FE-04; cancelar preserva tudo e confirmar descarta a sessao,
+  volta a preparacao e so entao mostra os avisos de periodo padrao do arquivo;
+  arquivo invalido ou ilegivel nunca pede confirmacao nem altera nada (revisa o
+  item (b) de FE-DEC-18); (e) desvios do Figma: a ajuda do periodo diz "Inteiro
+    > = 1" em vez de "0 = aperiodica", pois zero e recusado (DEC-29), e a faixa
+    > "Alteracao durante a simulacao" do dialogo de sistema e o texto "Para trocar,
+    > reinicie" ficam de fora (DEC-37, #37); o Figma nao tem tela para a confirmacao
+    > de FE-04, que reaproveita o layout do dialogo de remover; (f) os modais sao
+    > `div` com `role="dialog"` e `aria-modal`, nao `<dialog>.showModal()`, que o
+    > jsdom dos testes nao implementa; Escape e o botao de fechar cancelam, clicar
+    > fora nao fecha (para nao perder o que foi digitado), o foco entra no primeiro
+    > campo, fica preso no dialogo e volta ao botao de origem. Justificativa: manter
+    > as regras no nucleo, seguir o Figma onde ele define a tela e nao perder
+    > trabalho em silencio (FE-05). Acordado com o usuario em 2026-11-01.
+- Nao feito: edicao durante a simulacao, Executar tudo e cancelamento, ID
+  editavel, tarefa concluida so com cor (#37, #27).
+
+Verificacao (2026-11-01): `npm test` 992 aprovados e 1 ignorado em 58 arquivos
+(reexecutado ao final), `npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, navegador do
+app) a 1440 x 924: abrir o dialogo de tarefa mostra periodo 15 e a cor sugerida;
+periodo 0 mostra o motivo junto ao campo e nada muda; duas tarefas aparecem como
+cartoes ("Pronta para iniciar"); editar e remover (com confirmacao) abrem os
+dialogos do Figma; apos iniciar e avancar um tick, carregar um arquivo abre
+"Substituir a configuracao?" e, ao confirmar, volta a preparacao com o aviso de
+periodo padrao. Nao verificado: app Electron com o dialogo real de arquivo,
+larguras menores que 1440, comparacao lado a lado por captura (#40).
 
 ## Verificacao e pendencias tecnicas
 

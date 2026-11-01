@@ -62,7 +62,7 @@ describe('App', () => {
         expect(chipValue(wrapper, 'Tick atual')).toBe('–');
     });
 
-    it('renders 13 buttons and only the loading ones are enabled while preparing', () => {
+    it('renders 13 buttons and only the loading and editing ones are enabled while preparing', () => {
         const buttons = mount(App).findAll('button');
 
         expect(buttons).toHaveLength(13);
@@ -71,7 +71,11 @@ describe('App', () => {
             .map((button) => button.text());
         expect(enabled).toEqual([
             'Carregar configuração',
+            'Sistema',
+            'Adicionar tarefa',
             'Carregar configuração',
+            'Adicionar tarefa',
+            'Sistema',
         ]);
     });
 
@@ -179,5 +183,149 @@ describe('App', () => {
 
     it('no longer shows the placeholder counter', () => {
         expect(mount(App).text()).not.toContain('Tick:');
+    });
+});
+
+describe('App preparation without a file (#36 part 2)', () => {
+    const button = (wrapper: ReturnType<typeof mount>, label: string) =>
+        wrapper.findAll('button').find((b) => b.text() === label)!;
+    const field = (wrapper: ReturnType<typeof mount>, label: string) => {
+        const l = wrapper.findAll('label').find((x) => x.text() === label)!;
+        return wrapper.get<HTMLInputElement>(`#${l.attributes('for')}`);
+    };
+    const stubFile = () =>
+        Object.defineProperty(window, 'configFile', {
+            configurable: true,
+            value: {
+                openConfigFile: vi.fn().mockResolvedValue({
+                    status: 'loaded',
+                    path: '/c.txt',
+                    text: 'EDF;4;2\n\n1;F0E0D0;0;3;5;5\n',
+                }),
+            },
+        });
+
+    async function addDefaultTask(wrapper: ReturnType<typeof mount>) {
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+        await button(wrapper, 'Aplicar').trigger('click');
+    }
+
+    it('adds a task from the period 15 and starts without any file', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+        expect(field(wrapper, 'Período').element.value).toBe('15');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+        expect(wrapper.text()).toContain('1 tarefa configurada');
+        await button(wrapper, 'Avançar tick').trigger('click');
+        expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+        expect(wrapper.text()).toContain('Estado do sistema');
+    });
+
+    it('refuses period zero with the reason, keeps the form and changes nothing', async () => {
+        const wrapper = mount(App);
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+
+        await field(wrapper, 'Período').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Toda tarefa precisa de período maior que zero',
+        );
+        expect(field(wrapper, 'Período').element.value).toBe('0');
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(wrapper.text()).toContain('Nenhuma tarefa configurada');
+    });
+
+    it('shows the core reason for an invalid field and keeps what was typed', async () => {
+        const wrapper = mount(App);
+        await button(wrapper, 'Adicionar tarefa').trigger('click');
+
+        await field(wrapper, 'Duração').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'maior ou igual a 1',
+        );
+        expect(field(wrapper, 'Duração').element.value).toBe('0');
+    });
+
+    it('changes the system values and shows them in the toolbar', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Sistema').trigger('click');
+        await wrapper.get('select').setValue('EDF');
+        await field(wrapper, 'Quantum').setValue('2');
+        await field(wrapper, 'Processadores').setValue('3');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(chipValue(wrapper, 'Quantum')).toBe('2');
+        expect(chipValue(wrapper, 'CPUs')).toBe('3');
+    });
+
+    it('edits the selected task and removes it after confirming', async () => {
+        const wrapper = mount(App);
+        await addDefaultTask(wrapper);
+
+        await button(wrapper, 'Editar tarefa selecionada').trigger('click');
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Editar Tarefa 1',
+        );
+        await button(wrapper, 'Remover tarefa').trigger('click');
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Remover Tarefa 1?',
+        );
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(wrapper.text()).toContain('1 tarefa configurada');
+
+        await button(wrapper, 'Editar tarefa selecionada').trigger('click');
+        await button(wrapper, 'Remover tarefa').trigger('click');
+        await button(wrapper, 'Remover').trigger('click');
+
+        expect(wrapper.text()).toContain('Nenhuma tarefa configurada');
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    });
+
+    it('asks before a file replaces what was prepared, and Cancel keeps it', async () => {
+        stubFile();
+        const wrapper = mount(App);
+        await addDefaultTask(wrapper);
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'Substituir a configuração?',
+        );
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(chipValue(wrapper, 'Política')).toBe('RM');
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        await button(wrapper, 'Substituir').trigger('click');
+
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(chipValue(wrapper, 'CPUs')).toBe('2');
+    });
+
+    it('a file loaded over a started session returns to preparation', async () => {
+        stubFile();
+        const wrapper = mount(App);
+        await addDefaultTask(wrapper);
+        await button(wrapper, 'Avançar tick').trigger('click');
+        expect(chipValue(wrapper, 'Tick atual')).toBe('0');
+
+        await button(wrapper, 'Carregar configuração').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[role="dialog"]').text()).toContain(
+            'a simulação em andamento é descartada',
+        );
+        await button(wrapper, 'Substituir').trigger('click');
+
+        expect(chipValue(wrapper, 'Tick atual')).toBe('–');
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(wrapper.text()).toContain('Configuração pronta');
     });
 });
