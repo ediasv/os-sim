@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigFileResult } from '../../shared/configFile';
+import type { ImageFileResult } from '../../shared/imageFile';
 import { currentError, dismissError } from '../errors';
 import { useWorkspace } from './useWorkspace';
 
@@ -283,5 +284,123 @@ describe('useWorkspace', () => {
         workspace.handle('load-config');
 
         expect(openConfigFile).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('useWorkspace export (#39)', () => {
+    function stubImage(...results: ImageFileResult[]) {
+        const saveImageFile = vi.fn();
+        for (const result of results) {
+            saveImageFile.mockResolvedValueOnce(result);
+        }
+        vi.stubGlobal('window', { imageFile: { saveImageFile } });
+        return saveImageFile;
+    }
+
+    it('is unavailable while preparing and available from the first snapshot', async () => {
+        const workspace = await prepared();
+        expect(workspace.available.value.has('export-svg')).toBe(false);
+
+        workspace.handle('step-forward');
+
+        expect(workspace.available.value.has('export-svg')).toBe(true);
+    });
+
+    it('exports the whole history even with the cursor stepped back', async () => {
+        const workspace = await prepared();
+        for (let i = 0; i < 5; i++) workspace.handle('step-forward');
+        workspace.handle('step-back');
+        workspace.handle('step-back');
+        expect(workspace.clock.value).toBe(2);
+        const save = stubImage({ status: 'saved', path: '/o/g.svg' });
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+
+        const { content } = save.mock.calls[0][0] as { content: string };
+        expect(content).toContain('t = 0 a 4');
+        expect(workspace.clock.value).toBe(2);
+    });
+
+    it('confirms where the image was saved', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        stubImage({ status: 'saved', path: '/o/g.svg' });
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        expect(workspace.notices.value[0]).toMatchObject({
+            tone: 'success',
+            message: 'Imagem salva em "/o/g.svg".',
+        });
+    });
+
+    it('explains a write failure and keeps the session', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+        stubImage({
+            status: 'failed',
+            path: '/o/g.svg',
+            reason: 'permission-denied',
+            message:
+                'Não foi possível salvar o arquivo "/o/g.svg": permissão negada.',
+        });
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(workspace.notices.value).toHaveLength(1));
+
+        expect(workspace.notices.value[0]).toMatchObject({
+            tone: 'danger',
+            message: expect.stringContaining('permissão negada'),
+        });
+        expect(workspace.clock.value).toBe(1);
+        expect(workspace.available.value.has('export-svg')).toBe(true);
+    });
+
+    it('treats cancel as no error', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        const save = stubImage({ status: 'canceled' });
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(save).toHaveBeenCalled());
+        await vi.waitFor(() =>
+            expect(workspace.available.value.has('export-svg')).toBe(true),
+        );
+
+        expect(workspace.notices.value).toEqual([]);
+        expect(currentError.value).toBeNull();
+    });
+
+    it('does not open a second dialog while one is open', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        const saveImageFile = vi.fn(
+            () => new Promise<ImageFileResult>(() => {}),
+        );
+        vi.stubGlobal('window', { imageFile: { saveImageFile } });
+
+        workspace.handle('export-svg');
+        workspace.handle('export-svg');
+
+        expect(saveImageFile).toHaveBeenCalledTimes(1);
+        expect(workspace.available.value.has('export-svg')).toBe(false);
+    });
+
+    it('reports an unexpected IPC failure through the banner', async () => {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        vi.stubGlobal('window', {
+            imageFile: {
+                saveImageFile: vi.fn().mockRejectedValue(new Error('ipc')),
+            },
+        });
+
+        workspace.handle('export-svg');
+        await vi.waitFor(() => expect(currentError.value).not.toBeNull());
+
+        expect(workspace.available.value.has('export-svg')).toBe(true);
     });
 });

@@ -2,12 +2,13 @@ import { computed, ref, shallowRef } from 'vue';
 import type { WorkspaceAction } from '../components/workspaceActions';
 import { DEFAULT_CONFIG, type SystemConfig } from '../../core/domain';
 import { loadConfig } from '../../core/loadConfig';
+import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
 import { useSimulation } from './useSimulation';
 
 /** Message the workspace shows to the user, in the order it should appear. */
 export interface Notice {
-    readonly tone: 'danger' | 'warning';
+    readonly tone: 'danger' | 'warning' | 'success';
     readonly title?: string;
     /** One line per problem, separated by `\n`. */
     readonly message: string;
@@ -31,6 +32,8 @@ export function useWorkspace() {
     const started = ref(false);
     /** A file dialog is open; its result is applied only if still preparing. */
     const loading = ref(false);
+    /** A save dialog is open; a second export waits for it. */
+    const exporting = ref(false);
     const notices = shallowRef<readonly Notice[]>([]);
 
     /** Snapshot at the history cursor; null while preparing. */
@@ -54,6 +57,8 @@ export function useWorkspace() {
             actions.add('step-back');
         }
         if (started.value) actions.add('restart');
+        // Any step may be exported (FE-18); the dialog is modal.
+        if (started.value && !exporting.value) actions.add('export-svg');
         return actions;
     });
 
@@ -136,6 +141,38 @@ export function useWorkspace() {
         notices.value = next;
     }
 
+    /**
+     * Exports the whole recorded history, whatever the cursor shows (FE-18).
+     * Cancelling is silent; a write failure keeps the session and says why.
+     */
+    async function exportSvg(): Promise<void> {
+        exporting.value = true;
+        try {
+            const content = buildGanttSvg(simulation.value!.latest());
+            const result = await window.imageFile.saveImageFile({ content });
+            if (result.status === 'saved') {
+                notices.value = [
+                    {
+                        tone: 'success',
+                        message: `Imagem salva em "${result.path}".`,
+                    },
+                ];
+            } else if (result.status === 'failed') {
+                notices.value = [
+                    {
+                        tone: 'danger',
+                        title: 'Não foi possível exportar a imagem',
+                        message: result.message,
+                    },
+                ];
+            }
+        } catch (error) {
+            reportError(error);
+        } finally {
+            exporting.value = false;
+        }
+    }
+
     function handle(action: WorkspaceAction): void {
         if (!available.value.has(action)) return;
         switch (action) {
@@ -151,6 +188,9 @@ export function useWorkspace() {
                 break;
             case 'restart':
                 settle(simulation.value!.load(draft.value));
+                break;
+            case 'export-svg':
+                void exportSvg();
                 break;
             default:
                 break;

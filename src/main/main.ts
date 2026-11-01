@@ -3,7 +3,12 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
 import { CONFIG_FILE_CHANNEL } from '../shared/configFile';
+import {
+    DEFAULT_IMAGE_FILE_NAME,
+    IMAGE_FILE_CHANNEL,
+} from '../shared/imageFile';
 import { openConfigFile, shareInFlight } from './configFile';
+import { saveImageFile } from './imageFile';
 import { isAppUrl } from './trustedSender';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -62,6 +67,38 @@ app.whenReady().then(() => {
         }
         parent = BrowserWindow.fromWebContents(event.sender);
         return open();
+    });
+
+    // Saving takes the SVG text from the renderer but never a path: the user
+    // picks the destination here. Same trust check as above; a second request
+    // while the dialog is open waits instead of opening another.
+    let saving: Promise<unknown> = Promise.resolve();
+    ipcMain.handle(IMAGE_FILE_CHANNEL, (event, request: unknown) => {
+        const frame = event.senderFrame;
+        if (!frame || frame.parent || !isAppUrl(frame.url, appUrl)) {
+            throw new Error('Pedido de arquivo de origem não confiável.');
+        }
+        const content = (request as { content?: unknown } | null)?.content;
+        if (typeof content !== 'string') {
+            throw new TypeError('Pedido de imagem inválido.');
+        }
+        const window = BrowserWindow.fromWebContents(event.sender);
+        const options: Electron.SaveDialogOptions = {
+            title: 'Exportar Gantt',
+            defaultPath: DEFAULT_IMAGE_FILE_NAME,
+            filters: [{ name: 'Imagem SVG', extensions: ['svg'] }],
+        };
+        const result = saving.then(() =>
+            saveImageFile(
+                () =>
+                    window
+                        ? dialog.showSaveDialog(window, options)
+                        : dialog.showSaveDialog(options),
+                content,
+            ),
+        );
+        saving = result.catch(() => undefined);
+        return result;
     });
 
     createWindow();

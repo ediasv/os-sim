@@ -3,8 +3,16 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from 'electron';
 import { createConfigFileApi } from './configFileApi';
+import { createImageFileApi } from './imageFileApi';
 
 contextBridge.exposeInMainWorld(
     'configFile',
     createConfigFileApi((channel) => ipcRenderer.invoke(channel)),
+);
+
+contextBridge.exposeInMainWorld(
+    'imageFile',
+    createImageFileApi((channel, request) =>
+        ipcRenderer.invoke(channel, request),
+    ),
 );
