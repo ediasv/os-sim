@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-11-01. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-10-31. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -508,11 +508,12 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   `loadConfig` acrescenta so linha e campo aos problemas do nucleo, cujas
   mensagens ja citam o valor, inclusive quando texto e numero convertido
   diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
-  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Concluida no
-  PR #120, mergeado em `220e35c` (2026-11-01). Evidencia (2026-11-01): os testes
+  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Em andamento no
+  branch `fix/93-valor-uma-vez`, PR #120 aberto. Evidencia (2026-11-01): os testes
   de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
   `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
-  669/669, `npm run lint` e `npm run typecheck` aprovados.
+  669/669, `npm run lint` e `npm run typecheck` aprovados. Proximo passo:
+  revisao e merge do PR #120.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -699,8 +700,8 @@ Issues `[Docs]`, sem fase no Project.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
-  #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73
-  concluidas; #36 parcial; #37 a #40 nao iniciados.
+  #31, #32, #33, #34, #87, #89, #92 e #94 concluidas; #93 em andamento. E5: #35, #67, #68, #69, #70, #71, #72 e #73
+  concluidas; #36 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
@@ -721,19 +722,18 @@ Issues `[Docs]`, sem fase no Project.
   eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
   PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
   adaptador fica na #37. Baseline `npm test` 669/669 em `b46d09b`; o
-  caminho geral da edicao (algoritmo e quantum) foi entregue no PR #115
-  (squash merge `45869c7`, 2026-11-01).
+  caminho geral da edicao (algoritmo e quantum) esta no PR #115.
   Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
   #26):
     1. #114 revisao de DEC-37, em que so o resultado final das edicoes de
        um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
        `oxfmt --check` ok e CI `test` aprovado);
-    2. #115 (mergeado, `45869c7`, 2026-11-01) etapa de edicao no passo, edicoes por tick no historico, descarte do
+    2. #115 (rascunho, em andamento) etapa de edicao no passo, edicoes por tick no historico, descarte do
        futuro, recusa atomica por item, algoritmo e quantum. Implementacao
        iniciada em 2026-11-01 sobre `1075b0a` (baseline `npm test` 669/669,
        lint e typecheck sem erros); escopo e criterios no corpo do PR;
        motivo da recusa de regra da configuracao vem de `validateConfig`
-       (escolha do usuario). Codigo integrado na `main` pelo PR #115:
+       (escolha do usuario). Codigo no branch do PR (`cf04c9e`):
        `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
        liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
        passo em `history.ts`, `Simulator.edit`/`getEdits` com recalculo a
@@ -750,26 +750,17 @@ Issues `[Docs]`, sem fase no Project.
        `t`; todas derrubam testes. Nao verificado: interface (comando
        `edit` fica na #37) e pacote. Depois de integrar a `main`
        (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
-       lint e typecheck sem erros. DEC-39 continua registrada como
-       proposta na arquitetura; seu aceite nao e presumido pelo merge;
-    3. #116 (rascunho, branch `feat/26-3-cpus`) quantidade de CPUs,
-       `cpu-removed`/`cpu-added` e primeiro desempate sem a CPU. Preparacao:
-       `main` em `45869c7` integrada e plano reconciliado em 2026-11-01;
-       implementacao de CPUs ainda nao iniciada. Verificacao desta integracao:
-       `npm test` 733/733 em 47 arquivos, `npm run lint` e
-       `npm run typecheck` aprovados; links locais e referencias DEC/REQ
-       do plano conferidos. Interface e pacote nao verificados. Escopo e
-       criterios no PR #116;
+       lint e typecheck sem erros. Proximo passo: revisao do PR e #116;
+    3. #116 (rascunho) quantidade de CPUs, `cpu-removed`/`cpu-added` e primeiro desempate
+       sem a CPU;
     4. #117 (rascunho) estado por tarefa (suspensa, forcada, concluida) e seus eventos;
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
-- #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
-  simulador, navegacao e paineis; a issue continua aberta para o restante.
-- Proximo passo: implementar e testar a edicao de CPUs no #116 sobre a
-  base do #115, incluindo eventos, desempate e periodos de existencia
-  usados por `cpuOff` e `findInconsistencies`. Pendencias de decisao:
-  aceite de DEC-39 (#115) e aceitar ou rever DEC-34 (#92).
+- Em andamento: #36 parte 1 (App com simulador, navegacao e paineis), PR #113;
+  a issue continua aberta (Refs #36).
+- Proximo passo: revisao do PR #115 (aceite de DEC-39) e depois #116. Fora
+  da #26: aceitar ou rever DEC-34 (#92).
 - Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
