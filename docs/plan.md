@@ -639,7 +639,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   propostos em DEC-39 (aceite do usuario pendente): Windows x64 com o
   `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, a testar por
   ediasv; formato no macOS em aberto. Verificacao no Windows (2026-11-01,
-  Windows 10 Pro 10.0.19045, Node 25.8 local, pacote 1.0.5, `npm ci` e
+  Windows 10 Pro 10.0.19045, Node 25.8 local, fora do 24.22.1 fixado (build
+  a refazer com o Node fixado antes de valer como evidencia), pacote 1.0.5, `npm ci` e
   `npm run make`, Setup.exe de 146 MiB), sempre com o PATH sem `node.exe` nem
   `npm` e com uma copia de `demoConfigs/02-edf-figura-2-6.txt` em caminho curto,
   escolhida pelo dialogo nativo (carrega como EDF, quantum 25, 1 CPU; ao avancar
@@ -656,7 +657,8 @@ Requisito: REQ-10; integracao de todos os anteriores.
   proprio Electron, o app instalado abriu e repetiu o roteiro ate t=53. Ambas as
   instalacoes foram desfeitas com `Update.exe --uninstall`.
   Nao verificado: maquina limpa sem Node (a instalacao em maquina sem essa ACL
-  nao foi testada); macOS e Linux; Executar tudo (#27) e Exportar SVG (#39),
+  nao foi testada); macOS (ediasv) e Linux (so fica fora da entrega se a
+  DEC-39 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
   desabilitados no app. Um carregamento anterior por engano abriu outro
   arquivo (nao de `demoConfigs/`) e nao conta. Um processo do app
   desapareceu sem causa identificada em duas ocasioes (uma no avanco rapido de
