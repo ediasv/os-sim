@@ -1919,9 +1919,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   a edicao de tarefa aperiodica fica fora do Projeto A (DEC-29).
 - Recusas (em portugues, citando o item): tarefa inexistente ou ID nao
   inteiro; tarefa concluida (so a cor), tambem a concluida por
-  item anterior do mesmo tick: `[concluir, periodo]` e recusado e
-  `[periodo, concluir]` e aceito (validacao em ordem; o resultado equivale a
-  so concluir, e a tarefa concluida nao ativa mais); ingresso de tarefa que ja ingressou ou menor que o tick atual;
+  item anterior do mesmo envio, e conclusao no mesmo envio de uma mudanca
+  de caracteristica, em qualquer ordem (DEC-45); ingresso de tarefa que ja
+  ingressou, com valor diferente do atual (DEC-45), ou menor que o tick atual;
   duracao e prazo de tarefa sem ativacoes restantes; periodo menor que 1;
   prazo da ultima ativacao restante fora do inteiro exato (DEC-10),
   calculado sobre o alvo liquido (ingresso e periodo pendentes do mesmo
@@ -1935,19 +1935,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   tarefas diferentes seguem a ordem das tarefas.
 - Revisoes: DEC-09 (calendario guardado em `nextActivation`, nao derivado);
   DEC-16 (criterio 4 usa `Job.duration`, ja anotado em DEC-37).
-- Semantica entre envios do mesmo tick (PONTO ABERTO: sinalizar ao usuario
-  no aceite da DEC-44): cada tratador julga os jobs pelo estado ANTES das
-  edicoes do tick, e a ativacao causada por edicao e criada uma unica vez,
-  depois de todas as edicoes, a partir da definicao liquida do tick. Assim
-  (A) um envio leva o ingresso a `t` (o job 0 aparece no snapshot `t`) e um
-  segundo envio no mesmo tick leva o ingresso a 6 e e aceito: o job 0
-  desaparece; (B) um envio muda o periodo e o job 2 ativa em `t` com duracao
-  1, e um segundo envio muda a duracao para 3 e e aceito: o job 2 passa a ter
-  duracao 3. Concorda com DEC-37 item 5 (o snapshot `t` depende so de `t-1` e
-  do estado final, nao de como as edicoes foram divididas), mas tensiona os
-  itens 2 (recusa "ja ingressou"), 3 (job ativado mantem a duracao) e 4 de
-  "Caracteristicas da tarefa", lidos pelo estado visto no snapshot `t`. Fixado
-  em `simulator.taskEdits.test.ts` (bloco "across submissions").
+- Semantica entre envios do mesmo tick: resolvida na DEC-45 (decisao do
+  usuario em 2026-11-01); a primeira redacao, que julgava os jobs pelo
+  estado de antes do tick, foi substituida.
 - Lacuna conhecida (decisao do usuario, O3): so um ponto do renderer
   mostra a duracao de um JOB lida da definicao: `projectJob` em
   `src/renderer/features/system/system.ts` (linha 87, `duration:
@@ -1971,3 +1961,40 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   vencidas (contraria DEC-37 item 4).
 - Evidencia: `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts`
   e `consistency.test.ts`; resultados no plano (#26, 5 de 6).
+
+### DEC-45: Envios do mesmo tick e conclusao de tarefa
+
+- Estado: proposta em 2026-11-01 no #118 (#26, 5 de 6), decisao do usuario
+  na revisao do PR. Requisitos: REQ-05, REQ-07. Fecha o ponto aberto da
+  DEC-44 e esclarece DEC-37 itens 2 a 5 e DEC-43.
+- Envios do mesmo tick: cada envio e julgado contra o estado que os
+  anteriores deixaram, inclusive jobs criados por eles. O simulador monta,
+  para cada envio depois do primeiro, uma copia do estado de `t-1` com a
+  mudanca liquida dos envios anteriores aplicada; so a validacao a enxerga.
+  A mudanca liquida continua sendo aplicada uma vez, ao estado de `t-1`
+  (DEC-37 item 5): suspender e retomar em envios diferentes nao registra
+  eventos. Consequencia: depois que um envio cria um job (ingresso movido
+  para `t`, periodo cuja proxima ativacao ja passou), um envio seguinte
+  recusa alterar ingresso, periodo, duracao ou prazo da tarefa com valor
+  diferente do vigente, pois a definicao liquida alcancaria aquele job; o
+  mesmo valor e a cor continuam aceitos. A validacao e deterministica na
+  reexecucao dos envios gravados (voltar e editar de novo).
+- Conclusao: um envio que muda uma caracteristica (ingresso, duracao,
+  periodo ou prazo) e conclui a mesma tarefa e recusado por inteiro, em
+  qualquer ordem dos itens, com o motivo "so a cor pode ser alterada"
+  (DEC-43). Mudanca de caracteristica em um envio e conclusao em outro,
+  posterior, e valida: cada envio e julgado em sequencia.
+- Ingresso inalterado: depois que a tarefa ingressou, um item de ingresso
+  com o valor vigente e aceito sem efeito, como os demais campos; so uma
+  mudanca real e recusada ("ja ingressou"). Assim o formulario pode enviar
+  todos os campos (#37).
+- Justificativa: o usuario fixou que o estado aceito pelo primeiro envio e o
+  que o seguinte altera; a projecao so para validar preserva a mudanca
+  liquida e os eventos de DEC-37 item 5 (escolha do implementador, a
+  confirmar na revisao).
+- Alternativas descartadas: aplicar cada envio ao estado real (registraria
+  eventos de suspensao e retomada que a mudanca liquida omite); aceitar a
+  conclusao e descartar em silencio a mudanca de caracteristica (o envio
+  seria aceito sem valer por inteiro).
+- Evidencia: `simulator.taskEdits.test.ts` (bloco "across submissions") e
+  `edit.test.ts` (conclusao com caracteristica, ingresso inalterado).
