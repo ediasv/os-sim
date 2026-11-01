@@ -234,15 +234,13 @@ function checkTaskField(
 
 /**
  * Concluded tasks keep only their color editable (DEC-43); handlers of the
- * other characteristics call this first. `characteristic` names the caller
- * for readers and tests; the reason is the same for all of them. DEC-37 judges
+ * other characteristics call this first (through `editableTask`). DEC-37 judges
  * the net state, so when the edit in progress is given, a `taskState` item
  * that concluded the task earlier in the same submission counts too.
  */
 export function refuseIfConcluded(
     context: EditContext,
     taskId: TaskId,
-    _characteristic: string,
     target?: EditTarget,
 ): { ok: false; reason: string } | undefined {
     const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
@@ -332,6 +330,44 @@ function refuseUnknownTask(
 }
 
 /**
+ * Guards shared by every handler that edits a characteristic, in DEC-37
+ * order: the task exists, it is not concluded in the net state. On success
+ * returns the live control block, which the handlers need for their own
+ * limit checks.
+ */
+function editableTask(
+    target: EditTarget,
+    context: EditContext,
+    taskId: TaskId,
+):
+    | { ok: false; reason: string }
+    | { ok: true; tcb: DeepReadonly<TaskControlBlock> } {
+    const unknown = refuseUnknownTask(target, taskId);
+    if (unknown !== undefined) return unknown;
+    const concluded = refuseIfConcluded(context, taskId, target);
+    if (concluded !== undefined) return concluded;
+    const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
+    if (tcb === undefined) {
+        throw new Error(
+            `Task ${taskId} has a definition but no control block.`,
+        );
+    }
+    return { ok: true, tcb };
+}
+
+/** The target with one task's definition replaced; nothing is mutated. */
+function withDefinition(
+    target: EditTarget,
+    taskId: TaskId,
+    definition: TaskDefinition,
+): EditTarget {
+    return {
+        ...target,
+        definitions: { ...target.definitions, [taskId]: definition },
+    };
+}
+
+/**
  * Shared handler of the characteristics that only shape future activations
  * (duration, relative deadline). Checks follow DEC-37: task exists, not
  * concluded in the net state, still has an activation to receive, value
@@ -345,16 +381,9 @@ function editCharacteristic(
     field: 'duration' | 'deadline',
     value: unknown,
 ): ItemResult {
-    const unknown = refuseUnknownTask(target, taskId);
-    if (unknown !== undefined) return unknown;
-    const concluded = refuseIfConcluded(context, taskId, field, target);
-    if (concluded !== undefined) return concluded;
-    const tcb = context.state.tasks.find((t) => t.definition.id === taskId);
-    if (tcb === undefined) {
-        throw new Error(
-            `Task ${taskId} has a definition but no control block.`,
-        );
-    }
+    const editable = editableTask(target, context, taskId);
+    if (!editable.ok) return editable;
+    const { tcb } = editable;
     if (remainingActivations(tcb) <= 0) {
         return {
             ok: false,
@@ -370,13 +399,7 @@ function editCharacteristic(
     if (tooFar !== null) return { ok: false, reason: tooFar };
     return {
         ok: true,
-        target: {
-            ...target,
-            definitions: {
-                ...target.definitions,
-                [taskId]: checked.definition,
-            },
-        },
+        target: withDefinition(target, taskId, checked.definition),
     };
 }
 
@@ -421,23 +444,9 @@ function hasFinished(
 
 const HANDLERS: Handlers = {
     taskPeriod: (target, item, context) => {
-        const unknown = refuseUnknownTask(target, item.taskId);
-        if (unknown !== undefined) return unknown;
-        const concluded = refuseIfConcluded(
-            context,
-            item.taskId,
-            'period',
-            target,
-        );
-        if (concluded !== undefined) return concluded;
-        const tcb = context.state.tasks.find(
-            (t) => t.definition.id === item.taskId,
-        );
-        if (tcb === undefined) {
-            throw new Error(
-                `Task ${item.taskId} has a definition but no control block.`,
-            );
-        }
+        const editable = editableTask(target, context, item.taskId);
+        if (!editable.ok) return editable;
+        const { tcb } = editable;
         const checked = checkTaskField(
             target,
             context,
@@ -454,13 +463,7 @@ const HANDLERS: Handlers = {
                 reason: `O campo periodo deve ser um número inteiro maior ou igual a 1; valor recebido: ${checked.definition.period}. Tarefas aperiódicas (período 0) pertencem ao Projeto B (DEC-29).`,
             };
         }
-        const next: EditTarget = {
-            ...target,
-            definitions: {
-                ...target.definitions,
-                [item.taskId]: checked.definition,
-            },
-        };
+        const next = withDefinition(target, item.taskId, checked.definition);
         // The new period only reaches activations not yet made; with none left
         // it changes the RM priority alone, so there is nothing to bound.
         if (remainingActivations(tcb) > 0) {
@@ -473,23 +476,9 @@ const HANDLERS: Handlers = {
         return { ok: true, target: next };
     },
     taskArrival: (target, item, context) => {
-        const unknown = refuseUnknownTask(target, item.taskId);
-        if (unknown !== undefined) return unknown;
-        const concluded = refuseIfConcluded(
-            context,
-            item.taskId,
-            'arrival',
-            target,
-        );
-        if (concluded !== undefined) return concluded;
-        const tcb = context.state.tasks.find(
-            (t) => t.definition.id === item.taskId,
-        );
-        if (tcb === undefined) {
-            throw new Error(
-                `Task ${item.taskId} has a definition but no control block.`,
-            );
-        }
+        const editable = editableTask(target, context, item.taskId);
+        if (!editable.ok) return editable;
+        const { tcb } = editable;
         if (tcb.jobs.length > 0) {
             return {
                 ok: false,
@@ -519,13 +508,7 @@ const HANDLERS: Handlers = {
         if (tooFar !== null) return { ok: false, reason: tooFar };
         return {
             ok: true,
-            target: {
-                ...target,
-                definitions: {
-                    ...target.definitions,
-                    [item.taskId]: checked.definition,
-                },
-            },
+            target: withDefinition(target, item.taskId, checked.definition),
         };
     },
     taskDuration: (target, item, context) =>
