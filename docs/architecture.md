@@ -88,9 +88,11 @@ comuns. O estado vivo pertence ao motor, nunca aos componentes Vue.
 
 ## Registro de decisoes
 
-Estados: **aceita**, **proposta**, **substituida**. Alteracoes significativas
-recebem novo ID e indicam qual decisao substituem; nao apagar a justificativa
-anterior. Data inicial dos registros: 2026-10-12.
+Estados: **aceita**, **proposta**, **substituida**, **retirada**. Alteracoes
+significativas recebem novo ID e indicam qual decisao substituem; nao apagar a
+justificativa anterior. Proposta retirada antes do aceite mantem um registro
+curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
+2026-10-12.
 
 ### DEC-01: Motor independente da politica
 
@@ -1415,6 +1417,15 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
   desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
   suspensas indefinidamente seguem para a Q-06 (#27).
+
+### DEC-36: Uma ativacao por vez (retirada)
+
+- Estado: retirada em 2026-11-01, antes do aceite (PR #101). ID nao
+  reutilizado. Requisitos: REQ-03, REQ-08.
+- Proposta: ativar o job seguinte so na conclusao do anterior, com prazo
+  contado dessa ativacao adiada.
+- Motivo da retirada e alternativa registrados em DEC-02; texto original no
+  PR #101 (commit `37f80fa`). Reabriu e depois fechou de novo #11 e #12.
 
 ## Fluxo de um passo
 
