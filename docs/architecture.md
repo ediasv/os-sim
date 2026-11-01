@@ -224,7 +224,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
 - Estado: aceita em 2026-10-24 (#35). Requisito: REQ-09. Resolve Q-05.
-- Decisao: linhas por tarefa em ID decrescente (menor ID junto ao eixo X) e, em
+- Decisao: linhas por tarefa em ID decrescente na ordem natural de DEC-46
+  (menor ID junto ao eixo X) e, em
   secao propria, uma faixa por CPU para os intervalos desligados (DEC-21); o
   intervalo ainda aberto no instante atual termina nele. Cada trecho executado
   identifica a CPU e o job (por exemplo, "CPU 1 · #2"). Um job posterior ja
@@ -286,7 +287,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
-  maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
+  maximo (mantem DEC-05); ID unico (texto livre, DEC-46; antes inteiro >= 1); ingresso >= 0; periodo >= 0; prazo
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
 - Campos ausentes: somente periodo pode faltar (campo vazio na sua posicao,
@@ -1484,7 +1485,8 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
    `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
-   e cor distinta. O ID e gerado: maior ID ja usado na simulacao + 1. A
+   e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
+   um ID ja usado (revisto por DEC-46). A
    tarefa comeca pronta.
 2. Excluir: somente tarefa nunca ativada. Ela sai do estado sem evento e
    sem rastro no Gantt; seu ID nao volta a ser usado. Tarefa ja ativada nao
@@ -1547,7 +1549,8 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Duracao de cada job e instante da proxima ativacao, que deixa de seguir
   `ingresso + k * periodo` depois de uma edicao de periodo. Forma na DEC-44 (`Job.duration`,
   `TaskControlBlock.nextActivation`).
-- Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
+- Revisto por DEC-46: IDs de tarefa ja usados, inclusive de tarefa excluida,
+  no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
 - No historico (#23/#24, DEC-35), a lista de edicoes aceitas de cada tick.
@@ -1872,7 +1875,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
   jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
   concluida nao guarda job aberto e o `status` pertence ao conjunto
-  conhecido. Identificador de tarefa que nao e inteiro e recusado na edicao.
+  conhecido. Identificador de tarefa vazio ou invalido (DEC-46) e recusado na edicao.
   A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
   e os rotula como Interrompido; o restante da apresentacao fica na
   #37/#38.
@@ -2049,3 +2052,45 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   viria depois do `cpu-added` que o explica).
 - Evidencia: `src/core/simulator.addTask.test.ts`,
   `src/core/defaultColor.test.ts`, `consistency.test.ts` e `edit.test.ts`.
+
+### DEC-46: ID de tarefa como texto livre
+
+- Estado: aceita em 2026-11-01 (#133), decisoes 1 a 4 do usuario na
+  brainstorming; itens marcados "escolha do autor" aguardam confirmacao na
+  revisao. Requisitos: REQ-03, REQ-05, REQ-06, REQ-09. Revisa DEC-08
+  (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
+  ID) e DEC-37 (ID gerado na inclusao). Nao muda FE-19: o ID segue fixo na
+  edicao.
+- Contexto: o professor quer que o ID deixe de ser so numero. O enunciado
+  chama `id` de "identificador unico da tarefa" (A.3.3) sem dizer que e
+  numerico; so A.2.5 liga ordem a ID (menor ID junto ao eixo X). O
+  desempate de A.4.3 nao usa o ID.
+- Formato (decisao do usuario): o ID e um texto. Valido: nao vazio depois de
+  remover espacos nas pontas, sem `;` nem quebra de linha, no maximo 32
+  caracteres (limite: escolha do autor, para caber nos rotulos do Gantt e da
+  lista de eventos). Espacos internos sao mantidos. O ID e guardado e
+  exibido como digitado.
+- Unicidade (decisao do usuario): sem distincao de maiusculas e minusculas
+  (A.3.3.2): `A` e `a` sao o mesmo ID e o segundo e recusado. A mensagem
+  segue DEC-19 (linha e campo `id`) e cita o ID ja existente.
+- Ordem (decisao do usuario): "natural" em todo lugar onde DEC-08, DEC-22 e
+  DEC-27 usam o ID da tarefa. IDs formados so por digitos decimais comparam
+  por valor numerico; os demais comparam em ordem alfabetica sem distincao
+  de caixa; numeros vem antes de texto. Empate (`1` e `01`, que valem o
+  mesmo numero) desempata pelo texto exato, para a ordem ser total
+  (escolha do autor). A mesma funcao serve ao nucleo e ao renderer. Para
+  configuracoes so com IDs numericos a ordem e a de antes; ID negativo ou
+  decimal (`-3`, `2.5`) e texto (escolha do autor).
+- Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
+  e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
+  um ID digitado. Um ID usado, inclusive o de tarefa excluida, e recusado.
+  O estado de cada snapshot guarda os IDs ja usados (hoje, o maior ID
+  numerico, DEC-37); descartar o futuro descarta os IDs criados nele.
+- Rotulos (escolha do autor): Gantt, snapshots e SVG mostram o ID como
+  digitado, mantendo o prefixo `#` (`CPU 1 · #A`).
+- Alternativas descartadas: ordem de insercao no arquivo (quebraria A.2.5
+  para quem lista tarefas fora de ordem); ID gerado a partir de texto
+  (sufixo numerico), por criar regra sem pedido; unicidade sensivel a caixa,
+  por gerar linhas quase identicas.
+- Evidencia: a preencher na implementacao (testes de formato, unicidade,
+  ordem natural e inclusao; mesmos snapshots para IDs numericos).

@@ -89,7 +89,9 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 ```
 
 - Pelo menos cabecalho e uma tarefa, sem limite arbitrario de tarefas.
-- IDs unicos; cores RGB hexadecimais distintas por tarefa.
+- IDs unicos (sem distincao de caixa), texto livre nao vazio, sem `;` nem
+  quebra de linha, ate 32 caracteres (DEC-46); cores RGB hexadecimais
+  distintas por tarefa.
 - Strings sem distincao entre maiusculas/minusculas; aceitar `;` final opcional
   (DEC-20).
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
@@ -148,7 +150,8 @@ Fonte: gerais 3; A.2.1 a A.2.5.
   com padrao distinto; identificar CPU em cada trecho executado.
 - Marcar ingresso, termino, perda de prazo, sorteio e demais eventos relevantes
   em seus instantes exatos, com elementos distintos e legenda.
-- Menor ID mais proximo do eixo X; IDs decrescentes de cima para baixo.
+- Menor ID mais proximo do eixo X; IDs decrescentes de cima para baixo, na
+  ordem natural de DEC-46 (numeros por valor, depois texto).
 - Atualizar a cada passo no modo interativo e exibir resultado no modo completo.
 - Exportar imagem da simulacao inteira, nao captura da janela nem apenas area
   visivel, sem teto arbitrario de tempo. Formato SVG definido em DEC-08.
