@@ -426,6 +426,29 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   Nao verificado: disco externo, outras plataformas e pacote no
   ambiente-alvo.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
+  Implementada na branch `test/34-arquivos-validos-invalidos` (PR a abrir; sera
+  concluida so apos o merge). Evidencia (2026-10-31): `src/core/loadConfig.test.ts`
+  ganhou a regra de inteiros em cada campo numerico (fracionario e alem da faixa
+  exata nos 7 campos, zero CPUs), campos obrigatorios vazios e 300 tarefas;
+  `src/main/configLoad.test.ts` (novo, 46 testes) le arquivos reais de
+  diretorio temporario e passa por `openConfigFile` e `loadConfig`: validos
+  (CRLF, CR, BOM, espacos, linhas em branco, `;` final), invalidos (sintaxe e
+  nucleo, linha original apos linhas em branco e CR), falhas de leitura
+  (inexistente, diretorio, sem permissao real, nao UTF-8, UTF-16 sem BOM,
+  acima do limite, vazio como erro de conteudo, cancelamento) e qualquer nome e
+  local (A.3.3.4). Busca estatica `grep -rnE "defaultPath|filters|readFileSync|\.(txt|cfg|conf)['\"]" src --exclude='*.test.ts'`
+  so acha texto em `src/renderer/docs/architecture.md:503`, nenhum codigo com
+  caminho fixo. Teste de permissao negada rodou em darwin sem root (nao foi
+  pulado). Mutacoes temporarias (minimo de CPUs em 0; sem a checagem de NUL no
+  decodificador) fizeram os testes falharem. `npm test` 587/587 em 36 arquivos
+  (base: 517 em 35), `npm run lint` e `npm run typecheck` aprovados. Defeito do
+  plano: os bytes `52 4D 00 FF` ja caem na decodificacao UTF-8 estrita, entao
+  foi incluido o caso UTF-16 sem BOM, o unico que falha sem a checagem de NUL.
+  As mensagens seguem o formato atual do nucleo (a #93 pode muda-lo).
+  Verificacao manual no aplicativo nao executada pelo agente: o carregamento
+  completo depende da interface (#36); `window.configFile.openConfigFile()` pelo
+  DevTools e um arquivo em outro volume (A.3.3.4) ficam com o usuario. Nao
+  verificado: pacote no ambiente-alvo (#44).
 - #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
   no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
   `ConfigParseIssue` expoe `valueKind` (`received`, `missing`, `combined`) e
@@ -612,6 +635,8 @@ Issues `[Docs]`, sem fase no Project.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
   evidencia em E5.
 - #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
+- #34 em andamento na branch `test/34-arquivos-validos-invalidos` (testes
+  implementados, PR a abrir), evidencia em E4.
 - #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
 - Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
   suspensao/retomada; so o registro de inicio).
