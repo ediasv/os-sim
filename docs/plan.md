@@ -381,7 +381,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   aviso da conversao ficou na #92. Nao verificado: exibicao na interface
   (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
-  Em andamento (2026-10-31, PR #99 rascunho). Codificacao decidida pelo
+  Concluida no PR #99 (merged, `616629d`, 2026-11-01; issue fechada em
+  2026-11-01). Codificacao decidida pelo
   usuario: UTF-8 com ou sem BOM; conteudo que nao e UTF-8 valido e rejeitado
   como falha de leitura (DEC-32). API em DEC-33 (aceita pelo usuario em 2026-10-31):
   `src/shared/configFile.ts` (canal e tipos), `src/main/configFile.ts`
@@ -524,8 +525,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
   nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
   real, que depende de #36/#23/#24.
-- #72 Compor a area de trabalho vazia em preparacao. Em andamento (PR #100,
-  rascunho): `App` mostra a preparacao estatica (barra, painel de tarefas e
+- #72 Compor a area de trabalho vazia em preparacao. Concluida no PR #100
+  (merged, `2efe280`, 2026-11-01; issue fechada em 2026-11-01): `App` mostra a preparacao estatica (barra, painel de tarefas e
   Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
   componentes novos, nove icones do Figma e `size` no `UiIcon`; decisoes em
   FE-DEC-14. `npm test` 460/460 em 29 arquivos, lint e typecheck aprovados;
@@ -594,36 +595,26 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
+- Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: so a #25 iniciada (PR #101, rascunho); #23, #24 e #26 a #28 nao
-  iniciadas. E4: #29, #30, #31, #32, #87, #89, #92 e #94 concluidas;
-  #33 em andamento; #34 e #93 abertas. E5: #35, #67, #68, #69, #70 e #71
-  concluidas; #72 em andamento; #36 a #40 e #73 nao iniciados.
+  iniciadas. E4: #29, #30, #31, #32, #33, #87, #89, #92 e #94 concluidas;
+  #34 e #93 abertas. E5: #35, #67, #68, #69, #70, #71 e #72 concluidas; #36
+  a #40 e #73 nao iniciados.
   E6: #80 concluida; demais abertas.
 - #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
 - #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
   evidencia em E5.
-- Em andamento (rascunhos): PR #101 (#25, matriz de edicao e eventos de
-  suspensao/retomada; so o registro de inicio), PR #99 (#33, carga via main e
-  preload; revisao feita e corrigida, mudancas em DEC-32/DEC-33 aceitas e
-  verificadas com `npm start`; falta conferir o app empacotado) e PR #100
-  (#72, abaixo).
-- Em andamento: #72 (iniciada em 2026-10-31, branch
-  `feat/72-area-trabalho-vazia`, PR #100 em rascunho, issue em In Progress ate
-  o merge). Objetivo: compor a area de trabalho vazia em preparacao
-  (`WorkspaceLayout`, `SimulationToolbar`, `TaskPanel`, `GanttPanel`,
-  `EmptyWorkspace`), sem iniciar o motor nem snapshot zero ficticio. Fora:
-  formularios, comandos funcionais (#36), lista de tarefas (#71/#37), Gantt
-  (#38). Verificado: `npm test` 460/460 em 29 arquivos (linha de base 422 em
-  23), `npm run lint` e `npm run typecheck` sem achados, buscas de cor
-  hexadecimal e de `core/` sem resultado, conferencia no Electron por CDP;
-  achados da revisao do PR corrigidos e conferidos (ver E5). Nao executado:
-  pacote, janela redimensionada de fato, Tab. Proximo passo: merge.
+- #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
+- #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
+- Em andamento (rascunho): PR #101 (#25, matriz de edicao e eventos de
+  suspensao/retomada; so o registro de inicio).
 - Proximo passo: decidir a matriz de edicao da #25 com o usuario, pois ela
   destrava #26 e o Gantt (#38); #23 e #24 nao dependem dela e podem seguir em
-  paralelo a ela, nessa ordem (a #24 depende da #23). Concluir #99 e depois #34, mantendo os diagnosticos de DEC-19 no
-  escopo da #34. Aceitar ou rever DEC-34 (#92).
-- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
+  paralelo a ela, nessa ordem (a #24 depende da #23). Seguir com a #34,
+  mantendo os diagnosticos de DEC-19 no escopo da #34. Aceitar ou rever
+  DEC-34 (#92).
+- Pendencias: canal de carga da #33 no app empacotado (`npm run package`) e
+  pacote da #72 nao conferidos apos as revisoes; Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
   confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
