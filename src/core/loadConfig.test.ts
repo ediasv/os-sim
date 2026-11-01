@@ -156,6 +156,22 @@ describe('loadConfig', () => {
         },
     );
 
+    it('distinguishes missing syntax values from combined core values', () => {
+        const missing = issuesOf('RM;5;1\n1;FFFFFF;0;1;;');
+        const combined = issuesOf('RM;5;1\n1;FFFFFF;9007199254740990;1;0;5');
+
+        expect(missing[0]).toMatchObject({
+            value: null,
+            valueKind: 'missing',
+            origin: 'syntax',
+        });
+        expect(combined[0]).toMatchObject({
+            value: null,
+            valueKind: 'combined',
+            origin: 'core',
+        });
+    });
+
     it('reports every problem of several lines, in file order', () => {
         const issues = issuesOf(
             [
@@ -371,6 +387,8 @@ describe('default period (DEC-29)', () => {
                 line: 2,
                 field: 'periodo',
                 value: null,
+                valueKind: 'missing',
+                origin: 'default-period',
                 taskId: 1,
                 message:
                     'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
@@ -379,6 +397,8 @@ describe('default period (DEC-29)', () => {
                 line: 4,
                 field: 'periodo',
                 value: '0',
+                valueKind: 'received',
+                origin: 'default-period',
                 taskId: 2,
                 message:
                     'Linha 4, campo periodo (valor 0): toda tarefa precisa de período maior que zero; a tarefa 2 usará o período padrão de 15 ticks.',
@@ -411,7 +431,14 @@ describe('default period (DEC-29)', () => {
         const result = loadConfig('RM;5;1\n1;F0E0D0;0;0;0;10');
 
         expect(result.ok).toBe(false);
-        expect(result).not.toHaveProperty('warnings');
+        expect(result).toHaveProperty('warnings');
+        if (!result.ok) {
+            expect(result.warnings[0]).toMatchObject({
+                value: '0',
+                valueKind: 'received',
+                origin: 'default-period',
+            });
+        }
         expect(issuesOf('RM;5;1\n1;F0E0D0;0;0;0;10').map(where)).toEqual([
             { line: 2, field: 'duracao', value: '0' },
         ]);
