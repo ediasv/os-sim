@@ -553,6 +553,26 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
   em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
+  Em andamento, parte 1 (nao fecha a issue): gravacao pelo processo principal
+  (`src/shared/imageFile.ts`, `src/main/imageFile.ts`, `src/preload/imageFileApi.ts`,
+  canal `image-file:save`, mesmo padrao da #33; falha com caminho e motivo,
+  cancelamento nao e erro) e SVG gerado so dos dados do ultimo snapshot do
+  historico (`src/renderer/features/export/ganttSvg.ts`): linhas por tarefa em ID
+  decrescente, trechos de execucao com CPU e job, prontas tracejadas, faixas de
+  CPU desligada, marcadores por evento empilhados no mesmo instante, instante
+  atual e legenda; sem teto de ticks. Acordado com o usuario em 2026-11-01:
+  exportar em qualquer passo (resultado parcial identificado no titulo,
+  FE-18; DEC-41, aceita). Layout do SVG conforme o frame "Exportacao SVG - layout da imagem" da
+  pagina Telas do Figma (eixo no topo, raias por tarefa, divisor PROCESSADORES,
+  raias de CPU, cartao de legenda; 73 px por tick; titulo com nome do arquivo
+  e data da exportacao). Botao "Exportar SVG" ligado em `App` e `useWorkspace`. Pendente (depende da
+  #26, PRs #115 a #119, rascunhos): trechos suspensos e forcados e lacuna de CPU
+  removida; revisar o SVG quando a #38 desenhar o Gantt na tela, para
+  compartilhar a apresentacao em vez de manter duas (hoje o Gantt na tela nao
+  existe). Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
+  `npm run typecheck` aprovados; SVG gerado com `demoConfigs/05` lido como XML
+  bem formado e aberto no painel de navegacao do app, sem conferencia visual
+  detalhada (#40). Nao verificado: gravacao pelo dialogo real do Electron.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
   [spec de apresentacao](../src/renderer/docs/specification.md) e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
@@ -775,6 +795,7 @@ Issues `[Docs]`, sem fase no Project.
     5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
        ingresso, cor);
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
+- #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
   simulador, navegacao e paineis; a issue continua aberta para o restante.
 - Proximo passo: CI e revisao do PR #124 (implementacao de CPUs); depois do merge, atualizar a branch do #117 com a `main`. A proxima

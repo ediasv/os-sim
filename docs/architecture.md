@@ -1774,3 +1774,33 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   desligados em paralelo aos eventos (mais um fato duplicado).
 - Fora: limite contra tarefas forcadas (#117), comando no adaptador (#37) e
   desenho de lacunas no Gantt (#38). #26 permanece aberta.
+
+### DEC-41: Exportacao do Gantt em SVG pelo processo principal
+
+- Estado: aceita em 2026-11-01 pelo usuario, na revisao do PR #121 (#39).
+  Requisitos: REQ-09, REQ-10. Detalha DEC-08 e DEC-19; nao altera o
+  nucleo.
+- Decisao:
+    1. A imagem e gerada no renderer por funcao pura sobre o ultimo snapshot do
+       historico (`features/export/ganttSvg.ts`): independe do cursor, de zoom,
+       rolagem e janela, e nao tem teto de ticks. O layout segue o frame
+       "Exportacao SVG" da pagina Telas do Figma (73 px por tick, eixo no topo,
+       raias por tarefa, divisor de processadores, raias de CPU, legenda). Rotulo
+       do trecho: "CPU n · #job" quando cabe, senao "CPU n".
+    2. Exportar vale em qualquer passo, nao so no final (acordado com o usuario
+       em 2026-11-01, proposta da #39); resultado sem todas as tarefas
+       terminadas e identificado como parcial no cabecalho (FE-18).
+    3. A gravacao fica no main (`main/imageFile.ts`), pelo canal
+       `image-file:save`: o renderer envia so o texto do SVG, nunca o caminho; o
+       destino vem do dialogo "salvar como" do main, que acrescenta `.svg` se o
+       nome nao tiver extensao. Falha de gravacao devolve caminho e motivo
+       (REQ-10); cancelar nao e erro; nao altera a sessao. Pedidos simultaneos
+       aguardam o dialogo aberto. Mesma checagem de origem da DEC-19.
+    4. Suspenso, forcado e lacuna de CPU removida ficam fora ate a #26 registrar
+       os eventos de DEC-37; a legenda lista so o que e desenhado.
+- Justificativa: SVG a partir dos dados evita captura de tela e limites de
+  canvas (A.2.4); a gravacao exige o main (regras de importacao do README).
+- Consequencia: o cabecalho traz nome do arquivo de configuracao e data da
+  exportacao; o SVG e autonomo (cores literais do tema escuro, sem script nem
+  referencia externa). Quando a #38 desenhar o Gantt na tela, alinhar as duas
+  apresentacoes para nao manter duas.
