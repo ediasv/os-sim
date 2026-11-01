@@ -40,8 +40,10 @@ export function createInitialState(config: SystemConfig): SimulationState {
 }
 
 /**
- * The only place a TCB is born: ready, no jobs, first activation at the
- * arrival (initial state and inclusion, DEC-46).
+ * The only place a new TCB is created: ready, no jobs, first activation at
+ * the arrival (initial state and inclusion, DEC-46). `restoreState` only
+ * rebuilds TCBs from a snapshot, and `editableTask` creates a provisional one
+ * to validate an included task before it is applied.
  */
 export function createTcb(definition: TaskDefinition): TaskControlBlock {
     return {

@@ -2032,7 +2032,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Aplicacao (mudanca liquida): a tarefa entra no alvo (`definitions` e
   `taskStates`) e, ao aplicar, no fim de `state.tasks`, nascendo pronta, sem
   jobs e com `nextActivation` igual ao ingresso (`createTcb`, o unico lugar
-  onde um TCB nasce), sem evento proprio. Estado e caracteristicas pedidos no
+  onde um TCB novo e criado: estado inicial e inclusao; `restoreState` so
+  reconstroi TCBs de um snapshot, e `editableTask` cria um provisorio para
+  validacao), sem evento proprio. Estado e caracteristicas pedidos no
   mesmo tick valem pela definicao e pelo estado liquidos: o estado parte de
   `ready` e gera os eventos de DEC-43, e o primeiro job usa a duracao e o
   prazo finais. Ingresso igual a `t` ativa o primeiro job na etapa de edicao
