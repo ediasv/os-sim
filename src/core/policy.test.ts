@@ -70,6 +70,32 @@ const both: JobRef[] = [
 ];
 
 describe('buildPolicyView', () => {
+    it('keeps execution precedence after its CPU disappears', () => {
+        const state = runningState();
+        state.clock = 1;
+        state.cpus = [state.cpus[0]];
+        state.config = { ...state.config, cpuCount: 1 };
+        state.executions.push({ cpuId: 2, job: both[1], start: 0, end: 1 });
+        const view = buildPolicyView(state, both);
+        expect(view.candidates.map((c) => c.wasRunning)).toEqual([false, true]);
+        expect(view.candidates[1].previousCpu).toBeNull();
+        expect(Object.isFrozen(view.candidates[1])).toBe(true);
+        state.executions.length = 0;
+        expect(view.candidates[1].wasRunning).toBe(true);
+    });
+
+    it('does not count old executions or CPU ownership before the first tick', () => {
+        const state = runningState();
+        state.executions.push({ cpuId: 2, job: both[0], start: 0, end: 2 });
+        expect(
+            buildPolicyView(state, both).candidates.map((c) => c.wasRunning),
+        ).toEqual([false, false]);
+        state.clock = 0;
+        expect(
+            buildPolicyView(state, both).candidates.map((c) => c.wasRunning),
+        ).toEqual([false, false]);
+    });
+
     it('builds one candidate per eligible ref with its job, task definition and previous CPU', () => {
         const state = runningState();
 

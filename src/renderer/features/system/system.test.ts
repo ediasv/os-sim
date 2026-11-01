@@ -1,3 +1,5 @@
+import { Simulator } from '../../../core/simulator';
+import { DEFAULT_CONFIG } from '../../../core/domain';
 import { describe, expect, it } from 'vitest';
 import { CpuEventSequenceError } from '../../../core/cpuOff';
 import type { SimulationState } from '../../../core/domain';
@@ -282,4 +284,24 @@ describe('projectSystem', () => {
 
         expect(state).toEqual(before);
     });
+});
+
+it('projects system CPU rows across removal and ID reuse', () => {
+    // With no tasks every CPU idles, so each one is off from tick 0 until removed.
+    expect(DEFAULT_CONFIG.tasks).toEqual([]);
+    const sim = new Simulator({ ...DEFAULT_CONFIG, cpuCount: 4 });
+    sim.tick();
+    sim.edit([{ kind: 'cpuCount', cpuCount: 1 }]);
+    sim.tick();
+    expect(
+        projectSystem(sim.getCurrentSnapshot()).cpus.map((cpu) => cpu.id),
+    ).toEqual([1]);
+    sim.edit([{ kind: 'cpuCount', cpuCount: 4 }]);
+    const rows = projectSystem(sim.getCurrentSnapshot()).cpus;
+    expect(rows.map((cpu) => cpu.id)).toEqual([1, 2, 3, 4]);
+    expect(rows.map((cpu) => cpu.totalOff)).toEqual([2, 1, 1, 1]);
+    expect(rows[2].offIntervals).toEqual([
+        { start: 0, end: 1 },
+        { start: 2, end: null },
+    ]);
 });
