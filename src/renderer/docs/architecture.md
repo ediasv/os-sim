@@ -677,6 +677,57 @@ avancar ate t = 5 atualiza relogio, estado do sistema e inspecao, sem rolagem
 horizontal. Nao verificado: app Electron com o dialogo real, 390 px, voltar e
 reiniciar no navegador (cobertos por testes de componente).
 
+## Edicao durante a simulacao (#37)
+
+Edicoes seguem DEC-37; a tela so monta o pedido, envia e mostra o resultado do
+nucleo (REQ-05).
+
+- Adaptador: `useSimulation().edit(items)` devolve `CommandResult` e, na recusa
+  de uma edicao, `AppError.items` traz um motivo por item (`EditRefusal`).
+  `futureSteps()` diz quantos passos gravados vem depois do cursor.
+- Rascunho para pedido: [buildEdit](../features/editing/buildEdit.ts) converte
+  texto em itens e so confere o formato (inteiro). Regras de dominio ficam com o
+  nucleo: periodo 0 e quantum 0 sao enviados e a recusa volta no campo
+  (`refusalsByField`). O estado vai por ultimo, para as caracteristicas serem
+  julgadas antes de uma tarefa ser encerrada no mesmo envio.
+- Formularios: [forms](../features/editing/forms.ts) define campos, dicas e os
+  avisos de alcance (FE-12, FE-13, FE-16); [EditDialog](../features/editing/EditDialog.vue)
+  e o unico dialogo (tarefa, sistema e inclusao). Recusa nao fecha o dialogo nem
+  apaga o que foi digitado (FE-11); cancelar descarta so o rascunho.
+- Orquestracao: `useWorkspace` expoe `editor`, `confirmation`, `openTaskEdit`,
+  `submitEditor`, `requestRemove`, `confirmPending` e `cancelPending`. Encerrar
+  e remover pedem confirmacao antes de enviar.
+- Inspecao: o estado escolhido da tarefa, a proxima ativacao e a duracao de cada
+  job vem do snapshot. O nucleo nunca grava job suspenso (a tarefa e que
+  suspende), entao a projecao marca como suspenso o job incompleto mais antigo
+  de tarefa suspensa, que e o job a que o estado vale (DEC-37).
+
+### FE-DEC-19: Figma e especificacao divergem (REQ-05, REQ-10; FE-10 a FE-16, FE-19)
+
+Os quadros "Dialogo - Editar tarefa", "Configurar sistema" e "Remover tarefa"
+foram lidos em 2026-11-01. Onde divergem da especificacao e das DECs, vale a
+especificacao (regra do usuario); o layout, os textos de aviso e a ordem dos
+campos seguem o Figma.
+
+| Figma mostra                                              | Especificacao                                                          | Implementado                                      |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| "Estado do job" (Pronto, Suspenso) e "Executado" editavel | Estado e da tarefa (4 estados); progresso nao editavel (DEC-37, FE-14) | Seletor com os 4 estados; sem campo de progresso  |
+| Ingresso sempre editavel                                  | Bloqueado depois da primeira ativacao (FE-19)                          | Campo desabilitado com o texto do bloqueio        |
+| Periodo 0 como aperiodica                                 | Periodo zero e recusado; aperiodica e do Projeto B (DEC-37, DEC-29)    | Zero vai ao nucleo, que recusa com o motivo       |
+| Remover tarefa ja ativada com historico no Gantt          | So tarefa nunca ativada, sem rastro; ativada recusa e indica encerrar  | Texto da confirmacao e recusa do nucleo exibida   |
+| Algoritmo desabilitado                                    | Pode ser trocado durante a simulacao (DEC-37, FE-16)                   | Editavel                                          |
+| Sem avisos de alcance, forcar nem encerrar                | Avisos e confirmacao exigidos (FE-12, FE-13, FE-16)                    | Dicas nos campos e confirmacao de encerrar        |
+| "Restaurar padroes" no sistema                            | Nao consta                                                             | Nao implementado (aguarda decisao do usuario)     |
+| Sem dialogo de inclusao                                   | Inclusao com ID sugerido, ingresso >= tick, periodo 15 (DEC-48)        | Mesmo dialogo de edicao, com ID e periodo prontos |
+| "Suspender job" e "Retomar job" na tela principal         | Estado e da tarefa                                                     | Fora da #37; revisar na #36 e na #38              |
+
+Escolhas do autor, a confirmar: o botao "Editar tarefa" fica nos detalhes da
+tarefa, nao no painel lateral do Figma, porque a lista de tarefas ainda esta no
+corpo provisorio (FE-DEC-18); o aviso de descarte do futuro e um quadro dentro
+do dialogo, como no Figma, e nao uma confirmacao separada; sem previa do
+calendario antes de aplicar, pois o nucleo nao a oferece: o dialogo mostra a
+proxima ativacao atual e o resultado aparece no snapshot publicado.
+
 ## Verificacao e pendencias tecnicas
 
 - Componentes SFC usam o suporte Vue no Vitest e ambiente DOM somente

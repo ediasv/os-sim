@@ -2,7 +2,13 @@ import { Simulator } from '../../../core/simulator';
 import { DEFAULT_CONFIG } from '../../../core/domain';
 import { describe, expect, it } from 'vitest';
 import type { SimulationState } from '../../../core/domain';
-import { projectFutureJob, projectInspection } from './inspection';
+import { createSimulator } from '../../../core/createSimulator';
+import { DEFAULT_POLICIES } from '../../../core/policies';
+import {
+    describeTaskChoice,
+    projectFutureJob,
+    projectInspection,
+} from './inspection';
 
 function snapshot(): SimulationState {
     return {
@@ -225,5 +231,81 @@ describe('concluded tasks in the inspection', () => {
         state.tasks[0].jobs[1].state = 'interrupted';
         state.tasks[0].status = 'concluded';
         expect(projectInspection(state).tasks[0].status).toBe('completed');
+    });
+});
+
+describe('inspection of edited tasks (#37, FE-09, DEC-37)', () => {
+    const definition = (id: string, duration: number, period: number) => ({
+        id,
+        color: id === '1' ? 'F0E0D0' : id === '2' ? 'D0E0F0' : 'E0F0D0',
+        arrival: 0,
+        duration,
+        period,
+        deadline: id === '3' ? 2 : id === '1' ? 3 : 10,
+        rawEvents: '',
+    });
+
+    /** Task 1 runs late with a job pending behind it, 2 is forced, 3 is suspended. */
+    function edited() {
+        const sim = createSimulator(
+            {
+                algorithm: 'RM',
+                quantum: 5,
+                cpuCount: 2,
+                tasks: [
+                    definition('1', 6, 3),
+                    definition('2', 2, 10),
+                    definition('3', 2, 10),
+                ],
+            },
+            DEFAULT_POLICIES,
+        );
+        sim.edit([
+            { kind: 'taskState', taskId: '2', state: 'forced' },
+            { kind: 'taskState', taskId: '3', state: 'suspended' },
+        ]);
+        for (let i = 0; i < 4; i++) sim.tick();
+        return projectInspection(sim.getCurrentSnapshot());
+    }
+
+    it('keeps the state the user chose apart from what the job is doing', () => {
+        const { tasks } = edited();
+        expect(tasks.map((task) => task.choice)).toEqual([
+            'ready',
+            'forced',
+            'suspended',
+        ]);
+        expect(tasks[0].jobs[0].state).toBe('running');
+    });
+
+    it('labels a ready task running by priority differently from a forced one', () => {
+        const { tasks } = edited();
+        expect(describeTaskChoice(tasks[0])).toBe(
+            'Pronta, executando por prioridade',
+        );
+        expect(describeTaskChoice(tasks[1])).toBe('Forçada');
+        expect(describeTaskChoice(tasks[2])).toBe('Suspensa');
+    });
+
+    it('shows a suspended job that missed its deadline with both facts', () => {
+        const job = edited().tasks[2].jobs[0];
+        // The core never marks a job suspended: the task is (DEC-37), and
+        // that state holds for its oldest incomplete job.
+        expect(job.suspended).toBe(true);
+        expect(job.eligible).toBe(false);
+        expect(job.deadlineMissed).toBe(true);
+    });
+
+    it('shows a job activated behind an older late one as pending and not eligible', () => {
+        const [late, pending] = edited().tasks[0].jobs;
+        expect(late.deadlineMissed).toBe(true);
+        expect(pending.activation).toBe(3);
+        expect(pending.eligible).toBe(false);
+    });
+
+    it('copies the duration of each job and the next activation from the snapshot', () => {
+        const { tasks } = edited();
+        expect(tasks[0].jobs.map((job) => job.duration)).toEqual([6, 6]);
+        expect(tasks[0].nextActivation).toBe(6);
     });
 });

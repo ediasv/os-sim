@@ -160,7 +160,9 @@ describe('useSimulation', () => {
 
         expect(Object.keys(adapter).sort()).toEqual([
             'backward',
+            'edit',
             'forward',
+            'futureSteps',
             'latest',
             'load',
             'next',
@@ -330,5 +332,69 @@ describe('useSimulation navigation (DEC-36)', () => {
         expect(sim.view.value).toBe(lastValid);
         expect(sim.backward()).toEqual({ ok: true });
         expect(sim.view.value.clock).toBe(0);
+    });
+});
+
+describe('useSimulation edits (#37, DEC-37)', () => {
+    const twoTasks: SystemConfig = {
+        algorithm: 'RM',
+        quantum: 5,
+        cpuCount: 1,
+        tasks: [
+            { ...oneTask.tasks[0] },
+            { ...oneTask.tasks[0], id: '2', color: '102030' },
+        ],
+    };
+
+    function ahead() {
+        const sim = useSimulation(only(firstAvailable));
+        sim.load(twoTasks);
+        sim.tick();
+        sim.tick();
+        sim.tick();
+        sim.backward();
+        sim.backward();
+        return sim;
+    }
+
+    it('applies an edit at the cursor, keeps the cursor and discards the future', () => {
+        const sim = ahead();
+        expect(sim.futureSteps()).toBe(2);
+
+        expect(sim.edit([{ kind: 'quantum', quantum: 2 }])).toEqual({
+            ok: true,
+        });
+        expect(sim.view.value.clock).toBe(1);
+        expect(sim.view.value.config.quantum).toBe(2);
+        expect(sim.futureSteps()).toBe(0);
+    });
+
+    it('keeps view and future when an item is refused and tells which one', () => {
+        const sim = ahead();
+        const before = sim.view.value;
+
+        const result = sim.edit([
+            { kind: 'quantum', quantum: 2 },
+            { kind: 'taskPeriod', taskId: '1', period: 0 },
+        ]);
+
+        expect(result.ok).toBe(false);
+        if (result.ok || result.error.kind !== 'refused') {
+            throw new Error('expected a refusal');
+        }
+        expect(result.error.items?.map((item) => item.index)).toEqual([1]);
+        expect(sim.view.value).toBe(before);
+        expect(sim.view.value.config.quantum).toBe(5);
+        expect(sim.futureSteps()).toBe(2);
+        expect(currentError.value).toBeNull();
+    });
+
+    it('refuses an empty edit as refused', () => {
+        const sim = ahead();
+        const result = sim.edit([]);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.error.kind).toBe('refused');
+        }
     });
 });

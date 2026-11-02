@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from 'vue';
 import { ConfigValidationError } from '../core/config';
-import { SimulationRefusal } from '../core/refusal';
+import { EditRefusal, SimulationRefusal } from '../core/refusal';
 import {
     commandFailure,
     currentError,
@@ -169,6 +169,22 @@ describe('commandFailure', () => {
         });
         expect(currentError.value).toBeNull();
         expect(console.error).not.toHaveBeenCalled();
+    });
+
+    it('keeps the refused items of an edit so the form can show each reason', () => {
+        const items = [
+            { index: 1, kind: 'taskPeriod', reason: 'Período deve ser ≥ 1.' },
+        ];
+        const result = commandFailure(new EditRefusal(items));
+        expect(result).toEqual({
+            ok: false,
+            error: {
+                kind: 'refused',
+                message: 'Item 2 (taskPeriod): Período deve ser ≥ 1.',
+                items,
+            },
+        });
+        expect(currentError.value).toBeNull();
     });
 
     it('returns other errors as unexpected and shows them on the banner', () => {
