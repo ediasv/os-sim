@@ -875,7 +875,7 @@ Issues `[Docs]`, sem fase no Project.
        `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
        lista de inclusoes na validacao, TCB provisorio) derrubam testes.
        Interface e pacote nao verificados.
-    7. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, proposta; aguarda
+    7. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
        aceite do usuario) e conferencia final dos criterios da #26. Branch
        `feat/26-7-exclusao` a partir da `main` (`4e43467`). Item `removeTask`
        em `src/core/edit.ts`: so tarefa nunca ativada (recusa com motivo que

@@ -2052,8 +2052,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-47: Exclusao de tarefas
 
-- Estado: proposta em 2026-11-01 no PR 7/7 da #26, que fecha a #26, para
-  revisao; aguarda aceite do usuario. Requisitos: REQ-05. Detalha o item
+- Estado: aceita em 2026-11-01 pelo usuario no PR 7/7 da #26, que fecha a
+  #26 (decisoes de eventos e de exclusao de tarefa ativada aceitas com ela).
+  Requisitos: REQ-05. Detalha o item
   Excluir de DEC-37 e completa DEC-46 (inclusao, que deixou a exclusao para
   este PR). Complementa DEC-43 (estado concluido e interrupcao) e DEC-44
   (`definitions` como fonte da caracteristica).
@@ -2078,7 +2079,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   `state.events`. Se algum TCB excluido tiver job, a aplicacao lanca `Error`:
   e defeito do motor, nao recusa, porque a validacao ja barrou esse caso.
   O status e os eventos da tarefa excluida nao sao gerados.
-- Eventos anteriores (decisao do autor do PR, aguardando aceite do usuario):
+- Eventos anteriores (aceita pelo usuario em 2026-11-01):
   `suspension`, `resumption`, `forced`, `unforced`, `task-finished` e
   qualquer evento com o mesmo `taskId` saem de `state.events` do snapshot do
   tick. Os snapshots anteriores mantem os seus eventos: voltar no historico
