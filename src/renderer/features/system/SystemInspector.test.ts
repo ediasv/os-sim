@@ -8,7 +8,7 @@ import type { SystemData } from './system';
 enableAutoUnmount(afterEach);
 
 function job(
-    taskId: number,
+    taskId: string,
     index: number,
     overrides: Partial<SystemData['ready'][number]> = {},
 ): SystemData['ready'][number] {
@@ -33,7 +33,7 @@ function data(overrides: Partial<SystemData> = {}): SystemData {
                 id: 1,
                 condition: 'running',
                 since: 6,
-                job: job(1, 1, { state: 'running', executed: 2 }),
+                job: job('1', 1, { state: 'running', executed: 2 }),
                 sliceElapsed: 1,
                 quantum: 5,
                 offIntervals: [{ start: 2, end: 4 }],
@@ -60,8 +60,8 @@ function data(overrides: Partial<SystemData> = {}): SystemData {
                 totalOff: 0,
             },
         ],
-        ready: [job(2, 0)],
-        pending: [job(3, 1, { state: 'ready', deadlineMissed: true })],
+        ready: [job('2', 0)],
+        pending: [job('3', 1, { state: 'ready', deadlineMissed: true })],
         ...overrides,
     };
 }
@@ -160,7 +160,7 @@ describe('SystemInspector', () => {
 
     it('renders every CPU and job without a cap, inside scrollable lists', () => {
         const many = Array.from({ length: 40 }, (_, index) =>
-            job(100 + index, 0),
+            job('100' + index, 0),
         );
         const cpus = Array.from({ length: 24 }, (_, index) => ({
             ...data().cpus[1]!,

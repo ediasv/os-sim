@@ -4,7 +4,7 @@ import type { SimulationSnapshot, SystemConfig } from '../../../core/domain';
 import { buildGanttSvg, isFinalSnapshot } from './ganttSvg';
 
 function task(
-    id: number,
+    id: string,
     color: string,
     duration: number,
     period: number,
@@ -33,10 +33,17 @@ const SMALL: SystemConfig = {
     algorithm: 'RM',
     quantum: 5,
     cpuCount: 1,
-    tasks: [task(1, 'FF0000', 3, 5), task(2, '0000FF', 4, 8)],
+    tasks: [task('1', 'FF0000', 3, 5), task('2', '0000FF', 4, 8)],
 };
 
 describe('buildGanttSvg', () => {
+    it('replaces XML-forbidden characters in task IDs throughout the SVG', () => {
+        const config = { ...SMALL, tasks: [task('A\u0001B', 'FF0000', 3, 5)] };
+        const svg = buildGanttSvg(run(config, 2));
+        expect(svg).not.toContain('\u0001');
+        expect(svg).toContain('A\uFFFDB');
+    });
+
     it('is a standalone SVG document with no script or external reference', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
 
@@ -108,7 +115,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 10,
             cpuCount: 1,
-            tasks: [task(1, 'FF0000', 6, 4, 20)],
+            tasks: [task('1', 'FF0000', 6, 4, 20)],
         };
         const svg = buildGanttSvg(run(behind, 5));
 
@@ -151,7 +158,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 1,
-            tasks: [task(1, '00FF00', 4, 5), task(2, 'FFFF00', 4, 5)],
+            tasks: [task('1', '00FF00', 4, 5), task('2', 'FFFF00', 4, 5)],
         };
         const svg = buildGanttSvg(run(overload, 6));
 
@@ -163,7 +170,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 2,
-            tasks: [task(1, 'FF0000', 2, 10)],
+            tasks: [task('1', 'FF0000', 2, 10)],
         };
         const svg = buildGanttSvg(run(idle, 4));
 
@@ -208,11 +215,11 @@ describe('buildGanttSvg', () => {
             quantum: 3,
             cpuCount: 3,
             tasks: [
-                task(1, 'E41A1C', 40, 300),
-                task(2, '377EB8', 70, 250),
-                task(3, '4DAF4A', 90, 400),
-                task(4, '984EA3', 120, 320),
-                task(5, 'FF7F00', 150, 280),
+                task('1', 'E41A1C', 40, 300),
+                task('2', '377EB8', 70, 250),
+                task('3', '4DAF4A', 90, 400),
+                task('4', '984EA3', 120, 320),
+                task('5', 'FF7F00', 150, 280),
             ],
         };
         const snapshot = run(long, 2400);
@@ -247,7 +254,10 @@ describe('buildGanttSvg', () => {
                     algorithm: 'RM',
                     quantum: 5,
                     cpuCount: 2,
-                    tasks: [task(1, 'FFFF00', 4, 10), task(2, '000080', 4, 10)],
+                    tasks: [
+                        task('1', 'FFFF00', 4, 10),
+                        task('2', '000080', 4, 10),
+                    ],
                 },
                 4,
             ),
@@ -291,7 +301,7 @@ describe('buildGanttSvg', () => {
             algorithm: 'RM',
             quantum: 5,
             cpuCount: 2,
-            tasks: [task(1, 'FF0000', 2, 10)],
+            tasks: [task('1', 'FF0000', 2, 10)],
         };
         const svg = buildGanttSvg(run(idle, 4));
 
@@ -321,5 +331,54 @@ describe('buildGanttSvg', () => {
 
         expect(svg).toContain('ticks 0–0');
         expect(count(svg, 'data-state="running"')).toBe(0);
+    });
+});
+
+describe('buildGanttSvg with free-text task IDs (DEC-48)', () => {
+    const texts = (ids: string[]): SystemConfig => ({
+        algorithm: 'RM',
+        quantum: 2,
+        cpuCount: 1,
+        tasks: ids.map((id, i) =>
+            task(id, ['FF0000', '00FF00', '0000FF', 'FFFF00'][i], 1, 6),
+        ),
+    });
+    const labelY = (svg: string, text: string) =>
+        Number(svg.match(new RegExp(`y="([0-9.]+)"[^>]*>${text}</text>`))![1]);
+
+    it('orders rows by descending natural order, lowest next to the CPU lanes', () => {
+        const svg = buildGanttSvg(run(texts(['10', '2', 'A']), 4));
+
+        expect(labelY(svg, 'Tarefa A')).toBeLessThan(labelY(svg, 'Tarefa 10'));
+        expect(labelY(svg, 'Tarefa 10')).toBeLessThan(labelY(svg, 'Tarefa 2'));
+        expect(labelY(svg, 'Tarefa 2')).toBeLessThan(
+            labelY(svg, 'PROCESSADORES'),
+        );
+    });
+
+    it('escapes an ID everywhere it is written, so the document stays well formed', () => {
+        const id = '<&"';
+        const svg = buildGanttSvg(run(texts([id]), 4));
+        const escaped = '&lt;&amp;&quot;';
+
+        expect(svg).toContain(`data-task="${escaped}"`);
+        expect(svg).toContain(`>Tarefa ${escaped}</text>`);
+        expect(svg).toContain(`Execução: tarefa ${escaped} #1`);
+        expect(svg).not.toContain('<&');
+        expect(svg).not.toContain('data-task="<');
+    });
+
+    it('shortens a long ID in the lane label and keeps the whole ID in a tooltip', () => {
+        const id = 'x'.repeat(32);
+        const svg = buildGanttSvg(run(texts([id]), 4));
+
+        expect(svg).not.toContain(`>Tarefa ${id}</text>`);
+        expect(svg).toMatch(/>x{1,9}…<title>Tarefa x{32}<\/title><\/text>/);
+    });
+
+    it('keeps the label of a numeric ID exactly as before', () => {
+        const svg = buildGanttSvg(run(texts(['100']), 4));
+
+        expect(svg).toContain('>Tarefa 100</text>');
     });
 });

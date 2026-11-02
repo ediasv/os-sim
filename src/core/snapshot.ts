@@ -35,7 +35,7 @@ export function createInitialState(config: SystemConfig): SimulationState {
         executions: [],
         events: [],
         drawState: DRAW_SEED,
-        maxTaskId: Math.max(0, ...config.tasks.map((task) => task.id)),
+        usedTaskIds: config.tasks.map((task) => task.id),
     };
 }
 

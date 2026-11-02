@@ -12,13 +12,13 @@ import { EditRefusal } from './refusal';
 import { Simulator } from './simulator';
 
 const count = (cpuCount: number): EditItem => ({ kind: 'cpuCount', cpuCount });
-const ref = (taskId: number) => ({ taskId, index: 0 });
+const ref = (taskId: string) => ({ taskId, index: 0 });
 const task = (
-    id: number,
+    id: string,
     changes: Partial<TaskDefinition> = {},
 ): TaskDefinition => ({
     id,
-    color: ['AABBCC', 'CCDDEE', '112233', '445566'][id - 1],
+    color: ['AABBCC', 'CCDDEE', '112233', '445566'][Number(id) - 1],
     arrival: 0,
     duration: 10,
     period: 50,
@@ -29,7 +29,7 @@ const task = (
 const config = (changes: Partial<SystemConfig> = {}): SystemConfig => ({
     ...DEFAULT_CONFIG,
     cpuCount: 4,
-    tasks: [task(1)],
+    tasks: [task('1')],
     ...changes,
 });
 function tick(sim: Simulator, n = 1) {
@@ -57,7 +57,9 @@ describe('Simulator CPU edits (DEC-37)', () => {
     it.each([0, 1])(
         'cancels count changes at tick %s without events, slice renewal or draw changes',
         (time) => {
-            const cfg = config({ tasks: [task(1), task(2), task(3), task(4)] });
+            const cfg = config({
+                tasks: [task('1'), task('2'), task('3'), task('4')],
+            });
             const changed = new Simulator(cfg, rmPolicy);
             const direct = new Simulator(cfg, rmPolicy);
             tick(changed, time);
@@ -106,7 +108,7 @@ describe('Simulator CPU edits (DEC-37)', () => {
         const sim = new Simulator(
             config({
                 cpuCount: 1,
-                tasks: [task(1, { arrival: 3 }), task(2, { arrival: 3 })],
+                tasks: [task('1', { arrival: 3 }), task('2', { arrival: 3 })],
             }),
             rmPolicy,
         );
@@ -127,21 +129,21 @@ describe('Simulator CPU edits (DEC-37)', () => {
             config({
                 cpuCount: 2,
                 tasks: [
-                    task(1, { period: 10, deadline: 40 }),
-                    task(2, { period: 20, deadline: 20 }),
-                    task(3, { arrival: 1, period: 20, deadline: 19 }),
+                    task('1', { period: 10, deadline: 40 }),
+                    task('2', { period: 20, deadline: 20 }),
+                    task('3', { arrival: 1, period: 20, deadline: 19 }),
                 ],
             }),
             { policies: DEFAULT_POLICIES },
         );
         expect(sim.getCurrentSnapshot().cpus.map((c) => c.running)).toEqual([
-            ref(1),
-            ref(2),
+            ref('1'),
+            ref('2'),
         ]);
         tick(sim);
         edit(sim, [count(1), { kind: 'algorithm', algorithm: 'EDF' }]);
         const state = sim.getCurrentSnapshot();
-        expect(state.cpus[0].running).toEqual(ref(2));
+        expect(state.cpus[0].running).toEqual(ref('2'));
         expect(state.cpus[0].sliceElapsed).toBe(0);
         expect(state.events).toContainEqual({
             kind: 'cpu-removed',
@@ -157,8 +159,8 @@ describe('Simulator CPU edits (DEC-37)', () => {
             kind: 'preemption',
             time: 1,
             cpuId: 1,
-            preempted: ref(1),
-            by: ref(2),
+            preempted: ref('1'),
+            by: ref('2'),
         });
         tick(sim);
         expect(sim.getCurrentSnapshot().tasks[1].jobs[0].executed).toBe(2);
@@ -171,10 +173,10 @@ describe('Simulator CPU edits (DEC-37)', () => {
                 cpuCount: 3,
                 quantum: 2,
                 tasks: [
-                    task(1, { duration: 2, period: 10, deadline: 2 }),
-                    task(2, { duration: 8, period: 20, deadline: 2 }),
-                    task(3, { duration: 8, period: 30, deadline: 2 }),
-                    task(4, { arrival: 2, period: 40, deadline: 40 }),
+                    task('1', { duration: 2, period: 10, deadline: 2 }),
+                    task('2', { duration: 8, period: 20, deadline: 2 }),
+                    task('3', { duration: 8, period: 30, deadline: 2 }),
+                    task('4', { arrival: 2, period: 40, deadline: 40 }),
                 ],
             }),
             rmPolicy,
@@ -204,7 +206,7 @@ describe('Simulator CPU edits (DEC-37)', () => {
         const sim = new Simulator(
             config({
                 cpuCount: 2,
-                tasks: [task(1), task(2, { duration: 1, period: 60 })],
+                tasks: [task('1'), task('2', { duration: 1, period: 60 })],
             }),
             rmPolicy,
         );
@@ -216,7 +218,7 @@ describe('Simulator CPU edits (DEC-37)', () => {
         expect(sim.getCurrentSnapshot().events).toContainEqual({
             kind: 'completion',
             time: 1,
-            job: ref(2),
+            job: ref('2'),
         });
         expect(
             sim
@@ -229,9 +231,9 @@ describe('Simulator CPU edits (DEC-37)', () => {
         const sim = new Simulator(
             config({
                 tasks: [
-                    task(1, { period: 10 }),
-                    task(2, { period: 20 }),
-                    task(3, { period: 30 }),
+                    task('1', { period: 10 }),
+                    task('2', { period: 20 }),
+                    task('3', { period: 30 }),
                 ],
             }),
             rmPolicy,

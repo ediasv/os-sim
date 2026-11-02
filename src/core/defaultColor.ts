@@ -6,7 +6,23 @@
  * only on the previous one and the requested end state (DEC-37 item 2).
  */
 
-/** Small seeded generator (mulberry32); the seed is the task ID. */
+/**
+ * Seed of an ID: a number keeps its value, so numeric IDs get the colors
+ * they always had; other text is hashed (FNV-1a), as the ID is free text
+ * (DEC-48).
+ */
+function seedOf(taskId: string): number {
+    if (/^[0-9]+$/.test(taskId) && Number.isSafeInteger(Number(taskId))) {
+        return Number(taskId);
+    }
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < taskId.length; i++) {
+        hash = Math.imul(hash ^ taskId.charCodeAt(i), 0x01000193);
+    }
+    return hash >>> 0;
+}
+
+/** Small seeded generator (mulberry32); the seed comes from the task ID. */
 function generator(seed: number): () => number {
     let state = seed >>> 0;
     return () => {
@@ -41,10 +57,10 @@ function hslToHex(hue: number): string {
  * algorithm is kept as it is.
  */
 export function defaultTaskColor(
-    taskId: number,
+    taskId: string,
     used: ReadonlySet<string>,
 ): string {
-    const next = generator(taskId);
+    const next = generator(seedOf(taskId));
     for (;;) {
         const color = hslToHex(next() * 360);
         if (!used.has(color)) return color;

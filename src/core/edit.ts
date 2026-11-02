@@ -40,17 +40,19 @@ import type {
 } from './domain';
 import type { EditItemRefusal } from './refusal';
 import { createTcb } from './snapshot';
+import { sameTaskId, suggestTaskId, validateTaskId } from './taskId';
 
 /**
- * A task to include: a `TaskDefinition` without the ID, which the engine
- * generates, and without the raw event list, which Project A never runs
- * (DEC-46). Derived so a new definition field cannot be forgotten here. A
- * missing period takes the default (DEC-29) and a missing color is picked by
- * the engine, unlike every other task's.
+ * A task to include: a `TaskDefinition` without the raw event list, which
+ * Project A never runs (DEC-46). Derived so a new definition field cannot be
+ * forgotten here. A missing period takes the default (DEC-29), a missing
+ * color is picked by the engine, and a missing ID is the suggested one: the
+ * highest number ever used plus one (DEC-48). A typed ID must be valid text
+ * and never used before, even by a removed task.
  */
 export type NewTask = Readonly<
     Omit<TaskDefinition, 'id' | 'rawEvents' | 'period' | 'color'> &
-        Partial<Pick<TaskDefinition, 'period' | 'color'>>
+        Partial<Pick<TaskDefinition, 'id' | 'period' | 'color'>>
 >;
 
 /** One change the user asks for. */
@@ -111,15 +113,15 @@ export type EditTarget = Readonly<
      */
     readonly definitions: Readonly<Record<TaskId, TaskDefinition>>;
     /**
-     * Highest task ID ever used, so IDs are never reused (DEC-46).
+     * Every task ID ever used, so IDs are never reused (DEC-46, DEC-48).
      */
-    readonly maxTaskId: number;
+    readonly usedTaskIds: readonly TaskId[];
 };
 
 /** System fields of the target; task states must never leak into configuration. */
 const TARGET_FIELDS: Readonly<
     Record<
-        keyof Omit<EditTarget, 'taskStates' | 'definitions' | 'maxTaskId'>,
+        keyof Omit<EditTarget, 'taskStates' | 'definitions' | 'usedTaskIds'>,
         true
     >
 > = {
@@ -364,11 +366,11 @@ function refuseUnknownTask(
     target: EditTarget,
     taskId: TaskId,
 ): { ok: false; reason: string } | undefined {
-    // hasOwn coerces its key, so '1' or [1] would silently name task 1.
-    if (!Number.isInteger(taskId)) {
+    // hasOwn coerces its key, so 1 or ['1'] would silently name task '1'.
+    if (typeof taskId !== 'string') {
         return {
             ok: false,
-            reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
+            reason: `O identificador da tarefa deve ser um texto; valor recebido: ${JSON.stringify(taskId) ?? String(taskId)}.`,
         };
     }
     if (!Object.hasOwn(target.definitions, taskId)) {
@@ -398,9 +400,9 @@ function editableTask(
     if (live !== undefined) return { ok: true, tcb: live };
     // A task included earlier in this tick has no control block yet; until
     // it is applied it behaves as one never activated (DEC-46). Included IDs
-    // are always above the state's highest used ID, so any other definition
-    // without a control block is a corrupted target, not a new task.
-    if (taskId <= context.state.maxTaskId) {
+    // are never among the state's used IDs, so any other definition without a
+    // control block is a corrupted target, not a new task.
+    if (context.state.usedTaskIds.some((used) => sameTaskId(used, taskId))) {
         throw new Error(
             `Task ${taskId} has a definition but no control block.`,
         );
@@ -526,8 +528,7 @@ function forcedCount(
     state: DeepReadonly<SimulationState>,
 ): number {
     return Object.entries(target.taskStates).filter(
-        ([id, status]) =>
-            status === 'forced' && !hasFinished(state, Number(id)),
+        ([id, status]) => status === 'forced' && !hasFinished(state, id),
     ).length;
 }
 
@@ -575,14 +576,33 @@ function includeTask(
     if (input.period === 0) {
         reasons.push('O período deve ser maior que zero; valor recebido: 0.');
     }
-    const id = target.maxTaskId + 1;
+    // A typed ID that is not valid text still goes to `validateConfig` below,
+    // which refuses it with the reason; only a valid one can be a reuse.
+    const typedId: unknown = input.id;
+    const typed = typeof typedId === 'string' ? validateTaskId(typedId) : null;
+    const id =
+        typedId === undefined
+            ? suggestTaskId(target.usedTaskIds)
+            : typed?.ok
+              ? typed.id
+              : (typedId as string);
+    // `validateConfig` only sees live tasks; the used set also holds the IDs
+    // of removed ones, which must stay spent (DEC-48).
+    const reused =
+        typed?.ok === true &&
+        target.usedTaskIds.some((used) => sameTaskId(used, id));
+    if (reused) {
+        reasons.push(
+            `O id ${id} já foi usado nesta simulação (por uma tarefa existente ou excluída); escolha outro.`,
+        );
+    }
     const known = liveDefinitions(target, context);
     const definition: TaskDefinition = {
         id,
         color:
             input.color === undefined
                 ? defaultTaskColor(
-                      id,
+                      String(id),
                       new Set(known.map((t) => t.color.toUpperCase())),
                   )
                 : input.color,
@@ -603,7 +623,11 @@ function includeTask(
     if (!result.ok) {
         reasons.push(
             ...result.issues
-                .filter((issue) => issue.taskIndex === tasks.length - 1)
+                .filter(
+                    (issue) =>
+                        issue.taskIndex === tasks.length - 1 &&
+                        !(reused && issue.field === 'id'),
+                )
                 .map((issue) => issue.message),
         );
     }
@@ -620,7 +644,7 @@ function includeTask(
         ok: true,
         target: {
             ...target,
-            maxTaskId: included.id,
+            usedTaskIds: [...target.usedTaskIds, included.id],
             definitions: { ...target.definitions, [included.id]: included },
             taskStates: { ...target.taskStates, [included.id]: 'ready' },
         },
@@ -746,11 +770,11 @@ const HANDLERS: Handlers = {
         };
     },
     taskState: (target, item, context) => {
-        // hasOwn coerces its key, so '1' or [1] would silently name task 1.
-        if (!Number.isInteger(item.taskId)) {
+        // hasOwn coerces its key, so 1 or ['1'] would silently name task '1'.
+        if (typeof item.taskId !== 'string') {
             return {
                 ok: false,
-                reason: `O identificador da tarefa deve ser um número inteiro; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
+                reason: `O identificador da tarefa deve ser um texto; valor recebido: ${JSON.stringify(item.taskId) ?? String(item.taskId)}.`,
             };
         }
         if (!Object.hasOwn(target.taskStates, item.taskId)) {
@@ -881,7 +905,7 @@ export function readTarget(state: DeepReadonly<SimulationState>): EditTarget {
         definitions: Object.fromEntries(
             state.tasks.map((tcb) => [tcb.definition.id, tcb.definition]),
         ),
-        maxTaskId: state.maxTaskId,
+        usedTaskIds: [...state.usedTaskIds],
     };
 }
 
@@ -961,36 +985,23 @@ export function applyNetChange(
     // below like a task whose arrival just moved (DEC-46). The configuration's
     // own task list is left as loaded, as for edited characteristics
     // (DEC-44): `tasks` is the source of truth.
-    const included = Object.keys(after.definitions)
-        .map(Number)
-        .filter((id) => !Object.hasOwn(before.definitions, id))
-        .sort((a, b) => a - b);
+    // The used IDs only grow, so the new ones are the tail, in inclusion order.
+    const included = new Set(
+        after.usedTaskIds.slice(before.usedTaskIds.length),
+    );
     for (const id of included) {
         state.tasks.push(createTcb(after.definitions[id]));
     }
-    state.maxTaskId = after.maxTaskId;
-
-    // The loop compares each task with the start of the edit, where an
-    // included task already had its own definition and `ready` status, so
-    // the loop needs no special case for it.
-    const seeded: EditTarget = {
-        ...before,
-        definitions: {
-            ...before.definitions,
-            ...Object.fromEntries(
-                included.map((id) => [id, after.definitions[id]]),
-            ),
-        },
-        taskStates: {
-            ...before.taskStates,
-            ...Object.fromEntries(included.map((id) => [id, 'ready' as const])),
-        },
-    };
+    state.usedTaskIds = [...after.usedTaskIds];
 
     // Task order is observable in the event log; all task changes precede CPUs.
     for (const tcb of state.tasks) {
         const taskId = tcb.definition.id;
-        const was = seeded.definitions[taskId];
+        const isNew = included.has(taskId);
+        // A new task has no earlier definition or status to compare with.
+        const was = isNew
+            ? after.definitions[taskId]
+            : before.definitions[taskId];
         if (after.definitions[taskId] !== was) {
             tcb.definition = after.definitions[taskId];
         }
@@ -1011,14 +1022,14 @@ export function applyNetChange(
         applyStatusChange(
             state,
             tcb,
-            seeded.taskStates[taskId],
+            isNew ? 'ready' : before.taskStates[taskId],
             after.taskStates[taskId],
         );
         // An arrival moved to the current tick, or a period whose new next
         // activation is already due, activates here, once, from the net
         // definition: after the task's status events and before any CPU
         // event (DEC-37, DEC-22, DEC-44). Included tasks activate here too.
-        if (rescheduled || included.includes(taskId)) activateTask(state, tcb);
+        if (rescheduled || isNew) activateTask(state, tcb);
     }
 
     applyCpuChange(state, before, after);

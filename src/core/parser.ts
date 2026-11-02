@@ -120,11 +120,9 @@ export function analyzeConfig(text: string): ConfigAnalysis {
     let header: ParsedHeader | null = null;
     let taskLines = sourceLines.slice(1);
 
-    // A numeric first field means the header is missing: task lines start with
-    // a numeric id and no algorithm name is numeric. Every line is then parsed
-    // as a task, so its own errors are reported too (DEC-19).
-    const firstField = headerLine?.text.split(';', 1)[0].trim();
-    if (headerLine === undefined || parseNumber(firstField ?? '') !== null) {
+    // Every line is parsed as a task when the first one looks like a task
+    // line, so its own errors are reported too (DEC-19).
+    if (headerLine === undefined || looksLikeTaskLine(headerLine.text)) {
         addIssue(
             issues,
             1,
@@ -176,6 +174,21 @@ export function analyzeConfig(text: string): ConfigAnalysis {
             taskTexts,
         },
     };
+}
+
+/**
+ * Whether the first line is a task line, meaning the header is missing. A
+ * numeric first field is one (no algorithm name is numeric). With free-text
+ * IDs (DEC-48) the first field can be text, so a line with more fields than
+ * the header and a color-shaped second field (a header has the quantum there)
+ * is one too.
+ */
+function looksLikeTaskLine(text: string): boolean {
+    const fields = text.split(';').map((field) => field.trim());
+    if (parseNumber(fields[0]) !== null) return true;
+    return (
+        fields.length > HEADER_FIELDS.length && /^[0-9A-F]{6}$/i.test(fields[1])
+    );
 }
 
 interface ParsedHeader {
@@ -260,8 +273,9 @@ function parseTask(
 
     const countReason = `campo obrigatório ausente; esperados ${TASK_FIELDS.length} campos antes da ${EVENTS_LABEL} opcional (formato: ${TASK_FORMAT}) e recebidos ${fields.length}.`;
     let color: string | undefined;
+    let id: string | undefined;
     const numbers: Partial<
-        Record<Exclude<(typeof TASK_FIELDS)[number], 'color'>, number>
+        Record<Exclude<(typeof TASK_FIELDS)[number], 'color' | 'id'>, number>
     > = {};
 
     TASK_FIELDS.forEach((field, index) => {
@@ -289,11 +303,18 @@ function parseTask(
             return;
         }
 
+        // The ID is free text (DEC-48): kept as written, the core validates
+        // its length and uniqueness and reports them on this line.
+        if (field === 'id') {
+            id = value;
+            return;
+        }
+
         const number = numericField(line, field, value, issues);
         if (number !== null) numbers[field] = number;
     });
 
-    const { id, arrival, duration, period, deadline } = numbers;
+    const { arrival, duration, period, deadline } = numbers;
     if (
         color === undefined ||
         id === undefined ||

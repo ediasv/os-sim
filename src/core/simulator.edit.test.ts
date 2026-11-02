@@ -12,7 +12,7 @@ import { EditRefusal, SimulationRefusal } from './refusal';
 import { Simulator } from './simulator';
 
 function task(
-    id: number,
+    id: string,
     color: string,
     fields: Pick<
         TaskDefinition,
@@ -51,7 +51,7 @@ const quantumConfig = (quantum: number): SystemConfig => ({
     cpuCount: 1,
     quantum,
     tasks: [
-        task(1, 'F0E0D0', {
+        task('1', 'F0E0D0', {
             arrival: 0,
             duration: 6,
             period: 20,
@@ -66,12 +66,22 @@ const algorithmConfig: SystemConfig = {
     cpuCount: 1,
     quantum: 5,
     tasks: [
-        task(1, 'F0E0D0', { arrival: 0, duration: 3, period: 10, deadline: 3 }),
-        task(2, 'AABBCC', { arrival: 0, duration: 3, period: 5, deadline: 5 }),
+        task('1', 'F0E0D0', {
+            arrival: 0,
+            duration: 3,
+            period: 10,
+            deadline: 3,
+        }),
+        task('2', 'AABBCC', {
+            arrival: 0,
+            duration: 3,
+            period: 5,
+            deadline: 5,
+        }),
     ],
 };
 const registry = { policies: DEFAULT_POLICIES };
-const job = (taskId: number) => ({ taskId, index: 0 });
+const job = (taskId: string) => ({ taskId, index: 0 });
 
 describe('Simulator.edit: quantum', () => {
     it('expires the running slice at t when the new quantum is already used up', () => {
@@ -85,16 +95,16 @@ describe('Simulator.edit: quantum', () => {
             kind: 'quantum-expired',
             time: 2,
             cpuId: 1,
-            job: job(1),
+            job: job('1'),
         });
         expect(at2.cpus[0].sliceElapsed).toBe(0);
-        expect(at2.cpus[0].running).toEqual(job(1));
+        expect(at2.cpus[0].running).toEqual(job('1'));
         run(sim, 4);
         expect(quantumExpiries(sim)).toEqual([2, 4]);
         expect(sim.getCurrentSnapshot().events).toContainEqual({
             kind: 'completion',
             time: 6,
-            job: job(1),
+            job: job('1'),
         });
     });
 
@@ -132,13 +142,13 @@ describe('Simulator.edit: algorithm', () => {
         edit(sim, [alg('EDF')]);
         const at1 = sim.getCurrentSnapshot();
         expect(at1.config.algorithm).toBe('EDF');
-        expect(at1.cpus[0].running).toEqual(job(1));
+        expect(at1.cpus[0].running).toEqual(job('1'));
         expect(at1.events).toContainEqual({
             kind: 'preemption',
             time: 1,
             cpuId: 1,
-            preempted: job(2),
-            by: job(1),
+            preempted: job('2'),
+            by: job('1'),
         });
         sim.backward();
         expect(sim.getCurrentSnapshot().config.algorithm).toBe('RM');
@@ -161,7 +171,7 @@ describe('Simulator.edit: algorithm', () => {
         const sim = new Simulator(algorithmConfig, rmPolicy);
         edit(sim, [alg('EDF')]);
         expect(sim.getCurrentSnapshot().config.algorithm).toBe('EDF');
-        expect(sim.getCurrentSnapshot().cpus[0].running).toEqual(job(2));
+        expect(sim.getCurrentSnapshot().cpus[0].running).toEqual(job('2'));
     });
 });
 
@@ -272,17 +282,17 @@ describe('Simulator.edit: refusals and recorded edits', () => {
 
 // Residual ties at 0, 4 and 8, so the draw state changes along the run
 // (same scenario as simulator.history.test.ts).
-const tied = (id: number, color: string): TaskDefinition =>
+const tied = (id: string, color: string): TaskDefinition =>
     task(id, color, { arrival: 0, duration: 1, period: 4, deadline: 4 });
 const tiedConfig: SystemConfig = {
     ...DEFAULT_CONFIG,
     cpuCount: 1,
-    tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC'), tied(3, '112233')],
+    tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC'), tied('3', '112233')],
 };
 
 /** Partial progress: slices, preemption, quantum expiry and deadline misses. */
 const progress = (
-    id: number,
+    id: string,
     color: string,
     arrival: number,
     duration: number,
@@ -294,10 +304,10 @@ const partialConfig: SystemConfig = {
     quantum: 2,
     cpuCount: 2,
     tasks: [
-        progress(1, 'F0E0D0', 0, 3, 5),
-        progress(2, 'AABBCC', 0, 4, 6),
-        progress(3, '112233', 1, 2, 4),
-        progress(4, '445566', 0, 5, 6),
+        progress('1', 'F0E0D0', 0, 3, 5),
+        progress('2', 'AABBCC', 0, 4, 6),
+        progress('3', '112233', 1, 2, 4),
+        progress('4', '445566', 0, 5, 6),
     ],
 };
 
