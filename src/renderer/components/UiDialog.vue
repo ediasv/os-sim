@@ -8,7 +8,9 @@ import UiIcon from './UiIcon.vue';
 // misplaced click never throws away what the user typed. A plain element
 // with dialog semantics instead of <dialog>.showModal(), which the test
 // environment (jsdom) does not implement.
-defineProps<{ title: string }>();
+withDefaults(defineProps<{ title: string; wide?: boolean }>(), {
+    wide: false,
+});
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -71,6 +73,7 @@ function onKeydown(event: KeyboardEvent): void {
         <div
             ref="root"
             class="ui-dialog"
+            :class="{ 'ui-dialog--wide': wide }"
             role="dialog"
             aria-modal="true"
             :aria-labelledby="titleId"
@@ -122,6 +125,10 @@ function onKeydown(event: KeyboardEvent): void {
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border-default);
     border-radius: var(--radius-xl);
+}
+
+.ui-dialog--wide {
+    width: min(580px, 100%);
 }
 
 .ui-dialog__header {
