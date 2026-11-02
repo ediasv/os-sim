@@ -566,8 +566,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
-  Implementada em 2026-11-01 no worktree `issue-37-tcbs-jobs-cpus`, ainda sem
-  commit nem PR; a issue segue aberta ate o usuario revisar. Entregue: adaptador
+  Implementada em 2026-11-01 no worktree `issue-37-tcbs-jobs-cpus` e aberta
+  como PR #143; a issue segue aberta ate a revisao. Entregue: adaptador
   `useSimulation.edit` e `futureSteps` (recusa por item preservada em
   `AppError.items`); inspecao com estado escolhido da tarefa, proxima ativacao,
   duracao do job, "ativado, nao elegivel" e job suspenso com prazo perdido
@@ -577,7 +577,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Detalhes e divergencias do Figma (FE-DEC-19) em [arquitetura do renderer](../src/renderer/docs/architecture.md#edicao-durante-a-simulacao-37).
   Sistema e Adicionar tarefa, listados como pendentes na #36, passam a ser
   ligados por esta issue; a #36 mantem Executar tudo e a confirmacao de FE-04.
-  Verificacao: `npm test` 1334/1334 em 69 arquivos (baseline 1250/62),
+  Verificacao: `npm test` 1342/1342 em 69 arquivos (baseline 1250/62),
   `npm run typecheck` e `npm run lint` aprovados. Nao verificado: app Electron
   rodando, comparacao lado a lado com o Figma (#40), recusa de algoritmo (nao
   alcancavel pela tela: so ha RM e EDF) e CPU removida e reincluida na tela

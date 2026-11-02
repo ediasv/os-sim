@@ -96,6 +96,18 @@ describe('EditDialog', () => {
         ]);
     });
 
+    it('submits with Enter: the form has a submit control and ignores an unchanged draft', async () => {
+        const wrapper = mountDialog();
+        const submit = wrapper.get('form button[type="submit"]');
+
+        await submit.trigger('click');
+        expect(wrapper.emitted('submit')).toBeUndefined();
+
+        await wrapper.get('input[type="text"]:not([disabled])').setValue('8');
+        await submit.trigger('click');
+        expect(wrapper.emitted('submit')).toHaveLength(1);
+    });
+
     it('shows the refusal on its field and keeps what the user typed', async () => {
         const wrapper = mountDialog();
         await wrapper.get('input[type="text"]:not([disabled])').setValue('0');

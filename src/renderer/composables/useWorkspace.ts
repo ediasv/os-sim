@@ -11,7 +11,7 @@ import {
     buildAddTask,
     buildSystemEdit,
     buildTaskEdit,
-    refusalsByField,
+    splitRefusals,
     type BuiltEdit,
 } from '../features/editing/buildEdit';
 import {
@@ -274,14 +274,17 @@ export function useWorkspace() {
                 message: `Vale a partir do tick ${clock}. Fatos anteriores ao tick ${clock} não mudam.`,
             };
         }
-        const discarded =
-            ahead === 1
-                ? `o tick ${last} do histórico é descartado`
-                : `os ticks ${clock + 1}–${last} do histórico são descartados`;
         return {
             title: `Editando no tick ${clock} de ${last}`,
-            message: `Ao aplicar, ${discarded} e a simulação é recalculada a partir do estado editado. Fatos anteriores ao tick ${clock} não mudam.`,
+            message: `Ao aplicar, ${discardPhrase(clock, ahead)} e a simulação é recalculada a partir do estado editado. Fatos anteriores ao tick ${clock} não mudam.`,
         };
+    }
+
+    /** Which recorded steps an accepted edit discards, worded for `ahead` of them. */
+    function discardPhrase(clock: number, ahead: number): string {
+        return ahead === 1
+            ? `o tick ${clock + 1} do histórico é descartado`
+            : `os ticks ${clock + 1}–${clock + ahead} do histórico são descartados`;
     }
 
     const editor = computed<EditorView | null>(() => {
@@ -340,7 +343,7 @@ export function useWorkspace() {
             message:
                 'A tarefa sai da simulação sem deixar rastro no Gantt. Só tarefa nunca ativada pode ser removida; para uma já ativada, encerre-a.' +
                 (ahead > 0
-                    ? ` Os ticks ${clock + 1}–${clock + ahead} do histórico são descartados.`
+                    ? ` Ao confirmar, ${discardPhrase(clock, ahead)}.`
                     : ''),
             confirmLabel: 'Remover',
         };
@@ -382,11 +385,12 @@ export function useWorkspace() {
         }
         const { error } = result;
         if (error.kind === 'refused' && error.items !== undefined) {
-            const { task, remove, ...fieldErrors } = refusalsByField(
+            const { errors, message } = splitRefusals(
                 built,
                 error.items,
+                error.message,
             );
-            showRefusals(fieldErrors, task ?? remove ?? null);
+            showRefusals(errors, message);
         } else {
             // An unexpected failure already reached the banner (DEC-24).
             showRefusals(
@@ -428,7 +432,15 @@ export function useWorkspace() {
             showRefusals(built.errors, null);
             return;
         }
-        if (built.edit.items.length === 0) return;
+        if (built.edit.items.length === 0) {
+            // Typed values that equal the current ones (a color in another
+            // case, a leading zero) enable Aplicar but change nothing.
+            showRefusals(
+                {},
+                'Nenhuma alteração a aplicar: os valores são iguais aos atuais.',
+            );
+            return;
+        }
         const finishes = built.edit.items.some(
             (item) => item.kind === 'taskState' && item.state === 'concluded',
         );

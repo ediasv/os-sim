@@ -4,6 +4,7 @@ import {
     buildSystemEdit,
     buildTaskEdit,
     refusalsByField,
+    splitRefusals,
     type AddTaskDraft,
     type SystemDraft,
     type TaskDraft,
@@ -183,6 +184,76 @@ describe('buildAddTask', () => {
         if (!result.ok) {
             expect(Object.keys(result.errors)).toEqual(['arrival']);
         }
+    });
+});
+
+describe('numbers beyond what the core can hold exactly', () => {
+    it.each(['9007199254740993', '99999999999999999999'])(
+        'rejects %s as a duration before sending it',
+        (text) => {
+            const result = buildTaskEdit('2', original, {
+                ...original,
+                duration: text,
+            });
+            expect(result.ok).toBe(false);
+            if (!result.ok) {
+                expect(Object.keys(result.errors)).toEqual(['duration']);
+            }
+        },
+    );
+});
+
+describe('splitRefusals', () => {
+    const edit = itemsOf(
+        buildTaskEdit('2', original, { ...original, period: '0' }),
+    );
+
+    it('puts a reason on the field of its item and nothing on the form', () => {
+        const split = splitRefusals(
+            edit,
+            [{ index: 0, kind: 'taskPeriod', reason: 'Período ≥ 1.' }],
+            'Recusado.',
+        );
+        expect(split).toEqual({
+            errors: { period: 'Período ≥ 1.' },
+            message: null,
+        });
+    });
+
+    it('says the core message when no reason reaches a field, never nothing', () => {
+        const split = splitRefusals(
+            edit,
+            [{ index: 9, kind: 'taskPeriod', reason: 'Sem campo.' }],
+            'Recusado pelo núcleo.',
+        );
+        expect(split).toEqual({
+            errors: {},
+            message: 'Recusado pelo núcleo.',
+        });
+        expect(splitRefusals(edit, [], 'Recusado pelo núcleo.').message).toBe(
+            'Recusado pelo núcleo.',
+        );
+    });
+
+    it('shows the reason of a whole-form item as the form message', () => {
+        const added = buildAddTask({
+            id: '',
+            color: '',
+            arrival: '0',
+            duration: '1',
+            deadline: '1',
+            period: '',
+        });
+        if (!added.ok) throw new Error('expected a built edit');
+        const split = splitRefusals(
+            added.edit,
+            [{ index: 0, kind: 'addTask', reason: 'Ingresso antes do tick.' }],
+            'Recusado.',
+        );
+        expect(split).toEqual({
+            errors: {},
+            message: 'Ingresso antes do tick.',
+        });
     });
 });
 

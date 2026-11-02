@@ -69,6 +69,17 @@ function submit(): void {
             :dismissible="false"
         />
         <form class="edit-dialog__form" @submit.prevent="submit">
+            <!--
+                Browsers submit a form on Enter only when it has a submit
+                control. Aplicar lives in the footer, outside the form, so
+                this one stays out of sight and out of the tab order.
+            -->
+            <button
+                type="submit"
+                class="edit-dialog__enter"
+                tabindex="-1"
+                aria-hidden="true"
+            ></button>
             <UiField
                 v-for="field in fields"
                 :key="field.key"
@@ -154,6 +165,17 @@ function submit(): void {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--spacing-md);
+}
+
+.edit-dialog__enter {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .edit-dialog__field--wide {
