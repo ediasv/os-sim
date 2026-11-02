@@ -8,14 +8,20 @@
  * the Figma components (73 px per tick, 44 px lanes, 28 px bars, 90 px label
  * column); the width is 98 + 90 + 9 + ticks x 73 px, with no tick ceiling.
  *
+ * Lanes, segments, markers and their descriptions come from `ganttModel`, the
+ * same model the on-screen Gantt draws (#38); this file only turns it into
+ * SVG, so the two views cannot disagree about the data.
+ *
  * The image comes only from a snapshot, never from the screen: it has no zoom,
  * scroll or window size, covers ticks `0..clock` whatever the history cursor
  * shows (A.2.4). The caller passes the latest snapshot of the history.
  *
- * Scope of this version: execution, ready intervals, CPU-off intervals and the
- * events the core records today. Suspended and forced segments, and CPU gaps
- * from removal, are left out because they need the events of #26 (DEC-37);
- * the legend lists only what is drawn.
+ * Drawn: execution, ready intervals, CPU-off intervals and the task markers,
+ * plus the states edits produce (DEC-37): suspended segments (dark hatch),
+ * forced segments (strip along the bar's foot), CPU gaps between removal and
+ * addition (light hatch, not counted as off) and the end of a task with
+ * interrupted jobs. The legend always lists the base entries; the entries of
+ * the edit states appear only when the history drew them.
  *
  * The file is standalone, so colors are literals (the CSS tokens do not
  * exist outside the app); they are the dark-theme values of `tokens.css`.
@@ -23,12 +29,31 @@
 import type {
     DeepReadonly,
     JobRef,
-    SimulationEvent,
     SimulationSnapshot,
     TaskId,
 } from '../../../core/domain';
-import { compareTaskIds } from '../../../core/taskId';
-import { cpuOffSummary } from '../../snapshotQueries';
+import {
+    buildGanttModel,
+    isFinalSnapshot,
+    LEGEND_MARKERS,
+    MARKER_TEXT,
+    type MarkerKind,
+} from '../gantt/ganttModel';
+import { taskFill as fill, textOn } from '../gantt/colors';
+import {
+    BAR_HEIGHT,
+    BAR_TOP,
+    FORCED_STRIP,
+    LABEL_WIDTH,
+    LANE_HEIGHT,
+    laneHeight as laneHeightFor,
+    MARKER,
+    MARKER_OFFSET,
+    MARKER_STEP,
+    textWidth,
+    TICK,
+} from '../gantt/geometry';
+import { MARKER_SHAPES, type Paint } from '../gantt/markerShapes';
 
 type Snapshot = DeepReadonly<SimulationSnapshot>;
 
@@ -39,13 +64,8 @@ export interface GanttSvgOptions {
     readonly exportedAt?: Date;
 }
 
-const TICK = 73;
-const LABEL_WIDTH = 90;
 /** Right slack of a lane, as in the Figma frame (lane 1048 = 90 + 13 x 73 + 9). */
 const LANE_SLACK = 9;
-const LANE_HEIGHT = 44;
-const BAR_TOP = 8;
-const BAR_HEIGHT = 28;
 const AXIS_HEIGHT = 24;
 const DIVIDER_HEIGHT = 28;
 const OUTER = 32;
@@ -53,9 +73,15 @@ const CARD_BORDER = 1;
 const CARD_PAD = 16;
 const HEADER_HEIGHT = 37;
 const BLOCK_GAP = 16;
-const MARKER = 12;
-/** Vertical step between markers that share a lane and an instant (FE-17). */
-const MARKER_STEP = 13;
+const SUSPENDED_FILL = '#0b0c10';
+
+/** Legend text of the entries that exist only when edits drew them. */
+const EXTRA_LEGEND_TEXT = {
+    suspended: 'Suspensa (hachura escura)',
+    forced: 'Forçada',
+    'cpu-absent': 'CPU removida',
+    'task-terminated': MARKER_TEXT['task-terminated'].legend,
+} as const;
 const LEGEND_PAD_X = 16;
 const LEGEND_PAD_Y = 12;
 const LEGEND_GAP_X = 16;
@@ -79,70 +105,30 @@ const THEME = {
 
 const FONT = "Inter, 'Inter Variable', system-ui, 'Segoe UI', sans-serif";
 
-export type MarkerKind =
-    | 'activation'
-    | 'completion'
-    | 'task-finished'
-    | 'deadline-miss'
-    | 'tie-break'
-    | 'preemption'
-    | 'quantum-expired';
-
-interface MarkerStyle {
-    readonly label: string;
-    readonly legend: string;
-    /** Shape inside a 12 x 12 box (the exported assets of the Figma markers). */
-    readonly shape: string;
-}
-
-const MARKERS: Readonly<Record<MarkerKind, MarkerStyle>> = {
-    activation: {
-        label: 'Ingresso / ativação',
-        legend: 'Ingresso / ativação',
-        shape: `<path d="M6 0.5L11.1962 8.75H0.803848L6 0.5Z" fill="${THEME.text}"/>`,
-    },
-    completion: {
-        label: 'Término do job',
-        legend: 'Término do job',
-        shape: `<circle cx="6" cy="6" r="5" fill="${THEME.success}"/>`,
-    },
-    'deadline-miss': {
-        label: 'Perda de prazo',
-        legend: 'Perda de prazo',
-        shape: `<path d="M6 0L12 6L6 12L0 6L6 0Z" fill="${THEME.danger}"/>`,
-    },
-    'tie-break': {
-        label: 'Sorteio',
-        legend: 'Sorteio (desempate)',
-        shape: `<path d="M6 0L7.58702 3.81565L11.7063 4.1459L8.56785 6.83435L9.52671 10.8541L6 8.7L2.47329 10.8541L3.43215 6.83435L0.293661 4.1459L4.41298 3.81565L6 0Z" fill="${THEME.warning}"/>`,
-    },
-    preemption: {
-        label: 'Preempção',
-        legend: 'Preempção',
-        shape: `<path d="M6 11L0.803848 2.75L11.1962 2.75L6 11Z" fill="${THEME.accent}"/>`,
-    },
-    'quantum-expired': {
-        label: 'Quantum vencido',
-        legend: 'Quantum vencido',
-        shape: `<circle cx="6" cy="6" r="4.5" fill="none" stroke="${THEME.text}" stroke-width="2"/>`,
-    },
-    'task-finished': {
-        label: 'Fim da tarefa',
-        legend: 'Fim da tarefa (último job)',
-        shape: `<rect x="1" y="1" width="10" height="10" rx="1" fill="${THEME.success}"/>`,
-    },
+const PAINT: Readonly<Record<Paint, string>> = {
+    text: THEME.text,
+    success: THEME.success,
+    danger: THEME.danger,
+    warning: THEME.warning,
+    accent: THEME.accent,
 };
 
-/** Legend order of the Figma frame. */
-const LEGEND_MARKERS: readonly MarkerKind[] = [
-    'activation',
-    'completion',
-    'deadline-miss',
-    'tie-break',
-    'preemption',
-    'quantum-expired',
-    'task-finished',
-];
+/** Marker shape inside its 12 x 12 box, with the literal theme colors. */
+function shapeOf(kind: MarkerKind): string {
+    return MARKER_SHAPES[kind]
+        .map((part) => {
+            const geometry = Object.entries(part.attrs)
+                .map(([name, value]) => `${name}="${value}"`)
+                .join(' ');
+            const color = PAINT[part.paint];
+            const paint =
+                part.mode === 'fill'
+                    ? `fill="${color}"`
+                    : `${part.mode === 'outline' ? 'fill="none" ' : ''}stroke="${color}" stroke-width="${part.strokeWidth}"`;
+            return `<${part.tag} ${geometry} ${paint}/>`;
+        })
+        .join('');
+}
 
 const escapeXml = (text: string): string =>
     Array.from(text, (character) => {
@@ -164,119 +150,7 @@ const escapeXml = (text: string): string =>
 
 const jobLabel = (job: JobRef): string => `#${job.index + 1}`;
 
-/** Config colors are validated hex; anything else would only break the file. */
-function fill(color: string): string {
-    return /^[0-9a-f]{6}$/i.test(color) ? `#${color}` : '#888888';
-}
-
-/** Black or white, whichever contrasts more with the task color (FE-DEC-10). */
-function textOn(color: string): string {
-    const hex = fill(color).slice(1);
-    const channel = (offset: number): number => {
-        const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
-        return value <= 0.03928
-            ? value / 12.92
-            : ((value + 0.055) / 1.055) ** 2.4;
-    };
-    const luminance =
-        0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
-    // Contrast with white is 1.05 / (L + 0.05); with black, (L + 0.05) / 0.05.
-    return (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05)
-        ? '#000000'
-        : '#ffffff';
-}
-
-/** Task whose lane carries the marker of this event; null for CPU events. */
-function eventTask(event: DeepReadonly<SimulationEvent>): TaskId | null {
-    switch (event.kind) {
-        case 'activation':
-        case 'completion':
-        case 'deadline-miss':
-        case 'quantum-expired':
-            return event.job.taskId;
-        case 'preemption':
-            return event.preempted.taskId;
-        case 'tie-break':
-            return event.winner.taskId;
-        case 'task-finished':
-            return event.taskId;
-        default:
-            return null;
-    }
-}
-
-function eventDescription(event: DeepReadonly<SimulationEvent>): string {
-    const at = `t = ${event.time}`;
-    switch (event.kind) {
-        case 'task-finished':
-            return `${MARKERS[event.kind].label}: tarefa ${event.taskId}, ${at}`;
-        case 'preemption':
-            return `${MARKERS[event.kind].label}: tarefa ${event.preempted.taskId} ${jobLabel(event.preempted)} cedeu a CPU ${event.cpuId} à tarefa ${event.by.taskId} ${jobLabel(event.by)}, ${at}`;
-        case 'tie-break':
-            return `${MARKERS[event.kind].label}: venceu tarefa ${event.winner.taskId} ${jobLabel(event.winner)} entre ${event.candidates.length} candidatos, ${at}`;
-        case 'quantum-expired':
-            return `${MARKERS[event.kind].label}: tarefa ${event.job.taskId} ${jobLabel(event.job)} na CPU ${event.cpuId}, ${at}`;
-        case 'activation':
-        case 'completion':
-        case 'deadline-miss':
-            return `${MARKERS[event.kind].label}: tarefa ${event.job.taskId} ${jobLabel(event.job)}, ${at}`;
-        default:
-            return at;
-    }
-}
-
-interface Span {
-    readonly start: number;
-    readonly end: number;
-}
-
-/**
- * Ticks a job waits while eligible: from its activation, or from the
- * completion of the previous job when that came later (DEC-02), up to its own
- * completion or the snapshot clock, minus the slices it ran. A job still
- * behind an incomplete one has none: it shows only its activation marker
- * (DEC-08).
- */
-function readySpans(
-    snapshot: Snapshot,
-    taskIndex: number,
-    jobIndex: number,
-    slices: readonly Span[],
-): Span[] {
-    const jobs = snapshot.tasks[taskIndex].jobs;
-    const job = jobs[jobIndex];
-    const previous = jobIndex > 0 ? jobs[jobIndex - 1] : null;
-    if (previous !== null && previous.completedAt === null) {
-        return [];
-    }
-    const from = Math.max(job.activation, previous?.completedAt ?? 0);
-    const to = job.completedAt ?? snapshot.clock;
-    const spans: Span[] = [];
-    let cursor = from;
-    for (const slice of slices) {
-        if (slice.start > cursor) {
-            spans.push({ start: cursor, end: Math.min(slice.start, to) });
-        }
-        cursor = Math.max(cursor, slice.end);
-    }
-    if (cursor < to) {
-        spans.push({ start: cursor, end: to });
-    }
-    return spans.filter((span) => span.end > span.start);
-}
-
-/** True when the last calculated state already ends every task (FE-18). */
-export function isFinalSnapshot(snapshot: Snapshot): boolean {
-    const finished = new Set<TaskId>();
-    for (const event of snapshot.events) {
-        if (event.kind === 'task-finished') finished.add(event.taskId);
-    }
-    return snapshot.tasks.length > 0 && finished.size === snapshot.tasks.length;
-}
-
-/** Estimated advance of Inter text; viewers without the font differ a little. */
-const textWidth = (text: string, size: number): number =>
-    text.length * size * 0.55;
+export { isFinalSnapshot };
 
 /** Room for the lane label: the label column minus the color chip and a gap. */
 const LANE_LABEL_WIDTH = LABEL_WIDTH - 18 - 6;
@@ -314,14 +188,15 @@ function markerShape(
     y: number,
     title: string,
 ): string {
-    return `<g transform="translate(${x} ${y})" data-event="${kind}"><title>${escapeXml(title)}</title>${MARKERS[kind].shape}</g>`;
+    return `<g transform="translate(${x} ${y})" data-event="${kind}"><title>${escapeXml(title)}</title>${shapeOf(kind)}</g>`;
 }
 
 export function buildGanttSvg(
     snapshot: Snapshot,
     options: GanttSvgOptions = {},
 ): string {
-    const ticks = Math.max(snapshot.clock, 1);
+    const model = buildGanttModel(snapshot);
+    const ticks = model.ticks;
     const canvasWidth = ticks * TICK;
     const laneWidth = LABEL_WIDTH + canvasWidth + LANE_SLACK;
     const cardInset = CARD_BORDER + CARD_PAD;
@@ -334,40 +209,21 @@ export function buildGanttSvg(
     const canvasX = laneX + LABEL_WIDTH;
     const tx = (time: number): number => canvasX + time * TICK;
 
-    // Events sharing a lane and an instant stack vertically (FE-17); the lane
-    // grows to hold the deepest stack instead of overlapping the next one.
-    const stackKey = (event: DeepReadonly<SimulationEvent>): string | null => {
-        const task = eventTask(event);
-        return task === null ? null : `${task}:${event.time}`;
-    };
-    const depth = new Map<string, number>();
-    const laneDepth = new Map<TaskId, number>();
-    for (const event of snapshot.events) {
-        const key = stackKey(event);
-        const task = eventTask(event);
-        if (key === null || task === null) continue;
-        const next = (depth.get(key) ?? 0) + 1;
-        depth.set(key, next);
-        laneDepth.set(task, Math.max(laneDepth.get(task) ?? 1, next));
-    }
-
-    // Highest ID at the top, lowest next to the CPU lanes (A.2.5).
-    const order = snapshot.tasks
-        .map((tcb, index) => ({ tcb, index }))
-        .sort((a, b) =>
-            compareTaskIds(b.tcb.definition.id, a.tcb.definition.id),
-        );
+    // Highest ID at the top, lowest next to the CPU lanes (A.2.5); a lane grows
+    // to hold its deepest marker stack (FE-17) instead of overlapping the next.
+    const order = model.taskLanes;
+    const lanes = new Map(order.map((lane) => [lane.id, lane]));
     const laneTop = new Map<TaskId, number>();
     const laneHeight = (id: TaskId): number =>
-        LANE_HEIGHT + ((laneDepth.get(id) ?? 1) - 1) * MARKER_STEP;
+        laneHeightFor(lanes.get(id)!.depth);
     const cardTop = OUTER + HEADER_HEIGHT + BLOCK_GAP;
     let y = cardTop + cardInset + AXIS_HEIGHT;
-    for (const { tcb } of order) {
-        laneTop.set(tcb.definition.id, y);
-        y += laneHeight(tcb.definition.id);
+    for (const lane of order) {
+        laneTop.set(lane.id, y);
+        y += laneHeight(lane.id);
     }
     const dividerTop = y;
-    const cpus = cpuOffSummary(snapshot);
+    const cpus = model.cpuLanes;
     const cpuTop = dividerTop + DIVIDER_HEIGHT;
     const cardBottom = cpuTop + cpus.length * LANE_HEIGHT + cardInset;
     const cardHeight = cardBottom - cardTop;
@@ -378,10 +234,15 @@ export function buildGanttSvg(
         { key: 'ready', text: 'Pronto (contorno tracejado)', glyph: 12 },
         ...LEGEND_MARKERS.map((kind) => ({
             key: kind,
-            text: MARKERS[kind].legend,
+            text: MARKER_TEXT[kind].legend,
             glyph: 12,
         })),
         { key: 'cpu-off', text: 'CPU desligada', glyph: 16 },
+        ...model.extraLegend.map((key) => ({
+            key,
+            text: EXTRA_LEGEND_TEXT[key],
+            glyph: key === 'cpu-absent' ? 16 : 12,
+        })),
     ];
     const legendTop = cardBottom + BLOCK_GAP;
     const legendInner = cardWidth - 2 * CARD_BORDER - 2 * LEGEND_PAD_X;
@@ -405,8 +266,16 @@ export function buildGanttSvg(
         row * LEGEND_GAP_Y;
     const height = legendTop + legendHeight + OUTER;
 
-    const final = isFinalSnapshot(snapshot);
-    const sample = order.at(-1)?.tcb.definition.color;
+    const final = model.final;
+    // Hatch patterns exist only when the history draws the states that use them.
+    const hatchDefs =
+        (model.extraLegend.includes('suspended')
+            ? `<pattern id="suspended-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="${SUSPENDED_FILL}"/><rect width="2" height="6" fill="${THEME.textSecondary}"/></pattern>`
+            : '') +
+        (model.extraLegend.includes('cpu-absent')
+            ? `<pattern id="absent-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1" height="6" fill="${THEME.border}"/></pattern>`
+            : '');
+    const sample = order.at(-1)?.color;
     const sampleColor = sample === undefined ? THEME.accent : fill(sample);
     const heading = `os-sim${options.fileName ? ` — ${options.fileName}` : ''}`;
     const meta = [
@@ -425,7 +294,7 @@ export function buildGanttSvg(
         '<?xml version="1.0" encoding="UTF-8"?>',
         `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}" role="img" aria-label="Diagrama de Gantt, ticks 0 a ${snapshot.clock}, ${final ? 'final' : 'parcial'}">`,
         `<title>Diagrama de Gantt, ticks 0 a ${snapshot.clock} (${final ? 'final' : 'parcial'})</title>`,
-        `<defs><pattern id="tick-grid" x="${canvasX}" y="0" width="${TICK}" height="${LANE_HEIGHT}" patternUnits="userSpaceOnUse"><rect width="1" height="${LANE_HEIGHT}" fill="${THEME.border}"/></pattern></defs>`,
+        `<defs><pattern id="tick-grid" x="${canvasX}" y="0" width="${TICK}" height="${LANE_HEIGHT}" patternUnits="userSpaceOnUse"><rect width="1" height="${LANE_HEIGHT}" fill="${THEME.border}"/></pattern>${hatchDefs}</defs>`,
         `<rect width="${width}" height="${height}" fill="${THEME.app}"/>`,
         `<text x="${OUTER}" y="${OUTER + 14}" font-size="15" font-weight="600" fill="${THEME.text}">${escapeXml(heading)}</text>`,
         `<text x="${OUTER}" y="${OUTER + 33}" font-size="12" fill="${THEME.textSecondary}" xml:space="preserve">${escapeXml(meta)}</text>`,
@@ -465,28 +334,28 @@ export function buildGanttSvg(
     }
 
     // Task lanes: grid, ready outlines, execution bars.
-    for (const { tcb, index } of order) {
-        const id = tcb.definition.id;
+    for (const lane of order) {
+        const id = lane.id;
         const top = laneTop.get(id)!;
-        const color = fill(tcb.definition.color);
-        const slices = snapshot.executions
-            .filter((slice) => slice.job.taskId === id)
-            .sort((a, b) => a.start - b.start);
+        const color = fill(lane.color);
         out.push(
             `<g data-task="${escapeXml(id)}">`,
             grid(top, laneHeight(id)),
             `<rect x="${laneX}" y="${top + 16}" width="12" height="12" rx="3" fill="${color}"/>`,
             `<text x="${laneX + 18}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.text}">${laneLabel(id)}</text>`,
         );
-        tcb.jobs.forEach((job, jobIndex) => {
-            const own = slices.filter((slice) => slice.job.index === job.index);
-            for (const span of readySpans(snapshot, index, jobIndex, own)) {
-                out.push(
-                    `<rect data-state="ready" x="${tx(span.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${(span.end - span.start) * TICK - 3.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${escapeXml(id)} ${jobLabel({ taskId: id, index: jobIndex })}, [${span.start}, ${span.end})</title></rect>`,
-                );
-            }
-        });
-        for (const slice of slices) {
+        for (const span of lane.ready) {
+            out.push(
+                `<rect data-state="ready" x="${tx(span.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${(span.end - span.start) * TICK - 3.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${escapeXml(id)} ${jobLabel(span.job)}, [${span.start}, ${span.end})</title></rect>`,
+            );
+        }
+        for (const span of lane.suspended) {
+            const w = (span.end - span.start) * TICK - 2;
+            out.push(
+                `<rect data-state="suspended" x="${tx(span.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="url(#suspended-hatch)" stroke="${THEME.border}"><title>Suspensa: tarefa ${escapeXml(id)}, [${span.start}, ${span.end})</title></rect>`,
+            );
+        }
+        for (const slice of lane.running) {
             const w = (slice.end - slice.start) * TICK - 2;
             const full = `CPU ${slice.cpuId} · ${jobLabel(slice.job)}`;
             const short = `CPU ${slice.cpuId}`;
@@ -503,9 +372,17 @@ export function buildGanttSvg(
                           top,
                           w,
                           label,
-                          textOn(tcb.definition.color),
+                          textOn(lane.color),
                       ),
                 '</g>',
+            );
+        }
+        // Forced: a strip along the foot of the bar, over whatever runs there,
+        // so a forced task stays readable even while it waits for a CPU.
+        for (const span of lane.forced) {
+            const w = (span.end - span.start) * TICK - 2;
+            out.push(
+                `<rect data-state="forced" x="${tx(span.start) + 1}" y="${top + BAR_TOP + BAR_HEIGHT - FORCED_STRIP}" width="${w}" height="${FORCED_STRIP}" rx="2" fill="${THEME.warning}"><title>Forçada: tarefa ${escapeXml(id)}, [${span.start}, ${span.end})</title></rect>`,
             );
         }
         out.push('</g>');
@@ -524,9 +401,14 @@ export function buildGanttSvg(
             grid(top, LANE_HEIGHT),
             `<text x="${laneX}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.textSecondary}">CPU ${cpu.cpuId}</text>`,
         );
-        for (const interval of cpu.intervals) {
-            const end = interval.end ?? snapshot.clock;
-            if (end <= interval.start) continue;
+        for (const gap of cpu.absent) {
+            const w = (gap.end - gap.start) * TICK - 2;
+            out.push(
+                `<rect data-state="cpu-absent" x="${tx(gap.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="url(#absent-hatch)" stroke="${THEME.border}"><title>CPU ${cpu.cpuId} removida: [${gap.start}, ${gap.end})</title></rect>`,
+            );
+        }
+        for (const interval of cpu.off) {
+            const end = interval.end;
             const w = (end - interval.start) * TICK - 2;
             out.push(
                 `<rect data-state="cpu-off" x="${tx(interval.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${w - 1.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="${THEME.raised}" stroke="${THEME.border}" stroke-width="1.5" stroke-dasharray="4 3"><title>CPU ${cpu.cpuId} desligada: [${interval.start}, ${end})</title></rect>`,
@@ -544,19 +426,21 @@ export function buildGanttSvg(
 
     // Markers last, so no lane covers them. They sit on the tick boundary,
     // centered 40 px below the lane top; coincident ones stack downward.
-    const level = new Map<string, number>();
-    for (const event of snapshot.events) {
-        const task = eventTask(event);
-        const key = stackKey(event);
-        if (task === null || key === null || !laneTop.has(task)) continue;
-        const at = level.get(key) ?? 0;
-        level.set(key, at + 1);
+    const markers = order
+        .flatMap((lane) =>
+            lane.markers.map((marker) => ({
+                marker,
+                top: laneTop.get(lane.id)!,
+            })),
+        )
+        .sort((a, b) => a.marker.sequence - b.marker.sequence);
+    for (const { marker, top } of markers) {
         out.push(
             markerShape(
-                event.kind as MarkerKind,
-                tx(event.time) - MARKER / 2,
-                laneTop.get(task)! + 34 + at * MARKER_STEP,
-                eventDescription(event),
+                marker.kind,
+                tx(marker.time) - MARKER / 2,
+                top + MARKER_OFFSET + marker.level * MARKER_STEP,
+                marker.description,
             ),
         );
     }
@@ -573,15 +457,21 @@ export function buildGanttSvg(
             LEGEND_PAD_Y +
             r * (LEGEND_ROW + LEGEND_GAP_Y);
         let glyph: string;
-        if (item.key in MARKERS) {
+        if (item.key in MARKER_TEXT) {
             glyph = markerShape(
                 item.key as MarkerKind,
                 gx,
                 gy + 1.5,
-                MARKERS[item.key as MarkerKind].label,
+                MARKER_TEXT[item.key as MarkerKind].label,
             );
         } else if (item.key === 'running') {
             glyph = `<rect x="${gx}" y="${gy + 1.5}" width="12" height="12" rx="3" fill="${sampleColor}"/>`;
+        } else if (item.key === 'suspended') {
+            glyph = `<rect x="${gx + 0.5}" y="${gy + 2}" width="11" height="11" rx="3" fill="url(#suspended-hatch)" stroke="${THEME.border}"/>`;
+        } else if (item.key === 'forced') {
+            glyph = `<rect x="${gx + 0.75}" y="${gy + 2.25}" width="10.5" height="10.5" rx="3" fill="none" stroke="${sampleColor}" stroke-width="1.5"/><rect x="${gx + 1}" y="${gy + 9.5}" width="10" height="3" rx="1.5" fill="${THEME.warning}"/>`;
+        } else if (item.key === 'cpu-absent') {
+            glyph = `<rect x="${gx + 0.5}" y="${gy + 2}" width="15" height="11" rx="4" fill="url(#absent-hatch)" stroke="${THEME.border}"/>`;
         } else if (item.key === 'ready') {
             glyph = `<rect x="${gx + 0.75}" y="${gy + 2.25}" width="10.5" height="10.5" rx="3" fill="none" stroke="${sampleColor}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
         } else {
