@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createSimulator } from '../../../core/createSimulator';
 import type { SimulationSnapshot, SystemConfig } from '../../../core/domain';
-import { buildGanttSvg, isFinalSnapshot } from './ganttSvg';
+import { isFinalSnapshot } from '../gantt/ganttModel';
+import { buildGanttSvg } from './ganttSvg';
 
 function task(
     id: string,
@@ -290,7 +291,7 @@ describe('buildGanttSvg', () => {
         );
     });
 
-    it('has no current-instant line and no suspended entry (left for #26)', () => {
+    it('has no current-instant line, and no suspended entry without a suspension', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
 
         expect(svg).not.toContain('data-current');

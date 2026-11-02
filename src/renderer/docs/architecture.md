@@ -691,9 +691,9 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   de DEC-10 e motivos vem do nucleo, e uma edicao recusada devolve as `issues`
   sem mudar o rascunho (FE-03, FE-11).
 - 2a, coordenacao: `useWorkspace` ganhou `dialog` (um modal por vez),
-  `applySystem`, `cancelDialog` e a acao `configure-system`, disponivel so antes
-  do inicio e sem outro modal aberto; durante a simulacao segue desabilitada ate
-  a #37.
+  `applySystem`, `cancelDialog` e a acao `configure-system`, disponivel sem outro
+  modal aberto; antes do inicio abre este dialogo, e durante a simulacao a #37
+  abre o `EditDialog` (FE-DEC-21).
 - 2a, componentes: `SystemDialog` (formulario com rascunho proprio, valores
   digitados mantidos e motivos junto ao campo), `UiDialog` e `UiField`.
 - FE-DEC-19 (REQ-02, REQ-05, REQ-10; FE-03, FE-11, FE-16; DEC-37): (a) o
@@ -706,15 +706,98 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   campo, fica preso no dialogo e volta ao botao de origem. Justificativa:
   manter as regras no nucleo, seguir o Figma onde ele define a tela e nao
   perder trabalho em silencio (FE-05). Acordado com o usuario em 2026-11-01.
-- Nao feito nesta parte: tarefas do rascunho (2b), confirmacao de FE-04
-  (2c), edicao durante a simulacao (#37), Executar tudo e cancelamento (#27).
+- 2b, logica: `saveTask` e `removeTask` seguem o mesmo caminho por
+  `validateConfig`. Unica regra do renderer: periodo zero informado na tela e
+  recusado com o motivo "Toda tarefa precisa de periodo maior que zero",
+  porque o nucleo ainda o aceita como aperiodico (DEC-29 item 3). Tarefa nova:
+  periodo 15 (DEC-29), ID igual ao maior usado mais 1 (nunca reaproveitado no
+  rascunho) e cor sugerida editavel (primeira de uma paleta ainda livre).
+- 2b, coordenacao: `selectedTaskId`, `selectTask`, `saveTask`, `requestRemove`,
+  `confirmRemove` e as acoes `add-task` e `edit-task`, so antes do inicio.
+- 2b, componentes: `TaskDialog`, `ConfirmDialog` (remover tarefa) e `TaskPanel`
+  com cartoes, "Editar tarefa selecionada" e "Adicionar tarefa" como no Figma.
+- FE-DEC-20 (REQ-05, REQ-06, REQ-10; FE-03, FE-11, FE-19; DEC-29): (a) a recusa
+  do periodo zero nas telas fica no renderer, com texto proprio, e e o unico
+  check de dominio alem do nucleo; (b) "Editar tarefa selecionada" atua na
+  tarefa escolhida na lista e "Remover tarefa" fica dentro do dialogo de
+  edicao, com confirmacao propria, como no Figma; remover vale so para o
+  rascunho (remocao durante a simulacao e da #37, FE-15); (c) `TaskDialog` e
+  um formulario de apresentacao (props e eventos), reaproveitavel pela #37, que
+  decide como aplicar edicoes durante a simulacao (sem a faixa "Editando no
+  tick" nem a secao "Job atual" do Figma); (d) o ID e a cor sugerida valem so
+  para a criacao no rascunho: o arquivo exige os dois campos e nao ha criacao
+  sem eles, e a #37 (FE-19) segue dona do ID e da cor na simulacao; (e) desvio
+  do Figma: a ajuda do periodo diz "Inteiro >= 1" em vez de "0 = aperiodica",
+  pois zero e recusado (DEC-29). Acordado com o usuario em 2026-11-01.
+- Nao feito nesta parte: confirmacao de FE-04 (2c), edicao durante a
+  simulacao e tarefa concluida so com cor (#37), Executar tudo (#27), sem
+  cancelamento (DEC-49).
 
-Verificacao (2026-11-01, 2a): `npm test` 953 aprovados e 1 ignorado, `npm run
-lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
-abrir o dialogo, aplicar valores, motivos do nucleo, restaurar padroes e
-cancelar. No navegador do app (Vite) a 1440 x 924 foi conferido o fluxo
-completo do conjunto 2a a 2c, sem repetir por PR; app Electron com o dialogo
-real de arquivo e larguras menores nao foram verificados.
+Verificacao (2026-11-01, 2b, depois do merge com a main): `npm test` 1304
+aprovados e 1 ignorado, `npm run lint` e `npm run typecheck` sem achados. Testes
+de componente e de `App` cobrem adicionar com periodo 15, periodo zero recusado,
+motivo do nucleo, editar, remover com confirmacao e a selecao. Os IDs passaram a
+texto (DEC-48): novas tarefas usam `suggestTaskId` e a busca usa `sameTaskId`.
+A conferencia no navegador (Vite, 1440 x 924) foi feita antes desse merge e nao
+foi repetida depois dele. Nao verificado: app Electron, larguras menores,
+comparacao lado a lado com o Figma (#40).
+
+## Edicao durante a simulacao (#37)
+
+Edicoes seguem DEC-37; a tela so monta o pedido, envia e mostra o resultado do
+nucleo (REQ-05).
+
+- Adaptador: `useSimulation().edit(items)` devolve `CommandResult` e, na recusa
+  de uma edicao, `AppError.items` traz um motivo por item (`EditRefusal`).
+  `futureSteps()` diz quantos passos gravados vem depois do cursor.
+- Rascunho para pedido: [buildEdit](../features/editing/buildEdit.ts) converte
+  texto em itens e so confere o formato (inteiro). Regras de dominio ficam com o
+  nucleo: periodo 0 e quantum 0 sao enviados e a recusa volta no campo
+  (`refusalsByField`). O estado vai por ultimo, para as caracteristicas serem
+  julgadas antes de uma tarefa ser encerrada no mesmo envio.
+- Formularios: [forms](../features/editing/forms.ts) define campos, dicas e os
+  avisos de alcance (FE-12, FE-13, FE-16); [EditDialog](../features/editing/EditDialog.vue)
+  e o unico dialogo de edicao da simulacao em andamento (tarefa, sistema e
+  inclusao). Reaproveita `UiDialog`, `UiField` e `ConfirmDialog` da #36 (FE-DEC-19
+  e FE-DEC-20); `SystemDialog` e `TaskDialog` seguem como os formularios do
+  rascunho, antes do inicio. Recusa nao fecha o dialogo nem apaga o que foi
+  digitado (FE-11); cancelar descarta so o rascunho.
+- Orquestracao: `useWorkspace` escolhe pelo `started`. Antes do inicio,
+  `configure-system`, `add-task` e `edit-task` abrem os dialogos do rascunho
+  (`dialog`); depois, abrem o `editor` da simulacao. Para o `editor` expoe
+  `confirmation`, `openTaskEdit`, `submitEditor`, `confirmPending` e
+  `cancelPending`; `requestRemove` vale para os dois casos. Encerrar e remover
+  pedem confirmacao antes de enviar.
+- Inspecao: o estado escolhido da tarefa, a proxima ativacao e a duracao de cada
+  job vem do snapshot. O nucleo nunca grava job suspenso (a tarefa e que
+  suspende), entao a projecao marca como suspenso o job incompleto mais antigo
+  de tarefa suspensa, que e o job a que o estado vale (DEC-37).
+
+### FE-DEC-21: Figma e especificacao divergem (REQ-05, REQ-10; FE-10 a FE-16, FE-19)
+
+Os quadros "Dialogo - Editar tarefa", "Configurar sistema" e "Remover tarefa"
+foram lidos em 2026-11-01. Onde divergem da especificacao e das DECs, vale a
+especificacao (regra do usuario); o layout, os textos de aviso e a ordem dos
+campos seguem o Figma.
+
+| Figma mostra                                              | Especificacao                                                          | Implementado                                      |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| "Estado do job" (Pronto, Suspenso) e "Executado" editavel | Estado e da tarefa (4 estados); progresso nao editavel (DEC-37, FE-14) | Seletor com os 4 estados; sem campo de progresso  |
+| Ingresso sempre editavel                                  | Bloqueado depois da primeira ativacao (FE-19)                          | Campo desabilitado com o texto do bloqueio        |
+| Periodo 0 como aperiodica                                 | Periodo zero e recusado; aperiodica e do Projeto B (DEC-37, DEC-29)    | Zero vai ao nucleo, que recusa com o motivo       |
+| Remover tarefa ja ativada com historico no Gantt          | So tarefa nunca ativada, sem rastro; ativada recusa e indica encerrar  | Texto da confirmacao e recusa do nucleo exibida   |
+| Algoritmo desabilitado                                    | Pode ser trocado durante a simulacao (DEC-37, FE-16)                   | Editavel                                          |
+| Sem avisos de alcance, forcar nem encerrar                | Avisos e confirmacao exigidos (FE-12, FE-13, FE-16)                    | Dicas nos campos e confirmacao de encerrar        |
+| "Restaurar padroes" no sistema                            | Nao consta para a simulacao em andamento                               | So no dialogo do rascunho (FE-DEC-19); aqui, nao  |
+| Sem dialogo de inclusao em andamento                      | Inclusao com ID sugerido, ingresso >= tick, periodo 15 (DEC-48)        | Mesmo dialogo de edicao, com ID e periodo prontos |
+| "Suspender job" e "Retomar job" na tela principal         | Estado e da tarefa                                                     | Fora da #37; revisar na #36 e na #38              |
+
+Escolhas do autor, a confirmar: o botao "Editar tarefa" fica nos detalhes da
+tarefa, nao no painel lateral do Figma, porque a lista de tarefas ainda esta no
+corpo provisorio (FE-DEC-18); o aviso de descarte do futuro e um quadro dentro
+do dialogo, como no Figma, e nao uma confirmacao separada; sem previa do
+calendario antes de aplicar, pois o nucleo nao a oferece: o dialogo mostra a
+proxima ativacao atual e o resultado aparece no snapshot publicado.
 
 ## Verificacao e pendencias tecnicas
 

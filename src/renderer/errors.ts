@@ -1,6 +1,10 @@
 import { shallowRef, type App } from 'vue';
 import { ConfigValidationError, type ConfigIssue } from '../core/config';
-import { SimulationRefusal } from '../core/refusal';
+import {
+    EditRefusal,
+    SimulationRefusal,
+    type EditItemRefusal,
+} from '../core/refusal';
 
 /** Latest uncaught error, as display text. `null` when nothing to show. */
 export const currentError = shallowRef<string | null>(null);
@@ -44,7 +48,9 @@ export function dismissError(): void {
  * Why a command failed (DEC-24). `config` is correctable by the user and
  * keeps the issues for display next to the fields; `refused` is a request
  * the current step cannot honour, such as going back from step 0, shown
- * where the user acted (DEC-36); `unexpected` is a bug.
+ * where the user acted (DEC-36); `unexpected` is a bug. A refused edit also
+ * carries `items`, one reason per refused item, so a form can show each reason
+ * on its field (DEC-37 item 4).
  */
 export type AppError =
     | {
@@ -52,7 +58,11 @@ export type AppError =
           readonly message: string;
           readonly issues: readonly ConfigIssue[];
       }
-    | { readonly kind: 'refused'; readonly message: string }
+    | {
+          readonly kind: 'refused';
+          readonly message: string;
+          readonly items?: readonly EditItemRefusal[];
+      }
     | { readonly kind: 'unexpected'; readonly message: string };
 
 /** Outcome of an adapter command; a failure leaves the state unchanged (DEC-24). */
@@ -70,6 +80,12 @@ export function commandFailure(err: unknown): CommandResult {
         return {
             ok: false,
             error: { kind: 'config', message: err.message, issues: err.issues },
+        };
+    }
+    if (err instanceof EditRefusal) {
+        return {
+            ok: false,
+            error: { kind: 'refused', message: err.message, items: err.items },
         };
     }
     if (err instanceof SimulationRefusal) {

@@ -377,7 +377,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       despacho (REQ-02, DEC-05).
     - Suspensao: resolvida no nucleo do #117 por `TaskControlBlock.status`
       e eventos de tarefa (DEC-43); `JobState.suspended` segue por
-      compatibilidade do modelo, mas a edicao nao o escreve. Consumo no Gantt (#38).
+      compatibilidade do modelo, mas a edicao nao o escreve. Consumo no Gantt (#38,
+      DEC-50): trechos suspensos de `suspension` ate `resumption`.
 - Alternativa descartada: classes com estado privado por tarefa, que exigiriam
   clonagem especifica e expor metodos aos consumidores de snapshots.
 
@@ -2239,3 +2240,44 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
   imediato.
 - Apresentacao e controles ficam na #36.
+
+### DEC-50: Modelo comum do Gantt, zoom em passos fixos e estados editados
+
+- Estado: proposta de 2026-11-01, implementada na #38; a abordagem (modelo
+  comum e zoom simples na #38) foi acordada com o usuario, e os itens marcados
+  "escolha do autor" aguardam revisao. Requisitos: REQ-02, REQ-09, REQ-10.
+  Complementa DEC-08, DEC-37 e DEC-43; consome DEC-21.
+- Decisao: o Gantt na tela e o SVG exportado (#39) desenham o mesmo modelo de
+  dados, `buildGanttModel(snapshot)` em `src/renderer/features/gantt/`: raias
+  de tarefa em ID decrescente (DEC-48), trechos de execucao, de espera, suspensos
+  e forcados, marcadores com nivel de empilhamento, raias de CPU com intervalos
+  desligados e lacunas, e a legenda. O modelo nao decide nada visual; tela e SVG
+  so o desenham. Geometria, cores da tarefa e formas dos marcadores tambem sao
+  compartilhadas; so as cores do tema diferem (tokens na tela, literais no
+  arquivo autonomo). Uma mudanca de dado vale para os dois.
+- A tela recebe o ultimo passo gravado, nao o do cursor, para manter o futuro
+  visivel ao retroceder (FE-06); o cursor so posiciona a linha do instante atual.
+  O SVG continua cobrindo o historico inteiro (FE-18).
+- Estados derivados dos eventos (DEC-37, DEC-43): suspenso, de `suspension` ate
+  `resumption`, `task-finished` ou o fim do historico; forcado, de `forced` ate
+  `unforced`, `task-finished` ou o fim do historico; lacuna de CPU, de
+  `cpu-removed` ate `cpu-added` (ou o fim do historico), sem contar como CPU
+  desligada. O trecho pronto nao e desenhado enquanto a tarefa esta suspensa nem
+  depois do fim da tarefa: um job interrompido nao tem `completedAt`, e sem esse
+  limite ficaria pronto ate o fim do historico. `task-finished` com jobs
+  interrompidos usa marcador proprio ("Encerramento da tarefa"), distinto do
+  fim normal.
+- Escolhas do autor, a revisar: (1) forcado desenhado como faixa de 4 px no pe
+  da barra, sobre o que executa ali, para continuar legivel mesmo quando a tarefa
+  espera CPU; (2) suspenso em hachura escura (DEC-08) e lacuna de CPU em hachura
+  clara, sem preenchimento; (3) CPU adicionada depois do inicio e ausente desde
+  o tick 0 ate `cpu-added`; (4) as entradas de legenda dos estados editados e do
+  encerramento so aparecem quando o historico as usa, mantendo a legenda base
+  igual para historicos sem edicao; (5) zoom em passos fixos de 50, 75, 100, 150
+  e 200 %, a partir do tick de 73 px, mantido ao reiniciar; (6) um marcador
+  de instante atual em cada raia, na fronteira do tick do cursor.
+- Alternativa descartada: desenhar a tela direto dos snapshots e unificar com o
+  SVG depois, que duplicaria a regra de dados (espera, empilhamento, lacunas) e
+  deixaria tela e arquivo divergirem.
+- Fora desta decisao: selecao por clique (FE-10, #37), teclado, colisoes em
+  zoom reduzido e muitos jobs ou CPUs (PEND-04).

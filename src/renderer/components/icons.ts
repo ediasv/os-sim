@@ -14,6 +14,7 @@ import runAll from '../assets/icons/run-all.svg';
 import plus from '../assets/icons/plus.svg';
 import minus from '../assets/icons/minus.svg';
 import download from '../assets/icons/download.svg';
+import edit from '../assets/icons/edit.svg';
 
 export const iconUrls = {
     alert,
@@ -30,6 +31,7 @@ export const iconUrls = {
     plus,
     minus,
     download,
+    edit,
 } as const;
 
 export type IconName = keyof typeof iconUrls;

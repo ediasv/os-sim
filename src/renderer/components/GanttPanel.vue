@@ -9,12 +9,16 @@ import {
 } from './workspaceActions';
 
 // Main-area panel: header with zoom and export, body in the default slot
-// (#38 puts the chart there). The zoom readout is static text because there
-// is no zoom state until the chart exists. Outer padding belongs to
+// (#38 puts the chart there). The zoom state lives with the owner (`useWorkspace`);
+// the panel only shows the readout it is given. Outer padding belongs to
 // WorkspaceLayout's main region.
-withDefaults(defineProps<{ available?: ReadonlySet<WorkspaceAction> }>(), {
-    available: () => NO_ACTIONS,
-});
+withDefaults(
+    defineProps<{
+        available?: ReadonlySet<WorkspaceAction>;
+        zoomLabel?: string;
+    }>(),
+    { available: () => NO_ACTIONS, zoomLabel: '100%' },
+);
 
 const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
 </script>
@@ -31,7 +35,7 @@ const emit = defineEmits<{ action: [action: WorkspaceAction] }>();
                 >
                     <UiIcon :name="ACTION_META['zoom-out'].icon" />
                 </UiIconButton>
-                <span class="gantt-panel__readout">100%</span>
+                <span class="gantt-panel__readout">{{ zoomLabel }}</span>
                 <UiIconButton
                     :label="ACTION_META['zoom-in'].label"
                     :disabled="!available.has('zoom-in')"
