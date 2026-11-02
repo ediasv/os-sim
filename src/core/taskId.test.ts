@@ -131,4 +131,8 @@ describe('suggestTaskId', () => {
     it('ignores leading zeros when picking the highest', () => {
         expect(suggestTaskId(['007', '5'])).toBe('8');
     });
+
+    it('suggests a free valid ID when the highest number cannot be incremented within the limit', () => {
+        expect(suggestTaskId(['9'.repeat(32), '1', '2', '04'])).toBe('3');
+    });
 });

@@ -2085,7 +2085,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   decimal (`-3`, `2.5`) e texto (escolha do autor).
 - Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
   e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
-  um ID digitado. Um ID usado, inclusive o de tarefa excluida, e recusado
+  um ID digitado. Se o incremento ultrapassar 32 caracteres, sugere o menor
+  inteiro positivo cujo texto ainda nao foi usado (escolha do autor). Um ID usado, inclusive o de tarefa excluida, e recusado
   (a comparacao ignora caixa). Forma: `NewTask.id` opcional; sem ele, o
   nucleo usa `suggestTaskId`; a interface pode chamar a mesma funcao com
   `snapshot.usedTaskIds` para preencher a sugestao. `SimulationState.usedTaskIds`
@@ -2098,7 +2099,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Rotulos (escolha do autor): Gantt, snapshots e SVG mostram o ID como
   digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
   tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
-  lugar onde aparece; no rotulo da raia, um ID que nao cabe (mais de 3
+  lugar onde aparece; caracteres proibidos em XML 1.0 sao substituidos por
+  U+FFFD apenas no SVG, pois nao podem ser representados no documento (escolha
+  do autor). No rotulo da raia, um ID que nao cabe (mais de 3
   caracteres depois de "Tarefa ") perde o prefixo e e cortado com
   reticencias, e o ID inteiro fica na dica da raia.
 - Edicao: o identificador de um item de edicao e procurado pelo texto exato

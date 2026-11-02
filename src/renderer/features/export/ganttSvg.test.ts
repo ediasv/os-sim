@@ -37,6 +37,13 @@ const SMALL: SystemConfig = {
 };
 
 describe('buildGanttSvg', () => {
+    it('replaces XML-forbidden characters in task IDs throughout the SVG', () => {
+        const config = { ...SMALL, tasks: [task('A\u0001B', 'FF0000', 3, 5)] };
+        const svg = buildGanttSvg(run(config, 2));
+        expect(svg).not.toContain('\u0001');
+        expect(svg).toContain('A\uFFFDB');
+    });
+
     it('is a standalone SVG document with no script or external reference', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
 

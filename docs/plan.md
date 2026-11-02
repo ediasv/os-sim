@@ -765,6 +765,9 @@ Issues `[Docs]`, sem fase no Project.
   numericos iguais aos de antes (testes de caracterizacao).
   Inclusao com ID sugerido ou digitado entregue depois do merge do PR #119
   (`usedTaskIds` no lugar de `maxTaskId`); `npm test` 1189/1189.
+  Revisao do PR #134: corrigidos o limite da sugestao numerica e caracteres
+  invalidos em XML no SVG; testes focados cobrem ambos. `npm test` 1192/1192,
+  `npm run typecheck` e `npm run lint` aprovados.
   Falta: revisao final e ver a interface rodando.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.

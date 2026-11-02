@@ -97,15 +97,23 @@ function increment(digits: string): string {
 
 /**
  * The ID a new task is offered: the highest number ever used plus one, or
- * `1` when no number was used (DEC-48, DEC-37). `used` must contain every ID
+ * `1` when no number was used. If the next number is too long, use the
+ * smallest unused positive ID (DEC-48, DEC-37). `used` must contain every ID
  * ever used, including those of removed tasks, so none is reused.
  */
 export function suggestTaskId(used: Iterable<string>): string {
     let highest = '0';
+    const usedIds = new Set<string>();
     for (const id of used) {
+        usedIds.add(id);
         if (!DIGITS_ONLY.test(id)) continue;
         const value = numericValue(id);
         if (compareTaskIds(value, highest) > 0) highest = value;
     }
-    return increment(highest);
+    const next = increment(highest);
+    if (next.length <= MAX_TASK_ID_LENGTH) return next;
+    // The largest permitted number has been used: find a free positive ID.
+    let candidate = '1';
+    while (usedIds.has(candidate)) candidate = increment(candidate);
+    return candidate;
 }
