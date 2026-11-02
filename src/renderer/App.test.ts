@@ -295,6 +295,40 @@ describe('App', () => {
             expect(chipValue(wrapper, 'Tick atual')).toBe('2');
         });
 
+        it('shows an edited state in the Gantt: a suspended task gets a suspended segment', async () => {
+            const wrapper = await startedApp();
+            expect(wrapper.find('[data-state="suspended"]').exists()).toBe(
+                false,
+            );
+            expect(wrapper.get('.gantt-chart__legend').text()).not.toContain(
+                'Suspensa',
+            );
+
+            await button(wrapper, 'Editar tarefa').trigger('click');
+            await wrapper
+                .get(
+                    `[role="dialog"] [id="${wrapper
+                        .findAll('label')
+                        .find((l) => l.text() === 'Estado da tarefa')!
+                        .attributes('for')}"]`,
+                )
+                .setValue('suspended');
+            await button(wrapper, 'Aplicar').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            // The chart follows the edit: no stale history after the new step.
+            expect(
+                wrapper.findAll('[data-task="1"] [data-state="suspended"]'),
+            ).toHaveLength(1);
+            expect(wrapper.get('.gantt-chart__legend').text()).toContain(
+                'Suspensa',
+            );
+            expect(wrapper.findAll('[data-tick]').length).toBe(
+                Number(chipValue(wrapper, 'Tick atual')),
+            );
+        });
+
         it('edits the selected task, explains a refusal on its field and keeps the step', async () => {
             const wrapper = await startedApp();
             await button(wrapper, 'Editar tarefa').trigger('click');
