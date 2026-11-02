@@ -102,6 +102,17 @@ describe('useWorkspace applying edits (#37, DEC-37)', () => {
         );
     });
 
+    it('tells the user when what they typed means no change, instead of doing nothing', async () => {
+        const workspace = await started(TWO_TASKS, 2);
+        const before = workspace.snapshot.value;
+
+        // Same color in lowercase and the same duration with a leading zero.
+        editTask(workspace, '1', { color: 'f0e0d0', duration: '03' });
+
+        expect(workspace.editor.value?.message).toMatch(/nenhuma alteração/i);
+        expect(workspace.snapshot.value).toBe(before);
+    });
+
     it('rejects a malformed number before asking the core', async () => {
         const workspace = await started(TWO_TASKS, 2);
         const before = workspace.snapshot.value;
@@ -244,6 +255,24 @@ describe('useWorkspace adding and removing tasks (#37, DEC-29, DEC-48)', () => {
 
         expect(workspace.snapshot.value?.tasks).toHaveLength(2);
         expect(workspace.editor.value).toBeNull();
+    });
+});
+
+describe('useWorkspace discard wording (#37)', () => {
+    it('words one discarded step in the singular in the banner and in the removal question', async () => {
+        const workspace = await started(TWO_TASKS, 2);
+        workspace.handle('step-back');
+        workspace.openTaskEdit('1');
+        expect(workspace.editor.value?.notice.message).toContain(
+            'o tick 2 do histórico é descartado',
+        );
+
+        workspace.requestRemove();
+
+        expect(workspace.confirmation.value?.message).toContain(
+            'o tick 2 do histórico é descartado',
+        );
+        expect(workspace.confirmation.value?.message).not.toContain('2–2');
     });
 });
 

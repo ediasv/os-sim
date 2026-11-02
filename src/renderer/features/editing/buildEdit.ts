@@ -54,10 +54,15 @@ export interface AddTaskDraft {
 
 const NOT_A_WHOLE_NUMBER = 'Informe um número inteiro, sem sinal nem casas.';
 
-/** Whole number from text, or null when the text is not one. */
+/**
+ * Whole number from text, or null when the text is not one. A number past
+ * the safe-integer range would reach the core rounded, as if it were exact.
+ */
 function parseWhole(text: string): number | null {
     const trimmed = text.trim();
-    return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+    if (!/^\d+$/.test(trimmed)) return null;
+    const value = Number(trimmed);
+    return Number.isSafeInteger(value) ? value : null;
 }
 
 /** Reads the numeric fields of a draft; collects an error per malformed one. */
@@ -234,4 +239,21 @@ export function refusalsByField(
                 : refusal.reason;
     }
     return byField;
+}
+
+/**
+ * What the form shows for a refused edit: the reason on each field, and a
+ * message for the form as a whole when an item has no field of its own (the
+ * new task, the removal). When no reason reaches the screen, the core's own
+ * message is shown, so a refusal is never silent (REQ-05).
+ */
+export function splitRefusals(
+    edit: BuiltEdit,
+    refusals: readonly EditItemRefusal[],
+    fallback: string,
+): { errors: Readonly<Record<FieldKey, string>>; message: string | null } {
+    const { task, remove, ...errors } = refusalsByField(edit, refusals);
+    const message =
+        task ?? remove ?? (Object.keys(errors).length === 0 ? fallback : null);
+    return { errors, message };
 }
