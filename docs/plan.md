@@ -570,9 +570,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de DEC-37 registrados pela #26: trechos suspensos e
-  forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
-  em 2026-11-01.
+  Dependencia da #26 resolvida (PR #137). Em andamento em 2026-11-01: ver
+  "Trabalho atual" e DEC-50.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
   Em andamento, parte 1 (nao fecha a issue): gravacao pelo processo principal
   (`src/shared/imageFile.ts`, `src/main/imageFile.ts`, `src/preload/imageFileApi.ts`,
@@ -588,9 +587,8 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   raias de CPU, cartao de legenda; 73 px por tick; titulo com nome do arquivo
   e data da exportacao). Botao "Exportar SVG" ligado em `App` e `useWorkspace`. Pendente (depende da
   #26, PRs #115 a #119, rascunhos): trechos suspensos e forcados e lacuna de CPU
-  removida; revisar o SVG quando a #38 desenhar o Gantt na tela, para
-  compartilhar a apresentacao em vez de manter duas (hoje o Gantt na tela nao
-  existe). Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
+  removida, hoje desenhados pelo modelo comum da #38 (DEC-50), que tela e SVG
+  compartilham. Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
   `npm run typecheck` aprovados; SVG gerado com `demoConfigs/05` lido como XML
   bem formado e aberto no painel de navegacao do app, sem conferencia visual
   detalhada (#40). Nao verificado: gravacao pelo dialogo real do Electron.
@@ -791,6 +789,35 @@ Issues `[Docs]`, sem fase no Project.
   `npm run typecheck` e `npm run lint` aprovados.
   DEC-48 e escolhas da revisao aceitas pelo usuario em 2026-11-01.
   Nao verificado: a interface rodando (o PR cobriu so nucleo e SVG).
+
+- #38 em andamento (iniciada 2026-11-01): Gantt na tela. Objetivo: desenhar o
+  Gantt na tela a partir dos snapshots, com os estados suspenso e forcado, a
+  lacuna de CPU removida, marcadores, legenda, zoom simples e rolagem. A
+  dependencia da #26 esta resolvida (PR #137, `760c5f2`). Escopo acordado com o
+  usuario em 2026-11-01: modelo comum entre tela e SVG da #39, zoom e rolagem
+  simples na #38. Fora do escopo: selecao por clique (#37), campanha visual
+  (#40), teclado e colisoes em zoom reduzido (PEND-04).
+  Feito (PR #141, `cbc7af0` e `0813f8e`; ajustes da revisao no commit seguinte): (1) `src/renderer/features/gantt/ganttModel.ts`
+  extraido de `ganttSvg.ts`, com geometria, cores e formas dos marcadores
+  compartilhadas; a saida do SVG nao mudou (teste de hash em
+  `numericIds.golden.test.ts` e 78 testes anteriores intactos); (2) suspenso,
+  forcado, lacuna de CPU removida e encerramento com jobs interrompidos no modelo
+  e no SVG; o trecho pronto para no fim da tarefa e nao aparece com a tarefa
+  suspensa; (3) `GanttChart.vue` montado no `App`, com `useWorkspace`
+  expondo `history`, `zoomPercent` e `zoomScale` (passos 50/75/100/150/200 %).
+  Decisao em DEC-50 (proposta; escolhas do autor listadas nela).
+  Verificacao: `npm test` 1271/1271 (baseline 1223), `npm run lint` e
+  `npm run typecheck` sem erros. App rodado em Electron com os cenarios 05 e 07
+  (avancar 14 e 10 ticks, voltar 3, zoom 50 a 200 %), capturas conferidas:
+  linhas por tarefa, execucao, pronto, marcadores nas fronteiras, linha do
+  instante atual, legenda e painel de inspecao; defeito achado e corrigido
+  (marcadores cortados em t = 0). Nao verificado: suspender, forcar e remover
+  CPU pela interface (os controles de edicao sao da #37), por isso esses estados
+  so foram vistos em testes e em um SVG gerado por script; navegacao por
+  teclado; gravacao do SVG pelo dialogo real do Electron; pacote.
+  Falta: revisao de DEC-50 pelo usuario e do PR #141, e a verificacao visual
+  detalhada (#40). A #39 ja usa o modelo comum, sem mudanca de escopo.
+  #133 foi concluida no PR #134 (merged, `d6b2bed`, DEC-48).
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   Issue fechada no GitHub; evidencia ainda nao registrada neste plano.

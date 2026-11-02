@@ -19,6 +19,13 @@ import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
 import { useSimulation } from './useSimulation';
 
+/**
+ * Zoom steps of the Gantt, in percent (#38). Fixed steps keep the tick
+ * labels legible and the readout exact; there is no free zoom.
+ */
+export const ZOOM_STEPS = [50, 75, 100, 150, 200] as const;
+const DEFAULT_ZOOM_INDEX = ZOOM_STEPS.indexOf(100);
+
 /** Message the workspace shows to the user, in the order it should appear. */
 export interface Notice {
     readonly tone: 'danger' | 'warning' | 'success';
@@ -64,11 +71,23 @@ export function useWorkspace() {
     const dialog = shallowRef<WorkspaceDialog | null>(null);
     /** Task chosen in the preparation list; the target of "Editar tarefa". */
     const selectedTaskId = ref<TaskId | null>(null);
+    /** Index in `ZOOM_STEPS`; a view setting, so a restart keeps it. */
+    const zoomIndex = ref(DEFAULT_ZOOM_INDEX);
 
     /** Snapshot at the history cursor; null while preparing. */
     const snapshot = computed(() =>
         started.value ? (simulation.value?.view.value ?? null) : null,
     );
+    /**
+     * Newest recorded step, wherever the cursor is: the Gantt shows the whole
+     * history, with the future still visible after stepping back (FE-06).
+     * Reading `snapshot` first makes it recompute on every published step.
+     */
+    const history = computed(() =>
+        snapshot.value === null ? null : simulation.value!.latest(),
+    );
+    const zoomPercent = computed(() => ZOOM_STEPS[zoomIndex.value]);
+    const zoomScale = computed(() => zoomPercent.value / 100);
     /** Parameters shown: the running simulation's, else the prepared ones. */
     const config = computed(() => snapshot.value?.config ?? draft.value);
     const clock = computed(() => snapshot.value?.clock ?? null);
@@ -105,6 +124,10 @@ export function useWorkspace() {
             actions.add('step-back');
         }
         if (started.value) actions.add('restart');
+        if (started.value && zoomIndex.value > 0) actions.add('zoom-out');
+        if (started.value && zoomIndex.value < ZOOM_STEPS.length - 1) {
+            actions.add('zoom-in');
+        }
         // Any step may be exported (FE-18); the dialog is modal.
         if (started.value && !exporting.value) actions.add('export-svg');
         return actions;
@@ -329,6 +352,12 @@ export function useWorkspace() {
             case 'restart':
                 settle(simulation.value!.load(draft.value));
                 break;
+            case 'zoom-in':
+                zoomIndex.value += 1;
+                break;
+            case 'zoom-out':
+                zoomIndex.value -= 1;
+                break;
             case 'export-svg':
                 void exportSvg();
                 break;
@@ -339,6 +368,9 @@ export function useWorkspace() {
 
     return {
         snapshot,
+        history,
+        zoomPercent,
+        zoomScale,
         config,
         clock,
         taskCount,

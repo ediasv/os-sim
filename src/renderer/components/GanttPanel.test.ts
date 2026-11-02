@@ -15,6 +15,13 @@ describe('GanttPanel', () => {
         expect(wrapper.text()).toContain('100%');
     });
 
+    it('shows the zoom label it is given', () => {
+        const wrapper = mount(GanttPanel, { props: { zoomLabel: '150%' } });
+
+        expect(wrapper.text()).toContain('150%');
+        expect(wrapper.text()).not.toContain('100%');
+    });
+
     it('disables zoom and export by default without emitting', async () => {
         const wrapper = mount(GanttPanel);
         const buttons = wrapper.findAll('button');

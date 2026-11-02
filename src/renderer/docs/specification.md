@@ -381,6 +381,10 @@ Origem: REQ-02, REQ-09; DEC-08 aceita em 2026-10-24 (#35).
 - Aceitacao: evento em t=5 fica na fronteira 5, nao no centro da celula.
   Estado suspenso exige registros de suspensao/retomada do nucleo; nao pode ser
   inferido somente de ausencia de execucao.
+- Implementacao (#38, DEC-50): `buildGanttModel` alimenta a tela
+  (`GanttChart.vue`) e o SVG; a tela desenha o ultimo passo gravado e marca o
+  cursor com a linha do instante atual; suspenso, forcado e lacuna de CPU
+  vem dos eventos de DEC-37.
 
 ### FE-18: Exportar historico valido integral
 
@@ -555,7 +559,8 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 - PEND-03 (resolvida na apresentacao): comportamento de selecao futura em
   FE-10/FE-DEC-08. Integracao e testes ainda nao executados.
 - PEND-04 (parcial): empilhamento e texto adaptativo acordados em FE-17.
-  Restam muitos jobs/CPUs, colisoes entre ticks proximos em zoom reduzido,
+  Zoom em passos fixos (50 a 200 %) e rolagem horizontal entregues na #38
+  (DEC-50). Restam muitos jobs/CPUs, colisoes entre ticks proximos em zoom reduzido,
   redimensionamento completo, navegacao por teclado, foco de dialogos e
   contraste geral da UI. Tooltip nao integra a entrega 1; nao criar biblioteca
   por essa finalidade. Os cenarios iniciais estao na arquitetura propria.
