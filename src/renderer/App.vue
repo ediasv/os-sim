@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import type { ConfigIssue } from '../core/config';
 import EmptyWorkspace from './components/EmptyWorkspace.vue';
 import GanttPanel from './components/GanttPanel.vue';
 import PreparedWorkspace from './components/PreparedWorkspace.vue';
@@ -8,6 +9,7 @@ import TaskPanel from './components/TaskPanel.vue';
 import UiAlert from './components/UiAlert.vue';
 import WorkspaceLayout from './components/WorkspaceLayout.vue';
 import { useWorkspace } from './composables/useWorkspace';
+import SystemDialog from './features/configuration/SystemDialog.vue';
 import InspectionPanel from './features/inspection/InspectionPanel.vue';
 import { projectInspection } from './features/inspection/inspection';
 import SystemInspector from './features/system/SystemInspector.vue';
@@ -24,9 +26,17 @@ const {
     taskCount,
     available,
     notices,
+    dialog,
     handle,
     dismissNotice,
+    applySystem,
+    cancelDialog,
 } = useWorkspace();
+
+// Reasons the core gave for the form that is open; a form that closes or
+// changes starts clean. The forms keep the values the user typed.
+const formIssues = ref<readonly ConfigIssue[]>([]);
+watch(dialog, () => (formIssues.value = []));
 
 const inspection = computed(() =>
     snapshot.value === null ? null : projectInspection(snapshot.value),
@@ -90,6 +100,17 @@ const system = computed(() =>
                 @action="handle"
             />
         </GanttPanel>
+        <SystemDialog
+            v-if="dialog?.kind === 'system'"
+            :initial="{
+                algorithm: config.algorithm,
+                quantum: config.quantum,
+                cpuCount: config.cpuCount,
+            }"
+            :issues="formIssues"
+            @apply="formIssues = applySystem($event)"
+            @cancel="cancelDialog"
+        />
     </WorkspaceLayout>
 </template>
 

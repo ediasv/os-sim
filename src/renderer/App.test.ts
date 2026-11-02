@@ -62,7 +62,7 @@ describe('App', () => {
         expect(chipValue(wrapper, 'Tick atual')).toBe('–');
     });
 
-    it('renders 13 buttons and only the loading ones are enabled while preparing', () => {
+    it('renders 13 buttons and only the loading and editing ones are enabled while preparing', () => {
         const buttons = mount(App).findAll('button');
 
         expect(buttons).toHaveLength(13);
@@ -71,7 +71,9 @@ describe('App', () => {
             .map((button) => button.text());
         expect(enabled).toEqual([
             'Carregar configuração',
+            'Sistema',
             'Carregar configuração',
+            'Sistema',
         ]);
     });
 
@@ -179,5 +181,41 @@ describe('App', () => {
 
     it('no longer shows the placeholder counter', () => {
         expect(mount(App).text()).not.toContain('Tick:');
+    });
+});
+
+describe('App system dialog (#36 part 2)', () => {
+    const button = (wrapper: ReturnType<typeof mount>, label: string) =>
+        wrapper.findAll('button').find((b) => b.text() === label)!;
+    const field = (wrapper: ReturnType<typeof mount>, label: string) => {
+        const l = wrapper.findAll('label').find((x) => x.text() === label)!;
+        return wrapper.get<HTMLInputElement>(`#${l.attributes('for')}`);
+    };
+
+    it('changes the system values and shows them in the toolbar', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Sistema').trigger('click');
+        await wrapper.get('select').setValue('EDF');
+        await field(wrapper, 'Quantum').setValue('2');
+        await field(wrapper, 'Processadores').setValue('3');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(chipValue(wrapper, 'Política')).toBe('EDF');
+        expect(chipValue(wrapper, 'Quantum')).toBe('2');
+        expect(chipValue(wrapper, 'CPUs')).toBe('3');
+    });
+
+    it('shows the core reason for an invalid value and keeps the dialog', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Sistema').trigger('click');
+        await field(wrapper, 'Quantum').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain('quantum');
+        expect(chipValue(wrapper, 'Quantum')).toBe('5');
+        await button(wrapper, 'Cancelar').trigger('click');
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
     });
 });

@@ -1,7 +1,12 @@
 import { computed, ref, shallowRef } from 'vue';
 import type { WorkspaceAction } from '../components/workspaceActions';
+import type { ConfigIssue } from '../../core/config';
 import { DEFAULT_CONFIG, type SystemConfig } from '../../core/domain';
 import { loadConfig } from '../../core/loadConfig';
+import {
+    applySystem as applySystemEdit,
+    type SystemValues,
+} from '../features/configuration/draft';
 import { buildGanttSvg } from '../features/export/ganttSvg';
 import { reportError, type AppError, type CommandResult } from '../errors';
 import { useSimulation } from './useSimulation';
@@ -13,6 +18,9 @@ export interface Notice {
     /** One line per problem, separated by `\n`. */
     readonly message: string;
 }
+
+/** The modal the workspace is showing, if any; at most one at a time. */
+export type WorkspaceDialog = { readonly kind: 'system' };
 
 /**
  * Orchestrates the workspace (#36): which configuration is being prepared,
@@ -37,6 +45,7 @@ export function useWorkspace() {
     /** Base name of the loaded configuration file, shown in the exported title. */
     const fileName = ref<string | undefined>();
     const notices = shallowRef<readonly Notice[]>([]);
+    const dialog = shallowRef<WorkspaceDialog | null>(null);
 
     /** Snapshot at the history cursor; null while preparing. */
     const snapshot = computed(() =>
@@ -57,8 +66,14 @@ export function useWorkspace() {
 
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
+        const idle = !loading.value && dialog.value === null;
         // Replacing a running session needs the confirmation of FE-04.
-        if (!started.value && !loading.value) actions.add('load-config');
+        if (!started.value && idle) actions.add('load-config');
+        // The configuration is edited only before the start; changing it
+        // during the simulation belongs to #37.
+        if (idle && !started.value) {
+            actions.add('configure-system');
+        }
         // Starting needs at least one task (FE-02).
         if (started.value || draft.value.tasks.length > 0) {
             actions.add('step-forward');
@@ -154,6 +169,22 @@ export function useWorkspace() {
         notices.value = next;
     }
 
+    function cancelDialog(): void {
+        dialog.value = null;
+    }
+
+    /**
+     * Applies the system form. The core's reasons come back for the form to
+     * show; on a refusal the dialog and the draft stay as they were (FE-11).
+     */
+    function applySystem(values: SystemValues): readonly ConfigIssue[] {
+        const result = applySystemEdit(draft.value, values);
+        if (!result.ok) return result.issues;
+        draft.value = result.config;
+        dialog.value = null;
+        return [];
+    }
+
     /**
      * Exports the whole recorded history, whatever the cursor shows (FE-18).
      * Cancelling is silent; a write failure keeps the session and says why.
@@ -202,6 +233,9 @@ export function useWorkspace() {
             case 'load-config':
                 void openConfigFile();
                 break;
+            case 'configure-system':
+                dialog.value = { kind: 'system' };
+                break;
             case 'step-forward':
                 if (!started.value) start();
                 else settle(simulation.value!.next());
@@ -227,7 +261,10 @@ export function useWorkspace() {
         taskCount,
         available,
         notices,
+        dialog,
         handle,
         dismissNotice,
+        applySystem,
+        cancelDialog,
     };
 }

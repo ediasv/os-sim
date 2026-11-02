@@ -665,9 +665,9 @@ paineis.
   snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
   para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
   a cada tick. Nao decide regra; so evita repetir a consulta.
-- Fora desta parte: Executar tudo (#27), tarefas e sistema
-  editaveis (#37 e restante da #36: Sistema e Adicionar tarefa seguem
-  desabilitados) e a confirmacao de substituicao (FE-04).
+- Fora desta parte: Executar tudo (#27), sem cancelamento (DEC-49), e a edicao
+  durante a simulacao (#37). Sistema (2a), tarefas do rascunho (2b) e a
+  confirmacao de FE-04 (2c) estao na parte 2, abaixo.
 
 Verificacao (2026-11-01): `npm test` 685 aprovados e 1 ignorado em 44 arquivos,
 `npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, com um
@@ -676,6 +676,45 @@ arquivo com periodo ausente mostra o aviso, o primeiro avancar mostra t = 0,
 avancar ate t = 5 atualiza relogio, estado do sistema e inspecao, sem rolagem
 horizontal. Nao verificado: app Electron com o dialogo real, 390 px, voltar e
 reiniciar no navegador (cobertos por testes de componente).
+
+## Preparacao da configuracao (#36, parte 2)
+
+Antes de iniciar, o usuario ve e altera o sistema (algoritmo, quantum e CPUs) e
+as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
+(tarefas do rascunho) e 2c (confirmacao de FE-04). Telas do Figma (arquivo
+`h2kssKC2KiSuN4iAg4K1yU`, pagina Telas): "Dialogo — Configurar sistema"
+(`98:1180`), "Dialogo — Editar tarefa" (`99:1089`), "Dialogo — Remover tarefa"
+(`99:1607`) e "Tela — Pronta para iniciar" (`204:2821`).
+
+- 2a, logica: [draft.ts](../features/configuration/draft.ts) monta a
+  configuracao candidata de cada edicao e a entrega a `validateConfig`; limites
+  de DEC-10 e motivos vem do nucleo, e uma edicao recusada devolve as `issues`
+  sem mudar o rascunho (FE-03, FE-11).
+- 2a, coordenacao: `useWorkspace` ganhou `dialog` (um modal por vez),
+  `applySystem`, `cancelDialog` e a acao `configure-system`, disponivel so antes
+  do inicio e sem outro modal aberto; durante a simulacao segue desabilitada ate
+  a #37.
+- 2a, componentes: `SystemDialog` (formulario com rascunho proprio, valores
+  digitados mantidos e motivos junto ao campo), `UiDialog` e `UiField`.
+- FE-DEC-19 (REQ-02, REQ-05, REQ-10; FE-03, FE-11, FE-16; DEC-37): (a) o
+  dialogo de sistema segue o Figma, com "Restaurar padroes" (so preenche o
+  formulario) e sem a faixa "Alteracao durante a simulacao" nem o texto "Para
+  trocar, reinicie a simulacao", que pertencem a #37; (b) os modais sao `div`
+  com `role="dialog"` e `aria-modal`, nao `<dialog>.showModal()`, que o jsdom
+  dos testes nao implementa; Escape e o botao de fechar cancelam, clicar fora
+  nao fecha (para nao perder o que foi digitado), o foco entra no primeiro
+  campo, fica preso no dialogo e volta ao botao de origem. Justificativa:
+  manter as regras no nucleo, seguir o Figma onde ele define a tela e nao
+  perder trabalho em silencio (FE-05). Acordado com o usuario em 2026-11-01.
+- Nao feito nesta parte: tarefas do rascunho (2b), confirmacao de FE-04
+  (2c), edicao durante a simulacao (#37), Executar tudo e cancelamento (#27).
+
+Verificacao (2026-11-01, 2a): `npm test` 953 aprovados e 1 ignorado, `npm run
+lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
+abrir o dialogo, aplicar valores, motivos do nucleo, restaurar padroes e
+cancelar. No navegador do app (Vite) a 1440 x 924 foi conferido o fluxo
+completo do conjunto 2a a 2c, sem repetir por PR; app Electron com o dialogo
+real de arquivo e larguras menores nao foram verificados.
 
 ## Verificacao e pendencias tecnicas
 
