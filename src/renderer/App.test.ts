@@ -162,6 +162,66 @@ describe('App', () => {
             expect(wrapper.text()).not.toContain('Imagem salva em');
         });
 
+        it('shows the Gantt chart only once started, one row per task', async () => {
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+            expect(wrapper.find('.gantt-chart').exists()).toBe(false);
+
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            expect(wrapper.findAll('.gantt-chart [data-task]')).toHaveLength(1);
+        });
+
+        it('keeps the future in the chart after stepping back and marks the cursor', async () => {
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+            for (let i = 0; i < 4; i++) {
+                await button(wrapper, 'Avançar tick').trigger('click');
+            }
+            const ticks = () => wrapper.findAll('[data-tick]').length;
+            expect(ticks()).toBe(3);
+
+            await button(wrapper, 'Voltar tick').trigger('click');
+
+            expect(ticks()).toBe(3);
+            expect(wrapper.get('[data-current]').attributes('x1')).toBe(
+                String(2 * 73),
+            );
+        });
+
+        it('zoom changes the readout and the chart width, within its steps', async () => {
+            const wrapper = mount(App);
+            await loadFile(wrapper);
+            await button(wrapper, 'Avançar tick').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+            const width = () =>
+                Number(wrapper.get('[data-task] svg').attributes('width'));
+            expect(wrapper.text()).toContain('100%');
+            expect(width()).toBe(73);
+
+            await wrapper
+                .get('button[aria-label="Aumentar zoom"]')
+                .trigger('click');
+            expect(wrapper.text()).toContain('150%');
+            expect(width()).toBe(73 * 1.5);
+
+            await wrapper
+                .get('button[aria-label="Diminuir zoom"]')
+                .trigger('click');
+            await wrapper
+                .get('button[aria-label="Diminuir zoom"]')
+                .trigger('click');
+            await wrapper
+                .get('button[aria-label="Diminuir zoom"]')
+                .trigger('click');
+            expect(wrapper.text()).toContain('50%');
+            expect(
+                wrapper
+                    .get('button[aria-label="Diminuir zoom"]')
+                    .attributes('disabled'),
+            ).toBeDefined();
+        });
+
         it('advances, goes back and restarts, updating both panels from the snapshot', async () => {
             const wrapper = mount(App);
             await loadFile(wrapper);
@@ -233,6 +293,40 @@ describe('App', () => {
             expect(chipValue(wrapper, 'Quantum')).toBe('2');
             // The first click only starts at t = 0, so three clicks reach 2.
             expect(chipValue(wrapper, 'Tick atual')).toBe('2');
+        });
+
+        it('shows an edited state in the Gantt: a suspended task gets a suspended segment', async () => {
+            const wrapper = await startedApp();
+            expect(wrapper.find('[data-state="suspended"]').exists()).toBe(
+                false,
+            );
+            expect(wrapper.get('.gantt-chart__legend').text()).not.toContain(
+                'Suspensa',
+            );
+
+            await button(wrapper, 'Editar tarefa').trigger('click');
+            await wrapper
+                .get(
+                    `[role="dialog"] [id="${wrapper
+                        .findAll('label')
+                        .find((l) => l.text() === 'Estado da tarefa')!
+                        .attributes('for')}"]`,
+                )
+                .setValue('suspended');
+            await button(wrapper, 'Aplicar').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+            await button(wrapper, 'Avançar tick').trigger('click');
+
+            // The chart follows the edit: no stale history after the new step.
+            expect(
+                wrapper.findAll('[data-task="1"] [data-state="suspended"]'),
+            ).toHaveLength(1);
+            expect(wrapper.get('.gantt-chart__legend').text()).toContain(
+                'Suspensa',
+            );
+            expect(wrapper.findAll('[data-tick]').length).toBe(
+                Number(chipValue(wrapper, 'Tick atual')),
+            );
         });
 
         it('edits the selected task, explains a refusal on its field and keeps the step', async () => {
