@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createSimulator } from '../../../core/createSimulator';
 import type { SimulationSnapshot, SystemConfig } from '../../../core/domain';
-import { buildGanttSvg, isFinalSnapshot } from './ganttSvg';
+import { isFinalSnapshot } from '../gantt/ganttModel';
+import { buildGanttSvg } from './ganttSvg';
 
 function task(
     id: string,

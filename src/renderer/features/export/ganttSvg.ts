@@ -28,13 +28,13 @@
  */
 import type {
     DeepReadonly,
-    JobRef,
     SimulationSnapshot,
     TaskId,
 } from '../../../core/domain';
 import {
     buildGanttModel,
-    isFinalSnapshot,
+    EXTRA_LEGEND_TEXT,
+    jobLabel,
     LEGEND_MARKERS,
     MARKER_TEXT,
     type MarkerKind,
@@ -73,15 +73,9 @@ const CARD_BORDER = 1;
 const CARD_PAD = 16;
 const HEADER_HEIGHT = 37;
 const BLOCK_GAP = 16;
-const SUSPENDED_FILL = '#0b0c10';
+/** `--color-bg-suspended` of tokens.css, as the on-screen hatch uses. */
+const SUSPENDED_FILL = '#141419';
 
-/** Legend text of the entries that exist only when edits drew them. */
-const EXTRA_LEGEND_TEXT = {
-    suspended: 'Suspensa (hachura escura)',
-    forced: 'Forçada',
-    'cpu-absent': 'CPU removida',
-    'task-terminated': MARKER_TEXT['task-terminated'].legend,
-} as const;
 const LEGEND_PAD_X = 16;
 const LEGEND_PAD_Y = 12;
 const LEGEND_GAP_X = 16;
@@ -147,10 +141,6 @@ const escapeXml = (text: string): string =>
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
-
-const jobLabel = (job: JobRef): string => `#${job.index + 1}`;
-
-export { isFinalSnapshot };
 
 /** Room for the lane label: the label column minus the color chip and a gap. */
 const LANE_LABEL_WIDTH = LABEL_WIDTH - 18 - 6;

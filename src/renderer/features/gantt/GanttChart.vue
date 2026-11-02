@@ -7,7 +7,7 @@ import {
     buildGanttModel,
     LEGEND_MARKERS,
     MARKER_TEXT,
-    type ExtraLegendItem,
+    EXTRA_LEGEND_TEXT,
 } from './ganttModel';
 import {
     BAR_HEIGHT,
@@ -61,13 +61,6 @@ function barLabel(
         null
     );
 }
-
-const EXTRA_TEXT: Readonly<Record<ExtraLegendItem, string>> = {
-    suspended: 'Suspensa (hachura escura)',
-    forced: 'Forçada',
-    'cpu-absent': 'CPU removida',
-    'task-terminated': MARKER_TEXT['task-terminated'].legend,
-};
 </script>
 
 <template>
@@ -406,7 +399,7 @@ const EXTRA_TEXT: Readonly<Record<ExtraLegendItem, string>> = {
                     <GanttMarkerGlyph kind="task-terminated" />
                 </svg>
                 <span v-else :class="['swatch', `swatch--${item}`]" />
-                {{ EXTRA_TEXT[item] }}
+                {{ EXTRA_LEGEND_TEXT[item] }}
             </li>
         </ul>
     </div>

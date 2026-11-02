@@ -797,7 +797,7 @@ Issues `[Docs]`, sem fase no Project.
   usuario em 2026-11-01: modelo comum entre tela e SVG da #39, zoom e rolagem
   simples na #38. Fora do escopo: selecao por clique (#37), campanha visual
   (#40), teclado e colisoes em zoom reduzido (PEND-04).
-  Feito (nada commitado ainda): (1) `src/renderer/features/gantt/ganttModel.ts`
+  Feito (PR #141, `cbc7af0` e `0813f8e`; ajustes da revisao no commit seguinte): (1) `src/renderer/features/gantt/ganttModel.ts`
   extraido de `ganttSvg.ts`, com geometria, cores e formas dos marcadores
   compartilhadas; a saida do SVG nao mudou (teste de hash em
   `numericIds.golden.test.ts` e 78 testes anteriores intactos); (2) suspenso,
@@ -815,7 +815,7 @@ Issues `[Docs]`, sem fase no Project.
   CPU pela interface (os controles de edicao sao da #37), por isso esses estados
   so foram vistos em testes e em um SVG gerado por script; navegacao por
   teclado; gravacao do SVG pelo dialogo real do Electron; pacote.
-  Falta: revisao de DEC-50 pelo usuario, commit e PR, e a verificacao visual
+  Falta: revisao de DEC-50 pelo usuario e do PR #141, e a verificacao visual
   detalhada (#40). A #39 ja usa o modelo comum, sem mudanca de escopo.
   #133 foi concluida no PR #134 (merged, `d6b2bed`, DEC-48).
 
