@@ -31,6 +31,8 @@ function runSnapshots(
     const snapshots = [sim.getLatestSnapshot()];
     expect(findInconsistencies(snapshots[0])).toEqual([]);
     for (let step = 0; step < steps; step++) {
+        // tick() is refused once every task has finished (DEC-49).
+        if (sim.getProgress().kind === 'finished') break;
         sim.tick();
         const snapshot = sim.getLatestSnapshot();
         expect(findInconsistencies(snapshot)).toEqual([]);
@@ -48,7 +50,7 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 3,
@@ -74,7 +76,7 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 3,
@@ -98,14 +100,14 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 2,
                         duration: 1,
                     },
                     {
                         ...aperiodic,
-                        id: 2,
+                        id: '2',
                         color: 'AABBCC',
                         arrival: 5,
                         duration: 1,
@@ -152,16 +154,9 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 ],
                 totalOff: 4,
             },
-            {
-                clock: 8,
-                intervals: [
-                    { start: 0, end: 2 },
-                    { start: 3, end: 5 },
-                    { start: 6, end: null },
-                ],
-                totalOff: 6,
-            },
         ];
+        // The run stops at tick 6, when the last task finishes (DEC-49).
+        expect(snapshots).toHaveLength(7);
         // Earlier snapshots are queried after later ticks: the result depends
         // only on the snapshot passed in.
         for (const { clock, intervals, totalOff } of expected) {
@@ -179,14 +174,14 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 tasks: [
                     {
                         ...aperiodic,
-                        id: 1,
+                        id: '1',
                         color: 'F0E0D0',
                         arrival: 0,
                         duration: 2,
                     },
                     {
                         ...aperiodic,
-                        id: 2,
+                        id: '2',
                         color: 'AABBCC',
                         arrival: 0,
                         duration: 3,
@@ -196,13 +191,15 @@ describe('summarizeCpuOff (DEC-21)', () => {
             10,
         );
 
-        const last = snapshots[10];
+        // The run stops at tick 3, when the last task finishes (DEC-49).
+        const last = snapshots[snapshots.length - 1];
+        expect(last.clock).toBe(3);
         expect(
             last.events.filter((event) => event.kind === 'task-finished'),
         ).toHaveLength(2);
         expect(summarizeCpuOff(last)).toEqual([
-            { cpuId: 1, intervals: [{ start: 2, end: null }], totalOff: 8 },
-            { cpuId: 2, intervals: [{ start: 3, end: null }], totalOff: 7 },
+            { cpuId: 1, intervals: [{ start: 2, end: null }], totalOff: 1 },
+            { cpuId: 2, intervals: [{ start: 3, end: null }], totalOff: 0 },
         ]);
     });
 
@@ -309,6 +306,175 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 intervals: [{ start: 2, end: 2 }],
                 totalOff: 0,
             });
+        });
+    });
+});
+
+describe('CPU existence intervals (DEC-37)', () => {
+    const stateAt = (clock = 7) => {
+        const state = createInitialState({ ...DEFAULT_CONFIG, cpuCount: 2 });
+        state.clock = clock;
+        return state;
+    };
+
+    it('closes off time on removal and excludes absence on ID reuse', () => {
+        const state = stateAt();
+        state.events.push(
+            { kind: 'cpu-off', time: 0, cpuId: 2 },
+            { kind: 'cpu-removed', time: 2, cpuId: 2 },
+            { kind: 'cpu-added', time: 5, cpuId: 2 },
+            { kind: 'cpu-off', time: 5, cpuId: 2 },
+        );
+        expect(summarizeCpuOff(state)).toEqual([
+            { cpuId: 1, intervals: [], totalOff: 0 },
+            {
+                cpuId: 2,
+                intervals: [
+                    { start: 0, end: 2 },
+                    { start: 5, end: null },
+                ],
+                totalOff: 4,
+            },
+        ]);
+    });
+
+    it('keeps a removed CPU as it was while absent', () => {
+        const state = stateAt(4);
+        state.config = { ...state.config, cpuCount: 1 };
+        state.cpus.pop();
+        state.events.push(
+            { kind: 'cpu-off', time: 0, cpuId: 2 },
+            { kind: 'cpu-removed', time: 2, cpuId: 2 },
+        );
+        expect(summarizeCpuOff(state)[1]).toEqual({
+            cpuId: 2,
+            intervals: [{ start: 0, end: 2 }],
+            totalOff: 2,
+        });
+    });
+
+    it('keeps removed CPUs that never went off, including removal at zero', () => {
+        const state = stateAt(0);
+        state.cpus.pop();
+        state.config = { ...state.config, cpuCount: 1 };
+        state.events.push({ kind: 'cpu-removed', time: 0, cpuId: 2 });
+        expect(summarizeCpuOff(state)[1]).toEqual({
+            cpuId: 2,
+            intervals: [],
+            totalOff: 0,
+        });
+    });
+
+    it('starts added CPUs at their addition, across multiple existence periods', () => {
+        const state = stateAt(9);
+        state.events.push(
+            { kind: 'cpu-added', time: 2, cpuId: 2 },
+            { kind: 'cpu-removed', time: 3, cpuId: 2 },
+            { kind: 'cpu-added', time: 5, cpuId: 2 },
+            { kind: 'cpu-off', time: 5, cpuId: 2 },
+            { kind: 'cpu-removed', time: 6, cpuId: 2 },
+            { kind: 'cpu-added', time: 8, cpuId: 2 },
+            { kind: 'cpu-off', time: 8, cpuId: 2 },
+        );
+        expect(summarizeCpuOff(state)[1]).toEqual({
+            cpuId: 2,
+            intervals: [
+                { start: 5, end: 6 },
+                { start: 8, end: null },
+            ],
+            totalOff: 2,
+        });
+    });
+
+    it('gives an added CPU no intervals until it goes off', () => {
+        const state = stateAt(9);
+        state.events.push({ kind: 'cpu-added', time: 2, cpuId: 2 });
+        expect(summarizeCpuOff(state)[1]).toEqual({
+            cpuId: 2,
+            intervals: [],
+            totalOff: 0,
+        });
+    });
+
+    it.each(['cpu-off', 'cpu-on'] as const)(
+        'rejects %s while the CPU is absent',
+        (kind) => {
+            const state = stateAt();
+            state.events.push(
+                { kind: 'cpu-removed', time: 2, cpuId: 2 },
+                { kind, time: 3, cpuId: 2 },
+                { kind: 'cpu-added', time: 5, cpuId: 2 },
+            );
+            expect(() => summarizeCpuOff(state)).toThrow(CpuEventSequenceError);
+        },
+    );
+
+    it.each([
+        [
+            { kind: 'cpu-added', time: 2, cpuId: 2 },
+            { kind: 'cpu-added', time: 3, cpuId: 2 },
+        ],
+        [
+            { kind: 'cpu-removed', time: 2, cpuId: 2 },
+            { kind: 'cpu-removed', time: 3, cpuId: 2 },
+        ],
+        [{ kind: 'cpu-added', time: 8, cpuId: 2 }],
+        [
+            { kind: 'cpu-added', time: 3, cpuId: 2 },
+            { kind: 'cpu-removed', time: 2, cpuId: 2 },
+        ],
+    ] as const)('rejects malformed existence sequence %#', (...events) => {
+        const state = stateAt();
+        state.events.push(...events);
+        expect(() => summarizeCpuOff(state)).toThrow(CpuEventSequenceError);
+    });
+
+    it('reports an addition for a CPU that is not in the final CPUs', () => {
+        const state = stateAt();
+        state.events.push({ kind: 'cpu-added', time: 3, cpuId: 3 });
+        expect(() => summarizeCpuOff(state)).toThrow(
+            'CPU 3 has an unmatched addition at 3.',
+        );
+    });
+
+    it('reports a removal for a CPU that is still in the final CPUs', () => {
+        const state = stateAt();
+        state.events.push({ kind: 'cpu-removed', time: 2, cpuId: 1 });
+        expect(() => summarizeCpuOff(state)).toThrow(
+            'CPU 1 has an unmatched removal at 2.',
+        );
+    });
+
+    it('rejects an existence event after the snapshot clock', () => {
+        const state = stateAt(7);
+        state.events.push({ kind: 'cpu-added', time: 8, cpuId: 2 });
+        expect(() => summarizeCpuOff(state)).toThrow(
+            /is after the snapshot clock 7/,
+        );
+    });
+
+    it.each([-1, Number.NaN, 1.5])(
+        'rejects an existence event at invalid time %s',
+        (time) => {
+            const state = stateAt();
+            state.config = { ...state.config, cpuCount: 1 };
+            state.cpus.pop();
+            state.events.push({ kind: 'cpu-removed', time, cpuId: 2 });
+            expect(() => summarizeCpuOff(state)).toThrow(/has an invalid time/);
+        },
+    );
+
+    it('keeps a removal and a re-addition in the same tick apart', () => {
+        const state = stateAt(5);
+        state.events.push(
+            { kind: 'cpu-off', time: 1, cpuId: 2 },
+            { kind: 'cpu-removed', time: 3, cpuId: 2 },
+            { kind: 'cpu-added', time: 3, cpuId: 2 },
+        );
+        expect(summarizeCpuOff(state)[1]).toEqual({
+            cpuId: 2,
+            intervals: [{ start: 1, end: 3 }],
+            totalOff: 2,
         });
     });
 });

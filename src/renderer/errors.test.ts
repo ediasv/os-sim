@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from 'vue';
 import { ConfigValidationError } from '../core/config';
+import { SimulationRefusal } from '../core/refusal';
 import {
     commandFailure,
     currentError,
@@ -158,6 +159,16 @@ describe('commandFailure', () => {
             new ConfigValidationError([{ field: 'quantum', message: 'q' }]),
         );
         expect(currentError.value).toBe('earlier');
+    });
+
+    it('returns refusals as refused and keeps them off the banner', () => {
+        const result = commandFailure(new SimulationRefusal('no earlier step'));
+        expect(result).toEqual({
+            ok: false,
+            error: { kind: 'refused', message: 'no earlier step' },
+        });
+        expect(currentError.value).toBeNull();
+        expect(console.error).not.toHaveBeenCalled();
     });
 
     it('returns other errors as unexpected and shows them on the banner', () => {

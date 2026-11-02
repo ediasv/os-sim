@@ -16,7 +16,7 @@ import {
 import { createInitialState, takeSnapshot } from './snapshot';
 
 const first: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 2,
@@ -26,19 +26,20 @@ const first: TaskDefinition = {
 };
 const second: TaskDefinition = {
     ...first,
-    id: 2,
+    id: '2',
     color: '000000',
     duration: 3,
     period: 0,
     deadline: 4,
 };
 
-function job(taskId: number, overrides: Partial<Job> = {}): Job {
+function job(taskId: string, overrides: Partial<Job> = {}): Job {
     return {
         taskId,
         index: 0,
         activation: 0,
         absoluteDeadline: 5,
+        duration: taskId === '1' ? first.duration : second.duration,
         executed: 0,
         state: 'ready',
         completedAt: null,
@@ -58,18 +59,44 @@ function runningState(): SimulationState {
         tasks: [first, second],
     });
     state.clock = 3;
-    state.tasks[0].jobs.push(job(1, { state: 'running', executed: 1 }));
-    state.tasks[1].jobs.push(job(2, { absoluteDeadline: 4 }));
-    state.cpus[1].running = { taskId: 1, index: 0 };
+    state.tasks[0].jobs.push(job('1', { state: 'running', executed: 1 }));
+    state.tasks[1].jobs.push(job('2', { absoluteDeadline: 4 }));
+    state.cpus[1].running = { taskId: '1', index: 0 };
     return state;
 }
 
 const both: JobRef[] = [
-    { taskId: 1, index: 0 },
-    { taskId: 2, index: 0 },
+    { taskId: '1', index: 0 },
+    { taskId: '2', index: 0 },
 ];
 
 describe('buildPolicyView', () => {
+    it('keeps execution precedence after its CPU disappears', () => {
+        const state = runningState();
+        state.clock = 1;
+        state.cpus = [state.cpus[0]];
+        state.config = { ...state.config, cpuCount: 1 };
+        state.executions.push({ cpuId: 2, job: both[1], start: 0, end: 1 });
+        const view = buildPolicyView(state, both);
+        expect(view.candidates.map((c) => c.wasRunning)).toEqual([false, true]);
+        expect(view.candidates[1].previousCpu).toBeNull();
+        expect(Object.isFrozen(view.candidates[1])).toBe(true);
+        state.executions.length = 0;
+        expect(view.candidates[1].wasRunning).toBe(true);
+    });
+
+    it('does not count old executions or CPU ownership before the first tick', () => {
+        const state = runningState();
+        state.executions.push({ cpuId: 2, job: both[0], start: 0, end: 2 });
+        expect(
+            buildPolicyView(state, both).candidates.map((c) => c.wasRunning),
+        ).toEqual([false, false]);
+        state.clock = 0;
+        expect(
+            buildPolicyView(state, both).candidates.map((c) => c.wasRunning),
+        ).toEqual([false, false]);
+    });
+
     it('builds one candidate per eligible ref with its job, task definition and previous CPU', () => {
         const state = runningState();
 
@@ -125,12 +152,12 @@ describe('buildPolicyView', () => {
         [
             'does not exist',
             /3\.0 does not exist/,
-            () => [{ taskId: 3, index: 0 }],
+            () => [{ taskId: '3', index: 0 }],
         ],
         [
             'has no such activation',
             /1\.1 does not exist/,
-            () => [{ taskId: 1, index: 1 }],
+            () => [{ taskId: '1', index: 1 }],
         ],
         [
             'is completed',
@@ -138,7 +165,15 @@ describe('buildPolicyView', () => {
             (state) => {
                 state.tasks[1].jobs[0].state = 'completed';
                 state.tasks[1].jobs[0].completedAt = 3;
-                return [{ taskId: 2, index: 0 }];
+                return [{ taskId: '2', index: 0 }];
+            },
+        ],
+        [
+            'is interrupted',
+            /2\.0 is interrupted/,
+            (state) => {
+                state.tasks[1].jobs[0].state = 'interrupted';
+                return [{ taskId: '2', index: 0 }];
             },
         ],
         [
@@ -146,7 +181,7 @@ describe('buildPolicyView', () => {
             /2\.0 is suspended/,
             (state) => {
                 state.tasks[1].jobs[0].state = 'suspended';
-                return [{ taskId: 2, index: 0 }];
+                return [{ taskId: '2', index: 0 }];
             },
         ],
         [
@@ -166,7 +201,7 @@ describe('buildPolicyView', () => {
 function viewOf(count: number): PolicyView {
     const tasks = Array.from({ length: count }, (_, i) => ({
         ...first,
-        id: i + 1,
+        id: String(i + 1),
     }));
     const state = createInitialState({ ...DEFAULT_CONFIG, cpuCount: 2, tasks });
     state.tasks.forEach((tcb) => tcb.jobs.push(job(tcb.definition.id)));
@@ -176,12 +211,12 @@ function viewOf(count: number): PolicyView {
     );
 }
 
-const ref = (taskId: number): JobRef => ({ taskId, index: 0 });
+const ref = (taskId: string): JobRef => ({ taskId, index: 0 });
 
 describe('checkDecision', () => {
     it.each([
-        [3, [ref(1), ref(3)]],
-        [1, [ref(1)]],
+        [3, [ref('1'), ref('3')]],
+        [1, [ref('1')]],
         [0, []],
     ])(
         'accepts min(cpuCount, candidates) distinct candidates (%i candidates)',
@@ -192,7 +227,7 @@ describe('checkDecision', () => {
 
     it('reports a selected job that is not a candidate', () => {
         const issues = checkDecision(viewOf(2), {
-            selected: [ref(1), ref(4)],
+            selected: [ref('1'), ref('4')],
         });
 
         expect(issues).toHaveLength(1);
@@ -201,7 +236,7 @@ describe('checkDecision', () => {
 
     it('reports a job selected twice', () => {
         const issues = checkDecision(viewOf(2), {
-            selected: [ref(2), ref(2)],
+            selected: [ref('2'), ref('2')],
         });
 
         expect(issues).toHaveLength(1);
@@ -210,7 +245,7 @@ describe('checkDecision', () => {
 
     it('reports more jobs selected than CPUs', () => {
         const issues = checkDecision(viewOf(3), {
-            selected: [ref(1), ref(2), ref(3)],
+            selected: [ref('1'), ref('2'), ref('3')],
         });
 
         expect(issues).toHaveLength(1);
@@ -218,7 +253,7 @@ describe('checkDecision', () => {
     });
 
     it('reports too few jobs selected while CPUs are free (REQ-02)', () => {
-        const issues = checkDecision(viewOf(2), { selected: [ref(1)] });
+        const issues = checkDecision(viewOf(2), { selected: [ref('1')] });
 
         expect(issues).toHaveLength(1);
         expect(issues[0]).toMatch(/expected 2.*got 1/);
@@ -233,7 +268,7 @@ describe('checkDecision', () => {
 
     it('reports every problem of one decision together', () => {
         const issues = checkDecision(viewOf(3), {
-            selected: [ref(1), ref(1), ref(4)],
+            selected: [ref('1'), ref('1'), ref('4')],
         });
 
         expect(issues).toHaveLength(3);
@@ -244,8 +279,8 @@ describe('checkDecision', () => {
 
     describe('with a residual tie (DEC-27)', () => {
         it.each([
-            ['part of the cut', [ref(1)], [ref(2), ref(3)], 1],
-            ['the whole cut', [], [ref(1), ref(2), ref(3)], 2],
+            ['part of the cut', [ref('1')], [ref('2'), ref('3')], 1],
+            ['the whole cut', [], [ref('1'), ref('2'), ref('3')], 2],
         ])('accepts a tie covering %s', (_, selected, candidates, slots) => {
             expect(
                 checkDecision(viewOf(3), {
@@ -258,8 +293,8 @@ describe('checkDecision', () => {
         it('reports a tied job that is not a candidate', () => {
             expect(
                 checkDecision(viewOf(3), {
-                    selected: [ref(1)],
-                    tie: { candidates: [ref(2), ref(9)], slots: 1 },
+                    selected: [ref('1')],
+                    tie: { candidates: [ref('2'), ref('9')], slots: 1 },
                 }),
             ).toEqual([
                 'Tied job 9.0 is not a candidate.',
@@ -270,8 +305,11 @@ describe('checkDecision', () => {
         it('reports a job tied more than once', () => {
             expect(
                 checkDecision(viewOf(3), {
-                    selected: [ref(1)],
-                    tie: { candidates: [ref(2), ref(3), ref(2)], slots: 1 },
+                    selected: [ref('1')],
+                    tie: {
+                        candidates: [ref('2'), ref('3'), ref('2')],
+                        slots: 1,
+                    },
                 }),
             ).toEqual(['Job 2.0 is tied more than once.']);
         });
@@ -279,8 +317,8 @@ describe('checkDecision', () => {
         it('reports a job both selected and tied', () => {
             expect(
                 checkDecision(viewOf(3), {
-                    selected: [ref(1)],
-                    tie: { candidates: [ref(1), ref(2)], slots: 1 },
+                    selected: [ref('1')],
+                    tie: { candidates: [ref('1'), ref('2')], slots: 1 },
                 }),
             ).toEqual([
                 'Job 1.0 is both selected and tied.',
@@ -291,8 +329,8 @@ describe('checkDecision', () => {
         it('reports a tie that fills no CPU', () => {
             expect(
                 checkDecision(viewOf(4), {
-                    selected: [ref(1), ref(2)],
-                    tie: { candidates: [ref(3), ref(4)], slots: 0 },
+                    selected: [ref('1'), ref('2')],
+                    tie: { candidates: [ref('3'), ref('4')], slots: 0 },
                 }),
             ).toEqual(['Tie must fill at least one CPU, got 0 slots.']);
         });
@@ -300,8 +338,8 @@ describe('checkDecision', () => {
         it('reports a fractional number of slots', () => {
             expect(
                 checkDecision(viewOf(3), {
-                    selected: [ref(1)],
-                    tie: { candidates: [ref(2), ref(3)], slots: 1.5 },
+                    selected: [ref('1')],
+                    tie: { candidates: [ref('2'), ref('3')], slots: 1.5 },
                 }),
             ).toContain('Tie must fill at least one CPU, got 1.5 slots.');
         });
@@ -310,7 +348,7 @@ describe('checkDecision', () => {
             expect(
                 checkDecision(viewOf(3), {
                     selected: [],
-                    tie: { candidates: [ref(2), ref(3)], slots: 2 },
+                    tie: { candidates: [ref('2'), ref('3')], slots: 2 },
                 }),
             ).toEqual([
                 'Tie must leave out at least one job: 2 slots for 2 tied jobs.',
@@ -320,8 +358,8 @@ describe('checkDecision', () => {
         it('counts the tie slots with the selected jobs', () => {
             expect(
                 checkDecision(viewOf(4), {
-                    selected: [ref(1), ref(2)],
-                    tie: { candidates: [ref(3), ref(4)], slots: 1 },
+                    selected: [ref('1'), ref('2')],
+                    tie: { candidates: [ref('3'), ref('4')], slots: 1 },
                 }),
             ).toEqual([
                 'Policy selected the wrong number of jobs: expected 2, got 3.',
@@ -337,7 +375,7 @@ describe('selectedRefs', () => {
             selected: view.candidates.map((c) => c.job),
         });
 
-        expect(refs).toEqual([ref(1), ref(2)]);
+        expect(refs).toEqual([ref('1'), ref('2')]);
         expect(refs.map((r) => Object.keys(r))).toEqual([
             ['taskId', 'index'],
             ['taskId', 'index'],
@@ -345,13 +383,13 @@ describe('selectedRefs', () => {
     });
 
     it('does not share objects the policy still holds', () => {
-        const mine = { taskId: 1, index: 0 };
+        const mine = { taskId: '1', index: 0 };
         const refs = selectedRefs({ selected: [mine] });
 
         mine.index = 1;
 
         expect(refs[0]).not.toBe(mine);
-        expect(refs).toEqual([ref(1)]);
+        expect(refs).toEqual([ref('1')]);
     });
 });
 

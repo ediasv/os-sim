@@ -51,10 +51,22 @@ describe('loadConfig', () => {
             'O campo qtde_cpus deve ser um número inteiro maior ou igual a 1; valor recebido: 1.5.',
         ],
         [
-            'an id below 1',
-            'RM;5;1\n0;FFFFFF;0;1;0;1',
-            { line: 2, field: 'id', value: '0' },
-            'O campo id deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'an id longer than 32 characters',
+            `RM;5;1\n${'x'.repeat(33)};FFFFFF;0;1;0;1`,
+            { line: 2, field: 'id', value: 'x'.repeat(33) },
+            `O campo id é inválido (valor recebido: "${'x'.repeat(33)}"): o id pode ter no máximo 32 caracteres; recebidos 33.`,
+        ],
+        [
+            'the reserved id __proto__',
+            'RM;5;1\n__proto__;FFFFFF;0;1;0;1',
+            { line: 2, field: 'id', value: '__proto__' },
+            'O campo id é inválido (valor recebido: "__proto__"): o id "__proto__" é reservado.',
+        ],
+        [
+            'an id repeated with another case',
+            'RM;5;1\n1A;FFFFFF;0;1;0;1\n1a;000000;0;1;0;1',
+            { line: 3, field: 'id', value: '1a' },
+            'O id 1a já foi usado pela 1ª tarefa (id 1A; maiúsculas e minúsculas não diferenciam ids); cada tarefa precisa de um id único.',
         ],
         [
             'a repeated id',
@@ -121,7 +133,7 @@ describe('loadConfig', () => {
 
         expect(issues.map(where)).toEqual([expected]);
         expect(issues[0].message).toBe(
-            `Linha ${expected.line}, campo ${expected.field} (valor ${expected.value}): ${coreMessage}`,
+            `Linha ${expected.line}, campo ${expected.field}: ${coreMessage}`,
         );
     });
 
@@ -156,6 +168,22 @@ describe('loadConfig', () => {
         },
     );
 
+    it('distinguishes missing syntax values from combined core values', () => {
+        const missing = issuesOf('RM;5;1\n1;FFFFFF;0;1;;');
+        const combined = issuesOf('RM;5;1\n1;FFFFFF;9007199254740990;1;0;5');
+
+        expect(missing[0]).toMatchObject({
+            value: null,
+            valueKind: 'missing',
+            origin: 'syntax',
+        });
+        expect(combined[0]).toMatchObject({
+            value: null,
+            valueKind: 'combined',
+            origin: 'core',
+        });
+    });
+
     it('reports every problem of several lines, in file order', () => {
         const issues = issuesOf(
             [
@@ -176,7 +204,7 @@ describe('loadConfig', () => {
             { line: 5, field: 'id', value: '1' },
         ]);
         expect(issues[5].message).toBe(
-            'Linha 5, campo id (valor 1): O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+            'Linha 5, campo id: O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
         );
     });
 
@@ -353,6 +381,101 @@ describe('loadConfig', () => {
     });
 });
 
+describe('loadConfig: integer rule in every numeric field (DEC-10)', () => {
+    // Each builder puts `v` in that field of an otherwise valid file.
+    const at = {
+        quantum: (v: string) => `RM;${v};1\n1;FFFFFF;0;1;0;1`,
+        qtde_cpus: (v: string) => `RM;5;${v}\n1;FFFFFF;0;1;0;1`,
+        ingresso: (v: string) => `RM;5;1\n1;FFFFFF;${v};1;0;1`,
+        duracao: (v: string) => `RM;5;1\n1;FFFFFF;0;${v};0;1`,
+        periodo: (v: string) => `RM;5;1\n1;FFFFFF;0;1;${v};1`,
+        prazo: (v: string) => `RM;5;1\n1;FFFFFF;0;1;0;${v}`,
+    } as const;
+    const minimum = {
+        quantum: 1,
+        qtde_cpus: 1,
+        ingresso: 0,
+        duracao: 1,
+        periodo: 0,
+        prazo: 1,
+    } as const;
+    const fields = Object.keys(at) as (keyof typeof at)[];
+    const lineOf = (field: keyof typeof at) =>
+        field === 'quantum' || field === 'qtde_cpus' ? 1 : 2;
+
+    function expectRejected(
+        field: keyof typeof at,
+        value: string,
+        shown: string,
+    ) {
+        const issues = issuesOf(at[field](value));
+        const line = lineOf(field);
+        expect(issues).toHaveLength(1);
+        expect(where(issues[0])).toEqual({ line, field, value });
+        expect(issues[0].origin).toBe('core');
+        expect(issues[0].message).toBe(
+            `Linha ${line}, campo ${field}: O campo ${field} deve ser um número inteiro maior ou igual a ${minimum[field]}; valor recebido: ${shown}.`,
+        );
+    }
+
+    it.each(fields)('rejects a fractional %s', (field) => {
+        expectRejected(field, '1.5', '1.5');
+    });
+
+    it.each(fields)('rejects %s beyond the exact-integer range', (field) => {
+        expectRejected(field, '99999999999999999999', '100000000000000000000');
+    });
+
+    it('rejects zero CPUs', () => {
+        expectRejected('qtde_cpus', '0', '0');
+    });
+});
+
+describe('loadConfig: only the period may be missing (DEC-10, DEC-31)', () => {
+    it.each([
+        ['algoritmo_escalonamento', ';5;1\n1;FFFFFF;0;1;0;1', 1],
+        ['quantum', 'RM;;1\n1;FFFFFF;0;1;0;1', 1],
+        // `RM;5;` would lose its final `;` (DEC-20) and report a count.
+        ['qtde_cpus', 'RM;5; ;\n1;FFFFFF;0;1;0;1', 1],
+        ['id', 'RM;5;1\n;FFFFFF;0;1;0;1', 2],
+        ['cor', 'RM;5;1\n1;;0;1;0;1', 2],
+        ['ingresso', 'RM;5;1\n1;FFFFFF;;1;0;1', 2],
+        ['duracao', 'RM;5;1\n1;FFFFFF;0;;0;1', 2],
+        ['prazo', 'RM;5;1\n1;FFFFFF;0;1;0;;', 2],
+    ])('rejects an empty %s', (field, text, line) => {
+        const issues = issuesOf(text);
+        expect(issues).toHaveLength(1);
+        expect(where(issues[0])).toEqual({ line, field, value: null });
+        expect(issues[0].origin).toBe('syntax');
+        expect(issues[0].message).toBe(
+            `Linha ${line}, campo ${field}, valor ausente: campo obrigatório ausente.`,
+        );
+    });
+});
+
+describe('loadConfig: many tasks', () => {
+    it('loads many tasks through the whole pipeline', () => {
+        const count = 300;
+        const rows = Array.from(
+            { length: count },
+            (_, i) =>
+                `${i + 1};${(i + 1).toString(16).padStart(6, '0')};${i % 7};1;${10 + i};${10 + i}`,
+        );
+        const result = loadConfig(['RM;1;4', ...rows].join('\n'));
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+        expect(result.config.tasks).toHaveLength(count);
+        expect(result.warnings).toEqual([]);
+        expect(result.lines.tasks).toEqual(
+            Array.from({ length: count }, (_, i) => i + 2),
+        );
+        for (const task of result.config.tasks) {
+            expect(task.color).toBe(task.color.toUpperCase());
+        }
+    });
+});
+
 describe('default period (DEC-29)', () => {
     function loaded(text: string) {
         const result = loadConfig(text);
@@ -371,7 +494,9 @@ describe('default period (DEC-29)', () => {
                 line: 2,
                 field: 'periodo',
                 value: null,
-                taskId: 1,
+                valueKind: 'missing',
+                origin: 'default-period',
+                taskId: '1',
                 message:
                     'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
             },
@@ -379,7 +504,9 @@ describe('default period (DEC-29)', () => {
                 line: 4,
                 field: 'periodo',
                 value: '0',
-                taskId: 2,
+                valueKind: 'received',
+                origin: 'default-period',
+                taskId: '2',
                 message:
                     'Linha 4, campo periodo (valor 0): toda tarefa precisa de período maior que zero; a tarefa 2 usará o período padrão de 15 ticks.',
             },
@@ -396,7 +523,7 @@ describe('default period (DEC-29)', () => {
     it('simulates a converted task as a task of period 15', () => {
         const jobsOf = (text: string) => {
             const sim = createSimulator(loaded(text).config);
-            for (let step = 0; step < 150; step++) sim.tick();
+            sim.runAll();
             return sim.getLatestSnapshot().tasks[0].jobs;
         };
         const converted = jobsOf('RM;5;1\n1;F0E0D0;0;2;0;3');
@@ -411,7 +538,14 @@ describe('default period (DEC-29)', () => {
         const result = loadConfig('RM;5;1\n1;F0E0D0;0;0;0;10');
 
         expect(result.ok).toBe(false);
-        expect(result).not.toHaveProperty('warnings');
+        expect(result).toHaveProperty('warnings');
+        if (!result.ok) {
+            expect(result.warnings[0]).toMatchObject({
+                value: '0',
+                valueKind: 'received',
+                origin: 'default-period',
+            });
+        }
         expect(issuesOf('RM;5;1\n1;F0E0D0;0;0;0;10').map(where)).toEqual([
             { line: 2, field: 'duracao', value: '0' },
         ]);
@@ -425,7 +559,7 @@ describe('default period (DEC-29)', () => {
             cpuCount: 1,
             tasks: [
                 {
-                    id: 1,
+                    id: '1',
                     color: 'F0E0D0',
                     arrival,
                     duration: 1,

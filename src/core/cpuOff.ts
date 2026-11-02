@@ -1,13 +1,13 @@
 /**
  * Periods in which each CPU was logically off (A.1.2, DEC-05), derived from
- * the `cpu-off`/`cpu-on` events of a snapshot instead of being stored
+ * CPU power and existence events of a snapshot instead of being stored
  * (DEC-21). Inspection (#37) and the Gantt (#38) are meant to read them from
  * any snapshot.
  */
 import type { DeepReadonly, SimulationState } from './domain';
 
 /**
- * A `cpu-off`/`cpu-on` history that cannot be turned into intervals. Its own
+ * A CPU power/existence history that cannot be turned into intervals. Its own
  * class lets `findInconsistencies` and the interface tell a malformed history
  * apart from a programming error.
  */
@@ -35,23 +35,62 @@ export interface CpuOffSummary {
 }
 
 /**
- * Lists every off interval and the total per CPU, in `cpus` order, including
- * CPUs that were never off. Throws `CpuEventSequenceError` when the events of a
- * CPU do not alternate off/on, go back in time, come after the snapshot clock,
- * or name an unknown CPU, since the intervals would then be guesses.
+ * Lists every CPU that ever existed by ascending ID, including removed CPUs
+ * and CPUs never off (DEC-40). Removing a CPU closes its open off interval at
+ * the removal time; time spent absent is not counted as off.
+ * Throws `CpuEventSequenceError` when the events of a CPU do not alternate
+ * off/on, go back in time, have an invalid time, come after the snapshot
+ * clock, name an absent CPU, or have unpaired additions/removals, since the
+ * intervals would then be guesses.
  */
 export function summarizeCpuOff(
     snapshot: DeepReadonly<SimulationState>,
 ): CpuOffSummary[] {
+    // Recover initial membership from the final CPUs and existence events.
+    // This also works at tick zero, before any CPU has emitted a power event.
+    const present = new Set(snapshot.cpus.map((cpu) => cpu.id));
+    for (let i = snapshot.events.length - 1; i >= 0; i--) {
+        const event = snapshot.events[i];
+        if (event.kind === 'cpu-added') {
+            if (!present.delete(event.cpuId)) {
+                throw new CpuEventSequenceError(
+                    `CPU ${event.cpuId} has an unmatched addition at ${event.time}.`,
+                );
+            }
+        } else if (event.kind === 'cpu-removed') {
+            if (present.has(event.cpuId)) {
+                throw new CpuEventSequenceError(
+                    `CPU ${event.cpuId} has an unmatched removal at ${event.time}.`,
+                );
+            }
+            present.add(event.cpuId);
+        }
+    }
     const intervalsByCpu = new Map<number, CpuOffInterval[]>(
-        snapshot.cpus.map((cpu) => [cpu.id, []]),
+        [...present].map((id) => [id, []]),
     );
+    const lastTime = new Map<number, number>();
     for (const event of snapshot.events) {
-        if (event.kind !== 'cpu-off' && event.kind !== 'cpu-on') {
+        if (
+            event.kind !== 'cpu-off' &&
+            event.kind !== 'cpu-on' &&
+            event.kind !== 'cpu-added' &&
+            event.kind !== 'cpu-removed'
+        ) {
             continue;
         }
+        if (event.kind === 'cpu-added') {
+            if (present.has(event.cpuId)) {
+                throw new CpuEventSequenceError(
+                    `CPU ${event.cpuId} added at ${event.time} while already present.`,
+                );
+            }
+            present.add(event.cpuId);
+            if (!intervalsByCpu.has(event.cpuId))
+                intervalsByCpu.set(event.cpuId, []);
+        }
         const intervals = intervalsByCpu.get(event.cpuId);
-        if (intervals === undefined) {
+        if (intervals === undefined || !present.has(event.cpuId)) {
             throw new CpuEventSequenceError(
                 `Event ${event.kind} at ${event.time} names CPU ${event.cpuId}, which does not exist.`,
             );
@@ -61,9 +100,24 @@ export function summarizeCpuOff(
                 `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} is after the snapshot clock ${snapshot.clock}.`,
             );
         }
+        // Validity comes first so a NaN or negative time never reaches the
+        // interval comparisons; regression is checked after them to keep
+        // their more specific messages.
+        if (!Number.isSafeInteger(event.time) || event.time < 0) {
+            throw new CpuEventSequenceError(
+                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} has an invalid time.`,
+            );
+        }
         const last = intervals.at(-1);
         const open = last?.end === null;
-        if (event.kind === 'cpu-off') {
+        if (event.kind === 'cpu-removed') {
+            if (open)
+                intervals[intervals.length - 1] = {
+                    start: last.start,
+                    end: event.time,
+                };
+            present.delete(event.cpuId);
+        } else if (event.kind === 'cpu-off') {
             if (open) {
                 throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned off at ${event.time} while already off.`,
@@ -75,7 +129,7 @@ export function summarizeCpuOff(
                 );
             }
             intervals.push({ start: event.time, end: null });
-        } else {
+        } else if (event.kind === 'cpu-on') {
             if (!open) {
                 throw new CpuEventSequenceError(
                     `CPU ${event.cpuId} turned on at ${event.time} while not off.`,
@@ -91,14 +145,23 @@ export function summarizeCpuOff(
                 end: event.time,
             };
         }
+        if (event.time < (lastTime.get(event.cpuId) ?? 0)) {
+            throw new CpuEventSequenceError(
+                `Event ${event.kind} at ${event.time} for CPU ${event.cpuId} has regressing time.`,
+            );
+        }
+        lastTime.set(event.cpuId, event.time);
     }
 
-    return [...intervalsByCpu].map(([cpuId, intervals]) => ({
-        cpuId,
-        intervals,
-        totalOff: intervals.reduce(
-            (total, { start, end }) => total + (end ?? snapshot.clock) - start,
-            0,
-        ),
-    }));
+    return [...intervalsByCpu]
+        .sort(([a], [b]) => a - b)
+        .map(([cpuId, intervals]) => ({
+            cpuId,
+            intervals,
+            totalOff: intervals.reduce(
+                (total, { start, end }) =>
+                    total + (end ?? snapshot.clock) - start,
+                0,
+            ),
+        }));
 }

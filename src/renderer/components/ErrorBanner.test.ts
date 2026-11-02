@@ -4,7 +4,10 @@ import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { currentError, dismissError, reportError } from '../errors';
+import { ruleBody } from '../testing/cssRule';
 import ErrorBanner from './ErrorBanner.vue';
+// Raw source: jsdom computes no layout, so the height cap is pinned in the text.
+import source from './ErrorBanner.vue?raw';
 
 enableAutoUnmount(afterEach);
 
@@ -60,5 +63,15 @@ describe('ErrorBanner', () => {
         await nextTick();
 
         expect(wrapper.get('[role="alert"]').text()).toContain('Next failure');
+    });
+
+    // #app is a 100vh column: a long message must scroll inside the banner
+    // instead of pushing the page past the window.
+    it('caps its height and scrolls a long message', () => {
+        const body = ruleBody(source, '.error-banner');
+
+        expect(body).toMatch(/max-height:\s*40vh\s*;/);
+        expect(body).toMatch(/overflow-y:\s*auto\s*;/);
+        expect(body).toMatch(/flex:\s*none\s*;/);
     });
 });

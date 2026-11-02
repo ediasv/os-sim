@@ -18,8 +18,13 @@ import UiAlert from './UiAlert.vue';
 </template>
 
 <style scoped>
-/* Figma alert region above the workspace. */
+/* Figma alert region above the workspace. Capped and scrolling on its own:
+   #app is a 100vh column, so an unbounded stack-trace-sized message would
+   squeeze the workspace to nothing and then make the page scroll. */
 .error-banner {
+    flex: none;
+    max-height: 40vh;
+    overflow-y: auto;
     padding: var(--spacing-sm) var(--spacing-lg);
 }
 </style>

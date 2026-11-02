@@ -11,6 +11,7 @@ import {
     type TaskDefinition,
 } from './domain';
 import { freezeCopy } from './helpers/freezeCopy';
+import { taskIdKey, validateTaskId } from './taskId';
 
 /** Configuration field an issue refers to, in the core's vocabulary. */
 export type ConfigField =
@@ -87,7 +88,6 @@ const COLOR_PATTERN = /^[0-9A-F]{6}$/i;
 const MINIMUMS = {
     quantum: 1,
     cpuCount: 1,
-    id: 1,
     arrival: 0,
     duration: 1,
     period: 0,
@@ -116,28 +116,17 @@ export function validateConfig(input: ConfigInput): ConfigResult {
     checkInteger(issues, 'quantum', input.quantum);
     checkInteger(issues, 'cpuCount', input.cpuCount);
 
-    const firstIndexById = new Map<number, number>();
+    const firstIndexById = new Map<string, number>();
     const firstIndexByColor = new Map<string, number>();
 
     input.tasks.forEach((task, taskIndex) => {
         const fieldsValid = (
-            ['id', 'arrival', 'duration', 'period', 'deadline'] as const
+            ['arrival', 'duration', 'period', 'deadline'] as const
         )
             .map((field) => checkInteger(issues, field, task[field], taskIndex))
             .every(Boolean);
 
-        if (Number.isSafeInteger(task.id)) {
-            const previous = firstIndexById.get(task.id);
-            if (previous === undefined) {
-                firstIndexById.set(task.id, taskIndex);
-            } else {
-                issues.push({
-                    field: 'id',
-                    taskIndex,
-                    message: `O ${FILE_LABELS.id} ${task.id} já foi usado pela ${ordinalTask(previous)}; cada tarefa precisa de um id único.`,
-                });
-            }
-        }
+        const idValid = checkTaskId(issues, firstIndexById, input, taskIndex);
 
         if (typeof task.color === 'string' && COLOR_PATTERN.test(task.color)) {
             const color = task.color.toUpperCase();
@@ -148,7 +137,7 @@ export function validateConfig(input: ConfigInput): ConfigResult {
                 issues.push({
                     field: 'color',
                     taskIndex,
-                    message: `A ${FILE_LABELS.color} ${color} já foi usada pela ${ordinalTask(previous)}; cada tarefa precisa de uma cor diferente.`,
+                    message: duplicateColorMessage(color, previous),
                 });
             }
         } else {
@@ -159,7 +148,7 @@ export function validateConfig(input: ConfigInput): ConfigResult {
             });
         }
 
-        if (fieldsValid) {
+        if (fieldsValid && idValid) {
             checkLastDeadline(issues, task, taskIndex);
         }
     });
@@ -176,7 +165,11 @@ export function validateConfig(input: ConfigInput): ConfigResult {
             cpuCount: input.cpuCount,
             tasks: Object.freeze(
                 input.tasks.map((task) =>
-                    Object.freeze({ ...task, color: task.color.toUpperCase() }),
+                    Object.freeze({
+                        ...task,
+                        id: task.id.trim(),
+                        color: task.color.toUpperCase(),
+                    }),
                 ),
             ),
         }),
@@ -195,6 +188,47 @@ export function requireValidConfig(input: ConfigInput): SystemConfig {
         throw new ConfigValidationError(result.issues);
     }
     return result.config;
+}
+
+/**
+ * Checks the ID of one task (DEC-48): valid text, and not the same as an
+ * earlier task's ID ignoring case. Returns whether the ID text is valid; a duplicate is reported but its text is valid, so the other checks still run.
+ */
+function checkTaskId(
+    issues: ConfigIssue[],
+    firstIndexById: Map<string, number>,
+    input: ConfigInput,
+    taskIndex: number,
+): boolean {
+    const id: unknown = input.tasks[taskIndex].id;
+    const checked = typeof id === 'string' ? validateTaskId(id) : null;
+    if (checked === null || !checked.ok) {
+        const reason =
+            checked === null ? 'o id deve ser um texto.' : checked.reason;
+        issues.push({
+            field: 'id',
+            taskIndex,
+            message: `O campo ${FILE_LABELS.id} é inválido (valor recebido: ${describe(id)}): ${reason}`,
+        });
+        return false;
+    }
+    const key = taskIdKey(checked.id);
+    const previous = firstIndexById.get(key);
+    if (previous === undefined) {
+        firstIndexById.set(key, taskIndex);
+        return true;
+    }
+    const previousId = input.tasks[previous].id.trim();
+    const sameCase =
+        previousId === checked.id
+            ? ''
+            : ` (${FILE_LABELS.id} ${previousId}; maiúsculas e minúsculas não diferenciam ids)`;
+    issues.push({
+        field: 'id',
+        taskIndex,
+        message: `O ${FILE_LABELS.id} ${checked.id} já foi usado pela ${ordinalTask(previous)}${sameCase}; cada tarefa precisa de um id único.`,
+    });
+    return true;
 }
 
 /** Pushes an issue unless `value` is an exact integer at or above the field's minimum. */
@@ -242,6 +276,17 @@ function checkLastDeadline(
         combined: true,
         message: `O prazo da última ativação (${formula}) ultrapassa o maior inteiro exato suportado (${Number.MAX_SAFE_INTEGER}).`,
     });
+}
+
+/**
+ * Wording of the duplicate-color refusal, shared with the edit stage, which
+ * knows the real position of the task that already owns the color (DEC-28).
+ */
+export function duplicateColorMessage(
+    color: string,
+    previousIndex: number,
+): string {
+    return `A ${FILE_LABELS.color} ${color} já foi usada pela ${ordinalTask(previousIndex)}; cada tarefa precisa de uma cor diferente.`;
 }
 
 function ordinalTask(taskIndex: number): string {

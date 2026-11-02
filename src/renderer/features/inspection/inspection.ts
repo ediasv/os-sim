@@ -1,5 +1,5 @@
-import { findEligibleJobs } from '../../../core/eligibility';
-import { summarizeCpuOff, type CpuOffSummary } from '../../../core/cpuOff';
+import type { CpuOffSummary } from '../../../core/cpuOff';
+import { cpuOffSummary, eligibleJobs } from '../../snapshotQueries';
 import {
     maxJobs,
     type DeepReadonly,
@@ -8,6 +8,7 @@ import {
     type SimulationSnapshot,
     type TaskDefinition,
     type TaskId,
+    type TaskStatus,
 } from '../../../core/domain';
 
 export type { JobRef, TaskId } from '../../../core/domain';
@@ -17,6 +18,15 @@ export type InspectionTaskStatus =
     | 'active'
     | 'awaiting-next-activation'
     | 'completed';
+
+export const inspectionTaskStatusLabels: Readonly<
+    Record<InspectionTaskStatus, string>
+> = {
+    'awaiting-activation': 'Aguardando ativação',
+    active: 'Ativa',
+    'awaiting-next-activation': 'Aguardando próxima ativação',
+    completed: 'Terminada',
+};
 
 export interface InspectionTaskDefinition {
     readonly id: TaskId;
@@ -100,16 +110,23 @@ function copyDefinition(
 
 function taskStatus(
     definition: DeepReadonly<TaskDefinition>,
+    status: TaskStatus,
     jobs: readonly CurrentInspectionJob[],
     clock: number,
 ): InspectionTaskStatus {
+    // A concluded task never activates again, whatever its jobs say (DEC-43).
+    if (status === 'concluded') {
+        return 'completed';
+    }
     if (jobs.length === 0) {
         return definition.arrival > clock
             ? 'awaiting-activation'
             : 'awaiting-next-activation';
     }
 
-    const hasIncompleteJob = jobs.some((job) => job.state !== 'completed');
+    const hasIncompleteJob = jobs.some(
+        (job) => job.state !== 'completed' && job.state !== 'interrupted',
+    );
     if (hasIncompleteJob) {
         return 'active';
     }
@@ -159,7 +176,7 @@ export function projectInspection(
     snapshot: DeepReadonly<SimulationSnapshot>,
 ): InspectionData {
     const eligibleKeys = new Set(
-        findEligibleJobs(snapshot).map((ref) => jobKey(ref)),
+        eligibleJobs(snapshot).map((ref) => jobKey(ref)),
     );
     const tasks = snapshot.tasks.map((tcb) => {
         const definition = copyDefinition(tcb.definition);
@@ -180,7 +197,12 @@ export function projectInspection(
 
         return {
             definition,
-            status: taskStatus(tcb.definition, jobs, snapshot.clock),
+            status: taskStatus(
+                tcb.definition,
+                tcb.status,
+                jobs,
+                snapshot.clock,
+            ),
             jobs,
         };
     });
@@ -189,6 +211,6 @@ export function projectInspection(
         inspectedTick: snapshot.clock,
         tasks,
         futureJobs: [],
-        cpuOff: summarizeCpuOff(snapshot),
+        cpuOff: cpuOffSummary(snapshot),
     };
 }

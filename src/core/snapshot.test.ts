@@ -7,10 +7,12 @@ import {
     type TaskDefinition,
 } from './domain';
 import { DRAW_SEED } from './draw';
-import { createInitialState, takeSnapshot } from './snapshot';
+import { rmPolicy } from './policies';
+import { Simulator } from './simulator';
+import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 
 const periodic: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 2,
@@ -20,7 +22,7 @@ const periodic: TaskDefinition = {
 };
 const aperiodic: TaskDefinition = {
     ...periodic,
-    id: 2,
+    id: '2',
     color: '000000',
     period: 0,
 };
@@ -75,20 +77,21 @@ describe('takeSnapshot', () => {
     function stateWithJob() {
         const state = createInitialState(twoCpus);
         state.tasks[0].jobs.push({
-            taskId: 1,
+            taskId: '1',
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
+            duration: 2,
             executed: 0,
             state: 'running',
             completedAt: null,
             deadlineMissed: false,
         });
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
         state.events.push({
             kind: 'activation',
             time: 0,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
         return state;
     }
@@ -109,7 +112,7 @@ describe('takeSnapshot', () => {
 
         expect(snapshot.clock).toBe(0);
         expect(snapshot.tasks[0].jobs[0].executed).toBe(0);
-        expect(snapshot.cpus[0].running).toEqual({ taskId: 1, index: 0 });
+        expect(snapshot.cpus[0].running).toEqual({ taskId: '1', index: 0 });
         expect(snapshot.events).toHaveLength(1);
     });
 
@@ -137,5 +140,58 @@ describe('takeSnapshot', () => {
         expect(snapshot.tasks[0].jobs[0]).not.toBe(state.tasks[0].jobs[0]);
         expect(snapshot.cpus[0].running).not.toBe(state.cpus[0].running);
         expect(snapshot.events[0]).not.toBe(state.events[0]);
+    });
+});
+
+describe('restoreState', () => {
+    const tied = (id: string, color: string): TaskDefinition => ({
+        ...periodic,
+        id,
+        color,
+        duration: 2,
+        period: 4,
+        deadline: 4,
+    });
+    function runSnapshot() {
+        const sim = new Simulator(
+            {
+                ...DEFAULT_CONFIG,
+                cpuCount: 1,
+                tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC')],
+            },
+            rmPolicy,
+        );
+        for (let i = 0; i < 6; i++) sim.tick();
+        return sim.getLatestSnapshot();
+    }
+
+    it('returns a mutable copy equal to the snapshot (DEC-06)', () => {
+        const snapshot = runSnapshot();
+        const restored = restoreState(snapshot);
+        expect(restored).toEqual(snapshot);
+        expect(Object.isFrozen(restored)).toBe(false);
+        expect(Object.isFrozen(restored.tasks[0].jobs)).toBe(false);
+        expect(Object.isFrozen(restored.tasks[0].jobs[0])).toBe(false);
+        expect(Object.isFrozen(restored.cpus[0])).toBe(false);
+        expect(Object.isFrozen(restored.executions)).toBe(false);
+        expect(Object.isFrozen(restored.events)).toBe(false);
+    });
+
+    it('shares nothing mutable with the snapshot', () => {
+        const snapshot = runSnapshot();
+        const before = JSON.parse(JSON.stringify(snapshot));
+        const restored = restoreState(snapshot);
+        restored.tasks[0].jobs[0].executed += 1;
+        restored.cpus[0].sliceElapsed += 1;
+        restored.executions.push(restored.executions[0]);
+        restored.events.push(restored.events[0]);
+        expect(snapshot).toEqual(before);
+    });
+
+    it('keeps the frozen configuration shared', () => {
+        const snapshot = runSnapshot();
+        const restored = restoreState(snapshot);
+        expect(restored.config).toBe(snapshot.config);
+        expect(Object.isFrozen(restored.config)).toBe(true);
     });
 });

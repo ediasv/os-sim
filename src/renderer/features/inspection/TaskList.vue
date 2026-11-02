@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { InspectionTask, TaskId } from './inspection';
+import {
+    inspectionTaskStatusLabels,
+    type InspectionTask,
+    type TaskId,
+} from './inspection';
 
 defineProps<{
     tasks: readonly InspectionTask[];
@@ -32,7 +36,9 @@ const emit = defineEmits<{ select: [taskId: TaskId] }>();
                         aria-hidden="true"
                     />
                     <span>Tarefa {{ task.definition.id }}</span>
-                    <span class="task-list__status">{{ task.status }}</span>
+                    <span class="task-list__status">
+                        {{ inspectionTaskStatusLabels[task.status] }}
+                    </span>
                 </button>
             </li>
         </ul>

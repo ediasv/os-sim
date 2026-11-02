@@ -1,3 +1,18 @@
-// oxlint-disable eslint-plugin-unicorn/no-empty-file
-// See the Electron documentation for details on how to use preload scripts:
+// Exposes main's APIs to the renderer through contextBridge; the renderer has
+// no Electron or Node access of its own (README import rules).
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+import { contextBridge, ipcRenderer } from 'electron';
+import { createConfigFileApi } from './configFileApi';
+import { createImageFileApi } from './imageFileApi';
+
+contextBridge.exposeInMainWorld(
+    'configFile',
+    createConfigFileApi((channel) => ipcRenderer.invoke(channel)),
+);
+
+contextBridge.exposeInMainWorld(
+    'imageFile',
+    createImageFileApi((channel, request) =>
+        ipcRenderer.invoke(channel, request),
+    ),
+);

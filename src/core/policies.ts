@@ -27,8 +27,9 @@ function ascending(a: number, b: number): number {
 
 /**
  * Priority, then A.4.3 in order (DEC-16): the job that was running before the
- * selection, even if its slice just expired (DEC-18); earlier absolute
- * deadline; earlier activation; shorter task duration. Zero means a residual
+ * selection, read from `wasRunning` rather than CPU ownership so it survives
+ * CPU removal (DEC-18, DEC-40); earlier absolute
+ * deadline; earlier activation; shorter job duration. Zero means a residual
  * tie that only a draw may break.
  */
 function compareCandidates(
@@ -40,13 +41,10 @@ function compareCandidates(
         // Two aperiodic RM tasks both rank as Infinity, and Infinity -
         // Infinity would be NaN.
         ascending(priority(a), priority(b)) ||
-        ascending(
-            a.previousCpu === null ? 1 : 0,
-            b.previousCpu === null ? 1 : 0,
-        ) ||
+        ascending(a.wasRunning ? 0 : 1, b.wasRunning ? 0 : 1) ||
         ascending(a.job.absoluteDeadline, b.job.absoluteDeadline) ||
         ascending(a.job.activation, b.job.activation) ||
-        ascending(a.task.duration, b.task.duration)
+        ascending(a.job.duration, b.job.duration)
     );
 }
 

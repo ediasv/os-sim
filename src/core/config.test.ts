@@ -10,7 +10,7 @@ import { DEFAULT_CONFIG, type TaskDefinition } from './domain';
 
 function task(overrides: Partial<TaskDefinition> = {}): TaskDefinition {
     return {
-        id: 1,
+        id: '1',
         color: 'F0E0D0',
         arrival: 0,
         duration: 2,
@@ -113,7 +113,6 @@ describe('validateConfig: task fields', () => {
     }
 
     it.each([
-        ['id', { id: 1 }],
         ['arrival', { arrival: 0 }],
         ['duration', { duration: 1 }],
         ['period (aperiodic)', { period: 0 }],
@@ -123,7 +122,6 @@ describe('validateConfig: task fields', () => {
     });
 
     it.each([
-        ['id', { id: 0 }, 'id'],
         ['arrival', { arrival: -1 }, 'ingresso'],
         ['duration', { duration: 0 }, 'duracao'],
         ['period', { period: -1 }, 'periodo'],
@@ -156,6 +154,76 @@ describe('validateConfig: task fields', () => {
         );
         expect(issues).toHaveLength(1);
         expect(issues[0]).toMatchObject({ field: 'id', taskIndex: 1 });
+        expect(issues[0].message).toBe(
+            'O id 1 já foi usado pela 1ª tarefa; cada tarefa precisa de um id único.',
+        );
+    });
+
+    describe('free-text ids (DEC-48)', () => {
+        it.each(['0', 'A', 'tarefa-1', 'tarefa 1', '-3', '2.5', '01'])(
+            'accepts the id %j',
+            (id) => {
+                expect(taskIssues({ id })).toEqual([]);
+            },
+        );
+
+        it('stores the trimmed id', () => {
+            const result = validateConfig(
+                config({ tasks: [task({ id: '  A  ' })] }),
+            );
+            expect(result.ok && result.config.tasks[0].id).toBe('A');
+        });
+
+        it.each([
+            ['', 'vazio'],
+            ['   ', 'vazio'],
+            ['a;b', ';'],
+            ['a\nb', 'quebra de linha'],
+            ['x'.repeat(33), '32'],
+            ['__proto__', 'reservado'],
+        ])(
+            'rejects the id %j naming the field and the reason',
+            (id, reason) => {
+                const issues = taskIssues({ id });
+                expect(issues).toHaveLength(1);
+                expect(issues[0]).toMatchObject({ field: 'id', taskIndex: 0 });
+                expect(issues[0].message).toContain('id');
+                expect(issues[0].message).toContain(reason);
+            },
+        );
+
+        it('rejects an id that is not text', () => {
+            const issues = taskIssues({ id: 5 as unknown as string });
+            expect(issues).toHaveLength(1);
+            expect(issues[0]).toMatchObject({ field: 'id', taskIndex: 0 });
+        });
+
+        it('treats ids that differ only by case as duplicates and cites the first', () => {
+            const issues = issuesOf(
+                config({
+                    tasks: [
+                        task({ id: 'A' }),
+                        task({ id: 'a', color: '000000' }),
+                    ],
+                }),
+            );
+            expect(issues).toHaveLength(1);
+            expect(issues[0]).toMatchObject({ field: 'id', taskIndex: 1 });
+            expect(issues[0].message).toContain('1ª tarefa');
+            expect(issues[0].message).toContain('id A');
+        });
+
+        it('still checks the other fields of a task with a duplicate id', () => {
+            const issues = issuesOf(
+                config({
+                    tasks: [task(), task({ color: '000000', duration: 0 })],
+                }),
+            );
+            expect(issues.map((i) => i.field).sort()).toEqual([
+                'duration',
+                'id',
+            ]);
+        });
     });
 
     it.each(['F0E0D0', 'f0e0d0', '0a1B2c'])('accepts color %s', (color) => {
@@ -176,7 +244,7 @@ describe('validateConfig: task fields', () => {
             config({
                 tasks: [
                     task({ color: 'abcdef' }),
-                    task({ id: 2, color: 'ABCDEF' }),
+                    task({ id: '2', color: 'ABCDEF' }),
                 ],
             }),
         );
@@ -221,7 +289,7 @@ describe('validateConfig: result', () => {
                 quantum: 0,
                 tasks: [
                     task({ duration: 0 }),
-                    task({ id: 2, color: '000000', period: -3 }),
+                    task({ id: '2', color: '000000', period: -3 }),
                 ],
             }),
         );

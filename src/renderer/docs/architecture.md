@@ -1,7 +1,7 @@
 ﻿# Arquitetura e entregas do renderer
 
 Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
-preparada na #67, sem implementacao visual das entregas abaixo. A
+preparada na #67; o estado de cada entrega fica nas secoes abaixo. A
 [spec de apresentacao](specification.md) registra comportamentos; este
 documento registra responsabilidades, contratos propostos e ordem de codigo.
 O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
@@ -94,9 +94,11 @@ receber valores efetivos de cada job quando houver edicao da tarefa. Isso
 e uma expectativa de dados a conferir na integracao, nao uma exigencia de
 acrescentar campos em Job ou prescrever como o nucleo os representa.
 
-`useSimulation` ja expoe `view`, `load` e `tick`, com `CommandResult`
-(DEC-23/DEC-24, #17/#65 concluidas). Preservar esse contrato e o tratamento
-central de erros; nao duplicar banner, handlers ou classificacao por painel.
+`useSimulation` ja expoe `view`, `load`, `tick`, `forward`, `backward` e
+`next`, com `CommandResult` (DEC-23/DEC-24/DEC-36, #17/#65/#24); `view` e o
+snapshot do cursor e recusas chegam como `refused`. Preservar esse contrato e
+o tratamento central de erros; nao duplicar banner, handlers ou classificacao
+por painel.
 `load` ja inicializa t=0, enquanto FE-02/FE-04 exigem preparacao antes de
 iniciar. Essa integracao precisa ser fechada antes da entrega 3: nao chamar
 `load` ao importar/preparar e esconder o snapshot como se o motor nao tivesse
@@ -118,13 +120,13 @@ liberado, sem dispensar o merge do registro.
 
 | Ordem | Entrega                                                                  | Verificacao e dependencia                                                                                                                   |
 | ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Base visual e area de trabalho vazia.                                    | Componentes, teclado, comparacao com Figma e redimensionamento; gate da #35 resolvido, aguardando merge. Nao conclui #36.                   |
+| 1     | Base visual e area de trabalho vazia.                                    | Concluida (#68, #70, #72; gate da #35 em `main`). Comparacao lado a lado com o Figma fica para a #40. Nao conclui #36.                      |
 | 2     | Inspecao isolada de tarefas, jobs e CPUs.                                | Projecoes, selecao e estados em testes de componentes; parte somente de leitura da #37.                                                     |
 | 3     | Preparar, validar, iniciar, avancar um tick e atualizar os paineis.      | Integracao real com o nucleo, usando #17/#65 existentes e politicas de #19/#20; reconciliar preparacao com DEC-23.                          |
-| 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 ja concluida, #31/#32/#33/#34 ainda necessarias conforme escopo.            |
+| 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 a #33 concluidas; #34 ainda necessaria.                                     |
 | 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                            |
 | 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                               |
-| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                             |
+| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; resultado e bloqueio depois de #27, sem cancelamento (DEC-49); verificacao em #28.                |
 | 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG definido pela DEC-08 (#35). |
 
 Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
@@ -397,6 +399,322 @@ Node 24.22.1:
   incremento Composicao.
 - Nao executados: pacote do Electron e pacote no ambiente-alvo, comparacao
   visual com o Figma, screenshots (pertencem ao incremento Composicao).
+
+## Composicao (#72)
+
+Terceiro incremento da entrega 1: `App` compoe a area de trabalho vazia em
+preparacao (FE-02, FE-DEC-14) com componentes em [components](../components/),
+so com `var(--...)` de [tokens.css](../styles/tokens.css) e sem importar
+`core/` nem `errors.ts` (FE-01). Somente [App](../App.vue) importa
+`DEFAULT_CONFIG` de `core/domain`, e repassa RM, quantum e CPUs por props.
+`App` nao chama `useSimulation()` nem cria simulador: a #36 decide quando
+criar e reconcilia a preparacao com o adaptador de DEC-23, que parte de
+`DEFAULT_CONFIG` em t=0. `useSimulation.ts` nao foi alterado e, ate a #36,
+nao tem uso em producao: so seus testes e o espiao de `App.test.ts` (que
+garante que `App` nao o chama) o importam. A #36 deve liga-lo ou revisar o
+contrato antes de usa-lo (pendencia registrada no plano).
+
+Valores do quadro `99:3895` do Figma (arquivo `h2kssKC2KiSuN4iAg4K1yU`).
+
+### Divisao em cinco componentes
+
+A arquitetura previa tres (`WorkspaceLayout`, `SimulationToolbar`,
+`EmptyWorkspace`). Os paineis foram separados para a #37 (lista de tarefas) e
+a #38 (Gantt) os reutilizarem sem reabrir a composicao; e escolha de
+implementacao, nao decisao do usuario.
+
+- [WorkspaceLayout](../components/WorkspaceLayout.vue): grade com slots
+  `toolbar`, `sidebar` e o padrao (area principal); so posiciona. Barra nas
+  duas colunas, painel de 320 px, area principal com `min-width: 0` para um
+  Gantt largo nao esticar a janela. Dono do padding de regiao `--spacing-lg` e
+  do `gap` `--spacing-sm` da coluna: os paineis nao aplicam padding proprio.
+- [SimulationToolbar](../components/SimulationToolbar.vue): props `clock`
+  (`number | null`), `algorithm`, `cpuCount`, `quantum` e `available`
+  (`ReadonlySet<WorkspaceAction>`, padrao vazio); emite `action`. Titulo
+  `os-sim`, seis botoes e quatro chips. `clock` nulo mostra `–` (U+2013). O
+  quantum sempre aparece: vale para RM e EDF (DEC-03), entao a nota do chip do
+  Figma (usar "—" quando o parametro nao se aplica) nao se aplica ao Projeto A.
+- [TaskPanel](../components/TaskPanel.vue): prop `available`; emite `action`.
+  Titulo, texto de estado vazio e "Adicionar tarefa" em largura total. A #71
+  poe a lista entre o cabecalho e o botao.
+- [GanttPanel](../components/GanttPanel.vue): prop `available`; emite
+  `action`; slot padrao para o corpo (a #38 poe o grafico). Cabecalho com
+  zoom (`Diminuir zoom`, `Aumentar zoom`) e "Exportar SVG". A leitura `100%` e
+  texto estatico: nao ha estado de zoom antes do grafico.
+- [EmptyWorkspace](../components/EmptyWorkspace.vue): props `algorithm`,
+  `quantum`, `cpuCount` e `available`; emite `action`. Pasta de 32 px, titulo,
+  texto com os valores recebidos (`1 CPU`, `2 CPUs`) e tres botoes. Sem
+  "(DEC-10)" na tela (FE-DEC-14).
+- [workspaceActions.ts](../components/workspaceActions.ts): tipo
+  `WorkspaceAction` (`load-config`, `configure-system`, `add-task`,
+  `step-back`, `step-forward`, `restart`, `run-all`, `zoom-out`, `zoom-in`,
+  `export-svg`). Os componentes so emitem intencoes; quem os usa decide a
+  disponibilidade e o efeito. Treze botoes na tela mapeiam para dez intencoes
+  (Carregar configuracao, Adicionar tarefa e Sistema aparecem duas vezes), por
+  isso rotulo e icone de cada intencao ficam so em `ACTION_META`; a variante
+  visual fica em cada tela, pois Sistema e accent na barra e secondary no
+  estado vazio. `NO_ACTIONS` (`ReadonlySet` vazio compartilhado) e o padrao de
+  `available` em todos os componentes e o valor que `App` passa.
+
+`available` vazio por padrao faz um uso ainda nao ligado renderizar tudo com
+`disabled` nativo, em vez de clicavel e inerte. `App` passa o conjunto vazio:
+nenhuma acao existe ate as #36 a #38. Clicar em desabilitado nao emite nada.
+
+### Icones e `UiIcon`
+
+`UiIcon` ganhou a prop `size` (`16` padrao ou `32`): a pasta do estado vazio
+tem 32 px no Figma. O tamanho vai como propriedade customizada
+(`--ui-icon-size`) lida pela regra `.ui-icon`, e nao como `width`/`height`
+inline, para um componente pai ainda poder redimensionar o icone por CSS. Nove SVGs novos em [assets/icons](../assets/icons/),
+exportados sem edicao da pagina Componentes via `get_design_context` em
+2026-10-31 e registrados em [icons.ts](../components/icons.ts):
+
+| Icone        | No Figma | Uso                                         |
+| ------------ | -------- | ------------------------------------------- |
+| folder       | `49:5`   | Carregar configuracao; estado vazio (32 px) |
+| settings     | `86:87`  | Sistema                                     |
+| step-back    | `49:9`   | Voltar tick                                 |
+| step-forward | `49:13`  | Avancar tick                                |
+| restart      | `49:17`  | Reiniciar                                   |
+| run-all      | `49:21`  | Executar tudo                               |
+| plus         | `86:38`  | Adicionar tarefa; zoom +                    |
+| minus        | `86:43`  | Zoom -                                      |
+| download     | `49:26`  | Exportar SVG                                |
+
+### Desvios e lacunas
+
+Registrados em FE-DEC-14 na
+[spec do renderer](specification.md#decisoes-de-apresentacao-registradas)
+quando mudam comportamento; os demais sao so de implementacao:
+
+- Texto do Figma com "(DEC-10)" e chip com `—` condicional: ver FE-DEC-14 e
+  o quantum acima.
+- Barra: o Figma a desenha com 64 px a 1440 px. O conteudo ocupa cerca de
+  1230 px mais o padding horizontal, entao a barra quebra em segunda linha
+  (`flex-wrap`) abaixo de cerca de 1270 px; os 64 px viram `min-height` e
+  `padding-block: var(--spacing-sm)` evita que a linha quebrada encoste na
+  borda da janela e corte o anel de foco. Sem quebra o conteudo se
+  sobreporia ou geraria rolagem horizontal.
+- Banner de erro: `Root.vue` o renderiza acima de `App`, em fluxo normal.
+  `#app` (em `base.css`) e uma coluna flex de `100vh` e `.workspace` usa
+  `flex: 1; min-height: 0`, de modo que o banner reduz a area de trabalho em
+  vez de tornar a pagina mais alta que a janela. O banner tem
+  `max-height: 40vh` com rolagem propria: uma mensagem longa (pilha de erro)
+  nao comprime a area de trabalho a zero nem faz a pagina rolar.
+- Testes que leem o CSS de um `.vue` usam `import ... from '...?raw'` do Vite:
+  `readFileSync` falha sob jsdom e o lint proibe `node:fs` no renderer. O
+  helper de teste [testing/cssRule.ts](../testing/cssRule.ts)
+  (`ruleBody(source, seletor, atRule?)`) extrai o corpo de uma regra, para as
+  assercoes valerem para o seletor certo e nao para qualquer ocorrencia no
+  arquivo. Le so os blocos `<style>` de um `.vue`, aceita seletores agrupados
+  e distingue regras de topo das internas a um `@media` (terceiro argumento).
+  Fica em `testing/`, pasta que o codigo de producao nao importa, com testes
+  proprios.
+- Foco e estados dos botoes seguem [Elementos basicos](#elementos-basicos-70).
+  Botoes de accent desabilitados aparecem mais apagados que no Figma, que
+  mostra Carregar configuracao e Sistema habilitados.
+
+### Evidencia da #72 (2026-10-31)
+
+Worktree `feat/72-area-trabalho-vazia`, Node 24.22.1:
+
+- Testes novos de componente: icones e `UiIcon` (tamanho), barra, layout,
+  paineis, estado vazio e `App` (nenhum simulador criado na montagem, cada
+  botao desabilitado nao emite `action`, `2 CPUs` no plural, sem "DEC-" na
+  tela); `Root.test.ts` inalterado e verde (banner com `App` lancando).
+- `npm test` 460/460 em 29 arquivos (linha de base 422 em 23);
+  `npm run lint` e `npm run typecheck` sem achados.
+- Revisao do PR #100 (2026-10-31): tamanho do `UiIcon` por
+  `--ui-icon-size`, altura maxima do banner, `ACTION_META` e `NO_ACTIONS`,
+  helper movido para `testing/` com seletores agrupados e `@media`, pendencia
+  do `useSimulation` registrada. `npm test` 467/467 em 30 arquivos, lint e
+  typecheck sem achados. No app (`npm start`, conferencia manual do
+  usuario): icones intactos (pasta 32 px, demais 16 px) e erro longo com
+  banner limitado e rolagem propria, sem rolagem da pagina.
+- Buscas sem resultado: cor hexadecimal em `components/*.vue` e `core/` em
+  `components/*.vue` e `components/*.ts`.
+- Conferencia no app Electron (`npm start`, `--remote-debugging-port`, medicao
+  e captura por CDP, sem redimensionar a janela nativa: tamanho emulado com
+  `Emulation.setDeviceMetricsOverride`). A 1440 x 924: barra de 64 px, sem
+  rolagem horizontal, 13 botoes, todos desabilitados; leiaute equivalente ao
+  quadro `99:3895` (captura do Figma via MCP). A 1024 x 768: barra com 112 px
+  (duas linhas, chips na segunda), sem rolagem horizontal
+  (`scrollWidth` 1024), sem sobreposicao. Icones: 27 elementos de icone,
+  todos com mascara `url("data:image/svg+xml...")` e a pasta do estado vazio
+  com 32 x 32; nas capturas todos aparecem como glifos, sem quadrado solido.
+- Achado visual (corrigido nesta issue): a 1024 px a barra nao tinha
+  espacamento vertical e a linha dos botoes encostava no topo da janela
+  (`actionsTop` 0 px, barra de 88 px). Com `padding-block: var(--spacing-sm)`
+  a 1024 x 768 o primeiro botao fica a 12 px do topo e a barra mede 112 px;
+  a 1440 x 924 a barra continua com 64 px. Com um bloco de 48 px simulando o
+  banner acima de `App`, `scrollHeight` segue igual a `clientHeight` (768).
+  Remedicao por CDP no app em execucao (HMR) em 2026-10-31; capturas locais.
+- Diferencas conhecidas contra o Figma: botoes accent desabilitados mais
+  apagados; texto do painel lateral quebra em outro ponto; texto do estado
+  vazio em duas linhas (Figma: tres, por conter "(DEC-10)").
+- App empacotado (`npm run package`, macOS arm64, 2026-11-01), conferido
+  pelo usuario, que relatou tudo funcionando, sem copiar a saida: icones
+  (pasta 32 px, demais 16 px), banner com erro longo limitado e com rolagem
+  propria, redimensionamento real da janela nativa e navegacao por Tab (com
+  todos os botoes desabilitados o foco nao entra em nenhum).
+- Nao executados: pacote no ambiente-alvo e comparacao lado a lado com o
+  Figma (#40).
+
+## Estado do sistema e das CPUs (#73)
+
+Componente `SystemInspector` da entrega 2, em
+[features/system](../features/system/). `projectSystem`
+([system.ts](../features/system/system.ts)) e funcao pura sobre o snapshot:
+usa `findEligibleJobs` e `summarizeCpuOff` e apenas agrupa o resultado, sem
+regra propria de elegibilidade, despacho ou intervalos (FE-01, DEC-21). Entrega
+uma linha por CPU na ordem recebida, a fila de prontos e os pendentes; jobs
+concluidos ficam de fora, como na tabela de jobs. Se o snapshot estiver
+inconsistente (job `running` sem CPU, CPU ligada sem job, CPU sem job conhecido,
+sequencia de eventos malformada), a projecao lanca erro em vez de omitir ou
+adivinhar.
+
+Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
+(arquivo `h2kssKC2KiSuN4iAg4K1yU`, card "Estado do sistema", node 96:422):
+
+- FE-DEC-15 (REQ-02, REQ-10; DEC-21): a CPU tem so duas condicoes, "Ocupada" (com job) e "Desligada"
+  (sem trabalho elegivel). Nao existe estado "Ociosa": depois de cada despacho
+  uma CPU sem job e desligada (`offSince` recebe o tick, DEC-21), e a
+  projecao falha se encontrar CPU ligada sem job. Cada linha mostra "desde t =
+  N": na CPU desligada, o tick em que desligou (`offSince`); na ocupada, o
+  inicio da corrida ininterrupta do job atual naquela CPU, lido da ultima
+  fatia de `executions` quando ela pertence ao mesmo job e termina no tick
+  inspecionado, senao o proprio tick. Intervalos e total desligado seguem
+  DEC-21 e ficam em linha propria, abaixo da linha principal.
+- FE-DEC-16 (REQ-04, REQ-10; FE-09): o cabecalho mostra "snapshot t = N". Os parametros do
+  sistema (politica, CPUs, quantum) nao aparecem no painel: o protótipo os
+  traz so nos chips da barra ([SimulationToolbar](../components/SimulationToolbar.vue)),
+  e a projecao nao os expoe (decidido com o usuario no PR #110, ao tratar a
+  revisao; a descricao da #73 foi ajustada). A fila e os pendentes
+  seguem em duas listas com os textos do protótipo: "FILA GLOBAL DE PRONTOS"
+  (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES (DEC-02)"
+  (vazia: "Nenhum — cada tarefa tem no maximo um job incompleto."). Prontos
+  traz so jobs elegiveis em estado pronto; pendentes traz jobs nao elegiveis
+  (inclui suspensos), com estado e prazo perdido. Ambas na ordem da
+  configuracao, sem rotulo de prioridade (FE-09).
+- FE-DEC-17 (REQ-02, REQ-10; FE-09): a linha principal da CPU traz nome, condicao, job (com a cor da
+  tarefa) e "desde t". A fatia ("Fatia: x de quantum ticks") aparece so quando
+  ha job, e o progresso do job ("Progresso: y de duracao ticks") em linha
+  secundaria; ambos com rotulos distintos, como antes.
+
+Integracao: na #73 ainda nao havia uso em producao. Desde a #36 (parte 1, abaixo)
+o `App` compoe o fluxo via `useWorkspace`, e o painel do sistema fica montado na
+disposicao provisoria.
+
+### Evidencia da #73 (2026-11-01)
+
+- Figma: card "Estado do sistema" (`96:422`, arquivo `h2kssKC2KiSuN4iAg4K1yU`)
+  lido via MCP (`get_design_context`); colunas de 48/96/flex/80 px e `gap` de
+  12 px conferidos contra o codigo de referencia. A lista de CPUs tambem
+  rola como as duas listas (sem teto de CPUs ou jobs).
+- Testes: `features/system` 25/25 (projecao e componente); `npm test`
+  611 aprovados e 1 ignorado em 38 arquivos; `npm run lint` e
+  `npm run typecheck` sem achados.
+- Visual (Vite temporario fora do commit, dados tipados, navegador do app):
+  1440 x 924 com o cenario do Figma (CPU 1 e 2 desligadas, CPU 3 ocupada,
+  filas vazias) reproduz o card; 390 x 844 com 12 CPUs, 30 prontos e 30
+  pendentes: sem rolagem horizontal (`scrollWidth` 390), as tres listas com
+  rolagem propria e todos os itens no DOM. A 390 px o nome do job quebra em
+  duas linhas.
+- Nao executados: app Electron e pacote, comparacao lado a lado por captura
+  com o Figma, leitura de `projectSystem` com snapshots reais do simulador
+  no app (a #36 liga o `useSimulation`).
+
+## Fluxo da area de trabalho (#36, parte 1)
+
+`App` passa a compor o fluxo de preparar, iniciar e navegar. A logica fica em
+[useWorkspace](../composables/useWorkspace.ts), que nao guarda objetos do
+simulador: le o snapshot publicado por `useSimulation()` (DEC-23) e envia
+comandos; `App` so liga projecoes (`projectSystem`, `projectInspection`) aos
+paineis.
+
+- Preparacao: `load-config` abre o dialogo da #33, passa o texto a
+  `loadConfig` e guarda a configuracao como rascunho; carregar nao cria
+  simulador nem avanca ticks (FE-02, FE-DEC-14). Erros de conteudo e avisos de
+  periodo padrao (DEC-29) aparecem em alertas separados, com linha e motivo
+  vindos do nucleo; falha de leitura mostra a frase do main.
+- Inicio: o primeiro "Avancar tick" cria o simulador (`useSimulation()`
+  chamado so ai, por isso o `App` continua sem simulador em preparacao),
+  carrega o rascunho e publica o snapshot zero, sem executar `[0, 1)`. Exige
+  ao menos uma tarefa (FE-02). Depois, "Avancar tick" usa `next()` (reaproveita
+  o futuro gravado ou calcula um passo), "Voltar tick" usa `backward()` e
+  "Reiniciar" recarrega o rascunho no snapshot zero (FE-05).
+- Disponibilidade: Carregar configuracao so antes do inicio, porque substituir
+  uma sessao em andamento pede a confirmacao de FE-04, ainda nao implementada.
+  Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
+  alerta no ponto da acao e o ultimo snapshot valido permanece (DEC-24,
+  DEC-36); erros inesperados seguem so para o banner.
+- Disposicao provisoria: ate o Gantt (#38), o corpo do painel do diagrama
+  mostra lado a lado o estado do sistema (#73) e a inspecao (#69/#71), que no
+  Figma ficam na regiao "Detalhes" sob o diagrama. `InspectionPanel` deixou de
+  usar `<main>` como raiz, pois ja ha um `<main>` no layout.
+- FE-DEC-18 (REQ-04, REQ-05, REQ-10; FE-02, FE-04, FE-05): nesta parte, (a) o
+  simulador so e criado no primeiro "Avancar tick" e Reiniciar recarrega o
+  rascunho usado no inicio; (b) Carregar configuracao so existe antes de
+  iniciar e fica desabilitado enquanto o dialogo esta aberto; um arquivo
+  escolhido depois do inicio e ignorado, para nao mudar o que Reiniciar
+  recarrega; (c) a disposicao lado a lado e provisoria ate o Gantt (#38).
+  Justificativa: nao ha ainda a confirmacao de substituicao de FE-04, e iniciar
+  sem tarefa ou trocar a sessao em silencio perderia trabalho (FE-05).
+  Acordado com o usuario em 2026-11-01 ao delimitar a parte 1 da #36.
+- Consultas compartilhadas: [snapshotQueries](../snapshotQueries.ts) guarda por
+  snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
+  para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
+  a cada tick. Nao decide regra; so evita repetir a consulta.
+- Fora desta parte: Executar tudo (#27), sem cancelamento (DEC-49), e a edicao
+  durante a simulacao (#37). Sistema (2a), tarefas do rascunho (2b) e a
+  confirmacao de FE-04 (2c) estao na parte 2, abaixo.
+
+Verificacao (2026-11-01): `npm test` 685 aprovados e 1 ignorado em 44 arquivos,
+`npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, com um
+`window.configFile` simulado no navegador do app) a 1440 x 924: carregar um
+arquivo com periodo ausente mostra o aviso, o primeiro avancar mostra t = 0,
+avancar ate t = 5 atualiza relogio, estado do sistema e inspecao, sem rolagem
+horizontal. Nao verificado: app Electron com o dialogo real, 390 px, voltar e
+reiniciar no navegador (cobertos por testes de componente).
+
+## Preparacao da configuracao (#36, parte 2)
+
+Antes de iniciar, o usuario ve e altera o sistema (algoritmo, quantum e CPUs) e
+as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
+(tarefas do rascunho) e 2c (confirmacao de FE-04). Telas do Figma (arquivo
+`h2kssKC2KiSuN4iAg4K1yU`, pagina Telas): "Dialogo — Configurar sistema"
+(`98:1180`), "Dialogo — Editar tarefa" (`99:1089`), "Dialogo — Remover tarefa"
+(`99:1607`) e "Tela — Pronta para iniciar" (`204:2821`).
+
+- 2a, logica: [draft.ts](../features/configuration/draft.ts) monta a
+  configuracao candidata de cada edicao e a entrega a `validateConfig`; limites
+  de DEC-10 e motivos vem do nucleo, e uma edicao recusada devolve as `issues`
+  sem mudar o rascunho (FE-03, FE-11).
+- 2a, coordenacao: `useWorkspace` ganhou `dialog` (um modal por vez),
+  `applySystem`, `cancelDialog` e a acao `configure-system`, disponivel so antes
+  do inicio e sem outro modal aberto; durante a simulacao segue desabilitada ate
+  a #37.
+- 2a, componentes: `SystemDialog` (formulario com rascunho proprio, valores
+  digitados mantidos e motivos junto ao campo), `UiDialog` e `UiField`.
+- FE-DEC-19 (REQ-02, REQ-05, REQ-10; FE-03, FE-11, FE-16; DEC-37): (a) o
+  dialogo de sistema segue o Figma, com "Restaurar padroes" (so preenche o
+  formulario) e sem a faixa "Alteracao durante a simulacao" nem o texto "Para
+  trocar, reinicie a simulacao", que pertencem a #37; (b) os modais sao `div`
+  com `role="dialog"` e `aria-modal`, nao `<dialog>.showModal()`, que o jsdom
+  dos testes nao implementa; Escape e o botao de fechar cancelam, clicar fora
+  nao fecha (para nao perder o que foi digitado), o foco entra no primeiro
+  campo, fica preso no dialogo e volta ao botao de origem. Justificativa:
+  manter as regras no nucleo, seguir o Figma onde ele define a tela e nao
+  perder trabalho em silencio (FE-05). Acordado com o usuario em 2026-11-01.
+- Nao feito nesta parte: tarefas do rascunho (2b), confirmacao de FE-04
+  (2c), edicao durante a simulacao (#37), Executar tudo e cancelamento (#27).
+
+Verificacao (2026-11-01, 2a): `npm test` 953 aprovados e 1 ignorado, `npm run
+lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
+abrir o dialogo, aplicar valores, motivos do nucleo, restaurar padroes e
+cancelar. No navegador do app (Vite) a 1440 x 924 foi conferido o fluxo
+completo do conjunto 2a a 2c, sem repetir por PR; app Electron com o dialogo
+real de arquivo e larguras menores nao foram verificados.
 
 ## Verificacao e pendencias tecnicas
 

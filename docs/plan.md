@@ -1,6 +1,6 @@
 # Plano e acompanhamento
 
-Atualizado em 2026-10-31. Escopo, evidencias e trabalho atual para humanos e
+Atualizado em 2026-11-01. Escopo, evidencias e trabalho atual para humanos e
 agentes; o estado de cada item fica no [GitHub Project](https://github.com/users/ediasv/projects/2).
 Leia a [especificacao](specification.md) e a [arquitetura](architecture.md).
 
@@ -54,6 +54,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   Concluida no PR #48 (DEC-13).
 - #11 Resolver Q-01/Q-03 aplicaveis ao modelo e convencao inicial dos snapshots.
   Concluida em 2026-10-16: DEC-09, DEC-10 e DEC-11; Q-07 aberta para E2.
+  Reaberta em 2026-11-01 pela #25 para registrar DEC-38 (uma ativacao por
+  vez) e fechada de novo no mesmo dia: DEC-38 foi retirada do PR #101, e
+  DEC-09 e DEC-02 continuam valendo (justificativa em DEC-02).
 - #12 Implementar ativacoes e elegibilidade sequencial por tarefa.
   Concluida no PR #49 (merged).
   DEC-13: a regra do job mais antigo incompleto (DEC-02) e conferida somente
@@ -61,7 +64,9 @@ Requisitos: REQ-01, REQ-02, REQ-03, REQ-07, REQ-08.
   configuracao, ativacoes em cada fronteira (incluindo snapshot 0), prazo
   individual e elegibilidade de um job incompleto por tarefa. Evidencia:
   `npm test` 105/105 no merge `5242779`, `npm run lint` e `npm run typecheck`
-  aprovados. Lacunas da revisao seguem na #51.
+  aprovados. Lacunas da revisao seguem na #51. Reaberta e fechada de novo em
+  2026-11-01: DEC-38 foi retirada, e o codigo e os testes atuais continuam
+  corretos.
 - #13 Implementar despacho global e execucao por tick com politica de teste.
   Concluida no PR #50 (merged, `5e525c5`; DEC-07 aceita, DEC-14). O motor injeta uma politica,
   valida a decisao, despacha globalmente, executa cada tick, registra
@@ -276,14 +281,71 @@ Requisito: REQ-07.
 Requisitos: REQ-04, REQ-05.
 
 - #23 Armazenar/restaurar snapshots completos, cursor e estado dos sorteios.
+  Concluida no PR #109 (merged, `51dd7bf`, 2026-11-01; issue fechada).
+  Evidencia (2026-11-01, branch `feat/23-historico-snapshots`, antes do
+  merge, com a main integrada): `restoreState` em `src/core/snapshot.ts`,
+  `SnapshotHistory` em `src/core/history.ts`, `restore` e cursor em
+  `src/core/simulator.ts`, testes em `src/core/snapshot.test.ts`,
+  `src/core/history.test.ts` e `src/core/simulator.history.test.ts`;
+  `npm test` 632/632 em 40 arquivos (base: main com 612 em 38),
+  `npm run lint` e `npm run typecheck` sem erros. Prova de restauracao em
+  dois cenarios (empates residuais; fatia e progresso parciais), conferida
+  com mutacoes em `restore`: limpar eventos, semear `drawState`, nao
+  restaurar, zerar `sliceElapsed` e zerar `executed` derrubam a prova.
+  Memoria: copia integral por passo mantida (DEC-30), sem copia extra por
+  passo, com medicao no Node 24.22.1 registrada em DEC-35. Contrato em
+  DEC-35; PR #106 (mesma issue) avaliado e descartado em DEC-35.
 - #24 Implementar avancar/retroceder reutilizando futuro ainda valido.
+  Concluida no PR #112 (merged, `ba14179`, 2026-11-01; issue fechada).
+  Evidencia (branch `feat/24-navegacao-historico`, antes do merge): `Simulator.forward()`/`backward()`, `canForward()` e
+  `SimulationRefusal` (`src/core/refusal.ts`); `useSimulation` com `forward`,
+  `backward` e `next`, publicando o snapshot do cursor; categoria `refused` em
+  `commandFailure`. Contrato em DEC-36. Testes em
+  `src/core/simulator.navigation.test.ts`, `useSimulation.test.ts` e
+  `errors.test.ts`. `npm test` 669/669 em 42 arquivos (base: main com 653 em
+  41), `npm run lint` e `npm run typecheck` sem erros. Botoes ficam na #36 e
+  recusar `tick()` com tudo terminado na #27.
 - #25 Resolver Q-02: matriz de alteracoes validas e seus efeitos.
   Pendencia herdada da #9 (DEC-12): o modelo tem `suspended`, mas nao tem
   eventos de suspensao/retomada; definir esses eventos junto com a matriz.
+  Concluida no PR #101 (squash merge `110e4ec`, 2026-11-01; issue fechada).
+  DEC-37 aceita pelo usuario (edicao durante a simulacao: recalculo do tick
+  a partir de `t-1` com a lista de edicoes do tick, estado por tarefa
+  aplicado ao job mais antigo incompleto, caracteristicas, inclusao e
+  exclusao, parametros do sistema e eventos de suspensao, retomada,
+  forcamento e CPUs). DEC-38 (uma ativacao por vez) retirada antes do
+  aceite; DEC-02 ganhou a justificativa completa e DEC-09 continua valendo.
+  A matriz foi numerada DEC-32 e DEC-35 durante o PR; DEC-37 desde o merge
+  com a `main` (#23 e #24 ocuparam DEC-35 e DEC-36). #11 e #12 reabertas e
+  fechadas de novo; #26, #37 e #38 atualizadas. Verificacao: mudanca so
+  documental; links locais e IDs DEC conferidos por script (DEC-01 a
+  DEC-38, sem lacunas nem duplicatas), `oxfmt --check` ok e CI `test`
+  aprovado no PR. Testes, lint e typecheck locais nao aplicaveis.
 - #26 Aplicar edicoes atomicas e invalidar futuro somente apos validacao.
-  Registrar os eventos de suspensao/retomada definidos na #25 a cada edicao.
-- #27 Implementar execucao completa cancelavel e tratar Q-06.
+  Issue fechada no GitHub, com PRs #114 a #119 e #136 mergeados (`6f5a3ae` a
+  `6716212`) e o PR #137 (`760c5f2`, exclusao de tarefas, DEC-47).
+  Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
+  `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
+  suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
+  Inclusao e exclusao de tarefas (DEC-46 e DEC-47) no nucleo; interface e
+  comando `edit` do adaptador ficam na #37. Entregue em 7 PRs da serie;
+  conferencia dos criterios em "Trabalho atual" (item 7).
+- #27 Implementar execucao completa e detectar falta de progresso.
+  DEC-49 aceita em 2026-11-01: guardar todo o historico, interromper por
+  falta de progresso conforme Q-06 e nao oferecer cancelamento; nucleo
+  implementado em 2026-11-01 (`runAll()`, `getProgress()` e recusa de `tick()`
+  com tudo terminado), integrado na `main` pelo PR #139 (`1d70245`); issue fechada; interface na #36.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
+  Concluida no PR #140 (merged, `cd67bc7`, 2026-11-01); issue fechada. Testes novos nos arquivos
+  dos temas, sem arquivo de cenarios: restauracao com edicao gravada e
+  `findInconsistencies` em cada passo em `simulator.navigation.test.ts`;
+  matriz de recusas por tipo da matriz (inclui exclusao, DEC-47) com estado,
+  cursor, historico e edicoes inalterados, e proximo tick igual a execucao sem
+  recusa, em `simulator.edit.test.ts`. Ramificacao, falta de progresso e
+  execucao completa x passo a passo ja tinham testes (ver PR). Verificacao:
+  `npm test` 1250/1250 em 62 arquivos; `npm run lint` e `npm run typecheck`
+  sem erros. Mutacao temporaria removendo o rollback de `Simulator.edit`
+  derruba 28 testes; codigo restaurado.
 
 ### E4: Configuracao e arquivos
 
@@ -364,7 +426,8 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   da #37 em 2026-10-28. Concluida no PR #98 (merged, `d43962b`,
   2026-10-30): `loadConfig` aplica `DEFAULT_TASK_PERIOD` (15)
   antes do `validateConfig` e devolve `warnings` (`ConfigLoadWarning`) no
-  sucesso. Evidencia: bloco `default period (DEC-29)` em
+  sucesso. Desde a #92, tambem preserva os avisos quando a validacao semantica
+  falha. Evidencia: bloco `default period (DEC-29)` em
   `src/core/loadConfig.test.ts` (ausente e zero com aviso por linha, sem
   avisos com periodo positivo, simulacao igual a periodo 15 com dez
   ativacoes, erro de outro campo mantido, prazo derivado validado com periodo
@@ -378,12 +441,98 @@ Requisitos: REQ-05, REQ-06; #29 tambem cobre REQ-10.
   aviso da conversao ficou na #92. Nao verificado: exibicao na interface
   (#36).
 - #33 Carregar arquivo escolhido pelo usuario via processo principal e preload.
+  Concluida no PR #99 (merged, `616629d`, 2026-11-01; issue fechada em
+  2026-11-01). Codificacao decidida pelo
+  usuario: UTF-8 com ou sem BOM; conteudo que nao e UTF-8 valido e rejeitado
+  como falha de leitura (DEC-32). API em DEC-33 (aceita pelo usuario em 2026-10-31):
+  `src/shared/configFile.ts` (canal e tipos), `src/main/configFile.ts`
+  (leitura, sem lancar), `src/preload/configFileApi.ts` (unica funcao, sem
+  argumentos) e o canal IPC em `src/main/main.ts`; lint impede `shared/` de
+  importar Node, Electron, Vue ou outras camadas. Evidencia (2026-10-31):
+  testes novos em `src/main/configFile.test.ts` (sucesso com espaco e acento,
+  BOM, arquivo vazio, inexistente, diretorio, `EACCES`/`EPERM`, Latin-1,
+  UTF-16, erro do sistema, erro sem mensagem, cancelamento, dialogo sem
+  caminho, arquivo removido apos a escolha) e
+  `src/preload/configFileApi.test.ts` (canal sem argumentos, argumento do renderer
+  ignorado, so `openConfigFile` exposta); com `fatal: false` os dois testes
+  de UTF-8 falham. `npm test` 442/442, `npm run lint` e `npm run typecheck`
+  aprovados; `npm run package` gera o app, e nele a pagina ve
+  `window.configFile` so com `openConfigFile` e `require`/`process`
+  indefinidos (consulta por CDP). Verificacao manual no aplicativo
+  (`npm start`, macOS, 2026-10-31) executada pelo usuario, que relatou todos
+  os casos como esperados, sem copiar a saida: `pasta ç/config ação.txt` e
+  `outra pasta/sem extensao` carregados, cancelamento como `canceled`,
+  arquivo Latin-1 como `not-utf8` e arquivo sem permissao como
+  `permission-denied`. Nao verificado: disco externo e outras plataformas.
+  Revisao do PR #99 (2026-10-31, commits `7d731c9` e `0e0ac78`; mudancas
+  em DEC-32 e DEC-33 aceitas pelo usuario): byte NUL rejeitado como
+  `not-utf8` (UTF-16 sem BOM), limite de 1 MiB com motivo `too-large`,
+  codigos de erro herdados de `Object.prototype` tratados como `unknown`,
+  motivo do sistema sem o caminho repetido, canal atendido so para a pagina
+  do app (`src/main/trustedSender.ts`), pedido com dialogo aberto
+  compartilha o resultado e lint impede `core/` de importar `shared/`.
+  Evidencia: testes novos em `src/main/configFile.test.ts` e
+  `src/main/trustedSender.test.ts`; `npm test` 472/472, `npm run lint` e
+  `npm run typecheck` aprovados; regra de lint conferida com arquivo
+  temporario em `src/core/`. Verificacao manual (`npm start`, macOS,
+  2026-10-31) executada pelo usuario pelo console do DevTools, que relatou
+  "tudo funciona", sem copiar a saida. Roteiro: arquivo valido carregado
+  (remetente aceito); opcionais: UTF-16 sem BOM como `not-utf8`, arquivo de
+  1,05 MiB como `too-large`, cancelamento como `canceled` e duas chamadas
+  simultaneas com um so dialogo. App empacotado (`npm run package`, macOS arm64, 2026-11-01) conferido
+  pelo usuario pelo console do DevTools, que relatou tudo funcionando, sem
+  copiar a saida: arquivo valido carregado (remetente `file:` do `index.html`
+  aceito), cancelamento como `canceled`, `require` e `process` indefinidos.
+  Nao verificado: disco externo, outras plataformas e pacote no
+  ambiente-alvo.
 - #34 Testar arquivos validos/invalidos e falhas de leitura, sem caminho fixo.
-- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Aberta;
-  resolver antes de a #36 consumir o diagnostico. Inclui, desde a revisao do
-  PR #98, a falha de carga que perde o aviso do periodo padrao (DEC-29).
+  Concluida no PR #107 (merged, `9c97048`, 2026-11-01; issue fechada em
+  2026-11-01). Evidencia (2026-10-31): `src/core/loadConfig.test.ts`
+  ganhou a regra de inteiros em cada campo numerico (fracionario e alem da faixa
+  exata nos 7 campos, zero CPUs), campos obrigatorios vazios e 300 tarefas;
+  `src/main/configLoad.test.ts` (novo, 46 testes) le arquivos reais de
+  diretorio temporario e passa por `readConfigFile` e `loadConfig` (e
+  `openConfigFile` nos testes de dialogo e cancelamento): validos
+  (CRLF, CR, BOM, espacos, linhas em branco, `;` final), invalidos (sintaxe e
+  nucleo, linha original apos linhas em branco e CR), falhas de leitura
+  (inexistente, diretorio, sem permissao real, nao UTF-8, UTF-16 sem BOM,
+  acima do limite, vazio como erro de conteudo, cancelamento) e qualquer nome e
+  local (A.3.3.4). Busca estatica `grep -rnE "defaultPath|filters|readFileSync|\.(txt|cfg|conf)['\"]" src --exclude='*.test.ts'`
+  so acha texto em `src/renderer/docs/architecture.md:503`, nenhum codigo com
+  caminho fixo. Teste de permissao negada rodou em darwin sem root (nao foi
+  pulado). Mutacoes temporarias (minimo de CPUs em 0; sem a checagem de NUL no
+  decodificador) fizeram os testes falharem. `npm test` 587/587 em 36 arquivos
+  (base: 517 em 35), `npm run lint` e `npm run typecheck` aprovados. Defeito do
+  plano: os bytes `52 4D 00 FF` ja caem na decodificacao UTF-8 estrita, entao
+  foi incluido o caso UTF-16 sem BOM, o unico que falha sem a checagem de NUL.
+  As mensagens seguem o formato do nucleo da epoca; a #93 depois tirou o
+  valor do prefixo dos problemas do nucleo.
+  Verificacao manual no aplicativo nao executada pelo agente: o carregamento
+  completo depende da interface (#36); `window.configFile.openConfigFile()` pelo
+  DevTools e um arquivo em outro volume (A.3.3.4) ficam com o usuario. Nao
+  verificado: pacote no ambiente-alvo (#44).
+- #92 Distinguir valor ausente e origem nos diagnosticos de carga. Concluida
+  no PR #102 (merged, `3a6b948`, 2026-10-31; issue fechada em 2026-10-31):
+  `ConfigParseIssue` expoe `valueKind` (`received`, `missing`, `combined`) e
+  `origin` (`syntax`, `core`, `default-period`), sem alterar `value` nem as
+  mensagens de DEC-19; `loadConfig` preserva `ConfigLoadWarning[]` em falhas
+  semanticas apos aplicar o periodo 15. Testes cobrem sintaxe com valor
+  ausente, problema `combined` do nucleo e conversao que causa falha no prazo
+  da ultima ativacao. Evidencia (PR #102): `npm test` 432/432, `npm run lint`,
+  `npm run typecheck`, `git diff --check` e links/IDs locais conferidos.
+  Pendente: DEC-34 continua proposta na arquitetura, embora o codigo esteja
+  em `main`; falta o aceite do usuario ou a revisao da decisao. Nao executado:
+  interface (#36) e ponte main/preload (#33).
 - #93 Decidir se o valor recebido aparece duas vezes nos diagnosticos do
-  nucleo. Aberta (decisao sobre DEC-19); depende do merge do PR #84.
+  nucleo. Decisao do usuario (2026-11-01): mostrar o valor uma vez; o
+  `loadConfig` acrescenta so linha e campo aos problemas do nucleo, cujas
+  mensagens ja citam o valor, inclusive quando texto e numero convertido
+  diferem (DEC-19 revista). O texto escrito continua em `value`; erros de
+  sintaxe e o aviso de periodo padrao mantem `(valor ...)`. Concluida no PR #120
+  (squash merge `220e35c`, 2026-11-01). Evidencia (2026-11-01): os testes
+  de mensagem completa em `loadConfig.test.ts`, `configLoad.test.ts` e
+  `demoConfigs.test.ts` falharam antes da mudanca (37); depois, `npm test`
+  669/669, `npm run lint` e `npm run typecheck` aprovados.
 - #94 Decidir se a checagem do algoritmo no parser e sintaxe ou regra do
   nucleo. Decisao do usuario (2026-10-28): o nucleo decide se o algoritmo e
   valido (DEC-19 e DEC-10 revistas). Concluida no PR #95 (merged,
@@ -408,11 +557,42 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   de tarefa, SVG). Concluida no PR #76 (merged, `5dd741f`, 2026-10-24);
   apenas documentacao, links e IDs conferidos, sem build.
 - #36 Implementar controles de configuracao, execucao e navegacao no historico.
+  Parte 1 (PR #113, `9594d2d`): carregar, iniciar, avancar, voltar, reiniciar e
+  paineis #73/#69/#71 montados; `useSimulation` ligado via `useWorkspace`
+  (pendencia da #72 resolvida). Ver
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#fluxo-da-area-de-trabalho-36-parte-1).
+  Parte 2a (Sistema): ver
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#preparacao-da-configuracao-36-parte-2).
+  Faltam as tarefas do rascunho (2b), a confirmacao de FE-04 (2c) e Executar
+  tudo (nucleo pronto na #27, PR #139; falta a interface).
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
+  Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
+  issue atualizada em 2026-11-01.
 - #38 Desenhar o Gantt com tarefas ordenadas, CPUs, eventos e legenda.
-  Depende dos eventos de suspensao/retomada da E3 (#25/#26): sem eles os
-  trechos suspensos nao podem ser reconstruidos (pendencia de DEC-12).
+  Depende dos eventos de DEC-37 registrados pela #26: trechos suspensos e
+  forcados e lacunas de CPU removida (pendencia de DEC-12); issue atualizada
+  em 2026-11-01.
 - #39 Exportar imagem integral dos dados, sem screenshot nem corte temporal.
+  Em andamento, parte 1 (nao fecha a issue): gravacao pelo processo principal
+  (`src/shared/imageFile.ts`, `src/main/imageFile.ts`, `src/preload/imageFileApi.ts`,
+  canal `image-file:save`, mesmo padrao da #33; falha com caminho e motivo,
+  cancelamento nao e erro) e SVG gerado so dos dados do ultimo snapshot do
+  historico (`src/renderer/features/export/ganttSvg.ts`): linhas por tarefa em ID
+  decrescente, trechos de execucao com CPU e job, prontas tracejadas, faixas de
+  CPU desligada, marcadores por evento empilhados no mesmo instante, instante
+  atual e legenda; sem teto de ticks. Acordado com o usuario em 2026-11-01:
+  exportar em qualquer passo (resultado parcial identificado no titulo,
+  FE-18; DEC-41, aceita). Layout do SVG conforme o frame "Exportacao SVG - layout da imagem" da
+  pagina Telas do Figma (eixo no topo, raias por tarefa, divisor PROCESSADORES,
+  raias de CPU, cartao de legenda; 73 px por tick; titulo com nome do arquivo
+  e data da exportacao). Botao "Exportar SVG" ligado em `App` e `useWorkspace`. Pendente (depende da
+  #26, PRs #115 a #119, rascunhos): trechos suspensos e forcados e lacuna de CPU
+  removida; revisar o SVG quando a #38 desenhar o Gantt na tela, para
+  compartilhar a apresentacao em vez de manter duas (hoje o Gantt na tela nao
+  existe). Verificacao: `npm test` 850/850 (1 ignorado, apos sincronizar com a `main`), `npm run lint` e
+  `npm run typecheck` aprovados; SVG gerado com `demoConfigs/05` lido como XML
+  bem formado e aberto no painel de navegacao do app, sem conferencia visual
+  detalhada (#40). Nao verificado: gravacao pelo dialogo real do Electron.
 - #40 Verificar visualmente estados, controles, legibilidade e exportacao extensa.
 - Planejamento do frontend (#35 a #40, PR #61):
   [spec de apresentacao](../src/renderer/docs/specification.md) e [arquitetura propria](../src/renderer/docs/architecture.md) concentram o
@@ -434,12 +614,14 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   (#40). O `ErrorBanner` ainda usa cores de tema claro, a adaptar na #70.
   Detalhes e evidencia em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#fundacoes-visuais-68).
-- #69 Preparar os dados de apresentacao para a inspecao. Implementacao local
-  iniciada em `src/renderer/features/inspection/inspection.ts`, com projecoes
-  puras para tick, tarefas, jobs, estados, elegibilidade, perda de prazo,
-  tarefas aguardando/terminadas e CPU desligada; jobs futuros sao referencias
-  de apresentacao sem progresso ou estado atual. Teste focado e parte da suite
-  completa passam; PR separado ainda pendente.
+- #69 Preparar os dados de apresentacao para a inspecao. Concluida no PR #103
+  (merged, `48cf6d5`, 2026-10-31), com correcoes da revisao no PR #104
+  (merged, `53e3a4c`, 2026-10-31), que fechou a issue.
+  `src/renderer/features/inspection/inspection.ts` projeta tick, tarefas,
+  jobs, estados, elegibilidade, perda de prazo, tarefas aguardando/terminadas
+  e CPU desligada usando `findEligibleJobs` e `summarizeCpuOff`, sem
+  reimplementar regras do nucleo; jobs futuros sao referencias de
+  apresentacao sem progresso ou estado atual. Evidencia em conjunto com a #71.
 - #70 Implementar controles e mensagens reutilizaveis do renderer. Concluida
   no PR #97 (merged, `f1ced12`, 2026-10-30): `UiIcon` (SVGs do Figma
   por mascara), `UiButton`, `UiIconButton`, `UiAlert` e `ErrorBanner` sobre
@@ -449,14 +631,49 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   visual com o Figma nao executados.
   Detalhes em
   [arquitetura do renderer](../src/renderer/docs/architecture.md#elementos-basicos-70).
-- #71 Apresentar tarefas e jobs com selecao independente do tempo. Componentes
-  isolados em `src/renderer/features/inspection/` mantem selecao independente
-  do tick e cobrem teclado, estados separados e job futuro sem restaurar o
-  tempo. Teste focado e parte da suite completa passam; integracao com
-  historico/cursor real permanece dependencia de #36/#23/#24; PR separado
-  ainda pendente.
-- #72 Compor a area de trabalho vazia em preparacao.
+- #71 Apresentar tarefas e jobs com selecao independente do tempo. Concluida
+  no PR #103 (merged, `48cf6d5`) e PR #104 (merged, `53e3a4c`, 2026-10-31,
+  fechou a issue). `TaskList`, `TaskDetails`, `JobTable` e `InspectionPanel`
+  em `src/renderer/features/inspection/` mantem selecao independente do tick,
+  com teclado (Enter/Espaco), listas rolaveis e job futuro selecionavel sem
+  restaurar o tempo. O PR #104 reutiliza os rotulos em portugues entre lista e
+  detalhes, reconcilia a tarefa selecionada quando os dados mudam e limpa so o
+  job que deixou de existir. Evidencia: PR #103 com `npm test` 429/429,
+  typecheck, `oxlint` e `oxfmt --check` dos arquivos da implementacao, e
+  verificacao visual com fixtures temporarias (1440x924 e 390x844); PR #104
+  com testes focados 8/8, `npm test` 432/432, typecheck, `oxlint`, `oxfmt
+  --check` do escopo alterado e `git diff --check`. `npm run lint` completo
+  nao passou nos worktrees desses PRs por um panic do `oxfmt` em Markdown.
+  Reproduzido em 2026-10-31 num checkout local: o panic vem so de
+  `docs/references/como-funciona-escalonamento-em-tempo-real.md`, arquivo
+  nao rastreado; nenhum arquivo rastreado o causa. Nao integrado ao `App.vue` (#72) nem ao historico/cursor
+  real, que depende de #36/#24 (#23 concluida).
+- #72 Compor a area de trabalho vazia em preparacao. Concluida no PR #100
+  (merged, `2efe280`, 2026-11-01; issue fechada em 2026-11-01): `App` mostra a preparacao estatica (barra, painel de tarefas e
+  Gantt com estado vazio, 13 acoes desabilitadas) sem criar simulador; cinco
+  componentes novos, nove icones do Figma e `size` no `UiIcon`; decisoes em
+  FE-DEC-14. `npm test` 460/460 em 29 arquivos, lint e typecheck aprovados;
+  app conferido por CDP a 1440 x 924 e 1024 x 768. Achado de espacamento
+  vertical da barra a 1024 px corrigido (`padding-block`), junto com a altura
+  da pagina com o banner de erro. Revisao do PR: tamanho do `UiIcon` por
+  propriedade customizada, altura maxima do banner, rotulos e icones das
+  acoes centralizados (`ACTION_META`, `NO_ACTIONS`), helper de CSS movido
+  para `testing/`; `npm test` 467/467 em 30 arquivos, lint e typecheck
+  aprovados; icones e banner com erro longo conferidos no app pelo usuario.
+  App empacotado (`npm run package`, macOS arm64, 2026-11-01) conferido pelo usuario, que relatou tudo
+  funcionando, sem copiar a saida: icones (pasta 32 px, demais 16 px), banner
+  com erro longo, redimensionamento real da janela e navegacao por Tab. Nao
+  executados: comparacao lado a lado com o Figma (#40) e pacote no
+  ambiente-alvo. Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#composicao-72).
 - #73 Apresentar o estado do sistema e das CPUs sem alterar a simulacao.
+  Concluida no PR da #73 (a preencher no merge): `projectSystem` e
+  `SystemInspector` isolados, sem integracao ao `App` (a #36 compoe), conforme
+  o card `96:422` do Figma; FE-DEC-15 a FE-DEC-17. `npm test` 611 aprovados
+  (1 ignorado), lint e typecheck aprovados; conferido a 1440 x 924 e
+  390 x 844 com dados tipados. Nao executados: app Electron e comparacao
+  lado a lado com o Figma (#40). Detalhes em
+  [arquitetura do renderer](../src/renderer/docs/architecture.md#estado-do-sistema-e-das-cpus-73).
 
 ### E6: Entrega e demonstracao
 
@@ -466,7 +683,53 @@ Requisito: REQ-10; integracao de todos os anteriores.
 - #42 Revisar comentarios de componentes/funcoes e justificativas das decisoes.
 - #43 Executar testes, lint e typecheck; registrar falhas preexistentes separadamente.
 - #44 Gerar e testar pacote sem instalar runtime extra no ambiente-alvo.
+  Issue fechada no GitHub; sem codigo alterado. Alvos
+  propostos em DEC-42 (aceite do usuario pendente): Windows x64 com o
+  `Setup.exe` do Squirrel (zip vetado pelo portal) e macOS, testado por ediasv
+  (abaixo). Verificacao no Windows (2026-11-01,
+  Windows 10 Pro 10.0.19045, Node 24.22.1 (fixado; refeito apos a revisao
+  do PR #122, a primeira rodada usou Node 25.8), pacote 1.0.5, `npm ci` e
+  `npm run make`, Setup.exe de 146 MiB), sempre com o PATH sem `node.exe` nem
+  `npm` e com uma copia de `demoConfigs/02-edf-figura-2-6.txt` em caminho curto,
+  escolhida pelo dialogo nativo (carrega como EDF, quantum 25, 1 CPU; ao avancar
+  ate t=53, o painel mostra o job 3 da tarefa 1 executando desde 45, sem perda
+  de prazo, como o README dos cenarios): (1) app desempacotado
+  (`out/os-sim-win32-x64/os-sim.exe`): abre e passa no roteiro. (2) `Setup.exe`
+  em modo silencioso instala em `%LOCALAPPDATA%/os_sim/app-1.0.5` e cria atalho,
+  mas **na primeira tentativa o app instalado nao abriu**: saia de imediato com
+  "Sandboxed processes cannot read ... its ACL has an entry for an AppContainer
+  package SID but none for ALL APPLICATION PACKAGES" (Electron 44,
+  `install_dir_access.cc`). A entrada vem herdada de `%LOCALAPPDATA%` e parece
+  propria desta maquina (nao confirmado em outra). Depois de
+  `icacls <pasta> /grant *S-1-15-2-1:(OI)(CI)(RX)`, a correcao sugerida pelo
+  proprio Electron, o app instalado abriu e repetiu o roteiro ate t=53. Ambas as
+  instalacoes foram desfeitas com `Update.exe --uninstall`. Refeito com
+  Node 24.22.1 (`npm ci`, `npm run make`, `Setup.exe` novo): sem o `icacls` o
+  app instalado fecha de novo; com ele abre e chega a t=53 igual. `npm test`
+  690 aprovados (1 ignorado), `npm run lint` e `npm run typecheck` aprovados no
+  Node 24.22.1.
+  Nao verificado: maquina limpa sem Node (a instalacao em maquina sem essa ACL
+  nao foi testada); Linux (so fica fora da entrega se a
+  DEC-42 for aceita; ate la, escopo pendente); Executar tudo (#27) e Exportar SVG (#39),
+  desabilitados no app. Um carregamento anterior por engano abriu outro
+  arquivo (nao de `demoConfigs/`) e nao conta. Um processo do app
+  desapareceu sem causa identificada em duas ocasioes (uma no avanco rapido de
+  56 ticks a 60 ms); nao repetiu com 150 ms entre cliques.
+  macOS (2026-11-01): ediasv rodou `npm run make` e relatou ao usuario que
+  funcionou, sem copiar a saida; versao do macOS e do Node, artefato gerado e
+  se o app foi aberto com um cenario nao foram registrados. Formato da entrega
+  no macOS (so ha o zip, vetado pelo portal) segue em aberto.
 - #45 Preparar cenarios de demonstracao, incluindo sobrecarga e prazo perdido.
+  Parcial (Refs #45, issue aberta): 10 arquivos em
+  [`demoConfigs/`](../demoConfigs/README.md) (figuras 2.5/2.6 em RM e EDF,
+  varias CPUs com CPU desligada e religada, preempcao/quantum/sorteio,
+  aperiodica com periodo padrao e avisos, sobrecarga com perda de prazo,
+  simulacao longa, dois arquivos com erros), cada um com descricao e
+  resultado esperado no README e lido do disco por
+  `src/main/demoConfigs.test.ts` (carga + simulacao; resultados derivados a
+  mao; mutacao conferida no 07). Fora do pacote do aplicativo. Pendentes:
+  conferencia de cada cenario na interface e roteiro de edicao e retrocesso
+  (dependem de E3 e E5, #23 a #28 e #36 a #40).
 - #80 Padronizar a versao do Node entre desenvolvimento, CI e release.
   Concluida no PR #81 (merged, `5a569db`), escopo ampliado para
   incluir o `npm run lint` global reprovado no Windows por CRLF: Node unico
@@ -511,24 +774,229 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
-- Estado (2026-10-31): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3 nao iniciada. E4: #29, #30, #31, #32, #87 e #94 concluidas;
-  #33, #34, #92 e #93 abertas. E5: #35, #67, #68 e #70 concluidas;
-  #69 e #71 implementadas localmente com testes, aguardando PRs separados e
-  revisao; demais itens visuais (#36 a #40, #72, #73) nao iniciados.
-  E6: #80 concluida; demais abertas.
-- #32 concluida no PR #96 (merged, `00ee0f1`, 2026-10-29).
-- #70 concluida no PR #97 (merged, `f1ced12`, 2026-10-30), evidencia em E5.
-- #89 concluida no PR #98 (merged, `d43962b`, 2026-10-30), evidencia em E4.
-- Em andamento: #69 e #71, nesta ordem de dependencia. Abrir primeiro o PR
-  da #69 e depois o PR da #71, sem misturar a composicao da #72.
-- Proximo passo: separar os commits/PRs de #69 e #71 e registrar os links;
-  manter os diagnosticos de DEC-19 no escopo da #34.
-- Pendencias: Q-02 e Q-06 conforme fase; Q-08 resolvida por DEC-29 (sem
-  confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
+- #133 concluida (issue fechada; PR #134 mergeado, `d6b2bed`): ID de tarefa como texto livre.
+  Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
+  Feito no PR #134 (rascunho): DEC-48 (formato, unicidade sem caixa, ordem
+  natural, inclusao com ID sugerido ou digitado, rotulos), criterios na
+  [specification.md](specification.md#req-06-arquivo-texto), `TaskId` como
+  texto no nucleo (parser, validacao, ordem natural, edicao) e no SVG (escape
+  e rotulo longo). Verificacao: `npm test` 1143/1143 antes da inclusao (baseline 1067),
+  `npm run lint` e `npm run typecheck` sem erros; trace e SVG de IDs
+  numericos iguais aos de antes (testes de caracterizacao).
+  Inclusao com ID sugerido ou digitado entregue depois do merge do PR #119
+  (`usedTaskIds` no lugar de `maxTaskId`); `npm test` 1189/1189.
+  Revisao do PR #134: corrigidos o limite da sugestao numerica e caracteres
+  invalidos em XML no SVG; testes focados cobrem ambos. `npm test` 1192/1192,
+  `npm run typecheck` e `npm run lint` aprovados.
+  DEC-48 e escolhas da revisao aceitas pelo usuario em 2026-11-01.
+  Nao verificado: a interface rodando (o PR cobriu so nucleo e SVG).
+
+- Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
+  Issue fechada no GitHub; evidencia ainda nao registrada neste plano.
+- #93 concluida no PR #120 (squash merge `220e35c`, 2026-11-01), evidencia
+  em E4 e decisao em DEC-19.
+- #92 concluida no PR #102 (merged, `3a6b948`, 2026-10-31), evidencia em E4.
+- #69 e #71 concluidas nos PRs #103 e #104 (merged, `53e3a4c`, 2026-10-31),
+  evidencia em E5.
+- #33 concluida no PR #99 (merged, `616629d`, 2026-11-01), evidencia em E4.
+- #34 concluida no PR #107 (merged, `9c97048`, 2026-11-01), evidencia em E4.
+- #72 concluida no PR #100 (merged, `2efe280`, 2026-11-01), evidencia em E5.
+- #45 parcial: arquivos e testes dos cenarios feitos; faltam conferencia na interface e roteiro de edicao/retrocesso (E3, E5), ver E6.
+- #23 concluida no PR #109 (merged, `51dd7bf`, 2026-11-01), evidencia em
+  E3 e contrato em DEC-35.
+- #24 concluida no PR #112 (merged, `ba14179`, 2026-11-01), contrato em
+  DEC-36; evidencia em E3.
+- #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
+  em E3 e decisao em DEC-37.
+- #26 fechada no GitHub (iniciada 2026-11-01; o PR 7/7, #137, trouxe a exclusao e a conferencia):
+  aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
+  do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
+  eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
+  PRs pequenos (acordado com o usuario em 2026-11-01); o comando `edit` no
+  adaptador fica na #37. Baseline `npm test` 669/669 em `b46d09b`; o
+  caminho geral da edicao (algoritmo e quantum) foi entregue no PR #115
+  (squash merge `45869c7`, 2026-11-01).
+  Serie de PRs empilhados (cada um sobre o anterior; so o ultimo fecha a
+  #26):
+    1. #114 revisao de DEC-37, em que so o resultado final das edicoes de
+       um tick conta (squash merge `6f5a3ae`, 2026-11-01; so documental,
+       `oxfmt --check` ok e CI `test` aprovado);
+    2. #115 (mergeado, `45869c7`, 2026-11-01) etapa de edicao no passo, edicoes por tick no historico, descarte do
+       futuro, recusa atomica por item, algoritmo e quantum. Baseline
+       `npm test` 669/669, lint e typecheck sem erros; escopo e criterios no
+       corpo do PR; motivo da recusa de regra da configuracao vem de `validateConfig`
+       (escolha do usuario). Codigo integrado na `main` pelo PR #115:
+       `src/core/edit.ts` (itens algoritmo e quantum, dobra, mudanca
+       liquida), `EditRefusal` em `refusal.ts`, `rewrite` e edicoes por
+       passo em `history.ts`, `Simulator.edit`/`getEdits` com recalculo a
+       partir de `t-1` e politica pelo algoritmo vigente, fatias vencidas
+       depois das ativacoes (DEC-22). Forma registrada em DEC-39
+       (proposta); DEC-14, DEC-22, DEC-25 e DEC-35 revistas. Evidencia
+       (2026-11-01): `npm test` 711/711 em 44 arquivos, `npm run lint` e
+       `npm run typecheck` sem erros; testes em `edit.test.ts`,
+       `history.test.ts`, `simulator.edit.test.ts` e bloco `policy source`
+       de `simulator.test.ts`. Testes que passaram de primeira (recusa
+       atomica, mudanca liquida, descarte do futuro) conferidos com
+       mutacoes: nao restaurar o estado na falha, sorteio de `t` em vez de
+       `t-1`, `rewrite` que mantem passos seguintes e recalculo a partir de
+       `t`; todas derrubam testes. Nao verificado: interface (comando
+       `edit` fica na #37) e pacote. Depois de integrar a `main`
+       (`220e35c`, com #113 e #120): `npm test` 733/733 em 47 arquivos,
+       lint e typecheck sem erros. DEC-39 aceita pelo usuario em 2026-11-01 (registrado ao abrir o #117);
+    3. #116 mergeado em `44d9595` (2026-11-01), somente preparacao
+       documental. Implementacao de CPUs em PR de continuacao na branch
+       `feat/26-3-cpus-implementation`: item `cpuCount`, eventos de existencia e
+       mudanca liquida; `wasRunning` derivado de `executions` no primeiro
+       desempate; `summarizeCpuOff` preserva IDs historicos e exclui ausencia;
+       consistencia por ID. Forma em DEC-40 (aceita pelo usuario em 2026-11-01, registrado ao abrir o #117).
+       Nao foi necessario mudar `Simulator` nem `SnapshotHistory`.
+       Evidencia local: `npm test` 794/794 em 48 arquivos, `npm run lint` e
+       `npm run typecheck` aprovados. Testes novos/estendidos em
+       `policy.test.ts`, `policies.test.ts`, `cpuOff.test.ts`,
+       `consistency.test.ts`, `edit.test.ts`, `simulator.cpuEdits.test.ts`
+       e projecoes de sistema/inspecao. RED -> GREEN conferido por tarefa;
+       regressao das projecoes conferida com a consulta antiga e revertida.
+       Revisao do PR #124 em 2026-11-01 (pr-review-toolkit): nenhum problema
+       critico; achados importantes corrigidos no proprio PR. Interface
+       interativa e pacote nao verificados; PR #124 integrado em `aaaa5f0`.
+       Limite de CPUs contra forcadas entregue no #117 (DEC-43);
+    4. #117 (mergeado, `744a384`), implementacao local: estado por tarefa, eventos,
+       limite de forcadas, interrupcao de jobs e recusas em portugues.
+       DEC-43 proposta; DEC-39/40 aceitas pelo usuario. Testes de matriz,
+       pendentes, quantum, prazos, mudanca liquida, historico e consistencia.
+       Baseline 794/794; verificacao local 875/875 testes, `npm run lint` e
+       `npm run typecheck` sem erros (2026-11-01). Revisao com
+       pr-review-toolkit (5 agentes) aplicada: inspecao de tarefa concluida,
+       lacunas de testes conferidas por mutacao, invariantes de consistencia,
+       identificador de tarefa inteiro, forcar tarefa terminada recusado e
+       comentarios. Interface e pacote nao verificados; commit `WIP` ja
+       enviado ao PR;
+    5. #118 (mergeado, `1559d97`) caracteristicas da tarefa. Itens `taskColor`, `taskDuration`,
+       `taskDeadline`, `taskArrival` e `taskPeriod`, `EditTarget.definitions`,
+       `Job.duration`, `TaskControlBlock.nextActivation` e `src/core/activation.ts`
+       (`activateDueJobs`, `activateTask`, `rescheduleNextActivation`);
+       ativacao causada por edicao registrada depois dos eventos de estado da
+       tarefa e antes dos de CPU (decisao do usuario). Forma em DEC-44
+       (proposta, aguarda aceite) e DEC-45 (envios do mesmo tick e
+       conclusao, decisoes do usuario na revisao). Baseline 932/932; evidencia
+       local (2026-11-01): `npm test` 1067/1067 em 54 arquivos, `npm run lint`,
+       `npm run typecheck` e `npx oxfmt --check` sem erros. Testes em
+       `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts` e
+       `consistency.test.ts`. Mutacoes temporarias: remover o
+       `max(..., clock)` de `rescheduleNextActivation` derruba 5 testes; fazer
+       a ativacao gravar duracao fixa derruba 100; fazer a conclusao usar
+       `definition.duration` em vez de `job.duration` passou de primeira (0 falhas
+       em 1053), lacuna fechada pelo commit `d9b6426`: agora 2 testes
+       derrubam essa mutacao. DEC-45: remover a recusa de conclusao com
+       caracteristica derruba 3 testes; remover a guarda de job criado por
+       envio anterior derruba 4. `npm test` 54 arquivos / 1067 testes. Lacuna
+       conhecida (O3) de `projectJob` tratada na #131 (ver abaixo). Editar
+       periodo 0 (aperiodica) fica fora do Projeto A (DEC-29). Nao verificado: interface e pacote. Acompanhamento em issues
+       novas (#131; refactors do `edit.ts`); Project e corpo do PR
+       #118 a atualizar com o aceite do usuario;
+    6. #119 (mergeado, `4e43467`): inclusao de tarefas; a exclusao veio no PR 7/7 (#137, item 8).
+       #118 mergeado na `main` (`1559d97`). Implementacao local sobre ela,
+       dividida em duas etapas: este PR traz a inclusao (DEC-46, proposta:
+       item `addTask`, `maxTaskId` no estado, cor padrao deterministica,
+       ativacao na etapa de edicao); a exclusao (`removeTask`, DEC-47) vem
+       depois do merge deste, num PR que fecha a #26 com a conferencia final
+       dos criterios contra os PRs 2 a 6. Testes em
+       `simulator.addTask.test.ts`, `defaultColor.test.ts` e
+       `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
+       lista de inclusoes na validacao, TCB provisorio) derrubam testes.
+       Interface e pacote nao verificados.
+    7. Ajustes de revisao da inclusao (PR #136, `6716212`,
+       sobre `4e43467`, `Refs #26`, sem fechar a issue): comentarios de
+       `createTcb` e de `defaultTaskColor` corrigidos; limite de 894 cores
+       registrado na DEC-46 (algoritmo mantido); `applyNetChange` sem
+       `isNew`, com comportamento identico (testes existentes sem alteracao);
+       dois testes novos em `simulator.addTask.test.ts` (cor repetida na mesma
+       edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
+       temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
+       derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos antes de integrar a
+       `main` (baseline 1096 mais os 2 testes novos); depois de integrar
+       `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
+       `npm run lint` e `npm run typecheck` sem erros.
+       Interface e pacote nao verificados.
+    8. PR 7/7 (#137, mergeado em `760c5f2`; exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
+       aceite do usuario) e conferencia final dos criterios da #26. Branch
+       `feat/26-7-exclusao` a partir da `main` (`4e43467`). Item `removeTask`
+       em `src/core/edit.ts`: so tarefa nunca ativada (recusa com motivo que
+       aponta encerrar); tarefa incluida no mesmo tick sai so do alvo; ID nunca
+       reusado; `applyNetChange` tira o TCB e os eventos da tarefa excluida
+       do snapshot do tick, mantendo os dos snapshots anteriores. Cor
+       distinta ignora tarefa excluida (`liveDefinitions`). Testes em
+       `simulator.removeTask.test.ts` (15). Vermelho conferido: com o
+       `edit.ts` da `main`, os 15 falham. Mutacoes (cada uma reverte e
+       derruba testes): nao limpar eventos (2 falhas), aceitar tarefa com job
+       (3), `maxTaskId` recalculado pela lista (4), `definitions` nao filtrada
+       (11), cor sem filtro de tarefa excluida (1).
+       Conferencia dos criterios da #26 (issue `ediasv/os-sim` #26, 2026-11-01),
+       por leitura dos testes existentes na branch e nos PRs 2 a 6:
+        - tabelas de estado, caracteristicas, inclusao, exclusao e parametros
+          do sistema: `simulator.taskState.test.ts`, `simulator.taskEdits.test.ts`,
+          `simulator.addTask.test.ts`, `simulator.removeTask.test.ts`,
+          `simulator.cpuEdits.test.ts` e `edit.test.ts` (edicao valida e recusa
+          com motivo);
+        - recusa atomica, estado e historico iguais: `simulator.taskEdits.test.ts`
+          ("refuses the whole edit ... (atomicity)"), `simulator.edit.test.ts`
+          ("a refused edit changes neither state, cursor nor history") e
+          `simulator.taskState.test.ts` ("refuses an entire edit without
+          changing state, future, cursor or recorded edits");
+        - mesmo tick e edicoes que se anulam (sorteio incluso): `simulator.edit.test.ts`
+          ("repeating or undoing edits in a tick equals the net change") e
+          `simulator.taskState.test.ts` (suspensao cancelada no tick, sem evento);
+        - editar no passado descarta futuro e edicoes; voltar mostra o historico:
+          `simulator.edit.test.ts` ("an edit before the latest step discards
+          later steps", "going back after a past edit shows the history");
+        - suspender/forcar com jobs pendentes respeita o mais antigo, encerrar
+          interrompe e lista em `task-finished`: `simulator.taskState.test.ts`
+          e `taskEdits.test.ts` (DEC-02);
+        - eventos na ordem da DEC-37/DEC-22 e CPUs removidas/reincluidas com
+          `findInconsistencies` vazio: `simulator.cpuEdits.test.ts`,
+          `consistency.test.ts` e o helper `edit` dos testes, que confere
+          `findInconsistencies` depois de cada edicao.
+          Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
+          (nao por mutacao de cada criterio). Verificacao executada apos o
+          merge de `origin/main` (`6716212`): `npm test` 1222 passou e 1 ignorado
+          em 62 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
+          na maquina); baseline da `main` sem os 15 novos nao reexecutado.
+          NAO verificado aqui: interface e o comando
+          `edit` do adaptador (#37), a tela (#38) e o pacote (#26 nao o cobre).
+          Mudanca de DEC-47 se o usuario recusar as decisoes de eventos ou de
+          exclusao; a conferencia depende dos testes atuais.
+- #131 com PR #135 mergeado (`1be7da1`); a issue segue aberta. O inspetor
+  do sistema mostra a duracao de cada job a partir de `Job.duration`
+  (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
+  `system.test.ts` com edicao real de duracao: falhou antes (7 em vez de 4)
+  e passa depois. Evidencia local (2026-11-01): `npm test` 1068/1068 em 54
+  arquivos, `npm run lint` e `npm run typecheck` sem erros. Nao verificado:
+  interface interativa e pacote. Proximo passo: confirmar com o usuario se a issue fecha.
+- #44 fechada no GitHub; aceite de DEC-42 pendente (ver E6).
+- #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
+- #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
+  simulador, navegacao e paineis; a issue continua aberta para o restante.
+- #36 parte 2a (Sistema) em PR, `Refs #36`; 2b e 2c empilhadas sobre ela.
+- #117 em implementacao local: estado por tarefa, suspensao, forcamento,
+  encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
+  pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
+- Pendencias de decisao: DEC-43 a DEC-46 seguem como proposta em architecture.md
+  (aceite do usuario a confirmar); DEC-34 e DEC-42 tambem seguem como proposta.
+  DEC-47 esta aceita.
+- Abertas sem entrega: #125 (resumo de CPUs desligadas) e #132 (simplificar a
+  etapa de edicao antes da inclusao), ambas da E3.
+- #27 concluida no PR #139 (merged, `1d70245`; depende do PR #138, DEC-49,
+  merged em `bb96681`): 1205/1205 testes, lint e typecheck sem falhas antes do
+  merge; 17 testes antigos que avancavam alem do termino foram ajustados. Issue
+  fechada; interface na #36.
+- Pendencias: Q-06 resolvida por DEC-49, implementada na #27 (Q-02 resolvida por DEC-37); Q-08
+  resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
-  de #36/#23/#24; a apresentacao isolada com dados tipados foi verificada.
+  de #36 (#23 e #24 concluidas); a apresentacao isolada com dados tipados foi
+  verificada.
 
 ## Como registrar uma entrega
 

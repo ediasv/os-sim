@@ -8,8 +8,11 @@
 /** Scheduling policies required by Project A (A.4). */
 export type AlgorithmId = 'RM' | 'EDF';
 
-/** Unique task identifier from the configuration; always >= 1 (DEC-10). */
-export type TaskId = number;
+/**
+ * Unique task identifier from the configuration: free text, unique ignoring
+ * case, shown as typed (DEC-48). Rules live in `taskId.ts`.
+ */
+export type TaskId = string;
 
 /** One task line of the configuration file (A.3.3), after validation. */
 export interface TaskDefinition {
@@ -70,9 +73,16 @@ export interface JobRef {
 /**
  * Lifecycle of a job. Eligibility (only the oldest incomplete job of a task
  * may run, DEC-02) is derived by the engine, not stored, so a later job can be
- * `ready` and still wait for an older one.
+ * `ready` and still wait for an older one. `interrupted` means the job was cut
+ * short by concluding its task and never completed (DEC-43). `suspended` is
+ * kept for compatibility: edits suspend the task (`TaskStatus`), never a job.
  */
-export type JobState = 'ready' | 'running' | 'suspended' | 'completed';
+export type JobState =
+    | 'ready'
+    | 'running'
+    | 'suspended'
+    | 'completed'
+    | 'interrupted';
 
 /** One activation of a task, with its own progress and deadline (REQ-03). */
 export interface Job extends JobRef {
@@ -80,6 +90,8 @@ export interface Job extends JobRef {
     activation: number;
     /** activation + relative deadline; waiting or suspension never pauses it (REQ-08). */
     absoluteDeadline: number;
+    /** Ticks this job needs, copied from the definition at activation (DEC-37). */
+    duration: number;
     /** Ticks already executed; preemption keeps it (REQ-01). */
     executed: number;
     state: JobState;
@@ -89,14 +101,21 @@ export interface Job extends JobRef {
     deadlineMissed: boolean;
 }
 
+/** User-selected task state; independent from the current job (DEC-37, DEC-43). */
+export type TaskStatus = 'ready' | 'forced' | 'suspended' | 'concluded';
+
 /**
- * Task Control Block: the single structure holding a task's characteristics
- * and every activation it generated (A.1.3). `jobs.length` is the number of
- * activations so far; the task has finished when its last job completes.
+ * Task Control Block: the single structure holding a task's characteristics,
+ * the state the user chose for it (`status`, DEC-43) and every activation it
+ * generated (A.1.3). `jobs.length` is the number of activations so far; the
+ * task has finished when its last job completes, or when an edit concludes it.
  */
 export interface TaskControlBlock {
+    status: TaskStatus;
     definition: TaskDefinition;
     jobs: Job[];
+    /** Tick of the next due activation; null once the task reached `maxJobs` (DEC-37). */
+    nextActivation: number | null;
 }
 
 /** One logical CPU. Ids run from 1 to cpuCount so they read naturally in the UI. */
@@ -123,6 +142,22 @@ export interface ExecutionSlice {
  * legend (REQ-09). Each kind gets a distinct graphic element.
  */
 export type SimulationEvent =
+    | {
+          readonly kind: 'suspension';
+          readonly time: number;
+          readonly taskId: TaskId;
+          /**
+           * CPU that was running the task's job when it was suspended, even if
+           * that job just completed at this tick; null when none was (DEC-43).
+           */
+          readonly cpuId: number | null;
+      }
+    | {
+          /** Task state changes chosen by the user at an edit (DEC-43). */
+          readonly kind: 'resumption' | 'forced' | 'unforced';
+          readonly time: number;
+          readonly taskId: TaskId;
+      }
     | {
           readonly kind: 'activation';
           readonly time: number;
@@ -164,11 +199,23 @@ export type SimulationEvent =
       }
     | {
           readonly kind: 'task-finished';
+          /** Jobs cut short by concluding the task; empty on a natural finish (DEC-43). */
+          readonly interrupted: readonly JobRef[];
           readonly time: number;
           readonly taskId: TaskId;
       }
     | {
           readonly kind: 'cpu-off';
+          readonly time: number;
+          readonly cpuId: number;
+      }
+    | {
+          readonly kind: 'cpu-added';
+          readonly time: number;
+          readonly cpuId: number;
+      }
+    | {
+          readonly kind: 'cpu-removed';
           readonly time: number;
           readonly cpuId: number;
       }
@@ -185,13 +232,20 @@ export type SimulationEvent =
 export interface SimulationState {
     clock: number;
     config: SystemConfig;
-    /** One TCB per configured task, in configuration order. */
+    /** One TCB per task, in configuration order; inclusions append (DEC-46). */
     tasks: TaskControlBlock[];
     cpus: CpuState[];
     executions: ExecutionSlice[];
     events: SimulationEvent[];
     /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-27). */
     drawState: number;
+    /**
+     * Every task ID ever used up to this snapshot, in the order they were
+     * first used, including those of removed tasks, so no ID is reused and the
+     * next suggestion is the highest number used plus one (DEC-46, DEC-48).
+     * Kept in the state so discarding the future discards the IDs created in it.
+     */
+    usedTaskIds: TaskId[];
 }
 
 /** Recursively read-only view, used so snapshot consumers cannot mutate them. */

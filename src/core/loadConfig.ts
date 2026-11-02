@@ -10,16 +10,17 @@ import {
     type ConfigInput,
     type ConfigIssue,
 } from './config';
-import { DEFAULT_TASK_PERIOD, type SystemConfig } from './domain';
+import { DEFAULT_TASK_PERIOD, type SystemConfig, type TaskId } from './domain';
 import {
     analyzeConfig,
+    type ConfigDiagnosticValueKind,
     type ConfigDraft,
     type ConfigParseIssue,
     type ConfigSourceLines,
 } from './parser';
 
 /** A task the loader changed; it never blocks loading (DEC-29). */
-export type ConfigLoadWarning = ConfigParseIssue & { readonly taskId: number };
+export type ConfigLoadWarning = ConfigParseIssue & { readonly taskId: TaskId };
 
 export type ConfigLoadResult =
     | {
@@ -30,7 +31,12 @@ export type ConfigLoadResult =
           /** One per task that received the default period, in file order. */
           readonly warnings: readonly ConfigLoadWarning[];
       }
-    | { readonly ok: false; readonly issues: readonly ConfigParseIssue[] };
+    | {
+          readonly ok: false;
+          readonly issues: readonly ConfigParseIssue[];
+          /** Warnings produced before core validation rejected the config. */
+          readonly warnings: readonly ConfigLoadWarning[];
+      };
 
 /**
  * Parses and validates the text. The core sees the file only when it has no
@@ -41,7 +47,7 @@ export type ConfigLoadResult =
  */
 export function loadConfig(text: string): ConfigLoadResult {
     const analysis = analyzeConfig(text);
-    if (!analysis.ok) return analysis;
+    if (!analysis.ok) return { ...analysis, warnings: [] };
 
     const { draft } = analysis;
     const { config, warnings } = applyDefaultPeriod(draft);
@@ -57,6 +63,7 @@ export function loadConfig(text: string): ConfigLoadResult {
     return {
         ok: false,
         issues: validation.issues.map((issue) => placeOnFile(issue, draft)),
+        warnings,
     };
 }
 
@@ -81,6 +88,8 @@ function applyDefaultPeriod(draft: ConfigDraft): {
             line,
             field,
             value,
+            valueKind: value === null ? 'missing' : 'received',
+            origin: 'default-period',
             taskId: task.id,
             message: `Linha ${line}, campo ${field}${received}: toda tarefa precisa de período maior que zero; a tarefa ${task.id} usará o período padrão de ${DEFAULT_TASK_PERIOD} ticks.`,
         });
@@ -90,9 +99,11 @@ function applyDefaultPeriod(draft: ConfigDraft): {
 }
 
 /**
- * Adds the line, field and received text to a core message without changing
- * the message. References to other tasks keep the core's ordinals (DEC-19).
- * A combined issue gets no received text: the field's own text would point
+ * Adds the line and field to a core message without changing the message.
+ * References to other tasks keep the core's ordinals (DEC-19). The received
+ * text stays out of the prefix because every core message already names the
+ * value, and showing it twice only repeats it (#93); it is still returned in
+ * `value`. A combined issue has no `value`: the field's own text would point
  * at a value that may be valid.
  */
 function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
@@ -107,12 +118,18 @@ function placeOnFile(issue: ConfigIssue, draft: ConfigDraft): ConfigParseIssue {
             : draft.taskTexts[taskIndex];
     const field = FILE_LABELS[issue.field];
     const value = issue.combined ? null : (texts[issue.field] ?? null);
-    const received = value === null ? '' : ` (valor ${value})`;
+    const valueKind: ConfigDiagnosticValueKind = issue.combined
+        ? 'combined'
+        : value === null
+          ? 'missing'
+          : 'received';
 
     return {
         line,
         field,
         value,
-        message: `Linha ${line}, campo ${field}${received}: ${issue.message}`,
+        valueKind,
+        origin: 'core',
+        message: `Linha ${line}, campo ${field}: ${issue.message}`,
     };
 }
