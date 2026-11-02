@@ -126,8 +126,10 @@ describe('useWorkspace', () => {
 
         expect(workspace.clock.value).toBe(0);
         expect(workspace.snapshot.value?.executions).toEqual([]);
-        expect(workspace.available.value.has('configure-system')).toBe(false);
-        expect(workspace.available.value.has('add-task')).toBe(false);
+        // Once started they edit the running simulation (#37), not the draft.
+        expect(workspace.available.value.has('configure-system')).toBe(true);
+        expect(workspace.available.value.has('add-task')).toBe(true);
+        expect(workspace.available.value.has('edit-task')).toBe(false);
         expect(workspace.available.value.has('step-back')).toBe(false);
     });
 

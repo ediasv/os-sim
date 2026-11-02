@@ -7,6 +7,7 @@ import PreparedWorkspace from './components/PreparedWorkspace.vue';
 import SimulationToolbar from './components/SimulationToolbar.vue';
 import TaskPanel from './components/TaskPanel.vue';
 import UiAlert from './components/UiAlert.vue';
+import EditDialog from './features/editing/EditDialog.vue';
 import WorkspaceLayout from './components/WorkspaceLayout.vue';
 import { useWorkspace } from './composables/useWorkspace';
 import ConfirmDialog from './features/configuration/ConfirmDialog.vue';
@@ -31,6 +32,8 @@ const {
     dialog,
     draftTasks,
     selectedTaskId,
+    editor,
+    confirmation,
     handle,
     dismissNotice,
     selectTask,
@@ -39,6 +42,11 @@ const {
     requestRemove,
     confirmRemove,
     cancelDialog,
+    openTaskEdit,
+    closeEditor,
+    submitEditor,
+    confirmPending,
+    cancelPending,
 } = useWorkspace();
 
 // Reasons the core gave for the form that is open; a form that closes or
@@ -101,13 +109,37 @@ const system = computed(() =>
                 @dismiss="dismissNotice(index)"
             />
         </div>
+        <!-- Rendered only while open: a closed dialog adds controls to the page. -->
+        <EditDialog
+            v-if="editor !== null"
+            :key="editor.title"
+            :title="editor.title"
+            :fields="editor.fields"
+            :initial="editor.initial"
+            :errors="editor.errors"
+            :message="editor.message"
+            :notice="editor.notice"
+            :danger-label="editor.dangerLabel"
+            @submit="submitEditor"
+            @close="closeEditor"
+            @danger="requestRemove"
+        />
+        <ConfirmDialog
+            v-if="confirmation !== null"
+            destructive
+            :title="confirmation.title"
+            :message="confirmation.message"
+            :confirm-label="confirmation.confirmLabel"
+            @confirm="confirmPending"
+            @cancel="cancelPending"
+        />
         <GanttPanel :available="available" @action="handle">
             <div
                 v-if="inspection !== null && system !== null"
                 class="app__details"
             >
                 <SystemInspector :data="system" />
-                <InspectionPanel :data="inspection" />
+                <InspectionPanel :data="inspection" @edit-task="openTaskEdit" />
             </div>
             <PreparedWorkspace
                 v-else-if="taskCount > 0"
