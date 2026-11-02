@@ -575,12 +575,14 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   `AppError.items`); inspecao com estado escolhido da tarefa, proxima ativacao,
   duracao do job, "ativado, nao elegivel" e job suspenso com prazo perdido
   juntos; dialogo unico de edicao (`EditDialog`) para tarefa, sistema e
-  inclusao, com a mensagem de descarte do futuro, avisos de alcance (FE-12,
+  inclusao durante a simulacao, reaproveitando `UiDialog`, `UiField` e
+  `ConfirmDialog` da #36 (antes do inicio seguem `SystemDialog` e `TaskDialog`), com a mensagem de descarte do futuro, avisos de alcance (FE-12,
   FE-13, FE-16), bloqueio do ingresso e confirmacoes de encerrar e remover.
-  Detalhes e divergencias do Figma (FE-DEC-19) em [arquitetura do renderer](../src/renderer/docs/architecture.md#edicao-durante-a-simulacao-37).
+  Detalhes e divergencias do Figma (FE-DEC-21) em [arquitetura do renderer](../src/renderer/docs/architecture.md#edicao-durante-a-simulacao-37).
   Sistema e Adicionar tarefa, listados como pendentes na #36, passam a ser
   ligados por esta issue; a #36 mantem Executar tudo e a confirmacao de FE-04.
-  Verificacao: `npm test` 1342/1342 em 69 arquivos (baseline 1250/62),
+  Verificacao: depois do rebase na main (#128 e #129), `npm test` 1384/1384 em 72
+  arquivos,
   `npm run typecheck` e `npm run lint` aprovados. Nao verificado: app Electron
   rodando, comparacao lado a lado com o Figma (#40), recusa de algoritmo (nao
   alcancavel pela tela: so ha RM e EDF) e CPU removida e reincluida na tela

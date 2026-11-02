@@ -40,14 +40,19 @@ beforeEach(dismissError);
 afterEach(() => vi.unstubAllGlobals());
 
 describe('useWorkspace editing availability (#37)', () => {
-    it('offers system and new-task edits only once the simulation started', async () => {
+    it('opens the draft dialogs before the start and the editor after it', async () => {
         vi.stubGlobal('window', { configFile: { openConfigFile: vi.fn() } });
-        expect(useWorkspace().available.value.has('configure-system')).toBe(
-            false,
-        );
+        const preparing = useWorkspace();
+        preparing.handle('configure-system');
+        expect(preparing.dialog.value).toEqual({ kind: 'system' });
+        expect(preparing.editor.value).toBeNull();
+
         const workspace = await started(TWO_TASKS);
         expect(workspace.available.value.has('configure-system')).toBe(true);
         expect(workspace.available.value.has('add-task')).toBe(true);
+        workspace.handle('add-task');
+        expect(workspace.editor.value?.kind).toBe('add');
+        expect(workspace.dialog.value).toBeNull();
     });
 
     it('opening and closing a form changes nothing', async () => {

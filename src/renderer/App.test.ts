@@ -211,25 +211,25 @@ describe('App', () => {
                 .findAll('label')
                 .find((l) => l.text() === label)!
                 .attributes('for')!;
-            return wrapper.get(`dialog [id="${id}"]`);
+            return wrapper.get(`[role="dialog"] [id="${id}"]`);
         }
 
         it('keeps the edit controls off the screen until asked', async () => {
             const wrapper = await startedApp();
-            expect(wrapper.find('dialog').exists()).toBe(false);
+            expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
         });
 
         it('edits the system from the toolbar and shows the new quantum', async () => {
             const wrapper = await startedApp();
             await button(wrapper, 'Sistema').trigger('click');
-            expect(wrapper.get('dialog').text()).toContain(
+            expect(wrapper.get('[role="dialog"]').text()).toContain(
                 'Configuração do sistema',
             );
 
             await input(wrapper, 'Quantum').setValue('2');
             await button(wrapper, 'Aplicar').trigger('click');
 
-            expect(wrapper.find('dialog').exists()).toBe(false);
+            expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
             expect(chipValue(wrapper, 'Quantum')).toBe('2');
             // The first click only starts at t = 0, so three clicks reach 2.
             expect(chipValue(wrapper, 'Tick atual')).toBe('2');
@@ -238,16 +238,18 @@ describe('App', () => {
         it('edits the selected task, explains a refusal on its field and keeps the step', async () => {
             const wrapper = await startedApp();
             await button(wrapper, 'Editar tarefa').trigger('click');
-            expect(wrapper.get('dialog').text()).toContain('Editar Tarefa 1');
-            expect(wrapper.get('dialog').text()).toContain(
+            expect(wrapper.get('[role="dialog"]').text()).toContain(
+                'Editar Tarefa 1',
+            );
+            expect(wrapper.get('[role="dialog"]').text()).toContain(
                 'Alteração durante a simulação',
             );
 
             await input(wrapper, 'Período').setValue('0');
             await button(wrapper, 'Aplicar').trigger('click');
 
-            const dialog = wrapper.get('dialog');
-            expect(dialog.get('[role="alert"]').text()).toMatch(/\S/);
+            const dialog = wrapper.get('[role="dialog"]');
+            expect(dialog.get('.ui-field__error').text()).toMatch(/\S/);
             expect(
                 (input(wrapper, 'Período').element as HTMLInputElement).value,
             ).toBe('0');
@@ -257,7 +259,9 @@ describe('App', () => {
         it('opens the new-task form with the suggested ID', async () => {
             const wrapper = await startedApp();
             await button(wrapper, 'Adicionar tarefa').trigger('click');
-            expect(wrapper.get('dialog').text()).toContain('Adicionar tarefa');
+            expect(wrapper.get('[role="dialog"]').text()).toContain(
+                'Adicionar tarefa',
+            );
             expect(
                 (input(wrapper, 'ID').element as HTMLInputElement).value,
             ).toBe('3');
@@ -266,12 +270,12 @@ describe('App', () => {
         it('asks before finishing a task and removes the dialog when canceled', async () => {
             const wrapper = await startedApp();
             await button(wrapper, 'Editar tarefa').trigger('click');
-            await wrapper.get('dialog select').setValue('concluded');
+            await wrapper.get('[role="dialog"] select').setValue('concluded');
             await button(wrapper, 'Aplicar').trigger('click');
             expect(wrapper.text()).toContain('Encerrar Tarefa 1?');
 
             const cancel = wrapper
-                .findAll('dialog')
+                .findAll('[role="dialog"]')
                 .at(-1)!
                 .findAll('button')
                 .find((b) => b.text() === 'Cancelar')!;
