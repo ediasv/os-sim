@@ -889,6 +889,20 @@ Issues `[Docs]`, sem fase no Project.
        `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
        lista de inclusoes na validacao, TCB provisorio) derrubam testes.
        Interface e pacote nao verificados.
+    7. Ajustes de revisao da inclusao (branch `chore/26-ajustes-inclusao`,
+       sobre `4e43467`, `Refs #26`, sem fechar a issue): comentarios de
+       `createTcb` e de `defaultTaskColor` corrigidos; limite de 894 cores
+       registrado na DEC-46 (algoritmo mantido); `applyNetChange` sem
+       `isNew`, com comportamento identico (testes existentes sem alteracao);
+       dois testes novos em `simulator.addTask.test.ts` (cor repetida na mesma
+       edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
+       temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
+       derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos antes de integrar a
+       `main` (baseline 1096 mais os 2 testes novos); depois de integrar
+       `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
+       `npm run lint` e `npm run typecheck` sem erros.
+       Interface e pacote nao verificados.
 - #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
   do sistema mostra a duracao de cada job a partir de `Job.duration`
   (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
