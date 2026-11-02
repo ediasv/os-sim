@@ -199,7 +199,7 @@ Origem: REQ-04, REQ-10; expectativa de integracao relacionada a Q-06.
   Isso e uma expectativa para planejar a mensagem, nao uma definicao de
   algoritmo de deteccao. A UI nao recalcula elegibilidade, calendario ou um
   timeout para concluir bloqueio. Distinguir o resultado recebido de conclusao
-  normal e erro; Q-06 foi resolvida por DEC-49, pendente de implementacao.
+  normal e erro; Q-06 foi resolvida por DEC-49 e o nucleo ja interrompe por falta de progresso (#27); a interface ainda nao apresenta esse resultado.
 - Oferecer uma unica saida, Voltar ao passo a passo, preservando estado e
   historico para inspecao e edicao. Nao declarar conclusao normal.
 - Aceitacao: nao oferecer simultaneamente um Cancelar que desfaz o trabalho.

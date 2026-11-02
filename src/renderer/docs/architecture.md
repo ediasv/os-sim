@@ -1,7 +1,7 @@
 ﻿# Arquitetura e entregas do renderer
 
 Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
-preparada na #67, sem implementacao visual das entregas abaixo. A
+preparada na #67; o estado de cada entrega fica nas secoes abaixo. A
 [spec de apresentacao](specification.md) registra comportamentos; este
 documento registra responsabilidades, contratos propostos e ordem de codigo.
 O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
@@ -601,9 +601,9 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   ha job, e o progresso do job ("Progresso: y de duracao ticks") em linha
   secundaria; ambos com rotulos distintos, como antes.
 
-Integracao: nao ha uso em producao. `App` ainda nao chama `useSimulation` e o
-`WorkspaceLayout` nao tem slot para este painel; a composicao fica para a #36
-(a issue pede verificacao isolada e composicao posterior).
+Integracao: na #73 ainda nao havia uso em producao. Desde a #36 (parte 1, abaixo)
+o `App` compoe o fluxo via `useWorkspace`, e o painel do sistema fica montado na
+disposicao provisoria.
 
 ### Evidencia da #73 (2026-11-01)
 
