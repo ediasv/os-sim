@@ -656,9 +656,10 @@ function includeTask(
 
 /**
  * Excludes a task (DEC-47) only while it is still a task never activated: a
- * task with a job, including one activated at this tick by the activation
- * step, keeps its history in the Gantt, so the user is pointed to concluding
- * it instead. A task included earlier in this tick has no job and is simply
+ * task with a job, including one the clock activated earlier in this tick,
+ * keeps its history in the Gantt, so the user is pointed to concluding it
+ * instead. The check reads the state before this edit, so an activation made
+ * by the edit itself does not block the exclusion. A task included earlier in this tick has no job and is simply
  * dropped from the target, leaving no trace; its ID stays spent.
  */
 function excludeTask(

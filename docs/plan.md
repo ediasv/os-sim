@@ -946,7 +946,7 @@ Issues `[Docs]`, sem fase no Project.
           `findInconsistencies` depois de cada edicao.
           Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
           (nao por mutacao de cada criterio). Verificacao executada apos o
-          merge de `origin/main` (`6716212`): `npm test` 1208 passou e 1 ignorado
+          merge de `origin/main` (`6716212`): `npm test` 1209 passou e 1 ignorado
           em 61 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
           sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
           na maquina); baseline da `main` sem os 15 novos nao reexecutado.
