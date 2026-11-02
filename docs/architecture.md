@@ -2057,9 +2057,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-48: ID de tarefa como texto livre
 
-- Estado: aceita em 2026-11-01 (#133), decisoes 1 a 4 do usuario na
-  brainstorming; itens marcados "escolha do autor" aguardam confirmacao na
-  revisao. Requisitos: REQ-03, REQ-05, REQ-06, REQ-09. Revisa DEC-08
+- Estado: aceita pelo usuario em 2026-11-01 (#133, revisao do PR #134),
+  incluindo as escolhas do autor e os ajustes da revisao. Requisitos: REQ-03,
+  REQ-05, REQ-06, REQ-09. Revisa DEC-08
   (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
   ID) e DEC-37 e DEC-46 (ID gerado na inclusao). Nao muda FE-19: o ID segue
   fixo na edicao.
@@ -2069,7 +2069,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   desempate de A.4.3 nao usa o ID.
 - Formato (decisao do usuario): o ID e um texto. Valido: nao vazio depois de
   remover espacos nas pontas, sem `;` nem quebra de linha, no maximo 32
-  caracteres (limite: escolha do autor, para caber nos rotulos do Gantt e da
+  caracteres (limite para caber nos rotulos do Gantt e da
   lista de eventos). Espacos internos sao mantidos. O ID e guardado e
   exibido como digitado.
 - Unicidade (decisao do usuario): sem distincao de maiusculas e minusculas
@@ -2079,14 +2079,15 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   DEC-27 usam o ID da tarefa. IDs formados so por digitos decimais comparam
   por valor numerico; os demais comparam em ordem alfabetica sem distincao
   de caixa; numeros vem antes de texto. Empate (`1` e `01`, que valem o
-  mesmo numero) desempata pelo texto exato, para a ordem ser total
-  (escolha do autor). A mesma funcao serve ao nucleo e ao renderer. Para
+  mesmo numero) desempata pelo texto exato, para a ordem ser total.
+  A mesma funcao serve ao nucleo e ao renderer. Para
   configuracoes so com IDs numericos a ordem e a de antes; ID negativo ou
-  decimal (`-3`, `2.5`) e texto (escolha do autor).
+  decimal (`-3`, `2.5`) e texto.
 - Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
   e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
   um ID digitado. Se o incremento ultrapassar 32 caracteres, sugere o menor
-  inteiro positivo cujo texto ainda nao foi usado (escolha do autor). Um ID usado, inclusive o de tarefa excluida, e recusado
+  inteiro positivo cujo texto ainda nao foi usado. Um ID usado, inclusive o
+  de tarefa excluida, e recusado
   (a comparacao ignora caixa). Forma: `NewTask.id` opcional; sem ele, o
   nucleo usa `suggestTaskId`; a interface pode chamar a mesma funcao com
   `snapshot.usedTaskIds` para preencher a sugestao. `SimulationState.usedTaskIds`
@@ -2096,12 +2097,12 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   semente; IDs numericos mantem as cores de antes. `findInconsistencies`
   confere que os IDs usados sao unicos sem distincao de caixa e incluem o
   ID de toda tarefa.
-- Rotulos (escolha do autor): Gantt, snapshots e SVG mostram o ID como
+- Rotulos: Gantt, snapshots e SVG mostram o ID como
   digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
   tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
   lugar onde aparece; caracteres proibidos em XML 1.0 sao substituidos por
-  U+FFFD apenas no SVG, pois nao podem ser representados no documento (escolha
-  do autor). No rotulo da raia, um ID que nao cabe (mais de 3
+  U+FFFD apenas no SVG, pois nao podem ser representados no documento. No
+  rotulo da raia, um ID que nao cabe (mais de 3
   caracteres depois de "Tarefa ") perde o prefixo e e cortado com
   reticencias, e o ID inteiro fica na dica da raia.
 - Edicao: o identificador de um item de edicao e procurado pelo texto exato

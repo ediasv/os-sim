@@ -768,6 +768,7 @@ Issues `[Docs]`, sem fase no Project.
   Revisao do PR #134: corrigidos o limite da sugestao numerica e caracteres
   invalidos em XML no SVG; testes focados cobrem ambos. `npm test` 1192/1192,
   `npm run typecheck` e `npm run lint` aprovados.
+  DEC-48 e escolhas da revisao aceitas pelo usuario em 2026-11-01.
   Falta: revisao final e ver a interface rodando.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
