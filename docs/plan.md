@@ -564,8 +564,9 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   Parte 2a (Sistema) em main (PR #128, `71dbdba`) e 2b (tarefas do rascunho)
   no PR #129: ver
   [arquitetura do renderer](../src/renderer/docs/architecture.md#preparacao-da-configuracao-36-parte-2).
-  Faltam a confirmacao de FE-04 (2c) e Executar tudo (nucleo pronto na #27, PR
-  #139; falta a interface).
+  Parte 2c (confirmacao de FE-04, FE-DEC-22): carregar arquivo durante a
+  simulacao ou sobre um rascunho pede confirmacao e volta a preparacao.
+  Falta Executar tudo (nucleo pronto na #27, PR #139; falta a interface).
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.

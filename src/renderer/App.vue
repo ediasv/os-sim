@@ -45,6 +45,7 @@ const {
     saveTask,
     requestRemove,
     confirmRemove,
+    confirmReplace,
     cancelDialog,
     openTaskEdit,
     closeEditor,
@@ -57,6 +58,10 @@ const {
 // changes starts clean. The forms keep the values the user typed.
 const formIssues = ref<readonly ConfigIssue[]>([]);
 watch(dialog, () => (formIssues.value = []));
+
+const replacing = computed(() =>
+    dialog.value?.kind === 'replace' ? dialog.value.discards : null,
+);
 
 const removing = computed(() =>
     dialog.value?.kind === 'remove' ? dialog.value.taskId : null,
@@ -209,6 +214,24 @@ const system = computed(() =>
             confirm-label="Remover"
             destructive
             @confirm="confirmRemove"
+            @cancel="cancelDialog"
+        />
+        <ConfirmDialog
+            v-else-if="replacing === 'session'"
+            title="Substituir a simulação?"
+            message="A simulação em andamento e todo o seu histórico serão descartados. A configuração do arquivo fica pronta para iniciar com “Avançar tick”."
+            confirm-label="Substituir"
+            destructive
+            @confirm="confirmReplace"
+            @cancel="cancelDialog"
+        />
+        <ConfirmDialog
+            v-else-if="replacing === 'draft'"
+            title="Substituir a configuração?"
+            message="O sistema e as tarefas em preparação serão substituídos pelos do arquivo."
+            confirm-label="Substituir"
+            destructive
+            @confirm="confirmReplace"
             @cancel="cancelDialog"
         />
     </WorkspaceLayout>

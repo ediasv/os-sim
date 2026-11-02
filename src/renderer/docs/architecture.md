@@ -644,7 +644,8 @@ paineis.
   o futuro gravado ou calcula um passo), "Voltar tick" usa `backward()` e
   "Reiniciar" recarrega o rascunho no snapshot zero (FE-05).
 - Disponibilidade: Carregar configuracao so antes do inicio, porque substituir
-  uma sessao em andamento pede a confirmacao de FE-04, ainda nao implementada.
+  uma sessao em andamento pede a confirmacao de FE-04 (substituido pela
+  FE-DEC-22, parte 2c).
   Voltar tick fica desabilitado em t = 0. Recusas do nucleo aparecem como
   alerta no ponto da acao e o ultimo snapshot valido permanece (DEC-24,
   DEC-36); erros inesperados seguem so para o banner.
@@ -657,7 +658,8 @@ paineis.
   rascunho usado no inicio; (b) Carregar configuracao so existe antes de
   iniciar e fica desabilitado enquanto o dialogo esta aberto; um arquivo
   escolhido depois do inicio e ignorado, para nao mudar o que Reiniciar
-  recarrega; (c) a disposicao lado a lado e provisoria ate o Gantt (#38).
+  recarrega (itens (b) substituidos pela FE-DEC-22, parte 2c); (c) a
+  disposicao lado a lado e provisoria ate o Gantt (#38).
   Justificativa: nao ha ainda a confirmacao de substituicao de FE-04, e iniciar
   sem tarefa ou trocar a sessao em silencio perderia trabalho (FE-05).
   Acordado com o usuario em 2026-11-01 ao delimitar a parte 1 da #36.
@@ -729,7 +731,26 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   sem eles, e a #37 (FE-19) segue dona do ID e da cor na simulacao; (e) desvio
   do Figma: a ajuda do periodo diz "Inteiro >= 1" em vez de "0 = aperiodica",
   pois zero e recusado (DEC-29). Acordado com o usuario em 2026-11-01.
-- Nao feito nesta parte: confirmacao de FE-04 (2c), edicao durante a
+- 2c, substituir configuracao (FE-04): Carregar configuracao fica disponivel
+  tambem durante a simulacao, sem outro modal ou formulario de edicao aberto.
+  O arquivo e lido e validado antes de qualquer mudanca; invalido ou ilegivel
+  mostra o diagnostico e preserva sessao e rascunho. Valido, sobre uma sessao
+  iniciada ou um rascunho diferente dos padroes, abre `ConfirmDialog`
+  ("Substituir a simulacao?" ou "Substituir a configuracao?"); cancelar
+  preserva tudo, confirmar (`confirmReplace`) fecha a edicao aberta, descarta
+  a sessao e volta a preparacao com o arquivo, sem iniciar o motor
+  (FE-DEC-14). Sem nada a perder, substitui direto como antes.
+- FE-DEC-22 (REQ-05, REQ-06, REQ-10; FE-04, FE-05): (a) o que se perde e
+  decidido quando o arquivo volta do dialogo, nao quando ele abre, porque o
+  usuario pode iniciar ou editar enquanto escolhe; ate confirmar, Reiniciar
+  segue recarregando a configuracao da sessao; (b) "preparacao a perder" e
+  qualquer rascunho diferente de `DEFAULT_CONFIG`, inclusive um arquivo ja
+  carregado e nao editado, para nao comparar configuracoes campo a campo;
+  (c) os avisos de periodo padrao (DEC-29) so aparecem depois de confirmar,
+  junto da configuracao que descrevem. Substitui o item (b) da FE-DEC-18.
+  Justificativa: cumprir FE-04 sem perder trabalho em silencio (FE-05).
+  Pedido pelo usuario em 2026-11-01.
+- Nao feito nesta parte: edicao durante a
   simulacao e tarefa concluida so com cor (#37), Executar tudo (#27), sem
   cancelamento (DEC-49).
 

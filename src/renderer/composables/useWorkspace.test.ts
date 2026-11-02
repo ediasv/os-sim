@@ -276,7 +276,7 @@ describe('useWorkspace', () => {
         expect(workspace.notices.value).toEqual([]);
     });
 
-    it('ignores a file chosen after the session started, so Reiniciar keeps the session configuration', async () => {
+    it('a file chosen after the session started asks first; until confirmed, Reiniciar keeps the session configuration', async () => {
         let choose: (result: ConfigFileResult) => void = () => {};
         const openConfigFile = vi
             .fn<() => Promise<ConfigFileResult>>()
@@ -294,8 +294,9 @@ describe('useWorkspace', () => {
         workspace.handle('step-forward');
         expect(workspace.clock.value).toBe(0);
         choose(loaded('EDF;9;4\n\n1;FFFFFF;0;1;5;5\n'));
-        await vi.waitFor(() => expect(openConfigFile).toHaveBeenCalledTimes(2));
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
         workspace.handle('restart');
 
         expect(workspace.config.value).toMatchObject({
@@ -316,6 +317,129 @@ describe('useWorkspace', () => {
         workspace.handle('load-config');
 
         expect(openConfigFile).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('useWorkspace replacing the configuration (FE-04)', () => {
+    const OTHER = 'EDF;9;4\n\n1;FFFFFF;0;1;5;5\n';
+
+    async function running() {
+        const workspace = await prepared();
+        workspace.handle('step-forward');
+        workspace.handle('step-forward');
+        expect(workspace.clock.value).toBe(1);
+        return workspace;
+    }
+
+    it('offers loading a file during the session', async () => {
+        const workspace = await running();
+
+        expect(workspace.available.value.has('load-config')).toBe(true);
+    });
+
+    it('asks before a valid file discards the session, and changes nothing yet', async () => {
+        const workspace = await running();
+        stubFile(loaded(OTHER));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value).toMatchObject({
+                kind: 'replace',
+                discards: 'session',
+            }),
+        );
+
+        expect(workspace.clock.value).toBe(1);
+        expect(workspace.config.value.algorithm).toBe('RM');
+    });
+
+    it('confirming returns to preparation with the new file, without starting', async () => {
+        const workspace = await running();
+        stubFile(loaded(OTHER));
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+
+        workspace.confirmReplace();
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.snapshot.value).toBeNull();
+        expect(workspace.config.value).toMatchObject({
+            algorithm: 'EDF',
+            quantum: 9,
+            cpuCount: 4,
+        });
+        expect(workspace.taskCount.value).toBe(1);
+        expect(workspace.selectedTaskId.value).toBe('1');
+        expect(workspace.available.value.has('restart')).toBe(false);
+
+        workspace.handle('step-forward');
+        expect(workspace.clock.value).toBe(0);
+        expect(workspace.config.value.algorithm).toBe('EDF');
+    });
+
+    it('cancelling keeps the session as it was', async () => {
+        const workspace = await running();
+        stubFile(loaded(OTHER));
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+
+        workspace.cancelDialog();
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.clock.value).toBe(1);
+        expect(workspace.config.value.algorithm).toBe('RM');
+    });
+
+    it('an invalid file shows its errors without asking and keeps the session', async () => {
+        const workspace = await running();
+        stubFile(loaded('XX;5;2\n'));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.notices.value[0]?.title).toBe(
+                'Configuração inválida',
+            ),
+        );
+
+        expect(workspace.dialog.value).toBeNull();
+        expect(workspace.clock.value).toBe(1);
+    });
+
+    it('asks before replacing a prepared configuration too', async () => {
+        const workspace = await prepared();
+        stubFile(loaded(OTHER));
+
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value).toMatchObject({
+                kind: 'replace',
+                discards: 'draft',
+            }),
+        );
+        expect(workspace.taskCount.value).toBe(2);
+
+        workspace.confirmReplace();
+        expect(workspace.config.value.algorithm).toBe('EDF');
+    });
+
+    it('shows the defaulted-period warnings only once the file is accepted', async () => {
+        const workspace = await running();
+        stubFile(loaded('RM;5;1\n1;FFFFFF;0;2;0;20\n'));
+        workspace.handle('load-config');
+        await vi.waitFor(() =>
+            expect(workspace.dialog.value?.kind).toBe('replace'),
+        );
+        expect(workspace.notices.value).toEqual([]);
+
+        workspace.confirmReplace();
+
+        expect(workspace.notices.value[0]?.title).toBe(
+            'Período padrão aplicado',
+        );
     });
 });
 
