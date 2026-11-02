@@ -1091,7 +1091,7 @@ export function applyNetChange(
         // An arrival moved to the current tick, or a period whose new next
         // activation is already due, activates here, once, from the net
         // definition: after the task's status events and before any CPU
-        // event (DEC-37, DEC-22, DEC-44).
+        // event (DEC-37, DEC-22, DEC-44). Included tasks activate here too.
         if (rescheduled || isNew) activateTask(state, tcb);
     }
 

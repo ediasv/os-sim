@@ -2023,17 +2023,23 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   #119). Parece aleatoria, mas e funcao do ID: cada edicao recalcula o tick
   a partir de `t-1`, e `Math.random` mudaria a cor a cada nova edicao do
   mesmo tick, quebrando DEC-37 item 2. Cor informada continua validada.
+  Limitacao conhecida: com saturacao 0,65 e luminosidade 0,55 a varredura de
+  matiz produz 894 cores distintas. Esse limite basta por enquanto (decisao
+  do usuario no #119): ate 894 tarefas sempre ha cor livre; com todas as 894
+  cores em uso, o laco de `defaultTaskColor` nao termina. O algoritmo nao foi
+  alterado.
 - ID (revisto por DEC-48: `usedTaskIds`, ID sugerido ou digitado): maior ID
-  ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
-  usado em cada snapshot e `EditTarget.maxTaskId` o acompanha dentro do
-  tick; assim descartar o futuro descarta os IDs gerados nele (o recalculo
-  parte do snapshot `t-1` ou da configuracao inicial). Varias inclusoes numa
-  edicao recebem IDs consecutivos. `findInconsistencies` confere que o valor
-  e inteiro e nao fica abaixo de nenhum ID.
+  ja usado + 1. `SimulationState.usedTaskIds` acompanha todos os IDs ja
+  usados, inclusive os de tarefas excluidas; assim descartar o futuro descarta
+  tambem os IDs gerados nele. Varias inclusoes numa edicao recebem IDs
+  consecutivos, e um ID digitado nao pode ser reutilizado. `findInconsistencies`
+  confere que os IDs sao validos e distintos.
 - Aplicacao (mudanca liquida): a tarefa entra no alvo (`definitions` e
   `taskStates`) e, ao aplicar, no fim de `state.tasks`, nascendo pronta, sem
   jobs e com `nextActivation` igual ao ingresso (`createTcb`, o unico lugar
-  onde um TCB nasce), sem evento proprio. Estado e caracteristicas pedidos no
+  onde um TCB novo e criado: estado inicial e inclusao; `restoreState` so
+  reconstroi TCBs de um snapshot, e `editableTask` cria um provisorio para
+  validacao), sem evento proprio. Estado e caracteristicas pedidos no
   mesmo tick valem pela definicao e pelo estado liquidos: o estado parte de
   `ready` e gera os eventos de DEC-43, e o primeiro job usa a duracao e o
   prazo finais. Ingresso igual a `t` ativa o primeiro job na etapa de edicao

@@ -892,7 +892,21 @@ Issues `[Docs]`, sem fase no Project.
        `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
        lista de inclusoes na validacao, TCB provisorio) derrubam testes.
        Interface e pacote nao verificados.
-    7. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
+    7. Ajustes de revisao da inclusao (branch `chore/26-ajustes-inclusao`,
+       sobre `4e43467`, `Refs #26`, sem fechar a issue): comentarios de
+       `createTcb` e de `defaultTaskColor` corrigidos; limite de 894 cores
+       registrado na DEC-46 (algoritmo mantido); `applyNetChange` sem
+       `isNew`, com comportamento identico (testes existentes sem alteracao);
+       dois testes novos em `simulator.addTask.test.ts` (cor repetida na mesma
+       edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
+       temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
+       derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos antes de integrar a
+       `main` (baseline 1096 mais os 2 testes novos); depois de integrar
+       `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
+       `npm run lint` e `npm run typecheck` sem erros.
+       Interface e pacote nao verificados.
+    8. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
        aceite do usuario) e conferencia final dos criterios da #26. Branch
        `feat/26-7-exclusao` a partir da `main` (`4e43467`). Item `removeTask`
        em `src/core/edit.ts`: so tarefa nunca ativada (recusa com motivo que
@@ -932,8 +946,8 @@ Issues `[Docs]`, sem fase no Project.
           `findInconsistencies` depois de cada edicao.
           Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
           (nao por mutacao de cada criterio). Verificacao executada apos o
-          rebase em `1be7da1`: `npm test` 1112 passou e 1 ignorado em 57
-          arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          merge de `origin/main` (`6716212`): `npm test` 1208 passou e 1 ignorado
+          em 61 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
           sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
           na maquina); baseline da `main` sem os 15 novos nao reexecutado.
           NAO verificado aqui: interface e o comando
