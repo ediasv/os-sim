@@ -1483,8 +1483,10 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 #### Inclusao e exclusao de tarefas
 
-1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
-   `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
+1. Incluir: pela caixa de dialogo, com ingresso escolhido pelo usuario e
+   `>= t` (igual a `t` ativa em `t`); o usuario nao precisa avancar o
+   relogio ate o ingresso, e `tick()` nao e usado para isso. Os limites de
+   DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
    e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
    um ID ja usado (revisto por DEC-48). A
    tarefa comeca pronta.
@@ -2164,7 +2166,9 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
   jobs.
 - `tick()` com todas as tarefas terminadas e recusado (`SimulationRefusal`),
-  depois da recusa de "ja calculado". Sem tarefas nada terminou: `tick()`
+  depois da recusa de "ja calculado". A recusa e deliberada: o usuario nao
+  avanca o relogio no vazio para incluir tarefa; a inclusao usa o ingresso
+  informado no dialogo (revisao do PR #139). Sem tarefas nada terminou: `tick()`
   segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
   imediato.
 - Apresentacao e controles ficam na #36.

@@ -177,7 +177,8 @@ Fonte: gerais 5 e 6; A.5.
   executando forcada, suspensa, concluida), aplicado ao job mais antigo
   incompleto; duracao e prazo na proxima ativacao; periodo no calendario e
   na prioridade RM imediata; ingresso so antes da primeira ativacao; cor
-  sempre; ID e ticks executados fixos; inclusao a qualquer tick e exclusao
+  sempre; ID e ticks executados fixos; inclusao pela caixa de dialogo, com
+  ingresso escolhido pelo usuario (nao pelo tick atual), e exclusao
   so de tarefa nunca ativada; algoritmo, quantum e CPUs editaveis; eventos
   de suspensao, retomada, forcamento e CPUs para o Gantt. Recusas seguem
   A.3.1 e A.3.4.
