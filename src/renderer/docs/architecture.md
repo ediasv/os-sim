@@ -126,7 +126,7 @@ liberado, sem dispensar o merge do registro.
 | 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 a #33 concluidas; #34 ainda necessaria.                                     |
 | 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                            |
 | 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                               |
-| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                             |
+| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; resultado e bloqueio depois de #27, sem cancelamento (DEC-49); verificacao em #28.                |
 | 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG definido pela DEC-08 (#35). |
 
 Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
@@ -665,7 +665,7 @@ paineis.
   snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
   para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
   a cada tick. Nao decide regra; so evita repetir a consulta.
-- Fora desta parte: Executar tudo e cancelamento (#27), tarefas e sistema
+- Fora desta parte: Executar tudo (#27), tarefas e sistema
   editaveis (#37 e restante da #36: Sistema e Adicionar tarefa seguem
   desabilitados) e a confirmacao de substituicao (FE-04).
 
