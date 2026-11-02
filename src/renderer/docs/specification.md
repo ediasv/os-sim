@@ -86,7 +86,7 @@ contratos de dominio aprovados por este PR.
 | Mostrar a previa da proxima ativacao e o efeito informado sobre a disputa por CPU.             | Calendario, limites e selecao sao calculados pelo nucleo, nao pelo formulario.                                                      |
 | Apresentar suspensao, retomada, ajuste de progresso, inclusao e remocao aceitos ou rejeitados. | Comandos, motivos e registros observaveis ainda precisam ser confrontados com a API real.                                           |
 | Preservar selecao e identificar o historico apos editar um ID.                                 | Correspondencia entre identidades e referencias precisa ser fornecida pelo contrato disponivel, sem reescrita de snapshots pela UI. |
-| Apresentar resultado no ultimo passo valido ao cancelar e explicar falta de progresso.         | A execucao precisa fornecer o resultado, o snapshot e os jobs envolvidos; a interface nao detecta bloqueio por conta propria.       |
+| Apresentar resultado final e explicar falta de progresso, sem cancelamento (DEC-49).           | A execucao precisa fornecer o resultado, o snapshot e os jobs envolvidos; a interface nao detecta bloqueio por conta propria.       |
 
 Se a API real nao suportar uma dessas expectativas, registrar a dependencia
 e nao habilitar a operacao como funcional. Dados de exemplo podem verificar
@@ -175,28 +175,22 @@ Origem: REQ-01, REQ-04, REQ-05.
 - Aceitacao: voltar de 20 para 8 mantem o trecho futuro; avancar novamente
   restaura resultados e sorteios, sem recalcula-los na apresentacao.
 
-### FE-07: Execucao completa e cancelamento
+### FE-07: Execucao completa
 
-Origem: REQ-04, REQ-10; expectativa de integracao relacionada a Q-06 e #27.
+Origem: REQ-04, REQ-10 e DEC-49; integracao pela #27 e #36.
 
-- Mostrar andamento e permitir cancelar sem exigir desenhar os snapshots
-  intermediarios no Gantt ou no inspetor.
-- Enquanto a operacao estiver em andamento, impedir comandos concorrentes
-  de edicao e navegacao. O cancelamento precisa permanecer acessivel.
-- O fluxo planejado espera receber o ultimo snapshot confirmado e o historico
-  preservado ao cancelar, conforme as [expectativas de integracao](#expectativas-de-integracao-com-o-nucleo).
-  A apresentacao mostra esse retorno, sem fazer rollback ou publicar meio tick.
-- Permitir continuar a partir desse estado. Cancelamento nao significa que
-  todos os jobs terminaram.
-- Aceitacao: cancelando apos avancar de 8 a 20, inspecionar 20 e poder voltar
-  pelo historico. O renderer nao tenta desfazer nem completar o passo sozinho.
+- Executar sem exibicao da progressao tick a tick nem botao de cancelamento;
+  apresentar o resultado final ou o bloqueio informado pelo nucleo.
+- Guardar todo o historico para inspecao posterior e manter o estado vivo no
+  nucleo. A forma tecnica de integracao fica para as issues de implementacao.
+- Aceitacao: apos concluir, poder navegar pelos passos registrados.
 
 ### FE-08: Apresentar falta de progresso
 
 Origem: REQ-04, REQ-10; expectativa de integracao relacionada a Q-06.
 
 - Quando a execucao informar bloqueio sem possibilidade de progresso,
-  interromper a apresentacao de andamento e abrir painel explicativo.
+  abrir painel explicativo com o resultado informado.
 - Mostrar o tick alcancado, o motivo e os jobs que impedem o termino.
   CPUs desligadas isoladamente nao permitem inferir bloqueio: podem existir
   ativacoes futuras. A deteccao pertence a execucao, nao ao componente.
@@ -205,7 +199,7 @@ Origem: REQ-04, REQ-10; expectativa de integracao relacionada a Q-06.
   Isso e uma expectativa para planejar a mensagem, nao uma definicao de
   algoritmo de deteccao. A UI nao recalcula elegibilidade, calendario ou um
   timeout para concluir bloqueio. Distinguir o resultado recebido de conclusao
-  normal, cancelamento e erro; Q-06 continua externa a este planejamento.
+  normal e erro; Q-06 foi resolvida por DEC-49, pendente de implementacao.
 - Oferecer uma unica saida, Voltar ao passo a passo, preservando estado e
   historico para inspecao e edicao. Nao declarar conclusao normal.
 - Aceitacao: nao oferecer simultaneamente um Cancelar que desfaz o trabalho.
@@ -459,7 +453,7 @@ operacoes do nucleo continuam condicionados as expectativas de integracao.
 | FE-DEC-01 | Spec propria do renderer; manter nucleo agnostico da interface e evitar duas fontes de regras do dominio.                                                                                                                                                                                                                                                                                                                                                                                 | FE-01; REQ-04, REQ-05, REQ-10               |
 | FE-DEC-02 | Preparar e validar antes de iniciar explicitamente; separar rascunho de snapshot zero.                                                                                                                                                                                                                                                                                                                                                                                                    | FE-02 a FE-04; REQ-05, REQ-06               |
 | FE-DEC-03 | Reiniciar preserva o cenario inicial; Limpar volta aos padroes sem tarefas. Evitar uma acao ambigua.                                                                                                                                                                                                                                                                                                                                                                                      | FE-05; REQ-04, REQ-05                       |
-| FE-DEC-04 | Cancelar preserva ultimo tick valido; bloqueio tem uma unica saida para passo a passo. Nao desfazer trabalho implicitamente.                                                                                                                                                                                                                                                                                                                                                              | FE-07, FE-08; REQ-04, REQ-10                |
+| FE-DEC-04 | Revisto por DEC-49: sem cancelamento; bloqueio tem uma unica saida para passo a passo e preserva o historico.                                                                                                                                                                                                                                                                                                                                                                             | FE-07, FE-08; REQ-04, REQ-10                |
 | FE-DEC-05 | Selecao nao muda o tick; futuro valido fica visivel e so edicao aceita o descarta. Separar inspecao de navegacao.                                                                                                                                                                                                                                                                                                                                                                         | FE-06, FE-10, FE-11; REQ-04, REQ-05, REQ-09 |
 | FE-DEC-06 | SVG integral, inclusive parcial, independente da janela; formalizado pela DEC-08 (#35).                                                                                                                                                                                                                                                                                                                                                                                                   | FE-18; REQ-09                               |
 | FE-DEC-07 | ID fixo (DEC-37), recolorir o historico valido e distinguir ingresso futuro de ingresso ocorrido; validar a integracao sem definir regras do nucleo.                                                                                                                                                                                                                                                                                                                                      | FE-19; REQ-05, REQ-06, REQ-09               |
@@ -487,7 +481,7 @@ permanecem dependencias externas. Os documentos gerais nao sao alterados.
 | Importar primeiro valida, depois confirma substituicao e retorna a preparacao.                                                              | FE-04                                         | Acordado; cancelar ou falhar preserva a sessao.                                                                                    |
 | Reiniciar usa o cenario inicial; Limpar retorna aos padroes sem apagar arquivos.                                                            | FE-05; FE-DEC-03                              | Acordado.                                                                                                                          |
 | Retroceder conserva futuro visivel, resultados e sorteios; so edicao aceita o descarta.                                                     | FE-06, FE-11; FE-DEC-05                       | Acordado.                                                                                                                          |
-| Cancelar execucao completa preserva ultimo tick valido e historico, sem rollback.                                                           | FE-07; FE-DEC-04                              | Acordado; depende da execucao.                                                                                                     |
+| Execucao completa preserva todo o historico e nao oferece cancelamento (DEC-49).                                                            | FE-07; FE-DEC-04                              | Acordado; depende da execucao.                                                                                                     |
 | Falta de progresso explica jobs bloqueadores e oferece uma saida para passo a passo.                                                        | FE-08; FE-DEC-04                              | Acordado; deteccao e contrato externos.                                                                                            |
 | Inspecao separa tarefa, job, elegibilidade e perda de prazo.                                                                                | FE-09                                         | Acordado; nao inventar ranking da politica.                                                                                        |
 | Clicar no Gantt seleciona tarefa/job sem mudar tick ou estado.                                                                              | FE-10; FE-DEC-05, FE-DEC-08                   | Acordado; selecao futura identifica ausencia no snapshot atual e nao habilita comandos.                                            |
@@ -516,7 +510,7 @@ permanecem dependencias externas. Os documentos gerais nao sao alterados.
 Alternativas superadas que nao devem voltar como requisitos implicitos:
 
 - Iniciar automaticamente ao carregar/cadastrar dados: prevalece inicio explicito.
-- Cancelar e restaurar estado anterior a execucao: prevalece ultimo tick valido.
+- Cancelar execucao completa: alternativa retirada por DEC-49.
 - Ocultar o futuro ao retroceder: prevalece manter todo futuro ainda valido.
 - Contar novo periodo desde a edicao: prevalece ultima ativacao, com o caso
   vencido explicitado em FE-12.
@@ -543,7 +537,7 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 | Historico e edicao      | Cursor, limite valido, snapshots restauraveis, comandos atomicos, resultado e diagnosticos; estado do sorteio preservado.                           | E3, #23 a #26; DEC-06, DEC-14      |
 | Parametros por ativacao | Valores efetivos dos jobs, previa de ativacoes e possibilidades de edicao, sem prescrever a representacao do dominio.                               | Q-02, #25/#26; FE-12               |
 | Intervencoes            | Resultados e registros observaveis de suspensao, retomada, inclusao/remocao e mudanca manual de estado, conforme a API que vier a estar disponivel. | Q-02, #25/#26; FE-13 a FE-19       |
-| Execucao completa       | Andamento, snapshot de resultado e motivo de interrupcao, com jobs envolvidos quando aplicavel.                                                     | Q-06, #27; FE-07 e FE-08           |
+| Execucao completa       | Snapshot de resultado ou bloqueio, com tick, motivo e jobs envolvidos; sem cancelamento.                                                            | Q-06, #27; FE-07 e FE-08           |
 | Arquivos                | Dialogos autorizados, configuracao analisada e diagnosticos de conteudo/acesso; gravacao com resultado ou cancelamento.                             | E4, #33/#34, #39; DEC-19           |
 | Aperiodicas (A.4.4)     | Avisos de periodo padrao aplicado no resultado da carga, com ID, linha e motivo, para exibicao; o renderer nao filtra nem converte tarefas.         | DEC-29; #89, #33/#36               |
 | CPU desligada           | Intervalos e totais obtidos pela consulta publica do nucleo, sem rederivar sequencias no renderer.                                                  | DEC-21; #15 concluida              |
@@ -554,9 +548,8 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
   tarefa removida (revisto por DEC-48, #133).
 - PEND-02 (compatibilidade externa): confrontar as expectativas de edicao,
   calendario, progresso, quantum, CPUs, inclusao/remocao, ID, ingresso e
-  cancelamento/bloqueio com as capacidades e contratos reais do nucleo quando
-  estiverem disponiveis. Este planejamento nao formaliza nem encerra Q-02/Q-06
-  e nao propoe DECs ou mudancas nos documentos gerais.
+  bloqueio com as capacidades e contratos reais do nucleo quando estiverem
+  disponiveis. Q-02 foi resolvida por DEC-37 e Q-06 por DEC-49.
   A reconciliacao de A.4.4 com REQ-03, DEC-09 e DEC-17 saiu desta pendencia:
   resolvida por DEC-29 na #87 (2026-10-28), implementacao na #89.
 - PEND-03 (resolvida na apresentacao): comportamento de selecao futura em
@@ -569,7 +562,7 @@ o registro da experiencia discutida ou decidir silenciosamente outro fluxo.
 - PEND-05 (resolvida na apresentacao): consulta completa em FE-20/FE-DEC-09.
   Implementacao e testes permanecem nas entregas correspondentes.
 - PEND-06: conferir disponibilidade dos comandos em preparacao, execucao,
-  navegacao no passado, bloqueio, cancelamento, termino e erro. Nao habilitar
+  navegacao no passado, bloqueio, termino e erro. Nao habilitar
   comandos sem contrato implementado nem prometer capacidade via mocks.
 - PEND-07 (parcial): arquitetura interna, fronteiras e ordem registradas na
   arquitetura propria, com detalhamento das entregas 1 e 2. Nomes concretos,
@@ -593,7 +586,7 @@ detalhar a primeira integracao funcional; implementar apenas apos autorizacao.
 
 Esta entrega limita-se aos documentos do renderer e a referencia do frontend
 no plano geral. Nao altera codigo, dependencias, regras ou documentos do
-nucleo. Q-02/Q-06 continuam externas; Q-05 e DEC-08 foram resolvidas na #35 e
+nucleo. Q-02 foi resolvida por DEC-37 e Q-06 por DEC-49; Q-05 e DEC-08 foram resolvidas na #35 e
 aperiodicas nao
 sao excluidas por uma decisao implicita da camada de apresentacao.
 
