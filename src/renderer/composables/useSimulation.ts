@@ -1,6 +1,7 @@
 import { shallowRef, type ShallowRef } from 'vue';
 import type { SimulationSnapshot, SystemConfig } from '../../core/domain';
 import { createSimulator } from '../../core/createSimulator';
+import type { EditItem } from '../../core/edit';
 import { DEFAULT_POLICIES, type PolicyRegistry } from '../../core/policies';
 import { Simulator } from '../../core/simulator';
 import { commandFailure, type CommandResult } from '../errors';
@@ -11,8 +12,7 @@ import { commandFailure, type CommandResult } from '../errors';
  * being replaced, so it never wraps simulator internals in proxies. `view`
  * is always the snapshot at the history cursor (DEC-36).
  * Commands never throw: they return a result classified by DEC-24, and a
- * failure leaves the simulation and `view` unchanged. Edits during the run
- * (#25/#26) will follow the same contract.
+ * failure leaves the simulation and `view` unchanged, edits included.
  *
  * Loaded simulations run the policy that `policies` registers for the
  * configured algorithm (DEC-25); production uses the built-in registry and
@@ -26,6 +26,8 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     forward: () => CommandResult;
     backward: () => CommandResult;
     next: () => CommandResult;
+    edit: (items: readonly EditItem[]) => CommandResult;
+    futureSteps: () => number;
 } {
     let sim = new Simulator();
     const view = shallowRef(sim.getCurrentSnapshot());
@@ -79,5 +81,31 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
      */
     const latest = (): SimulationSnapshot => sim.getLatestSnapshot();
 
-    return { view, latest, load, tick, forward, backward, next };
+    /**
+     * Applies one edit (one form submission) at the cursor's tick (DEC-37).
+     * Atomic: a refused item refuses all and leaves `view` and the recorded
+     * future as they were. On success `view` is the recomputed step and the
+     * steps after it are gone.
+     */
+    const edit = (items: readonly EditItem[]): CommandResult =>
+        run(() => sim.edit(items));
+
+    /**
+     * How many recorded steps lie after the cursor: what an accepted edit
+     * would discard, shown before applying it (FE-11).
+     */
+    const futureSteps = (): number =>
+        sim.getLatestSnapshot().clock - sim.getCurrentSnapshot().clock;
+
+    return {
+        view,
+        latest,
+        load,
+        tick,
+        forward,
+        backward,
+        next,
+        edit,
+        futureSteps,
+    };
 }

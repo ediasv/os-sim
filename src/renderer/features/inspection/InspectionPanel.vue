@@ -7,6 +7,9 @@ import type { InspectionData, JobRef, TaskId } from './inspection';
 
 const props = defineProps<{ data: InspectionData }>();
 
+// The panel owns which task is selected, so it names the task to edit.
+const emit = defineEmits<{ 'edit-task': [taskId: TaskId] }>();
+
 const selectedTaskId = ref<TaskId | null>(
     props.data.tasks[0]?.definition.id ?? null,
 );
@@ -98,6 +101,10 @@ function selectJob(job: JobRef): void {
             <TaskDetails
                 :task="selectedTask"
                 :inspected-tick="data.inspectedTick"
+                @edit="
+                    selectedTask &&
+                    emit('edit-task', selectedTask.definition.id)
+                "
             />
         </div>
         <JobTable

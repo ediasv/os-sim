@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { inspectionTaskStatusLabels, type InspectionTask } from './inspection';
+import UiButton from '../../components/UiButton.vue';
+import {
+    describeTaskChoice,
+    inspectionTaskStatusLabels,
+    type InspectionTask,
+} from './inspection';
 
 defineProps<{
     task: InspectionTask | null;
     inspectedTick: number;
 }>();
+
+// Only reports the intent; the owner opens the form and sends the edit (#37).
+const emit = defineEmits<{ edit: [] }>();
 
 function statusLabel(status: InspectionTask['status']): string {
     return inspectionTaskStatusLabels[status];
@@ -27,6 +35,20 @@ function statusLabel(status: InspectionTask['status']): string {
                 <dd>{{ statusLabel(task.status) }}</dd>
             </div>
             <div>
+                <dt>Estado escolhido</dt>
+                <dd>{{ describeTaskChoice(task) }}</dd>
+            </div>
+            <div>
+                <dt>Próxima ativação</dt>
+                <dd>
+                    {{
+                        task.nextActivation === null
+                            ? 'Nenhuma restante'
+                            : `tick ${task.nextActivation}`
+                    }}
+                </dd>
+            </div>
+            <div>
                 <dt>Ingresso</dt>
                 <dd>{{ task.definition.arrival }}</dd>
             </div>
@@ -47,6 +69,14 @@ function statusLabel(status: InspectionTask['status']): string {
                 <dd>{{ inspectedTick }}</dd>
             </div>
         </dl>
+        <UiButton
+            v-if="task !== null"
+            class="task-details__edit"
+            variant="secondary"
+            @click="emit('edit')"
+        >
+            Editar tarefa
+        </UiButton>
     </section>
 </template>
 
@@ -79,6 +109,10 @@ dt {
 dd {
     margin: var(--spacing-2xs) 0 0;
     color: var(--color-text-primary);
+}
+
+.task-details__edit {
+    margin-top: var(--spacing-sm);
 }
 
 .empty-state {

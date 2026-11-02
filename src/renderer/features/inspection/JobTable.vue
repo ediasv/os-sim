@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { InspectionJob, JobRef } from './inspection';
+import type { CurrentInspectionJob, InspectionJob, JobRef } from './inspection';
 
 defineProps<{
     jobs: readonly InspectionJob[];
@@ -17,6 +17,11 @@ function stateLabel(job: InspectionJob): string {
     if (job.availability === 'future') {
         return 'Ainda não ativado';
     }
+    // The task is suspended, not the job (DEC-37); the projection marks the
+    // job the state applies to.
+    if (job.suspended) {
+        return 'Suspensa';
+    }
     return {
         ready: 'Aguardando CPU',
         running: 'Executando',
@@ -24,6 +29,18 @@ function stateLabel(job: InspectionJob): string {
         completed: 'Concluído',
         interrupted: 'Interrompido',
     }[job.state];
+}
+
+/**
+ * An incomplete job that is not eligible is activated and waiting behind an
+ * older incomplete one, or its task is suspended (DEC-02, DEC-37).
+ */
+function eligibilityLabel(job: CurrentInspectionJob): string {
+    if (job.eligible) {
+        return 'Elegível';
+    }
+    const finished = job.state === 'completed' || job.state === 'interrupted';
+    return finished ? 'Não elegível' : 'Ativado, não elegível';
 }
 </script>
 
@@ -40,6 +57,7 @@ function stateLabel(job: InspectionJob): string {
                         <th scope="col">Job</th>
                         <th scope="col">Ativação</th>
                         <th scope="col">Prazo</th>
+                        <th scope="col">Duração</th>
                         <th scope="col">Progresso</th>
                         <th scope="col">Estado</th>
                         <th scope="col">Elegibilidade</th>
@@ -69,6 +87,12 @@ function stateLabel(job: InspectionJob): string {
                         <td>{{ job.absoluteDeadline }}</td>
                         <td>
                             <span v-if="job.availability === 'current'">
+                                {{ job.duration }}
+                            </span>
+                            <span v-else>Não disponível</span>
+                        </td>
+                        <td>
+                            <span v-if="job.availability === 'current'">
                                 {{ job.executed }}
                             </span>
                             <span v-else>Não disponível</span>
@@ -86,7 +110,7 @@ function stateLabel(job: InspectionJob): string {
                         </td>
                         <td>
                             <span v-if="job.availability === 'current'">
-                                {{ job.eligible ? 'Elegível' : 'Não elegível' }}
+                                {{ eligibilityLabel(job) }}
                             </span>
                             <span v-else>Não disponível</span>
                         </td>
