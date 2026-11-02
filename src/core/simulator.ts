@@ -10,6 +10,7 @@ import {
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
+import { classifyProgress, type ExecutionProgress } from './progress';
 import { requireValidConfig } from './config';
 import {
     buildPolicyView,
@@ -107,6 +108,21 @@ export type ExecutionGuardResult =
     | { ready: false; reason: string };
 
 /**
+ * Outcome of `runAll` (DEC-49). `completed`: every task finished. `blocked`:
+ * work is pending but nothing can run or arrive; carries the tick reached,
+ * why, and the unfinished jobs. Both carry the last recorded snapshot.
+ */
+export type RunResult =
+    | { readonly kind: 'completed'; readonly snapshot: SimulationSnapshot }
+    | {
+          readonly kind: 'blocked';
+          readonly snapshot: SimulationSnapshot;
+          readonly tick: number;
+          readonly reason: string;
+          readonly jobs: readonly JobRef[];
+      };
+
+/**
  * Owns the live simulation state and publishes immutable snapshots of it.
  * Activations are processed at each boundary, eligible jobs are selected
  * globally by the policy of the current algorithm (DEC-39), and slices that
@@ -153,6 +169,55 @@ export class Simulator {
             throw error;
         }
         this.recordSnapshot();
+    }
+
+    /**
+     * Progress of the live state (DEC-49). It equals the step at the cursor
+     * only when the cursor is at the end of history, which is where `runAll`
+     * calls it.
+     */
+    public getProgress(): ExecutionProgress {
+        return classifyProgress(this.state);
+    }
+
+    /**
+     * Full execution (REQ-04, DEC-49): from the cursor, reuses the recorded
+     * future with `forward()` (no policy call, same draws), then computes new
+     * steps with `tick()`, until every task finishes or no progress is
+     * possible. Every step stays in the history, there is no cancellation and
+     * no intermediate result. It ends because each task creates at most ten
+     * jobs and every job that can run completes. A failing step propagates
+     * with the last confirmed step intact (DEC-14).
+     */
+    public runAll(): RunResult {
+        for (;;) {
+            if (this.canForward()) {
+                this.forward();
+                continue;
+            }
+            const progress = this.getProgress();
+            if (progress.kind === 'finished') {
+                return {
+                    kind: 'completed',
+                    snapshot: this.getLatestSnapshot(),
+                };
+            }
+            if (progress.kind === 'blocked') {
+                const tick = this.state.clock;
+                const jobs = progress.jobs.map(
+                    (ref) => `tarefa ${ref.taskId}, job ${ref.index}`,
+                );
+                const detail = jobs.length > 0 ? ` (${jobs.join('; ')})` : '';
+                return {
+                    kind: 'blocked',
+                    snapshot: this.getLatestSnapshot(),
+                    tick,
+                    reason: `Sem progresso no tick ${tick}: há trabalho pendente, nenhum job pode executar e não há ativações futuras${detail}.`,
+                    jobs: progress.jobs,
+                };
+            }
+            this.tick();
+        }
     }
 
     /**
@@ -679,6 +744,17 @@ export class Simulator {
             return {
                 ready: false,
                 reason: `O passo ${this.history.cursor + 1} já foi calculado; use forward() em vez de tick().`,
+            };
+        }
+        // A system with no tasks has nothing finished: it can still advance, so
+        // tasks can be added later; `runAll` alone treats it as complete.
+        if (
+            this.state.tasks.length > 0 &&
+            classifyProgress(this.state).kind === 'finished'
+        ) {
+            return {
+                ready: false,
+                reason: 'Todas as tarefas terminaram; não há passo a calcular.',
             };
         }
         return { ready: true };

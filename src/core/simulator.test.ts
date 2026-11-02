@@ -111,6 +111,7 @@ function task(
 
 function run(sim: Simulator, ticks: number): void {
     for (let step = 0; step < ticks; step++) {
+        if (sim.getProgress().kind === 'finished') break;
         sim.tick();
         expectMultiCpuInvariants(sim);
     }
@@ -309,6 +310,7 @@ describe('Simulator', () => {
             [expect.objectContaining({ activation: 0, index: 0 })],
         ]);
         for (let tick = 0; tick < 30; tick++) {
+            if (sim.getProgress().kind === 'finished') break;
             sim.tick();
             expectConsistent(sim);
         }
@@ -344,13 +346,15 @@ describe('Simulator', () => {
         );
         const jobCounts = [sim.getLatestSnapshot().tasks[0].jobs.length];
         for (let tick = 0; tick < 10; tick++) {
+            if (sim.getProgress().kind === 'finished') break;
             sim.tick();
             expectConsistent(sim);
             jobCounts.push(sim.getLatestSnapshot().tasks[0].jobs.length);
         }
 
         const snapshot = sim.getLatestSnapshot();
-        expect(jobCounts).toEqual([0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]);
+        // The run stops once the only job completes (DEC-49).
+        expect(jobCounts).toEqual([0, 0, 0, 1, 1, 1]);
         expect(snapshot.tasks[0].jobs[0]).toMatchObject({
             activation: 3,
             absoluteDeadline: 5,
@@ -1263,6 +1267,7 @@ describe('Simulator', () => {
         expectMultiCpuInvariants(sim);
 
         for (let step = 1; step <= 30; step++) {
+            if (sim.getProgress().kind === 'finished') break;
             sim.tick();
             expectMultiCpuInvariants(sim);
             if (step === 25) {

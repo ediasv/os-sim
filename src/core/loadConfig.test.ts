@@ -523,7 +523,7 @@ describe('default period (DEC-29)', () => {
     it('simulates a converted task as a task of period 15', () => {
         const jobsOf = (text: string) => {
             const sim = createSimulator(loaded(text).config);
-            for (let step = 0; step < 150; step++) sim.tick();
+            sim.runAll();
             return sim.getLatestSnapshot().tasks[0].jobs;
         };
         const converted = jobsOf('RM;5;1\n1;F0E0D0;0;2;0;3');

@@ -31,6 +31,8 @@ function runSnapshots(
     const snapshots = [sim.getLatestSnapshot()];
     expect(findInconsistencies(snapshots[0])).toEqual([]);
     for (let step = 0; step < steps; step++) {
+        // tick() is refused once every task has finished (DEC-49).
+        if (sim.getProgress().kind === 'finished') break;
         sim.tick();
         const snapshot = sim.getLatestSnapshot();
         expect(findInconsistencies(snapshot)).toEqual([]);
@@ -152,16 +154,9 @@ describe('summarizeCpuOff (DEC-21)', () => {
                 ],
                 totalOff: 4,
             },
-            {
-                clock: 8,
-                intervals: [
-                    { start: 0, end: 2 },
-                    { start: 3, end: 5 },
-                    { start: 6, end: null },
-                ],
-                totalOff: 6,
-            },
         ];
+        // The run stops at tick 6, when the last task finishes (DEC-49).
+        expect(snapshots).toHaveLength(7);
         // Earlier snapshots are queried after later ticks: the result depends
         // only on the snapshot passed in.
         for (const { clock, intervals, totalOff } of expected) {
@@ -196,13 +191,15 @@ describe('summarizeCpuOff (DEC-21)', () => {
             10,
         );
 
-        const last = snapshots[10];
+        // The run stops at tick 3, when the last task finishes (DEC-49).
+        const last = snapshots[snapshots.length - 1];
+        expect(last.clock).toBe(3);
         expect(
             last.events.filter((event) => event.kind === 'task-finished'),
         ).toHaveLength(2);
         expect(summarizeCpuOff(last)).toEqual([
-            { cpuId: 1, intervals: [{ start: 2, end: null }], totalOff: 8 },
-            { cpuId: 2, intervals: [{ start: 3, end: null }], totalOff: 7 },
+            { cpuId: 1, intervals: [{ start: 2, end: null }], totalOff: 1 },
+            { cpuId: 2, intervals: [{ start: 3, end: null }], totalOff: 0 },
         ]);
     });
 

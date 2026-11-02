@@ -271,7 +271,7 @@ describe('task period edit in the engine', () => {
         const sim = periodic({ arrival: 4, period: 3, deadline: 3 });
         advanceTo(sim, 2);
         sim.edit([{ kind: 'taskPeriod', taskId: '1', period: 6 }]);
-        advanceTo(sim, 70);
+        sim.runAll();
         expect(activationTimes(sim)).toEqual([
             4, 10, 16, 22, 28, 34, 40, 46, 52, 58,
         ]);

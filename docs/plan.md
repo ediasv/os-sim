@@ -327,8 +327,9 @@ Requisitos: REQ-04, REQ-05.
   suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
 - #27 Implementar execucao completa e detectar falta de progresso.
   DEC-49 aceita em 2026-11-01: guardar todo o historico, interromper por
-  falta de progresso conforme Q-06 e nao oferecer cancelamento; implementacao
-  nao iniciada.
+  falta de progresso conforme Q-06 e nao oferecer cancelamento; nucleo
+  implementado em 2026-11-01 (`runAll()`, `getProgress()` e recusa de `tick()`
+  com tudo terminado), aguardando revisao e integracao; interface na #36.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
 ### E4: Configuracao e arquivos
@@ -923,7 +924,10 @@ Issues `[Docs]`, sem fase no Project.
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
 - Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao; a exclusao
   fecha a #26 num PR seguinte). DEC-34 segue pendente de aceite.
-- Pendencias: Q-06 resolvida por DEC-49, implementacao na #27 (Q-02 resolvida por DEC-37); Q-08
+- #27 implementada na branch `feat/27-execucao-completa` (depende do PR #138,
+  DEC-49): 1205/1205 testes, lint e typecheck sem falhas; 17 testes antigos que
+  avancavam alem do termino foram ajustados. Proximo passo: revisao e PR.
+- Pendencias: Q-06 resolvida por DEC-49, implementada na #27 (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
