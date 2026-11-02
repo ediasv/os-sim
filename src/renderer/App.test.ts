@@ -255,6 +255,20 @@ describe('App preparation without a file (#36 part 2)', () => {
         expect(chipValue(wrapper, 'CPUs')).toBe('3');
     });
 
+    it('shows the core reason for an invalid value and keeps the dialog', async () => {
+        const wrapper = mount(App);
+
+        await button(wrapper, 'Sistema').trigger('click');
+        await field(wrapper, 'Quantum').setValue('0');
+        await button(wrapper, 'Aplicar').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain('quantum');
+        expect(chipValue(wrapper, 'Quantum')).toBe(
+            String(DEFAULT_CONFIG.quantum),
+        );
+        await button(wrapper, 'Cancelar').trigger('click');
+    });
+
     it('edits the selected task and removes it after confirming', async () => {
         const wrapper = mount(App);
         await addDefaultTask(wrapper);

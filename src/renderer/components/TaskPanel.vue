@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TaskId } from '../../core/domain';
 import UiButton from './UiButton.vue';
 import UiIcon from './UiIcon.vue';
 import {
@@ -9,7 +10,7 @@ import {
 
 /** What a card shows of a task being prepared (Figma "Task card"). */
 export interface PreparedTask {
-    readonly id: number;
+    readonly id: TaskId;
     readonly color: string;
     readonly period: number;
     readonly duration: number;
@@ -26,7 +27,7 @@ withDefaults(
         available?: ReadonlySet<WorkspaceAction>;
         taskCount?: number;
         tasks?: readonly PreparedTask[];
-        selectedTaskId?: number | null;
+        selectedTaskId?: TaskId | null;
     }>(),
     {
         available: () => NO_ACTIONS,
@@ -38,7 +39,7 @@ withDefaults(
 
 const emit = defineEmits<{
     action: [action: WorkspaceAction];
-    select: [taskId: number];
+    select: [taskId: TaskId];
 }>();
 </script>
 

@@ -27,6 +27,7 @@ import type {
     SimulationSnapshot,
     TaskId,
 } from '../../../core/domain';
+import { compareTaskIds } from '../../../core/taskId';
 import { cpuOffSummary } from '../../snapshotQueries';
 
 type Snapshot = DeepReadonly<SimulationSnapshot>;
@@ -144,7 +145,18 @@ const LEGEND_MARKERS: readonly MarkerKind[] = [
 ];
 
 const escapeXml = (text: string): string =>
-    text
+    Array.from(text, (character) => {
+        const code = character.codePointAt(0)!;
+        return code === 9 ||
+            code === 10 ||
+            code === 13 ||
+            (code >= 0x20 && code <= 0xd7ff) ||
+            (code >= 0xe000 && code <= 0xfffd) ||
+            (code >= 0x10000 && code <= 0x10ffff)
+            ? character
+            : '\uFFFD';
+    })
+        .join('')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -266,6 +278,27 @@ export function isFinalSnapshot(snapshot: Snapshot): boolean {
 const textWidth = (text: string, size: number): number =>
     text.length * size * 0.55;
 
+/** Room for the lane label: the label column minus the color chip and a gap. */
+const LANE_LABEL_WIDTH = LABEL_WIDTH - 18 - 6;
+const LANE_LABEL_SIZE = 12;
+
+/**
+ * Lane label of a task, already escaped. A long text ID (DEC-48) would run
+ * into the bars, so it is cut with an ellipsis and the whole ID goes in a
+ * tooltip; short and numeric IDs keep the plain "Tarefa <id>" label.
+ */
+function laneLabel(id: string): string {
+    const full = `Tarefa ${id}`;
+    if (textWidth(full, LANE_LABEL_SIZE) <= LANE_LABEL_WIDTH) {
+        return escapeXml(full);
+    }
+    const room = Math.floor(LANE_LABEL_WIDTH / (LANE_LABEL_SIZE * 0.55));
+    const cut = `${Array.from(id)
+        .slice(0, room - 1)
+        .join('')}…`;
+    return `${escapeXml(cut)}<title>${escapeXml(full)}</title>`;
+}
+
 const two = (n: number): string => String(n).padStart(2, '0');
 
 function formatInstant(date: Date): string {
@@ -321,7 +354,9 @@ export function buildGanttSvg(
     // Highest ID at the top, lowest next to the CPU lanes (A.2.5).
     const order = snapshot.tasks
         .map((tcb, index) => ({ tcb, index }))
-        .sort((a, b) => b.tcb.definition.id - a.tcb.definition.id);
+        .sort((a, b) =>
+            compareTaskIds(b.tcb.definition.id, a.tcb.definition.id),
+        );
     const laneTop = new Map<TaskId, number>();
     const laneHeight = (id: TaskId): number =>
         LANE_HEIGHT + ((laneDepth.get(id) ?? 1) - 1) * MARKER_STEP;
@@ -438,16 +473,16 @@ export function buildGanttSvg(
             .filter((slice) => slice.job.taskId === id)
             .sort((a, b) => a.start - b.start);
         out.push(
-            `<g data-task="${id}">`,
+            `<g data-task="${escapeXml(id)}">`,
             grid(top, laneHeight(id)),
             `<rect x="${laneX}" y="${top + 16}" width="12" height="12" rx="3" fill="${color}"/>`,
-            `<text x="${laneX + 18}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.text}">Tarefa ${id}</text>`,
+            `<text x="${laneX + 18}" y="${top + 26}" font-size="12" font-weight="500" fill="${THEME.text}">${laneLabel(id)}</text>`,
         );
         tcb.jobs.forEach((job, jobIndex) => {
             const own = slices.filter((slice) => slice.job.index === job.index);
             for (const span of readySpans(snapshot, index, jobIndex, own)) {
                 out.push(
-                    `<rect data-state="ready" x="${tx(span.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${(span.end - span.start) * TICK - 3.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${id} ${jobLabel({ taskId: id, index: jobIndex })}, [${span.start}, ${span.end})</title></rect>`,
+                    `<rect data-state="ready" x="${tx(span.start) + 1.75}" y="${top + BAR_TOP + 0.75}" width="${(span.end - span.start) * TICK - 3.5}" height="${BAR_HEIGHT - 1.5}" rx="4" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3"><title>Pronta: tarefa ${escapeXml(id)} ${jobLabel({ taskId: id, index: jobIndex })}, [${span.start}, ${span.end})</title></rect>`,
                 );
             }
         });
@@ -460,7 +495,7 @@ export function buildGanttSvg(
                 (text) => textWidth(text, 9) * 1.15 + 12 <= w,
             );
             out.push(
-                `<g data-state="running"><rect x="${tx(slice.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="${color}"><title>Execução: tarefa ${id} ${jobLabel(slice.job)} na CPU ${slice.cpuId}, [${slice.start}, ${slice.end})</title></rect>`,
+                `<g data-state="running"><rect x="${tx(slice.start) + 1}" y="${top + BAR_TOP}" width="${w}" height="${BAR_HEIGHT}" rx="4" fill="${color}"><title>Execução: tarefa ${escapeXml(id)} ${jobLabel(slice.job)} na CPU ${slice.cpuId}, [${slice.start}, ${slice.end})</title></rect>`,
                 label === undefined
                     ? ''
                     : clippedText(

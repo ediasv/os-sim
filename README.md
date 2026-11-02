@@ -4,10 +4,11 @@ An operating-system simulator desktop app built with Electron, Vue 3 and TypeScr
 
 ## Specification and implementation plan
 
-The simulator is under construction: the core engine is partially implemented
-and the UI is still a tick counter. Current status lives in the
+The simulator is under construction: the core covers most Project A rules, and
+the interface already composes the workspace, the inspection panels and the
+system view. Remaining interface work and final checks are listed in the
 [delivery plan](docs/plan.md). Scope: Project A only, core logic and tests
-before the visual interface.
+with the interface built on top.
 
 Read the shared project context in this order:
 

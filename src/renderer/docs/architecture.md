@@ -1,7 +1,7 @@
 ﻿# Arquitetura e entregas do renderer
 
 Planejamento atualizado em 2026-10-23; infraestrutura de testes de componentes
-preparada na #67, sem implementacao visual das entregas abaixo. A
+preparada na #67; o estado de cada entrega fica nas secoes abaixo. A
 [spec de apresentacao](specification.md) registra comportamentos; este
 documento registra responsabilidades, contratos propostos e ordem de codigo.
 O [plano geral](../../../docs/plan.md) continua sendo a unica fonte de andamento.
@@ -126,7 +126,7 @@ liberado, sem dispensar o merge do registro.
 | 4     | Arquivos e diagnosticos completos.                                       | Parser, validacao contextual, ponte Electron e confirmacao; #30 a #33 concluidas; #34 ainda necessaria.                                     |
 | 5     | Gantt inicial com intervalos, eventos, legenda, selecao, zoom e rolagem. | Geometria e comparacao visual na #38; apenas fatos disponiveis, sem inventar trechos suspensos antes de #25/#26.                            |
 | 6     | Historico com cursor e futuro valido visivel.                            | Restauracao, reproducao e selecao futura; depende de #23/#24.                                                                               |
-| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; andamento, cancelamento e bloqueio depois de #27; verificacao em #28.                             |
+| 7     | Intervencoes atomicas e, em incremento separado, execucao completa.      | Formularios integrados depois de #25/#26; resultado e bloqueio depois de #27, sem cancelamento (DEC-49); verificacao em #28.                |
 | 8     | SVG integral e fechamento.                                               | Mesma projecao/geometria do Gantt, sem recorte de viewport; #39/#40, gates de E6 e pacote no ambiente-alvo. SVG definido pela DEC-08 (#35). |
 
 Dados de exemplo tipados pertencem aos testes e demonstracoes isoladas, nao
@@ -601,9 +601,9 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   ha job, e o progresso do job ("Progresso: y de duracao ticks") em linha
   secundaria; ambos com rotulos distintos, como antes.
 
-Integracao: nao ha uso em producao. `App` ainda nao chama `useSimulation` e o
-`WorkspaceLayout` nao tem slot para este painel; a composicao fica para a #36
-(a issue pede verificacao isolada e composicao posterior).
+Integracao: na #73 ainda nao havia uso em producao. Desde a #36 (parte 1, abaixo)
+o `App` compoe o fluxo via `useWorkspace`, e o painel do sistema fica montado na
+disposicao provisoria.
 
 ### Evidencia da #73 (2026-11-01)
 
@@ -665,9 +665,9 @@ paineis.
   snapshot (`WeakMap`) o resultado de `findEligibleJobs` e `summarizeCpuOff`,
   para as projecoes de sistema e inspecao nao perguntarem duas vezes ao nucleo
   a cada tick. Nao decide regra; so evita repetir a consulta.
-- Fora desta parte: Executar tudo e cancelamento (#27) e a edicao durante a
-  simulacao (#37). Sistema (2a), tarefas do rascunho (2b) e a confirmacao de
-  FE-04 (2c) estao na parte 2, abaixo.
+- Fora desta parte: Executar tudo (#27), sem cancelamento (DEC-49), e a edicao
+  durante a simulacao (#37). Sistema (2a), tarefas do rascunho (2b) e a
+  confirmacao de FE-04 (2c) estao na parte 2, abaixo.
 
 Verificacao (2026-11-01): `npm test` 685 aprovados e 1 ignorado em 44 arquivos,
 `npm run lint` e `npm run typecheck` sem achados. No renderer (Vite, com um
@@ -730,17 +730,17 @@ as tarefas do rascunho. A parte 2 sai em tres PRs empilhados: 2a (Sistema), 2b
   do Figma: a ajuda do periodo diz "Inteiro >= 1" em vez de "0 = aperiodica",
   pois zero e recusado (DEC-29). Acordado com o usuario em 2026-11-01.
 - Nao feito nesta parte: confirmacao de FE-04 (2c), edicao durante a
-  simulacao e tarefa concluida so com cor (#37), Executar tudo e cancelamento
-  (#27).
+  simulacao e tarefa concluida so com cor (#37), Executar tudo (#27), sem
+  cancelamento (DEC-49).
 
-Verificacao (2026-11-01, 2b): `npm test` 985 aprovados e 1 ignorado, `npm run
-lint` e `npm run typecheck` sem achados. Testes de componente e de `App` cobrem
-adicionar com periodo 15, periodo zero recusado, motivo do nucleo, editar,
-remover com confirmacao e a selecao. No navegador do app (Vite) a 1440 x 924
-foi conferido o fluxo completo do conjunto 2a a 2c: dialogo de tarefa com
-periodo 15, periodo 0 com o motivo junto ao campo, cartoes de tarefa, editar e
-remover. Nao verificado: app Electron, larguras menores, comparacao lado a lado
-com o Figma (#40).
+Verificacao (2026-11-01, 2b, depois do merge com a main): `npm test` 1304
+aprovados e 1 ignorado, `npm run lint` e `npm run typecheck` sem achados. Testes
+de componente e de `App` cobrem adicionar com periodo 15, periodo zero recusado,
+motivo do nucleo, editar, remover com confirmacao e a selecao. Os IDs passaram a
+texto (DEC-48): novas tarefas usam `suggestTaskId` e a busca usa `sameTaskId`.
+A conferencia no navegador (Vite, 1440 x 924) foi feita antes desse merge e nao
+foi repetida depois dele. Nao verificado: app Electron, larguras menores,
+comparacao lado a lado com o Figma (#40).
 
 ## Verificacao e pendencias tecnicas
 

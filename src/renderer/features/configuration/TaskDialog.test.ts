@@ -8,7 +8,7 @@ import TaskDialog from './TaskDialog.vue';
 enableAutoUnmount(afterEach);
 
 const initial = {
-    id: 2,
+    id: '2',
     color: 'F28C59',
     arrival: 0,
     duration: 4,
@@ -63,7 +63,7 @@ describe('TaskDialog', () => {
         expect(wrapper.emitted('apply')).toEqual([
             [
                 {
-                    id: 2,
+                    id: '2',
                     color: '112233',
                     arrival: 2,
                     duration: 3,

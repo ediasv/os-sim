@@ -10,7 +10,7 @@ import {
     suggestColor,
 } from './draft';
 
-function task(id: number, color: string, extra = {}): TaskDefinition {
+function task(id: string, color: string, extra = {}): TaskDefinition {
     return {
         id,
         color,
@@ -32,20 +32,20 @@ describe('new task values', () => {
     it('starts at id 1 with the default period when the draft is empty', () => {
         const values = newTaskValues(DEFAULT_CONFIG);
 
-        expect(values.id).toBe(1);
+        expect(values.id).toBe('1');
         expect(values.period).toBe(DEFAULT_TASK_PERIOD);
         expect(values.color).toMatch(/^[0-9A-F]{6}$/);
     });
 
     it('takes the largest id in use plus one, not the count', () => {
         expect(
-            nextTaskId(withTasks(task(2, 'AAAAAA'), task(7, 'BBBBBB'))),
-        ).toBe(8);
+            nextTaskId(withTasks(task('2', 'AAAAAA'), task('7', 'BBBBBB'))),
+        ).toBe('8');
     });
 
     it('suggests a color no task uses, whatever its letter case', () => {
         const first = suggestColor(DEFAULT_CONFIG);
-        const next = suggestColor(withTasks(task(1, first.toLowerCase())));
+        const next = suggestColor(withTasks(task('1', first.toLowerCase())));
 
         expect(next).not.toBe(first);
         expect(next).toMatch(/^[0-9A-F]{6}$/);
@@ -54,7 +54,7 @@ describe('new task values', () => {
 
 describe('applySystem', () => {
     it('replaces algorithm, quantum and CPUs and keeps the tasks', () => {
-        const base = withTasks(task(1, 'AAAAAA'));
+        const base = withTasks(task('1', 'AAAAAA'));
 
         const result = applySystem(base, {
             algorithm: 'edf',
@@ -87,7 +87,7 @@ describe('applySystem', () => {
 
 describe('saveTask', () => {
     const values = {
-        id: 1,
+        id: '1',
         color: 'f0e0d0',
         arrival: 0,
         duration: 3,
@@ -96,10 +96,11 @@ describe('saveTask', () => {
     };
 
     it('adds a task, keeping the order and uppercasing the color', () => {
-        const result = saveTask(withTasks(task(2, 'AAAAAA')), values, null);
+        const result = saveTask(withTasks(task('2', 'AAAAAA')), values, null);
 
         expect(result.ok && result.config.tasks.map((t) => t.id)).toEqual([
-            2, 1,
+            '2',
+            '1',
         ]);
         expect(result.ok && result.config.tasks[1]).toMatchObject({
             color: 'F0E0D0',
@@ -110,18 +111,18 @@ describe('saveTask', () => {
 
     it('edits in place, keeping the position and the stored events', () => {
         const base = withTasks(
-            task(1, 'AAAAAA', { rawEvents: 'x' }),
-            task(2, 'BBBBBB'),
+            task('1', 'AAAAAA', { rawEvents: 'x' }),
+            task('2', 'BBBBBB'),
         );
 
         const result = saveTask(
             base,
             { ...values, duration: 9, color: 'AAAAAA' },
-            1,
+            '1',
         );
 
         expect(result.ok && result.config.tasks[0]).toMatchObject({
-            id: 1,
+            id: '1',
             duration: 9,
             rawEvents: 'x',
         });
@@ -129,7 +130,7 @@ describe('saveTask', () => {
     });
 
     it('refuses period zero with its reason and changes nothing (DEC-29)', () => {
-        const base = withTasks(task(2, 'AAAAAA'));
+        const base = withTasks(task('2', 'AAAAAA'));
 
         const result = saveTask(base, { ...values, period: 0 }, null);
 
@@ -145,11 +146,11 @@ describe('saveTask', () => {
     });
 
     it('relays the core reasons, such as a color already used', () => {
-        const base = withTasks(task(1, 'AAAAAA'));
+        const base = withTasks(task('1', 'AAAAAA'));
 
         const result = saveTask(
             base,
-            { ...values, id: 2, color: 'aaaaaa' },
+            { ...values, id: '2', color: 'aaaaaa' },
             null,
         );
 
@@ -174,11 +175,11 @@ describe('saveTask', () => {
 
 describe('removeTask', () => {
     it('drops only the chosen task', () => {
-        const base = withTasks(task(1, 'AAAAAA'), task(2, 'BBBBBB'));
+        const base = withTasks(task('1', 'AAAAAA'), task('2', 'BBBBBB'));
 
-        const config = removeTask(base, 1);
+        const config = removeTask(base, '1');
 
-        expect(config.tasks.map((t) => t.id)).toEqual([2]);
+        expect(config.tasks.map((t) => t.id)).toEqual(['2']);
         expect(base.tasks).toHaveLength(2);
     });
 });

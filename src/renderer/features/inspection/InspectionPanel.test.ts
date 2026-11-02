@@ -12,7 +12,7 @@ const data: InspectionData = {
     tasks: [
         {
             definition: {
-                id: 1,
+                id: '1',
                 color: 'F0E0D0',
                 arrival: 0,
                 duration: 3,
@@ -24,7 +24,7 @@ const data: InspectionData = {
             jobs: [
                 {
                     availability: 'current',
-                    ref: { taskId: 1, index: 0 },
+                    ref: { taskId: '1', index: 0 },
                     activation: 0,
                     absoluteDeadline: 4,
                     executed: 2,
@@ -37,7 +37,7 @@ const data: InspectionData = {
         },
         {
             definition: {
-                id: 2,
+                id: '2',
                 color: 'D0E0F0',
                 arrival: 0,
                 duration: 2,
@@ -49,7 +49,7 @@ const data: InspectionData = {
             jobs: [
                 {
                     availability: 'current',
-                    ref: { taskId: 2, index: 0 },
+                    ref: { taskId: '2', index: 0 },
                     activation: 0,
                     absoluteDeadline: 2,
                     executed: 2,
@@ -63,7 +63,7 @@ const data: InspectionData = {
     ],
     futureJobs: [
         projectFutureJob({
-            taskId: 1,
+            taskId: '1',
             index: 1,
             activation: 10,
             absoluteDeadline: 14,

@@ -3,7 +3,7 @@ import type { JobRef } from './domain';
 import { DRAW_SEED, drawWinners, nextRandom } from './draw';
 import { key } from './helpers/key';
 
-const ref = (taskId: number): JobRef => ({ taskId, index: 0 });
+const ref = (taskId: string): JobRef => ({ taskId, index: 0 });
 
 describe('nextRandom', () => {
     it('produces the mulberry32 sequence from the fixed seed', () => {
@@ -29,7 +29,7 @@ describe('nextRandom', () => {
 
 describe('drawWinners', () => {
     it('draws `slots` distinct members of the tied group', () => {
-        const tied = [ref(1), ref(2), ref(3)];
+        const tied = [ref('1'), ref('2'), ref('3')];
         const { winners } = drawWinners(tied, 2, DRAW_SEED);
         expect(winners).toHaveLength(2);
         expect(new Set(winners.map(key)).size).toBe(2);
@@ -37,37 +37,37 @@ describe('drawWinners', () => {
     });
 
     it('ignores input order', () => {
-        expect(drawWinners([ref(1), ref(2), ref(3)], 1, DRAW_SEED)).toEqual(
-            drawWinners([ref(3), ref(1), ref(2)], 1, DRAW_SEED),
-        );
+        expect(
+            drawWinners([ref('1'), ref('2'), ref('3')], 1, DRAW_SEED),
+        ).toEqual(drawWinners([ref('3'), ref('1'), ref('2')], 1, DRAW_SEED));
     });
 
     it('returns the group sorted by task ID, apart from the input', () => {
-        const tied = [ref(3), ref(1), ref(2)];
+        const tied = [ref('3'), ref('1'), ref('2')];
         const { group } = drawWinners(tied, 1, DRAW_SEED);
-        expect(group).toEqual([ref(1), ref(2), ref(3)]);
+        expect(group).toEqual([ref('1'), ref('2'), ref('3')]);
         expect(tied.map(key)).toEqual(['3.0', '1.0', '2.0']);
     });
 
     it('advances the state once per winner', () => {
         const one = nextRandom(DRAW_SEED).state;
         const two = nextRandom(one).state;
-        expect(drawWinners([ref(1), ref(2), ref(3)], 2, DRAW_SEED).state).toBe(
-            two,
-        );
+        expect(
+            drawWinners([ref('1'), ref('2'), ref('3')], 2, DRAW_SEED).state,
+        ).toBe(two);
     });
 
     it.each([0, 3, 4, 1.5])(
         'rejects %s slots for 3 tied jobs (DEC-27)',
         (slots) => {
             expect(() =>
-                drawWinners([ref(1), ref(2), ref(3)], slots, DRAW_SEED),
+                drawWinners([ref('1'), ref('2'), ref('3')], slots, DRAW_SEED),
             ).toThrow(RangeError);
         },
     );
 
     it('returns plain copies, not the tied objects', () => {
-        const tied = [{ taskId: 1, index: 0, extra: true }, ref(2)];
+        const tied = [{ taskId: '1', index: 0, extra: true }, ref('2')];
         const { winners } = drawWinners(tied, 1, DRAW_SEED);
         expect(Object.keys(winners[0]).sort()).toEqual(['index', 'taskId']);
     });

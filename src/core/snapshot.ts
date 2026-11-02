@@ -10,6 +10,7 @@ import type {
     SimulationSnapshot,
     SimulationState,
     SystemConfig,
+    TaskControlBlock,
     TaskDefinition,
 } from './domain';
 import { DRAW_SEED } from './draw';
@@ -24,11 +25,7 @@ export function createInitialState(config: SystemConfig): SimulationState {
     return {
         clock: 0,
         config,
-        tasks: config.tasks.map((definition) => ({
-            definition,
-            status: 'ready',
-            jobs: [],
-        })),
+        tasks: config.tasks.map(createTcb),
         cpus: Array.from({ length: config.cpuCount }, (_, i) => ({
             id: i + 1,
             running: null,
@@ -38,6 +35,22 @@ export function createInitialState(config: SystemConfig): SimulationState {
         executions: [],
         events: [],
         drawState: DRAW_SEED,
+        usedTaskIds: config.tasks.map((task) => task.id),
+    };
+}
+
+/**
+ * The only place a new TCB is created: ready, no jobs, first activation at
+ * the arrival (initial state and inclusion, DEC-46). `restoreState` only
+ * rebuilds TCBs from a snapshot, and `editableTask` creates a provisional one
+ * to validate an included task before it is applied.
+ */
+export function createTcb(definition: TaskDefinition): TaskControlBlock {
+    return {
+        definition,
+        status: 'ready',
+        jobs: [],
+        nextActivation: definition.arrival,
     };
 }
 
@@ -78,6 +91,7 @@ export function restoreState(snapshot: SimulationSnapshot): SimulationState {
             definition: tcb.definition as TaskDefinition,
             status: tcb.status,
             jobs: thaw(tcb.jobs) as Job[],
+            nextActivation: tcb.nextActivation,
         })),
     };
 }

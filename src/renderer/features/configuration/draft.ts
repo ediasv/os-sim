@@ -5,6 +5,7 @@ import {
     type TaskDefinition,
     type TaskId,
 } from '../../../core/domain';
+import { sameTaskId, suggestTaskId } from '../../../core/taskId';
 
 /**
  * Edits of the configuration being prepared (#36, FE-03, FE-11). Every edit
@@ -48,9 +49,9 @@ const PALETTE = [
     'A0A8B8',
 ] as const;
 
-/** Largest id in use plus one, so ids are never reused within the draft (FE-19). */
+/** Suggested ID for a new task: the core's rule over the IDs in use (DEC-48). */
 export function nextTaskId(config: SystemConfig): TaskId {
-    return config.tasks.reduce((max, task) => Math.max(max, task.id), 0) + 1;
+    return suggestTaskId(config.tasks.map((task) => task.id));
 }
 
 /** First palette color no task uses; beyond the palette, a derived one. */
@@ -99,7 +100,7 @@ export function saveTask(
     const index =
         replacing === null
             ? config.tasks.length
-            : config.tasks.findIndex((task) => task.id === replacing);
+            : config.tasks.findIndex((task) => sameTaskId(task.id, replacing));
     const previous = config.tasks[index] as TaskDefinition | undefined;
     const task: TaskDefinition = {
         ...values,
@@ -129,5 +130,8 @@ export function saveTask(
 }
 
 export function removeTask(config: SystemConfig, id: TaskId): SystemConfig {
-    return { ...config, tasks: config.tasks.filter((task) => task.id !== id) };
+    return {
+        ...config,
+        tasks: config.tasks.filter((task) => !sameTaskId(task.id, id)),
+    };
 }

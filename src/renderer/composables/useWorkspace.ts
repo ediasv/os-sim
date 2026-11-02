@@ -72,7 +72,15 @@ export function useWorkspace() {
     /** Parameters shown: the running simulation's, else the prepared ones. */
     const config = computed(() => snapshot.value?.config ?? draft.value);
     const clock = computed(() => snapshot.value?.clock ?? null);
-    const taskCount = computed(() => config.value.tasks.length);
+    /**
+     * Tasks of the running snapshot, else of the prepared configuration. The
+     * snapshot's `config.tasks` is the list as loaded: edits include tasks in
+     * `snapshot.tasks` only (DEC-46), so counting the configuration would stay
+     * behind.
+     */
+    const taskCount = computed(
+        () => snapshot.value?.tasks.length ?? draft.value.tasks.length,
+    );
 
     /** Tasks of the configuration being prepared; empty once it started. */
     const draftTasks = computed(() => (started.value ? [] : draft.value.tasks));
