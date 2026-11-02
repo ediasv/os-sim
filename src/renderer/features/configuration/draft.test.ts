@@ -9,7 +9,7 @@ describe('applySystem', () => {
             ...DEFAULT_CONFIG,
             tasks: [
                 {
-                    id: 1,
+                    id: '1',
                     color: 'AAAAAA',
                     arrival: 0,
                     duration: 2,

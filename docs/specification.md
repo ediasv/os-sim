@@ -89,7 +89,9 @@ id;cor;ingresso;duracao;periodo;prazo;lista_eventos
 ```
 
 - Pelo menos cabecalho e uma tarefa, sem limite arbitrario de tarefas.
-- IDs unicos; cores RGB hexadecimais distintas por tarefa.
+- IDs unicos (sem distincao de caixa), texto livre nao vazio, sem `;` nem
+  quebra de linha, ate 32 caracteres (DEC-48); cores RGB hexadecimais
+  distintas por tarefa.
 - Strings sem distincao entre maiusculas/minusculas; aceitar `;` final opcional
   (DEC-20).
 - Ignorar espacos irrelevantes e linhas em branco; nao remover separadores ou
@@ -148,7 +150,8 @@ Fonte: gerais 3; A.2.1 a A.2.5.
   com padrao distinto; identificar CPU em cada trecho executado.
 - Marcar ingresso, termino, perda de prazo, sorteio e demais eventos relevantes
   em seus instantes exatos, com elementos distintos e legenda.
-- Menor ID mais proximo do eixo X; IDs decrescentes de cima para baixo.
+- Menor ID mais proximo do eixo X; IDs decrescentes de cima para baixo, na
+  ordem natural de DEC-48 (numeros por valor, depois texto).
 - Atualizar a cada passo no modo interativo e exibir resultado no modo completo.
 - Exportar imagem da simulacao inteira, nao captura da janela nem apenas area
   visivel, sem teto arbitrario de tempo. Formato SVG definido em DEC-08.
@@ -174,7 +177,8 @@ Fonte: gerais 5 e 6; A.5.
   executando forcada, suspensa, concluida), aplicado ao job mais antigo
   incompleto; duracao e prazo na proxima ativacao; periodo no calendario e
   na prioridade RM imediata; ingresso so antes da primeira ativacao; cor
-  sempre; ID e ticks executados fixos; inclusao a qualquer tick e exclusao
+  sempre; ID e ticks executados fixos; inclusao pela caixa de dialogo, com
+  ingresso escolhido pelo usuario (nao pelo tick atual), e exclusao
   so de tarefa nunca ativada; algoritmo, quantum e CPUs editaveis; eventos
   de suspensao, retomada, forcamento e CPUs para o Gantt. Recusas seguem
   A.3.1 e A.3.4.
@@ -187,9 +191,10 @@ Fonte: gerais 5 e 6; A.5.
   em cada trecho, faixas de CPU desligada, SVG). Layout confirmado pelo usuario
   como similar as figuras da secao 6.4 do livro; figuras 2.5/2.6 seguem como
   referencia de comportamento, nao substituem A.2.5.
-- Q-06: definir deteccao de falta de progresso e cancelamento no modo completo
-  quando edicoes deixam jobs suspensos indefinidamente. Nao impor termino falso
-  nem ignorar futuras ativacoes quando todas as CPUs estiverem desligadas.
+- Q-06: resolvida em 2026-11-01 por DEC-49: interromper por falta de
+  progresso se houver trabalho pendente, nenhum job puder executar e nao
+  houver ativacoes futuras; informar tick, motivo e jobs. Preservar todo o
+  historico e nao oferecer cancelamento durante a execucao completa.
 - Q-07: resolvida em 2026-10-17 por DEC-17 (aperiodica tem a menor prioridade
   RM; aperiodicas empatam entre si).
 - Q-08: resolvida em 2026-10-28 por DEC-29 (periodo padrao 15; periodo zero

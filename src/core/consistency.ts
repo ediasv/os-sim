@@ -1,3 +1,5 @@
+import { taskIdKey } from './taskId';
+
 /**
  * Cross-checks facts that the domain records twice (DEC-12): a running job is
  * marked both in `Job.state` and in `CpuState.running`, a missed deadline both
@@ -39,6 +41,15 @@ export function findInconsistencies(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
     }
+    const usedKeys = new Set(state.usedTaskIds.map(taskIdKey));
+    if (
+        usedKeys.size !== state.usedTaskIds.length ||
+        state.tasks.some((tcb) => !usedKeys.has(taskIdKey(tcb.definition.id)))
+    ) {
+        issues.push(
+            'The used task IDs must be unique ignoring case and include every task ID.',
+        );
+    }
     const statuses: readonly string[] = [
         'ready',
         'forced',
@@ -51,6 +62,28 @@ export function findInconsistencies(
             issues.push(
                 `Task ${id} has an unknown status ${JSON.stringify(tcb.status)}.`,
             );
+        }
+        const limit = maxJobs(tcb.definition);
+        const last = tcb.jobs[tcb.jobs.length - 1];
+        if (tcb.jobs.length === limit) {
+            if (tcb.nextActivation !== null) {
+                issues.push(
+                    `Task ${id} activated all ${limit} jobs but still has next activation ${tcb.nextActivation}.`,
+                );
+            }
+        } else if (tcb.status !== 'concluded') {
+            if (tcb.nextActivation === null) {
+                issues.push(
+                    `Task ${id} has ${tcb.jobs.length} of ${limit} jobs but no next activation.`,
+                );
+            } else if (
+                last !== undefined &&
+                tcb.nextActivation <= last.activation
+            ) {
+                issues.push(
+                    `Task ${id} next activation ${tcb.nextActivation} is not after its last job activation ${last.activation}.`,
+                );
+            }
         }
         for (const job of tcb.jobs) {
             if (job.state === 'interrupted' && tcb.status !== 'concluded') {
@@ -85,9 +118,9 @@ export function findInconsistencies(
     for (const tcb of state.tasks) {
         for (const job of tcb.jobs) {
             jobs.set(key(job), job);
-            if (job.executed > tcb.definition.duration) {
+            if (job.executed > job.duration) {
                 issues.push(
-                    `Job ${key(job)} executed ${job.executed} ticks, more than its duration of ${tcb.definition.duration}.`,
+                    `Job ${key(job)} executed ${job.executed} ticks, more than its duration of ${job.duration}.`,
                 );
             }
         }

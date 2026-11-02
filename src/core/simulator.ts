@@ -10,6 +10,7 @@ import {
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
+import { classifyProgress, type ExecutionProgress } from './progress';
 import { requireValidConfig } from './config';
 import {
     buildPolicyView,
@@ -20,6 +21,7 @@ import {
     type SchedulingPolicy,
 } from './policy';
 import { drawWinners } from './draw';
+import { activateDueJobs } from './activation';
 import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 import { SnapshotHistory } from './history';
 import { EditRefusal, SimulationRefusal } from './refusal';
@@ -106,6 +108,21 @@ export type ExecutionGuardResult =
     | { ready: false; reason: string };
 
 /**
+ * Outcome of `runAll` (DEC-49). `completed`: every task finished. `blocked`:
+ * work is pending but nothing can run or arrive; carries the tick reached,
+ * why, and the unfinished jobs. Both carry the last recorded snapshot.
+ */
+export type RunResult =
+    | { readonly kind: 'completed'; readonly snapshot: SimulationSnapshot }
+    | {
+          readonly kind: 'blocked';
+          readonly snapshot: SimulationSnapshot;
+          readonly tick: number;
+          readonly reason: string;
+          readonly jobs: readonly JobRef[];
+      };
+
+/**
  * Owns the live simulation state and publishes immutable snapshots of it.
  * Activations are processed at each boundary, eligible jobs are selected
  * globally by the policy of the current algorithm (DEC-39), and slices that
@@ -155,6 +172,55 @@ export class Simulator {
     }
 
     /**
+     * Progress of the live state (DEC-49). It equals the step at the cursor
+     * only when the cursor is at the end of history, which is where `runAll`
+     * calls it.
+     */
+    public getProgress(): ExecutionProgress {
+        return classifyProgress(this.state);
+    }
+
+    /**
+     * Full execution (REQ-04, DEC-49): from the cursor, reuses the recorded
+     * future with `forward()` (no policy call, same draws), then computes new
+     * steps with `tick()`, until every task finishes or no progress is
+     * possible. Every step stays in the history, there is no cancellation and
+     * no intermediate result. It ends because each task creates at most ten
+     * jobs and every job that can run completes. A failing step propagates
+     * with the last confirmed step intact (DEC-14).
+     */
+    public runAll(): RunResult {
+        for (;;) {
+            if (this.canForward()) {
+                this.forward();
+                continue;
+            }
+            const progress = this.getProgress();
+            if (progress.kind === 'finished') {
+                return {
+                    kind: 'completed',
+                    snapshot: this.getLatestSnapshot(),
+                };
+            }
+            if (progress.kind === 'blocked') {
+                const tick = this.state.clock;
+                const jobs = progress.jobs.map(
+                    (ref) => `tarefa ${ref.taskId}, job ${ref.index}`,
+                );
+                const detail = jobs.length > 0 ? ` (${jobs.join('; ')})` : '';
+                return {
+                    kind: 'blocked',
+                    snapshot: this.getLatestSnapshot(),
+                    tick,
+                    reason: `Sem progresso no tick ${tick}: há trabalho pendente, nenhum job pode executar e não há ativações futuras${detail}.`,
+                    jobs: progress.jobs,
+                };
+            }
+            this.tick();
+        }
+    }
+
+    /**
      * Applies an edit at the cursor's tick `t` (REQ-05, DEC-37, DEC-39). The
      * dispatch already done at `t` is never patched: step `t-1 -> t` is
      * recomputed from snapshot `t-1` (at tick 0, from the initial state) with
@@ -199,7 +265,7 @@ export class Simulator {
      * dispatch (DEC-11; no slice has run yet, so none expires).
      */
     private startStages(edits: readonly Edit[]): void {
-        this.activateDueJobs();
+        activateDueJobs(this.state);
         this.applyEditStage(edits);
         this.dispatch();
     }
@@ -209,7 +275,7 @@ export class Simulator {
         this.executeTick();
         this.state.clock++;
         this.completeJobsAndRecordDeadlineMisses();
-        this.activateDueJobs();
+        activateDueJobs(this.state);
         this.applyEditStage(edits);
         this.expireSlices();
         this.dispatch();
@@ -225,14 +291,25 @@ export class Simulator {
         if (edits.length === 0) {
             return;
         }
-        const context: EditContext = {
-            state: this.state,
-            hasPolicy: (algorithm) =>
-                this.resolvePolicy(algorithm) !== undefined,
-        };
+        const hasPolicy = (algorithm: AlgorithmId): boolean =>
+            this.resolvePolicy(algorithm) !== undefined;
         const before = readTarget(this.state);
         let target = before;
         edits.forEach((edit, index) => {
+            // Each submission is judged against the state the earlier ones
+            // left (DEC-45): a throwaway copy of the tick's starting state
+            // with their net change applied. Only validation sees it; the
+            // net change is still applied once, to the real state, below.
+            let judged: SimulationState = this.state;
+            if (index > 0) {
+                judged = restoreState(takeSnapshot(this.state));
+                applyNetChange(judged, before, target);
+            }
+            const context: EditContext = {
+                state: judged,
+                baseline: this.state,
+                hasPolicy,
+            };
             const result = foldEdit(target, edit, context);
             if (!result.ok) {
                 if (index < edits.length - 1) {
@@ -380,7 +457,7 @@ export class Simulator {
                 if (
                     job.state !== 'completed' &&
                     job.state !== 'interrupted' &&
-                    job.executed >= tcb.definition.duration
+                    job.executed >= job.duration
                 ) {
                     job.state = 'completed';
                     job.completedAt = this.state.clock;
@@ -669,6 +746,17 @@ export class Simulator {
                 reason: `O passo ${this.history.cursor + 1} já foi calculado; use forward() em vez de tick().`,
             };
         }
+        // A system with no tasks has nothing finished: it can still advance, so
+        // tasks can be added later; `runAll` alone treats it as complete.
+        if (
+            this.state.tasks.length > 0 &&
+            classifyProgress(this.state).kind === 'finished'
+        ) {
+            return {
+                ready: false,
+                reason: 'Todas as tarefas terminaram; não há passo a calcular.',
+            };
+        }
         return { ready: true };
     }
 
@@ -725,39 +813,5 @@ export class Simulator {
             );
         }
         return { config: validConfig, resolvePolicy };
-    }
-
-    /**
-     * Adds every activation due at this boundary. Jobs keep their own identity
-     * and deadline; the task's finite activation count comes from DEC-09.
-     */
-    private activateDueJobs(): void {
-        for (const tcb of this.state.tasks) {
-            if (tcb.status === 'concluded') continue;
-            const { arrival, period, deadline } = tcb.definition;
-            while (
-                tcb.jobs.length < maxJobs(tcb.definition) &&
-                arrival + tcb.jobs.length * period <= this.state.clock
-            ) {
-                const index = tcb.jobs.length;
-                const activation = arrival + index * period;
-                const job: Job = {
-                    taskId: tcb.definition.id,
-                    index,
-                    activation,
-                    absoluteDeadline: activation + deadline,
-                    executed: 0,
-                    state: 'ready',
-                    completedAt: null,
-                    deadlineMissed: false,
-                };
-                tcb.jobs.push(job);
-                this.state.events.push({
-                    kind: 'activation',
-                    time: activation,
-                    job: { taskId: job.taskId, index: job.index },
-                });
-            }
-        }
     }
 }

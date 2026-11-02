@@ -224,7 +224,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
 - Estado: aceita em 2026-10-24 (#35). Requisito: REQ-09. Resolve Q-05.
-- Decisao: linhas por tarefa em ID decrescente (menor ID junto ao eixo X) e, em
+- Decisao: linhas por tarefa em ID decrescente na ordem natural de DEC-48
+  (menor ID junto ao eixo X) e, em
   secao propria, uma faixa por CPU para os intervalos desligados (DEC-21); o
   intervalo ainda aberto no instante atual termina nele. Cada trecho executado
   identifica a CPU e o job (por exemplo, "CPU 1 · #2"). Um job posterior ja
@@ -286,7 +287,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
-  maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
+  maximo (mantem DEC-05); ID unico (texto livre, DEC-48; antes inteiro >= 1); ingresso >= 0; periodo >= 0; prazo
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
 - Campos ausentes: somente periodo pode faltar (campo vazio na sua posicao,
@@ -307,7 +308,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   O custo de memoria de simulacoes longas fica registrado em DEC-30.
 - Revista por DEC-37: na edicao, periodo zero e recusado e os
   tempos derivados sao conferidos sobre as ativacoes restantes, com os
-  valores editados.
+  valores editados. Forma na DEC-44.
 
 ### DEC-11: Passo de um tick e snapshot inicial
 
@@ -336,6 +337,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
       armazenados originalmente; DEC-43 acrescenta `TaskControlBlock.status`
       e `JobState.interrupted` para encerramento por edicao. `jobs.length`
       conta as ativacoes geradas.
+      DEC-44 acrescenta `Job.duration` (duracao copiada na ativacao) e
+      `TaskControlBlock.nextActivation` (proxima ativacao, ou nulo).
     - Eventos sao fatos com instante exato, uniao discriminada por `kind`
       (ativacao, conclusao, perda de prazo, quantum vencido, preempcao, sorteio,
       termino de tarefa, CPU desligada/religada, CPU adicionada/removida
@@ -522,7 +525,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   (2) nunca separa um empate e a decisao passa ao (3). Nenhum criterio usa ID
   ou ordem das candidatas (DEC-13).
 - Revista por DEC-37: o criterio (4) usa a duracao do proprio
-  job, que pode diferir da duracao vigente da tarefa depois de uma edicao.
+  job, que pode diferir da duracao vigente da tarefa depois de uma edicao
+  (DEC-44).
 
 ### DEC-17: Prioridade RM de tarefas aperiodicas
 
@@ -1479,9 +1483,12 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 #### Inclusao e exclusao de tarefas
 
-1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
-   `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
-   e cor distinta. O ID e gerado: maior ID ja usado na simulacao + 1. A
+1. Incluir: pela caixa de dialogo, com ingresso escolhido pelo usuario e
+   `>= t` (igual a `t` ativa em `t`); o usuario nao precisa avancar o
+   relogio ate o ingresso, e `tick()` nao e usado para isso. Os limites de
+   DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
+   e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
+   um ID ja usado (revisto por DEC-48). A
    tarefa comeca pronta.
 2. Excluir: somente tarefa nunca ativada. Ela sai do estado sem evento e
    sem rastro no Gantt; seu ID nao volta a ser usado. Tarefa ja ativada nao
@@ -1542,8 +1549,10 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Estado escolhido de cada tarefa (pronta, forcada, suspensa, concluida) e os
   jobs interrompidos pelo encerramento, sem confundi-los com jobs concluidos.
 - Duracao de cada job e instante da proxima ativacao, que deixa de seguir
-  `ingresso + k * periodo` depois de uma edicao de periodo.
-- Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
+  `ingresso + k * periodo` depois de uma edicao de periodo. Forma na DEC-44 (`Job.duration`,
+  `TaskControlBlock.nextActivation`).
+- Revisto por DEC-48: IDs de tarefa ja usados, inclusive de tarefa excluida,
+  no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
 - No historico (#23/#24, DEC-35), a lista de edicoes aceitas de cada tick.
@@ -1553,7 +1562,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - DEC-02: o estado da tarefa vale para o job atual; suspender ou forcar nao
   libera nem paraleliza os jobs pendentes.
 - DEC-09: periodo editado recalcula as ativacoes restantes (item 4 das
-  caracteristicas); termino tambem por encerramento.
+  caracteristicas); termino tambem por encerramento. Forma na DEC-44.
 - DEC-35 e DEC-36: o historico passa a guardar a lista de edicoes de cada
   tick e a descartar os passos e edicoes posteriores a uma edicao em tick
   anterior ao ultimo (#26, como DEC-35 ja previa); `forward()`/`backward()`
@@ -1565,7 +1574,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - DEC-10 e DEC-29: periodo zero recusado na edicao.
 - DEC-12: eventos acima e estado por tarefa.
 - DEC-16: o criterio (4) usa a duracao do job, que pode diferir da duracao
-  vigente da tarefa.
+  vigente da tarefa. Forma na DEC-44.
 - DEC-18: job forcado nao tem quantum.
 - DEC-21: `cpu-removed`/`cpu-added` delimitam a existencia da CPU; a
   sequencia desligar/religar e conferida por periodo de existencia.
@@ -1608,7 +1617,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   matriz, a etapa de edicao e os eventos; #23/#24 guardam as edicoes por
   tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
   desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
-  suspensas indefinidamente seguem para a Q-06 (#27).
+  suspensas indefinidamente sao tratadas na DEC-49 (#27).
 
 ### DEC-38: Uma ativacao por vez (retirada)
 
@@ -1868,7 +1877,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
   jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
   concluida nao guarda job aberto e o `status` pertence ao conjunto
-  conhecido. Identificador de tarefa que nao e inteiro e recusado na edicao.
+  conhecido. Identificador de tarefa vazio ou invalido (DEC-48) e recusado na edicao.
   A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
   e os rotula como Interrompido; o restante da apresentacao fica na
   #37/#38.
@@ -1882,3 +1891,351 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Evidencia: matriz em `edit.test.ts`, cenarios em
   `simulator.taskState.test.ts`, invariantes em `consistency.test.ts`;
   testes de termino normal e projecoes existentes atualizados.
+
+### DEC-44: Caracteristicas editaveis da tarefa e calendario de ativacoes
+
+- Estado: proposta em 2026-11-01 no #118 (#26, 5 de 6), para revisao do
+  usuario. Requisitos: REQ-05, REQ-07, REQ-08. Detalha DEC-37 (item
+  "Caracteristicas da tarefa") e DEC-39; revisa DEC-09 e DEC-16 (ver abaixo).
+- Itens: `EditItem` ganha `taskColor`, `taskDuration`, `taskDeadline`,
+  `taskArrival` e `taskPeriod`, cada um com `taskId` e o valor novo. ID e
+  ticks executados nao tem item (nao editaveis). `EditTarget.definitions`
+  guarda a `TaskDefinition` desejada de cada tarefa por ID; cada edicao
+  troca a definicao por um objeto novo congelado, nunca a muta, pois
+  snapshots a compartilham. `applyNetChange` compara as definicoes antes e
+  depois do tick (mudanca liquida, DEC-37 item 5): editar e desfazer no
+  mesmo tick nao deixa efeito.
+- Duracao do job: `Job.duration` e copiada de `definition.duration` na
+  ativacao (`src/core/activation.ts`). Conclusao
+  (`completeJobsAndRecordDeadlineMisses`), criterio (4) de DEC-16
+  (`policies.ts`) e consistencia (`executed <= duration`) leem a duracao do
+  job, nao a da definicao. Job ja ativado tambem mantem o prazo absoluto.
+- Calendario: `TaskControlBlock.nextActivation` e o tick da proxima
+  ativacao, ou `null` quando a tarefa recebeu todos os jobs. Substitui
+  `ingresso + k * periodo` (DEC-09) e e conferido por `findInconsistencies`
+  (nulo so com todas as ativacoes, e depois da ultima ativacao). `activation.ts`
+  concentra `activateDueJobs` (todas as tarefas, no passo),
+  `activateTask` (uma tarefa; tarefa concluida nunca ativa) e
+  `rescheduleNextActivation`. Sem job, o calendario segue o ingresso da
+  definicao; com jobs, `max(ultima ativacao + novo periodo, tick atual)`,
+  de modo que uma proxima ativacao vencida vira uma unica ativacao em `t` e
+  as seguintes seguem a cada periodo, sem acumular vencidas (exemplos de
+  DEC-37 item 4). Nao ha caso aperiodico: periodo 0 e recusado na edicao e
+  a edicao de tarefa aperiodica fica fora do Projeto A (DEC-29).
+- Recusas (em portugues, citando o item): tarefa inexistente ou ID nao
+  inteiro; tarefa concluida (so a cor), tambem a concluida por
+  item anterior do mesmo envio, e conclusao no mesmo envio de uma mudanca
+  de caracteristica, em qualquer ordem (DEC-45); ingresso de tarefa que ja
+  ingressou, com valor diferente do atual (DEC-45), ou menor que o tick atual;
+  duracao e prazo de tarefa sem ativacoes restantes; periodo menor que 1;
+  prazo da ultima ativacao restante fora do inteiro exato (DEC-10),
+  calculado sobre o alvo liquido (ingresso e periodo pendentes do mesmo
+  envio) para nao depender da ordem dos itens. Regras de campo e mensagens
+  vem de `validateConfig` (DEC-28). Cor repetida considera tarefas
+  concluidas; a cor e normalizada para maiusculas.
+- Ordem na etapa de edicao (decisao do usuario, O1): a ativacao causada por
+  edicao (ingresso movido para `t`, periodo cuja proxima ativacao ja passou)
+  e registrada depois dos eventos de estado da mesma tarefa e antes dos
+  eventos de CPU, concretizando o texto de DEC-37 e DEC-22. Eventos de
+  tarefas diferentes seguem a ordem das tarefas.
+- Revisoes: DEC-09 (calendario guardado em `nextActivation`, nao derivado);
+  DEC-16 (criterio 4 usa `Job.duration`, ja anotado em DEC-37).
+- Semantica entre envios do mesmo tick: resolvida na DEC-45 (decisao do
+  usuario em 2026-11-01); a primeira redacao, que julgava os jobs pelo
+  estado de antes do tick, foi substituida.
+- Lacuna conhecida (decisao do usuario, O3), fechada pela #131 (PR #135):
+  `projectJob` em `src/renderer/features/system/system.ts` lia a duracao
+  do job da definicao da tarefa, e `SystemInspector.vue` (CPUs, prontos,
+  pendentes) mostrava o valor editado para jobs ja ativados. Agora
+  `SystemJob.duration` vem de `Job.duration`. `copyDefinition`
+  (`inspection.ts`) e `TaskDetails.vue` continuam mostrando a duracao
+  vigente da tarefa, como devem.
+- Fora do escopo (decisao do usuario, O4): editar periodo 0 (tarefa
+  aperiodica) no Projeto A; inclusao e exclusao de tarefas, no PR 6/6 (#119).
+- Justificativa: guardar a duracao no job e a proxima ativacao na tarefa
+  e o minimo para que edicoes valham so para ativacoes futuras (DEC-37) sem
+  reescrever jobs, e deixa a ativacao em um modulo compartilhado pelo passo
+  e pela edicao.
+- Alternativas descartadas: ler a duracao da definicao no job (alteraria
+  jobs ja ativados); recalcular o calendario por `ingresso + k * periodo`
+  (nao representa a edicao de periodo depois de ativar); acumular ativacoes
+  vencidas (contraria DEC-37 item 4).
+- Evidencia: `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts`
+  e `consistency.test.ts`; resultados no plano (#26, 5 de 6).
+
+### DEC-45: Envios do mesmo tick e conclusao de tarefa
+
+- Estado: proposta em 2026-11-01 no #118 (#26, 5 de 6), decisao do usuario
+  na revisao do PR. Requisitos: REQ-05, REQ-07. Fecha o ponto aberto da
+  DEC-44 e esclarece DEC-37 itens 2 a 5 e DEC-43.
+- Envios do mesmo tick: cada envio e julgado contra o estado que os
+  anteriores deixaram, inclusive jobs criados por eles. O simulador monta,
+  para cada envio depois do primeiro, uma copia do estado de `t-1` com a
+  mudanca liquida dos envios anteriores aplicada; so a validacao a enxerga.
+  A mudanca liquida continua sendo aplicada uma vez, ao estado de `t-1`
+  (DEC-37 item 5): suspender e retomar em envios diferentes nao registra
+  eventos. Consequencia: depois que um envio cria um job (ingresso movido
+  para `t`, periodo cuja proxima ativacao ja passou), um envio seguinte
+  recusa alterar ingresso, periodo, duracao ou prazo da tarefa com valor
+  diferente do vigente, pois a definicao liquida alcancaria aquele job; o
+  mesmo valor e a cor continuam aceitos. A validacao e deterministica na
+  reexecucao dos envios gravados (voltar e editar de novo).
+- Conclusao: um envio que muda uma caracteristica (ingresso, duracao,
+  periodo ou prazo) e conclui a mesma tarefa e recusado por inteiro, em
+  qualquer ordem dos itens, com o motivo "so a cor pode ser alterada"
+  (DEC-43). Mudanca de caracteristica em um envio e conclusao em outro,
+  posterior, e valida: cada envio e julgado em sequencia. Excecao: a
+  conclusao e recusada se um envio anterior do mesmo tick criou um job da
+  tarefa, pois concluir cancelaria a ativacao que ele ja tornou visivel
+  (achado da revisao final; escolha do implementador, a confirmar).
+- Ingresso inalterado: depois que a tarefa ingressou, um item de ingresso
+  com o valor vigente e aceito sem efeito, como os demais campos; so uma
+  mudanca real e recusada ("ja ingressou"). Assim o formulario pode enviar
+  todos os campos (#37).
+- Justificativa: o usuario fixou que o estado aceito pelo primeiro envio e o
+  que o seguinte altera; a projecao so para validar preserva a mudanca
+  liquida e os eventos de DEC-37 item 5 (escolha do implementador, a
+  confirmar na revisao).
+- Alternativas descartadas: aplicar cada envio ao estado real (registraria
+  eventos de suspensao e retomada que a mudanca liquida omite); aceitar a
+  conclusao e descartar em silencio a mudanca de caracteristica (o envio
+  seria aceito sem valer por inteiro).
+- Evidencia: `simulator.taskEdits.test.ts` (bloco "across submissions") e
+  `edit.test.ts` (conclusao com caracteristica, ingresso inalterado).
+
+### DEC-46: Inclusao de tarefas e ID gerado
+
+- Estado: proposta em 2026-11-01 no #119 (#26, 6 de 6), para revisao.
+  Requisitos: REQ-05, REQ-07. Detalha o item Incluir de DEC-37; a exclusao
+  tem decisao propria (DEC-47), no PR seguinte. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
+- Item: `EditItem` ganha `addTask` com `NewTask` (`arrival`, `duration`,
+  `deadline`, `color` e `period` opcionais); o ID e gerado (revisto por DEC-48:
+  o chamador pode informar o ID, e `usedTaskIds` substitui `maxTaskId`).
+  `rawEvents` fica vazio (eventos de arquivo so no Projeto B).
+- Validacao, em ordem sobre o estado da etapa de edicao: ingresso `>= t`
+  (mensagem propria); periodo ausente vira 15 (DEC-29) e zero e recusado; as
+  demais regras de DEC-10 e a cor distinta de todas as tarefas, concluidas e
+  incluidas no tick inclusive, vem de `validateConfig` sobre as definicoes
+  desejadas mais a nova (fonte unica, DEC-28), filtrando os problemas dela.
+  Reaproveita a mesma lista de definicoes que a validacao de caracteristicas
+  de DEC-44 (`liveDefinitions`), entao uma edicao de cor do mesmo tick
+  tambem enxerga a cor da tarefa incluida.
+- Cor: se nao vier, o motor escolhe uma que nenhuma outra tarefa usa
+  (`defaultTaskColor`, `src/core/defaultColor.ts`; pedido do usuario no
+  #119). Parece aleatoria, mas e funcao do ID: cada edicao recalcula o tick
+  a partir de `t-1`, e `Math.random` mudaria a cor a cada nova edicao do
+  mesmo tick, quebrando DEC-37 item 2. Cor informada continua validada.
+  Limitacao conhecida: com saturacao 0,65 e luminosidade 0,55 a varredura de
+  matiz produz 894 cores distintas. Esse limite basta por enquanto (decisao
+  do usuario no #119): ate 894 tarefas sempre ha cor livre; com todas as 894
+  cores em uso, o laco de `defaultTaskColor` nao termina. O algoritmo nao foi
+  alterado.
+- ID (revisto por DEC-48: `usedTaskIds`, ID sugerido ou digitado): maior ID
+  ja usado + 1. `SimulationState.usedTaskIds` acompanha todos os IDs ja
+  usados, inclusive os de tarefas excluidas; assim descartar o futuro descarta
+  tambem os IDs gerados nele. Varias inclusoes numa edicao recebem IDs
+  consecutivos, e um ID digitado nao pode ser reutilizado. `findInconsistencies`
+  confere que os IDs sao validos e distintos.
+- Aplicacao (mudanca liquida): a tarefa entra no alvo (`definitions` e
+  `taskStates`) e, ao aplicar, no fim de `state.tasks`, nascendo pronta, sem
+  jobs e com `nextActivation` igual ao ingresso (`createTcb`, o unico lugar
+  onde um TCB novo e criado: estado inicial e inclusao; `restoreState` so
+  reconstroi TCBs de um snapshot, e `editableTask` cria um provisorio para
+  validacao), sem evento proprio. Estado e caracteristicas pedidos no
+  mesmo tick valem pela definicao e pelo estado liquidos: o estado parte de
+  `ready` e gera os eventos de DEC-43, e o primeiro job usa a duracao e o
+  prazo finais. Ingresso igual a `t` ativa o primeiro job na etapa de edicao
+  (`activateTask`, DEC-44), depois dos eventos de estado da propria tarefa e
+  antes dos de CPU; ingresso maior ativa no tick certo. Ate ser aplicada, a
+  tarefa incluida age como tarefa nunca ativada nas validacoes de
+  caracteristicas do mesmo tick.
+- `config.tasks`: nao e atualizada, como ja nao e nas edicoes de
+  caracteristicas (DEC-44); `tasks` e a fonte de verdade da simulacao e o
+  nucleo nao le mais a lista da configuracao depois do estado inicial.
+  A interface conta as tarefas de `snapshot.tasks` (`useWorkspace.taskCount`),
+  nao de `config.tasks`, que ficaria atras apos uma inclusao.
+- Justificativa: ID no estado, e nao derivado da lista, e o que permite a
+  exclusao futura manter o ID gasto sem rastro.
+- Alternativas descartadas: evento `task-added` (DEC-37 nao o lista; a
+  ativacao ja marca a entrada); cor aleatoria de verdade (nao reproduzivel
+  ao refazer o tick); ativar depois dos eventos de CPU (o evento de ativacao
+  viria depois do `cpu-added` que o explica).
+- Evidencia: `src/core/simulator.addTask.test.ts`,
+  `src/core/defaultColor.test.ts`, `consistency.test.ts` e `edit.test.ts`.
+
+### DEC-47: Exclusao de tarefas
+
+- Estado: aceita em 2026-11-01 pelo usuario no PR 7/7 da #26, que fecha a
+  #26 (decisoes de eventos e de exclusao de tarefa ativada aceitas com ela).
+  Requisitos: REQ-05. Detalha o item
+  Excluir de DEC-37 e completa DEC-46 (inclusao, que deixou a exclusao para
+  este PR). Complementa DEC-43 (estado concluido e interrupcao) e DEC-44
+  (`definitions` como fonte da caracteristica).
+- Item: `EditItem` ganha `removeTask` com `taskId`; o handler e `HANDLERS`
+  como os demais. Validacao, em ordem sobre o estado da etapa de edicao:
+    - ID inteiro e existente em `target.definitions` (`refuseUnknownTask`, a
+      mesma regra de DEC-44; ID de outra forma gera a mensagem de ID invalido);
+    - tarefa com algum job recusada, inclusive a cujo primeiro job a etapa de
+      ativacoes deste tick acabou de dar origem (as ativacoes rodam antes da
+      etapa de edicao, DEC-22). A recusa aponta encerrar (estado concluida)
+      como caminho:
+      `A tarefa N já foi ativada e não pode ser excluída; encerre-a (estado concluída) para manter o histórico dela.`
+    - excluir de novo, ou mudar a tarefa ja excluida na mesma edicao, e
+      recusado como tarefa inexistente (ela sai de `target.definitions` e de
+      `target.taskStates`).
+- Tarefa incluida no mesmo tick ainda nao tem TCB; ela sai so do alvo, sem
+  evento nem rastro. Incluir e excluir no mesmo tick deixa o estado igual ao
+  de antes, e o ID gerado continua gasto (`maxTaskId` nunca diminui).
+- Aplicacao (mudanca liquida, `applyNetChange`): ids presentes em
+  `before.definitions` e ausentes em `after.definitions` sao excluidos. Os
+  TCBs saem de `state.tasks` e os eventos que citam o ID saem de
+  `state.events`. Se algum TCB excluido tiver job, a aplicacao lanca `Error`:
+  e defeito do motor, nao recusa, porque a validacao ja barrou esse caso.
+  O status e os eventos da tarefa excluida nao sao gerados.
+- Eventos anteriores (aceita pelo usuario em 2026-11-01):
+  `suspension`, `resumption`, `forced`, `unforced`, `task-finished` e
+  qualquer evento com o mesmo `taskId` saem de `state.events` do snapshot do
+  tick. Os snapshots anteriores mantem os seus eventos: voltar no historico
+  mostra a tarefa como era, e `forward()` volta sem eles.
+- Cor: uma tarefa excluida no tick nao conta para a cor distinta de DEC-10
+  (`liveDefinitions` so considera as tarefas que ainda estao no alvo), entao
+  uma inclusao ou mudanca de cor no mesmo tick pode reusar a cor dela.
+- ID: nunca reutilizado. `maxTaskId` continua o maior ID ja usado, inclusive
+  depois da exclusao; so volta a ser liberado quando a edicao que o gerou sai
+  do futuro (DEC-46).
+- `config.tasks` nao e atualizada (convencao de DEC-44 e DEC-46); a interface
+  conta `snapshot.tasks`.
+- Justificativa: excluir uma tarefa ja ativada apagaria o historico dela no
+  Gantt (a tela so ve o estado e os eventos), contra o principio de DEC-37
+  de que o passado nao muda. Excluir so a tarefa nunca ativada
+  deixa o historico como ele aconteceu: ela nunca executou, e os eventos de
+  estado que ela tenha (suspensao, forcamento) vem de uma edicao que tambem
+  sai com ela.
+- Alternativas descartadas:
+    - Excluir tarefa ativada (apaga o historico, contra DEC-37).
+    - Manter os eventos antigos da tarefa excluida no snapshot atual: o Gantt
+      citaria uma tarefa que nao existe mais no estado.
+    - Recusar a exclusao de tarefa que tenha evento sem job (suspensa,
+      forcada ou concluida sem ativacao): recusaria a exclusao que DEC-37
+      aceita, a de tarefa nunca ativada. Fica para o usuario decidir no
+      aceite, junto com a decisao de eventos acima.
+- Evidencia: `src/core/simulator.removeTask.test.ts` (15 testes, matriz de
+  exclusao, recusa atomica, ID, historico, cor e CPUs); suite completa, lint
+  e typecheck na entrega. Mutacoes (cada uma derrubou testes; revertidas):
+    1. nao limpar eventos da tarefa excluida (2 falhas);
+    2. aceitar tarefa com job (3 falhas);
+    3. recalcular `maxTaskId` pela lista de tarefas (4 falhas);
+    4. nao filtrar `definitions` ao excluir (11 falhas);
+    5. considerar a tarefa excluida na cor distinta (1 falha).
+- Nao verificado nesta decisao: o comando `edit` do adaptador e a tela de
+  edicao (#37); o pacote (#26 nao o cobre).
+
+### DEC-48: ID de tarefa como texto livre
+
+- Estado: aceita pelo usuario em 2026-11-01 (#133, revisao do PR #134),
+  incluindo as escolhas do autor e os ajustes da revisao. Requisitos: REQ-03,
+  REQ-05, REQ-06, REQ-09. Revisa DEC-08
+  (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
+  ID) e DEC-37 e DEC-46 (ID gerado na inclusao). Nao muda FE-19: o ID segue
+  fixo na edicao.
+- Contexto: o professor quer que o ID deixe de ser so numero. O enunciado
+  chama `id` de "identificador unico da tarefa" (A.3.3) sem dizer que e
+  numerico; so A.2.5 liga ordem a ID (menor ID junto ao eixo X). O
+  desempate de A.4.3 nao usa o ID.
+- Formato (decisao do usuario): o ID e um texto. Valido: nao vazio depois de
+  remover espacos nas pontas, sem `;` nem quebra de linha, no maximo 32
+  caracteres (limite para caber nos rotulos do Gantt e da
+  lista de eventos). Espacos internos sao mantidos. O ID e guardado e
+  exibido como digitado.
+- Unicidade (decisao do usuario): sem distincao de maiusculas e minusculas
+  (A.3.3.2): `A` e `a` sao o mesmo ID e o segundo e recusado. A mensagem
+  segue DEC-19 (linha e campo `id`) e cita o ID ja existente.
+- Ordem (decisao do usuario): "natural" em todo lugar onde DEC-08, DEC-22 e
+  DEC-27 usam o ID da tarefa. IDs formados so por digitos decimais comparam
+  por valor numerico; os demais comparam em ordem alfabetica sem distincao
+  de caixa; numeros vem antes de texto. Empate (`1` e `01`, que valem o
+  mesmo numero) desempata pelo texto exato, para a ordem ser total.
+  A mesma funcao serve ao nucleo e ao renderer. Para
+  configuracoes so com IDs numericos a ordem e a de antes; ID negativo ou
+  decimal (`-3`, `2.5`) e texto.
+- Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
+  e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
+  um ID digitado. Se o incremento ultrapassar 32 caracteres, sugere o menor
+  inteiro positivo cujo texto ainda nao foi usado. Um ID usado, inclusive o
+  de tarefa excluida, e recusado
+  (a comparacao ignora caixa). Forma: `NewTask.id` opcional; sem ele, o
+  nucleo usa `suggestTaskId`; a interface pode chamar a mesma funcao com
+  `snapshot.usedTaskIds` para preencher a sugestao. `SimulationState.usedTaskIds`
+  (e `EditTarget.usedTaskIds`) substitui o `maxTaskId` da DEC-46: lista, em
+  ordem de uso, de todo ID ja usado; descartar o futuro descarta os IDs
+  criados nele. A cor padrao de um ID textual usa um hash do texto como
+  semente; IDs numericos mantem as cores de antes. `findInconsistencies`
+  confere que os IDs usados sao unicos sem distincao de caixa e incluem o
+  ID de toda tarefa.
+- Rotulos: Gantt, snapshots e SVG mostram o ID como
+  digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
+  tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
+  lugar onde aparece; caracteres proibidos em XML 1.0 sao substituidos por
+  U+FFFD apenas no SVG, pois nao podem ser representados no documento. No
+  rotulo da raia, um ID que nao cabe (mais de 3
+  caracteres depois de "Tarefa ") perde o prefixo e e cortado com
+  reticencias, e o ID inteiro fica na dica da raia.
+- Edicao: o identificador de um item de edicao e procurado pelo texto exato
+  (diferente da unicidade, que ignora caixa), e so aceita texto; outro tipo
+  e recusado ("deve ser um texto"). Quem edita escolhe a tarefa na lista.
+- Cabecalho ausente: o arquivo sem cabecalho nao pode mais ser reconhecido
+  pelo primeiro campo numerico quando o ID e texto; a primeira linha e uma
+  linha de tarefa se o primeiro campo for numerico ou se tiver mais campos
+  que o cabecalho e o segundo campo for uma cor de 6 digitos hexadecimais.
+- Mudanca conhecida para IDs numericos: `01` passa a ser exibido como `01` e
+  nao mais como `1` (o ID e mostrado como digitado); `1` e `01` sao IDs
+  diferentes.
+- Alternativas descartadas: ordem de insercao no arquivo (quebraria A.2.5
+  para quem lista tarefas fora de ordem); ID gerado a partir de texto
+  (sufixo numerico), por criar regra sem pedido; unicidade sensivel a caixa,
+  por gerar linhas quase identicas.
+- Evidencia: `taskId.test.ts` (formato, chave, ordem natural, sugestao),
+  `config.test.ts` e `loadConfig.test.ts` (validacao e duplicidade com
+  linha e campo), `parser.test.ts` (ID como escrito, cabecalho ausente),
+  `textIds.test.ts` (arquivo com IDs textuais carregado e simulado, ordem
+  natural no sorteio, nomes como `constructor`), `ganttSvg.test.ts`
+  (ordem, escape, rotulo longo), `numericIds.golden.test.ts` e
+  `renderer/.../numericIds.golden.test.ts` (trace e SVG de IDs numericos
+  iguais aos de antes), `simulator.addTask.test.ts` e `edit.test.ts` (ID
+  sugerido ou digitado, recusa de ID usado, inclusive o de tarefa excluida,
+  e IDs invalidos) e `consistency.test.ts` (IDs usados).
+
+### DEC-49: Execucao completa e falta de progresso
+
+- Estado: aceita em 2026-11-01 pelo usuario; implementada na #27 (`Simulator.runAll()`,
+  `getProgress()` e `src/core/progress.ts`).
+  Requisitos: REQ-04, REQ-10. Resolve Q-06; complementa DEC-05, DEC-06,
+  DEC-12 e DEC-30.
+- Decisao: a execucao completa parte do cursor, guarda todos os passos e
+  reutiliza o futuro valido ja registrado. Ela mostra apenas o resultado
+  final, sem exibicao da progressao tick a tick e sem cancelamento pelo usuario.
+- Interromper por falta de progresso quando restar trabalho pendente, nenhum
+  job puder executar e nao houver ativacoes futuras; informar tick, motivo e
+  jobs envolvidos, preservando o ultimo estado completo e o historico.
+  CPUs desligadas isoladamente nao caracterizam bloqueio: uma ativacao futura
+  ainda pode trazer trabalho. Bloqueio nao e termino normal.
+- Justificativa: permitir inspecao posterior de todos os passos e evitar uma
+  execucao interminavel quando edicoes deixarem trabalho suspenso. O custo
+  de memoria e a ausencia de teto arbitrario permanecem conforme DEC-30.
+- Contrato implementado: `runAll()` avanca com `forward()` sobre o futuro
+  registrado (sem chamar a politica) e com `tick()` para passos novos, e
+  devolve `completed` ou `blocked` (tick, motivo, jobs) com o ultimo snapshot.
+  Erros continuam erros, com o ultimo passo confirmado intacto (DEC-14).
+  Tarefa terminada: encerrada, ou com todos os jobs criados e concluidos ou
+  interrompidos. Ativacao futura: `nextActivation` de tarefa nao encerrada;
+  a encerrada mantem `nextActivation` e nao conta. Tarefa suspensa continua
+  ativando ate o limite, entao o bloqueio dela so e informado depois da
+  ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
+  jobs.
+- `tick()` com todas as tarefas terminadas e recusado (`SimulationRefusal`),
+  depois da recusa de "ja calculado". A recusa e deliberada: o usuario nao
+  avanca o relogio no vazio para incluir tarefa; a inclusao usa o ingresso
+  informado no dialogo (revisao do PR #139). Sem tarefas nada terminou: `tick()`
+  segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
+  imediato.
+- Apresentacao e controles ficam na #36.

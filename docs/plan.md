@@ -325,8 +325,25 @@ Requisitos: REQ-04, REQ-05.
   Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
   `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
   suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
-- #27 Implementar execucao completa cancelavel e tratar Q-06.
+  Inclusao e exclusao de tarefas (DEC-46 e DEC-47) no nucleo; interface e
+  comando `edit` do adaptador ficam na #37. Entregue em 7 PRs da serie;
+  conferencia dos criterios em "Trabalho atual" (item 7).
+- #27 Implementar execucao completa e detectar falta de progresso.
+  DEC-49 aceita em 2026-11-01: guardar todo o historico, interromper por
+  falta de progresso conforme Q-06 e nao oferecer cancelamento; nucleo
+  implementado em 2026-11-01 (`runAll()`, `getProgress()` e recusa de `tick()`
+  com tudo terminado), aguardando revisao e integracao; interface na #36.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
+  Concluida no PR aberto em 2026-11-01, aguardando revisao. Testes novos nos arquivos
+  dos temas, sem arquivo de cenarios: restauracao com edicao gravada e
+  `findInconsistencies` em cada passo em `simulator.navigation.test.ts`;
+  matriz de recusas por tipo da matriz (inclui exclusao, DEC-47) com estado,
+  cursor, historico e edicoes inalterados, e proximo tick igual a execucao sem
+  recusa, em `simulator.edit.test.ts`. Ramificacao, falta de progresso e
+  execucao completa x passo a passo ja tinham testes (ver PR). Verificacao:
+  `npm test` 1250/1250 em 62 arquivos; `npm run lint` e `npm run typecheck`
+  sem erros. Mutacao temporaria removendo o rollback de `Simulator.edit`
+  derruba 28 testes; codigo restaurado. Proximo passo: revisao do PR.
 
 ### E4: Configuracao e arquivos
 
@@ -757,8 +774,25 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
+- #133 em andamento (iniciada 2026-11-01): ID de tarefa como texto livre.
+  Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
+  Feito no PR #134 (rascunho): DEC-48 (formato, unicidade sem caixa, ordem
+  natural, inclusao com ID sugerido ou digitado, rotulos), criterios na
+  [specification.md](specification.md#req-06-arquivo-texto), `TaskId` como
+  texto no nucleo (parser, validacao, ordem natural, edicao) e no SVG (escape
+  e rotulo longo). Verificacao: `npm test` 1143/1143 antes da inclusao (baseline 1067),
+  `npm run lint` e `npm run typecheck` sem erros; trace e SVG de IDs
+  numericos iguais aos de antes (testes de caracterizacao).
+  Inclusao com ID sugerido ou digitado entregue depois do merge do PR #119
+  (`usedTaskIds` no lugar de `maxTaskId`); `npm test` 1189/1189.
+  Revisao do PR #134: corrigidos o limite da sugestao numerica e caracteres
+  invalidos em XML no SVG; testes focados cobrem ambos. `npm test` 1192/1192,
+  `npm run typecheck` e `npm run lint` aprovados.
+  DEC-48 e escolhas da revisao aceitas pelo usuario em 2026-11-01.
+  Falta: revisao final e ver a interface rodando.
+
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
+  E3: #23, #24 e #25 concluidas; #26 em revisao (PR 7/7); #27 e #28 nao iniciadas. E4: #29, #30,
   #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 parcial; #37 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
@@ -777,7 +811,7 @@ Issues `[Docs]`, sem fase no Project.
   DEC-36; evidencia em E3.
 - #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
   em E3 e decisao em DEC-37.
-- #26 em andamento (iniciada 2026-11-01):
+- #26 em revisao (iniciada 2026-11-01; o PR 7/7 traz a exclusao e a conferencia):
   aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
   do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
   eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
@@ -840,9 +874,111 @@ Issues `[Docs]`, sem fase no Project.
        identificador de tarefa inteiro, forcar tarefa terminada recusado e
        comentarios. Interface e pacote nao verificados; commit `WIP` ja
        enviado ao PR;
-    5. #118 (rascunho) caracteristicas da tarefa (duracao por job, calendario, periodo,
-       ingresso, cor);
+    5. #118 (rascunho, implementacao local concluida; PR ainda nao marcado
+       pronto) caracteristicas da tarefa. Itens `taskColor`, `taskDuration`,
+       `taskDeadline`, `taskArrival` e `taskPeriod`, `EditTarget.definitions`,
+       `Job.duration`, `TaskControlBlock.nextActivation` e `src/core/activation.ts`
+       (`activateDueJobs`, `activateTask`, `rescheduleNextActivation`);
+       ativacao causada por edicao registrada depois dos eventos de estado da
+       tarefa e antes dos de CPU (decisao do usuario). Forma em DEC-44
+       (proposta, aguarda aceite) e DEC-45 (envios do mesmo tick e
+       conclusao, decisoes do usuario na revisao). Baseline 932/932; evidencia
+       local (2026-11-01): `npm test` 1067/1067 em 54 arquivos, `npm run lint`,
+       `npm run typecheck` e `npx oxfmt --check` sem erros. Testes em
+       `edit.test.ts`, `activation.test.ts`, `simulator.taskEdits.test.ts` e
+       `consistency.test.ts`. Mutacoes temporarias: remover o
+       `max(..., clock)` de `rescheduleNextActivation` derruba 5 testes; fazer
+       a ativacao gravar duracao fixa derruba 100; fazer a conclusao usar
+       `definition.duration` em vez de `job.duration` passou de primeira (0 falhas
+       em 1053), lacuna fechada pelo commit `d9b6426`: agora 2 testes
+       derrubam essa mutacao. DEC-45: remover a recusa de conclusao com
+       caracteristica derruba 3 testes; remover a guarda de job criado por
+       envio anterior derruba 4. `npm test` 54 arquivos / 1067 testes. Lacuna
+       conhecida (O3) de `projectJob` tratada na #131 (ver abaixo). Editar
+       periodo 0 (aperiodica) fica fora do Projeto A (DEC-29). Nao verificado: interface e pacote. Acompanhamento em issues
+       novas (#131; refactors do `edit.ts`); Project e corpo do PR
+       #118 a atualizar com o aceite do usuario;
     6. #119 (rascunho) inclusao e exclusao de tarefas e verificacao final da #26.
+       #118 mergeado na `main` (`1559d97`). Implementacao local sobre ela,
+       dividida em duas etapas: este PR traz a inclusao (DEC-46, proposta:
+       item `addTask`, `maxTaskId` no estado, cor padrao deterministica,
+       ativacao na etapa de edicao); a exclusao (`removeTask`, DEC-47) vem
+       depois do merge deste, num PR que fecha a #26 com a conferencia final
+       dos criterios contra os PRs 2 a 6. Testes em
+       `simulator.addTask.test.ts`, `defaultColor.test.ts` e
+       `consistency.test.ts`; mutacoes temporarias (ativacao, `maxTaskId`,
+       lista de inclusoes na validacao, TCB provisorio) derrubam testes.
+       Interface e pacote nao verificados.
+    7. Ajustes de revisao da inclusao (branch `chore/26-ajustes-inclusao`,
+       sobre `4e43467`, `Refs #26`, sem fechar a issue): comentarios de
+       `createTcb` e de `defaultTaskColor` corrigidos; limite de 894 cores
+       registrado na DEC-46 (algoritmo mantido); `applyNetChange` sem
+       `isNew`, com comportamento identico (testes existentes sem alteracao);
+       dois testes novos em `simulator.addTask.test.ts` (cor repetida na mesma
+       edicao; entradas invalidas recusadas como `EditRefusal`). Mutacao
+       temporaria em `liveDefinitions` (sem as incluidas da mesma edicao)
+       derruba o teste de cor repetida; revertida. Verificacao (2026-11-01):
+       `npm test` 1098 passam e 1 ignorado em 56 arquivos antes de integrar a
+       `main` (baseline 1096 mais os 2 testes novos); depois de integrar
+       `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
+       `npm run lint` e `npm run typecheck` sem erros.
+       Interface e pacote nao verificados.
+    8. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
+       aceite do usuario) e conferencia final dos criterios da #26. Branch
+       `feat/26-7-exclusao` a partir da `main` (`4e43467`). Item `removeTask`
+       em `src/core/edit.ts`: so tarefa nunca ativada (recusa com motivo que
+       aponta encerrar); tarefa incluida no mesmo tick sai so do alvo; ID nunca
+       reusado; `applyNetChange` tira o TCB e os eventos da tarefa excluida
+       do snapshot do tick, mantendo os dos snapshots anteriores. Cor
+       distinta ignora tarefa excluida (`liveDefinitions`). Testes em
+       `simulator.removeTask.test.ts` (15). Vermelho conferido: com o
+       `edit.ts` da `main`, os 15 falham. Mutacoes (cada uma reverte e
+       derruba testes): nao limpar eventos (2 falhas), aceitar tarefa com job
+       (3), `maxTaskId` recalculado pela lista (4), `definitions` nao filtrada
+       (11), cor sem filtro de tarefa excluida (1).
+       Conferencia dos criterios da #26 (issue `ediasv/os-sim` #26, 2026-11-01),
+       por leitura dos testes existentes na branch e nos PRs 2 a 6:
+        - tabelas de estado, caracteristicas, inclusao, exclusao e parametros
+          do sistema: `simulator.taskState.test.ts`, `simulator.taskEdits.test.ts`,
+          `simulator.addTask.test.ts`, `simulator.removeTask.test.ts`,
+          `simulator.cpuEdits.test.ts` e `edit.test.ts` (edicao valida e recusa
+          com motivo);
+        - recusa atomica, estado e historico iguais: `simulator.taskEdits.test.ts`
+          ("refuses the whole edit ... (atomicity)"), `simulator.edit.test.ts`
+          ("a refused edit changes neither state, cursor nor history") e
+          `simulator.taskState.test.ts` ("refuses an entire edit without
+          changing state, future, cursor or recorded edits");
+        - mesmo tick e edicoes que se anulam (sorteio incluso): `simulator.edit.test.ts`
+          ("repeating or undoing edits in a tick equals the net change") e
+          `simulator.taskState.test.ts` (suspensao cancelada no tick, sem evento);
+        - editar no passado descarta futuro e edicoes; voltar mostra o historico:
+          `simulator.edit.test.ts` ("an edit before the latest step discards
+          later steps", "going back after a past edit shows the history");
+        - suspender/forcar com jobs pendentes respeita o mais antigo, encerrar
+          interrompe e lista em `task-finished`: `simulator.taskState.test.ts`
+          e `taskEdits.test.ts` (DEC-02);
+        - eventos na ordem da DEC-37/DEC-22 e CPUs removidas/reincluidas com
+          `findInconsistencies` vazio: `simulator.cpuEdits.test.ts`,
+          `consistency.test.ts` e o helper `edit` dos testes, que confere
+          `findInconsistencies` depois de cada edicao.
+          Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
+          (nao por mutacao de cada criterio). Verificacao executada apos o
+          merge de `origin/main` (`6716212`): `npm test` 1222 passou e 1 ignorado
+          em 62 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
+          na maquina); baseline da `main` sem os 15 novos nao reexecutado.
+          NAO verificado aqui: interface e o comando
+          `edit` do adaptador (#37), a tela (#38) e o pacote (#26 nao o cobre).
+          Mudanca de DEC-47 se o usuario recusar as decisoes de eventos ou de
+          exclusao; a conferencia depende dos testes atuais.
+- #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
+  do sistema mostra a duracao de cada job a partir de `Job.duration`
+  (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
+  `system.test.ts` com edicao real de duracao: falhou antes (7 em vez de 4)
+  e passa depois. Evidencia local (2026-11-01): `npm test` 1068/1068 em 54
+  arquivos, `npm run lint` e `npm run typecheck` sem erros. Nao verificado:
+  interface interativa e pacote. Proximo passo: revisao do usuario e PR
+  pronto.
 - Em andamento: #44 (pacote Windows verificado, macOS com ediasv; ver E6).
 - #39 parte 1 (gravacao e SVG, sem suspenso/forcado) em andamento, `Refs #39`; ver E5.
 - #36 parte 1 entregue no PR #113 (mergeado, `9594d2d`): App com
@@ -851,9 +987,12 @@ Issues `[Docs]`, sem fase no Project.
 - #117 em implementacao local: estado por tarefa, suspensao, forcamento,
   encerramento, recusas em portugues e testes; DEC-39 e DEC-40 aceitas
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
-- Proximo passo: concluir gates e revisao independente do #117; depois
-  seguir para #118 (caracteristicas da tarefa). DEC-34 segue pendente de aceite.
-- Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
+- Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao; a exclusao
+  fecha a #26 num PR seguinte). DEC-34 segue pendente de aceite.
+- #27 implementada na branch `feat/27-execucao-completa` (depende do PR #138,
+  DEC-49): 1205/1205 testes, lint e typecheck sem falhas; 17 testes antigos que
+  avancavam alem do termino foram ajustados. Proximo passo: revisao e PR.
+- Pendencias: Q-06 resolvida por DEC-49, implementada na #27 (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende

@@ -43,17 +43,17 @@ function run(name: string, ticks: number): SimulationSnapshot {
     return sim.getLatestSnapshot();
 }
 
-const ref = (taskId: number, index: number): JobRef => ({ taskId, index });
+const ref = (taskId: string, index: number): JobRef => ({ taskId, index });
 const of = (s: SimulationSnapshot, kind: SimulationEvent['kind']) =>
     s.events.filter((event) => event.kind === kind);
-const act = (time: number, taskId: number, index: number): SimulationEvent => ({
+const act = (time: number, taskId: string, index: number): SimulationEvent => ({
     kind: 'activation',
     time,
     job: ref(taskId, index),
 });
 const done = (
     time: number,
-    taskId: number,
+    taskId: string,
     index: number,
 ): SimulationEvent => ({
     kind: 'completion',
@@ -116,18 +116,18 @@ describe('01: RM, Table 2.1 / figure 2.5', () => {
             cpuCount: 1,
         });
         expect(of(s, 'preemption')).toEqual([
-            preempt(100, ref(3, 0), ref(1, 1)),
-            preempt(150, ref(3, 0), ref(2, 1)),
-            preempt(200, ref(3, 0), ref(1, 2)),
+            preempt(100, ref('3', 0), ref('1', 1)),
+            preempt(150, ref('3', 0), ref('2', 1)),
+            preempt(200, ref('3', 0), ref('1', 2)),
         ]);
-        expect(of(s, 'completion')).toContainEqual(done(240, 3, 0));
+        expect(of(s, 'completion')).toContainEqual(done(240, '3', 0));
         expect(of(s, 'deadline-miss')).toEqual([]);
         expect(of(s, 'quantum-expired')).toEqual([]);
         expect(summarizeCpuOff(s)[0].intervals).toEqual([
             { start: 240, end: 300 },
         ]);
-        expect(s.executions[0]).toEqual(slice(1, ref(1, 0), 0, 20));
-        expect(s.executions.at(-1)).toEqual(slice(1, ref(2, 2), 320, 360));
+        expect(s.executions[0]).toEqual(slice(1, ref('1', 0), 0, 20));
+        expect(s.executions.at(-1)).toEqual(slice(1, ref('2', 2), 320, 360));
     });
 });
 
@@ -136,31 +136,31 @@ describe('02 and 03: figure 2.6 under EDF and RM', () => {
         const s = run('02-edf-figura-2-6.txt', 55);
 
         expect(s.executions).toEqual([
-            slice(1, ref(1, 0), 0, 10),
-            slice(1, ref(2, 0), 10, 20),
-            slice(1, ref(1, 1), 20, 30),
-            slice(1, ref(2, 0), 30, 45),
-            slice(1, ref(1, 2), 45, 55),
+            slice(1, ref('1', 0), 0, 10),
+            slice(1, ref('2', 0), 10, 20),
+            slice(1, ref('1', 1), 20, 30),
+            slice(1, ref('2', 0), 30, 45),
+            slice(1, ref('1', 2), 45, 55),
         ]);
         expect(of(s, 'deadline-miss')).toEqual([]);
         expect(of(s, 'preemption')).toEqual([
-            preempt(20, ref(2, 0), ref(1, 1)),
+            preempt(20, ref('2', 0), ref('1', 1)),
         ]);
     });
 
     it('03: RM misses B at t=50 and still finishes it at t=55', () => {
         const s = run('03-rm-figura-2-6.txt', 55);
 
-        expect(of(s, 'deadline-miss')).toEqual([miss(50, ref(2, 0))]);
-        expect(s.executions.at(-1)).toEqual(slice(1, ref(2, 0), 50, 55));
+        expect(of(s, 'deadline-miss')).toEqual([miss(50, ref('2', 0))]);
+        expect(s.executions.at(-1)).toEqual(slice(1, ref('2', 0), 50, 55));
         // The miss is logged before the activation at the same instant (DEC-22).
         const at50 = s.events.filter((event) => event.time === 50);
         expect(at50).toEqual([
-            done(50, 1, 2),
-            miss(50, ref(2, 0)),
-            act(50, 2, 1),
+            done(50, '1', 2),
+            miss(50, ref('2', 0)),
+            act(50, '2', 1),
         ]);
-        expect(of(s, 'completion')).toContainEqual(done(55, 2, 0));
+        expect(of(s, 'completion')).toContainEqual(done(55, '2', 0));
     });
 });
 
@@ -190,17 +190,17 @@ describe('04: two CPUs, one switched off and on again', () => {
                 kind: 'preemption',
                 time: 2,
                 cpuId: 2,
-                preempted: ref(2, 0),
-                by: ref(3, 0),
+                preempted: ref('2', 0),
+                by: ref('3', 0),
             },
         ]);
         expect(s.executions).toEqual([
-            slice(1, ref(1, 0), 0, 4),
-            slice(2, ref(2, 0), 0, 2),
-            slice(2, ref(3, 0), 2, 4),
-            slice(1, ref(2, 0), 4, 8),
-            slice(1, ref(3, 1), 12, 13),
-            slice(2, ref(1, 1), 12, 13),
+            slice(1, ref('1', 0), 0, 4),
+            slice(2, ref('2', 0), 0, 2),
+            slice(2, ref('3', 0), 2, 4),
+            slice(1, ref('2', 0), 4, 8),
+            slice(1, ref('3', 1), 12, 13),
+            slice(2, ref('1', 1), 12, 13),
         ]);
     });
 });
@@ -217,8 +217,8 @@ describe('05: preemption, quantum expiry and a tie settled by the draw', () => {
         const [draw] = draws;
         assert(draw.kind === 'tie-break');
         expect(draw.time).toBe(0);
-        expect(draw.candidates).toEqual([ref(3, 0), ref(4, 0)]);
-        expect([ref(3, 0), ref(4, 0)]).toContainEqual(draw.winner);
+        expect(draw.candidates).toEqual([ref('3', 0), ref('4', 0)]);
+        expect([ref('3', 0), ref('4', 0)]).toContainEqual(draw.winner);
     });
 
     it('runs winner, loser, task 2, loser, task 1 in the derived intervals', () => {
@@ -240,24 +240,24 @@ describe('05: preemption, quantum expiry and a tie settled by the draw', () => {
         expect(s.executions).toEqual([
             slice(1, winner, 0, 2),
             slice(1, loser, 2, 3),
-            slice(1, ref(2, 0), 3, 5),
+            slice(1, ref('2', 0), 3, 5),
             slice(1, loser, 5, 6),
-            slice(1, ref(1, 0), 6, 10),
-            slice(1, ref(2, 1), 10, 12),
-            slice(1, ref(1, 0), 12, 14),
+            slice(1, ref('1', 0), 6, 10),
+            slice(1, ref('2', 1), 10, 12),
+            slice(1, ref('1', 0), 12, 14),
         ]);
         expect(of(s, 'preemption')).toEqual([
-            preempt(3, loser, ref(2, 0)),
-            preempt(10, ref(1, 0), ref(2, 1)),
+            preempt(3, loser, ref('2', 0)),
+            preempt(10, ref('1', 0), ref('2', 1)),
         ]);
         expect(of(s, 'quantum-expired')).toEqual([
-            { kind: 'quantum-expired', time: 8, cpuId: 1, job: ref(1, 0) },
-            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref(1, 0) },
+            { kind: 'quantum-expired', time: 8, cpuId: 1, job: ref('1', 0) },
+            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref('1', 0) },
         ]);
         expect(s.events.filter((event) => event.time === 10)).toEqual([
-            act(10, 2, 1),
-            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref(1, 0) },
-            preempt(10, ref(1, 0), ref(2, 1)),
+            act(10, '2', 1),
+            { kind: 'quantum-expired', time: 10, cpuId: 1, job: ref('1', 0) },
+            preempt(10, ref('1', 0), ref('2', 1)),
         ]);
         expect(of(s, 'deadline-miss')).toEqual([]);
     });
@@ -277,7 +277,7 @@ describe('06: aperiodic tasks receive the default period (DEC-29)', () => {
                 value: null,
                 valueKind: 'missing',
                 origin: 'default-period',
-                taskId: 1,
+                taskId: '1',
                 message:
                     'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
             },
@@ -287,7 +287,7 @@ describe('06: aperiodic tasks receive the default period (DEC-29)', () => {
                 value: '0',
                 valueKind: 'received',
                 origin: 'default-period',
-                taskId: 2,
+                taskId: '2',
                 message:
                     'Linha 3, campo periodo (valor 0): toda tarefa precisa de período maior que zero; a tarefa 2 usará o período padrão de 15 ticks.',
             },
@@ -298,25 +298,25 @@ describe('06: aperiodic tasks receive the default period (DEC-29)', () => {
         const s = run('06-aperiodica-periodo-padrao.txt', 21);
 
         expect(of(s, 'activation')).toEqual([
-            act(0, 1, 0),
-            act(0, 3, 0),
-            act(2, 2, 0),
-            act(8, 3, 1),
-            act(15, 1, 1),
-            act(16, 3, 2),
-            act(17, 2, 1),
+            act(0, '1', 0),
+            act(0, '3', 0),
+            act(2, '2', 0),
+            act(8, '3', 1),
+            act(15, '1', 1),
+            act(16, '3', 2),
+            act(17, '2', 1),
         ]);
         // At t=2, tasks 1 and 2 tie on RM priority and on deadline 12; the
         // earlier activation picks task 1, so no draw happens (DEC-16).
         expect(s.executions).toEqual([
-            slice(1, ref(3, 0), 0, 2),
-            slice(1, ref(1, 0), 2, 6),
-            slice(1, ref(2, 0), 6, 8),
-            slice(1, ref(3, 1), 8, 10),
-            slice(1, ref(2, 0), 10, 11),
-            slice(1, ref(1, 1), 15, 16),
-            slice(1, ref(3, 2), 16, 18),
-            slice(1, ref(1, 1), 18, 21),
+            slice(1, ref('3', 0), 0, 2),
+            slice(1, ref('1', 0), 2, 6),
+            slice(1, ref('2', 0), 6, 8),
+            slice(1, ref('3', 1), 8, 10),
+            slice(1, ref('2', 0), 10, 11),
+            slice(1, ref('1', 1), 15, 16),
+            slice(1, ref('3', 2), 16, 18),
+            slice(1, ref('1', 1), 18, 21),
         ]);
         expect(of(s, 'tie-break')).toEqual([]);
         expect(of(s, 'deadline-miss')).toEqual([]);
@@ -332,27 +332,27 @@ describe('07: overload records missed deadlines without an error (DEC-10)', () =
 
         // Task 3 has deadline 3 < duration 5; tasks 1 and 2 need 3/4 + 3/6.
         expect(of(s, 'deadline-miss')).toEqual([
-            miss(3, ref(3, 0)),
-            miss(6, ref(2, 0)),
-            miss(12, ref(2, 1)),
+            miss(3, ref('3', 0)),
+            miss(6, ref('2', 0)),
+            miss(12, ref('2', 1)),
         ]);
         expect(s.executions).toEqual([
-            slice(1, ref(1, 0), 0, 3),
-            slice(1, ref(2, 0), 3, 4),
-            slice(1, ref(1, 1), 4, 7),
-            slice(1, ref(2, 0), 7, 8),
-            slice(1, ref(1, 2), 8, 11),
-            slice(1, ref(2, 0), 11, 12),
+            slice(1, ref('1', 0), 0, 3),
+            slice(1, ref('2', 0), 3, 4),
+            slice(1, ref('1', 1), 4, 7),
+            slice(1, ref('2', 0), 7, 8),
+            slice(1, ref('1', 2), 8, 11),
+            slice(1, ref('2', 0), 11, 12),
         ]);
         // A late job completes normally; its miss was logged once (DEC-04).
-        expect(of(s, 'completion')).toContainEqual(done(12, 2, 0));
+        expect(of(s, 'completion')).toContainEqual(done(12, '2', 0));
         expect(of(s, 'preemption')).toEqual([
-            preempt(4, ref(2, 0), ref(1, 1)),
-            preempt(8, ref(2, 0), ref(1, 2)),
+            preempt(4, ref('2', 0), ref('1', 1)),
+            preempt(8, ref('2', 0), ref('1', 2)),
         ]);
         expect(s.events.filter((event) => event.time === 3)).toEqual([
-            done(3, 1, 0),
-            miss(3, ref(3, 0)),
+            done(3, '1', 0),
+            miss(3, ref('3', 0)),
         ]);
     });
 });
@@ -380,7 +380,7 @@ describe('08: long simulation for export', () => {
         expect(s.tasks.map((task) => task.jobs.at(-1)?.activation)).toEqual([
             270, 315, 360, 405, 450,
         ]);
-        expect(s.executions.at(-1)).toEqual(slice(1, ref(5, 9), 450, 457));
+        expect(s.executions.at(-1)).toEqual(slice(1, ref('5', 9), 450, 457));
         expect(of(s, 'deadline-miss')).toEqual([]);
         expect(findInconsistencies(s)).toEqual([]);
     });

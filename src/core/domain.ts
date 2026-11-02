@@ -8,8 +8,11 @@
 /** Scheduling policies required by Project A (A.4). */
 export type AlgorithmId = 'RM' | 'EDF';
 
-/** Unique task identifier from the configuration; always >= 1 (DEC-10). */
-export type TaskId = number;
+/**
+ * Unique task identifier from the configuration: free text, unique ignoring
+ * case, shown as typed (DEC-48). Rules live in `taskId.ts`.
+ */
+export type TaskId = string;
 
 /** One task line of the configuration file (A.3.3), after validation. */
 export interface TaskDefinition {
@@ -87,6 +90,8 @@ export interface Job extends JobRef {
     activation: number;
     /** activation + relative deadline; waiting or suspension never pauses it (REQ-08). */
     absoluteDeadline: number;
+    /** Ticks this job needs, copied from the definition at activation (DEC-37). */
+    duration: number;
     /** Ticks already executed; preemption keeps it (REQ-01). */
     executed: number;
     state: JobState;
@@ -109,6 +114,8 @@ export interface TaskControlBlock {
     status: TaskStatus;
     definition: TaskDefinition;
     jobs: Job[];
+    /** Tick of the next due activation; null once the task reached `maxJobs` (DEC-37). */
+    nextActivation: number | null;
 }
 
 /** One logical CPU. Ids run from 1 to cpuCount so they read naturally in the UI. */
@@ -225,13 +232,20 @@ export type SimulationEvent =
 export interface SimulationState {
     clock: number;
     config: SystemConfig;
-    /** One TCB per configured task, in configuration order. */
+    /** One TCB per task, in configuration order; inclusions append (DEC-46). */
     tasks: TaskControlBlock[];
     cpus: CpuState[];
     executions: ExecutionSlice[];
     events: SimulationEvent[];
     /** State of the residual-tie draw generator, so snapshots replay the same draws (DEC-06, DEC-27). */
     drawState: number;
+    /**
+     * Every task ID ever used up to this snapshot, in the order they were
+     * first used, including those of removed tasks, so no ID is reused and the
+     * next suggestion is the highest number used plus one (DEC-46, DEC-48).
+     * Kept in the state so discarding the future discards the IDs created in it.
+     */
+    usedTaskIds: TaskId[];
 }
 
 /** Recursively read-only view, used so snapshot consumers cannot mutate them. */

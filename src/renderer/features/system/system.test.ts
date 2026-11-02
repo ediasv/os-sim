@@ -1,11 +1,12 @@
 import { Simulator } from '../../../core/simulator';
+import { createSimulator } from '../../../core/createSimulator';
 import { DEFAULT_CONFIG } from '../../../core/domain';
 import { describe, expect, it } from 'vitest';
 import { CpuEventSequenceError } from '../../../core/cpuOff';
 import type { SimulationState } from '../../../core/domain';
 import { projectSystem } from './system';
 
-function task(id: number, period: number, duration: number, deadline: number) {
+function task(id: string, period: number, duration: number, deadline: number) {
     return {
         id,
         color: 'F0E0D0',
@@ -24,9 +25,9 @@ function task(id: number, period: number, duration: number, deadline: number) {
  * (pending).
  */
 function snapshot(): SimulationState {
-    const t1 = task(1, 5, 3, 4);
-    const t2 = task(2, 0, 2, 2);
-    const t3 = task(3, 10, 2, 6);
+    const t1 = task('1', 5, 3, 4);
+    const t2 = task('2', 0, 2, 2);
+    const t3 = task('3', 10, 2, 6);
     return {
         clock: 8,
         config: {
@@ -39,22 +40,25 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t1,
+                nextActivation: 10,
                 jobs: [
                     {
-                        taskId: 1,
+                        taskId: '1',
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 4,
+                        duration: 3,
                         executed: 3,
                         state: 'completed',
                         completedAt: 3,
                         deadlineMissed: false,
                     },
                     {
-                        taskId: 1,
+                        taskId: '1',
                         index: 1,
                         activation: 5,
                         absoluteDeadline: 9,
+                        duration: 3,
                         executed: 2,
                         state: 'running',
                         completedAt: null,
@@ -65,12 +69,14 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t2,
+                nextActivation: null,
                 jobs: [
                     {
-                        taskId: 2,
+                        taskId: '2',
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 2,
+                        duration: 2,
                         executed: 0,
                         state: 'ready',
                         completedAt: null,
@@ -81,22 +87,25 @@ function snapshot(): SimulationState {
             {
                 status: 'ready',
                 definition: t3,
+                nextActivation: 14,
                 jobs: [
                     {
-                        taskId: 3,
+                        taskId: '3',
                         index: 0,
                         activation: 0,
                         absoluteDeadline: 6,
+                        duration: 2,
                         executed: 1,
                         state: 'suspended',
                         completedAt: null,
                         deadlineMissed: true,
                     },
                     {
-                        taskId: 3,
+                        taskId: '3',
                         index: 1,
                         activation: 4,
                         absoluteDeadline: 14,
+                        duration: 2,
                         executed: 0,
                         state: 'ready',
                         completedAt: null,
@@ -108,7 +117,7 @@ function snapshot(): SimulationState {
         cpus: [
             {
                 id: 1,
-                running: { taskId: 1, index: 1 },
+                running: { taskId: '1', index: 1 },
                 sliceElapsed: 2,
                 offSince: null,
             },
@@ -118,7 +127,7 @@ function snapshot(): SimulationState {
         executions: [
             {
                 cpuId: 1,
-                job: { taskId: 1, index: 1 },
+                job: { taskId: '1', index: 1 },
                 start: 6,
                 end: 8,
             },
@@ -130,6 +139,7 @@ function snapshot(): SimulationState {
             { kind: 'cpu-off', time: 8, cpuId: 3 },
         ],
         drawState: 1,
+        usedTaskIds: [],
     };
 }
 
@@ -150,7 +160,7 @@ describe('projectSystem', () => {
             'off',
         ]);
         expect(cpus[0]?.job).toMatchObject({
-            ref: { taskId: 1, index: 1 },
+            ref: { taskId: '1', index: 1 },
             state: 'running',
             color: 'F0E0D0',
         });
@@ -174,9 +184,9 @@ describe('projectSystem', () => {
     it('starts the run at the start of the last unbroken slice of the same job', () => {
         const state = snapshot();
         state.executions = [
-            { cpuId: 1, job: { taskId: 1, index: 0 }, start: 0, end: 2 },
-            { cpuId: 1, job: { taskId: 1, index: 1 }, start: 4, end: 5 },
-            { cpuId: 1, job: { taskId: 1, index: 1 }, start: 6, end: 8 },
+            { cpuId: 1, job: { taskId: '1', index: 0 }, start: 0, end: 2 },
+            { cpuId: 1, job: { taskId: '1', index: 1 }, start: 4, end: 5 },
+            { cpuId: 1, job: { taskId: '1', index: 1 }, start: 6, end: 8 },
         ];
 
         expect(projectSystem(state).cpus[0]?.since).toBe(6);
@@ -233,7 +243,7 @@ describe('projectSystem', () => {
         const result = projectSystem(snapshot());
 
         expect(result.ready.map((job) => job.ref)).toEqual([
-            { taskId: 2, index: 0 },
+            { taskId: '2', index: 0 },
         ]);
     });
 
@@ -241,8 +251,8 @@ describe('projectSystem', () => {
         const result = projectSystem(snapshot());
 
         expect(result.pending.map((job) => [job.ref, job.state])).toEqual([
-            [{ taskId: 3, index: 0 }, 'suspended'],
-            [{ taskId: 3, index: 1 }, 'ready'],
+            [{ taskId: '3', index: 0 }, 'suspended'],
+            [{ taskId: '3', index: 1 }, 'ready'],
         ]);
         expect(result.pending[0]).toMatchObject({ deadlineMissed: true });
     });
@@ -306,6 +316,35 @@ it('projects system CPU rows across removal and ID reuse', () => {
     expect(rows[2].offIntervals).toEqual([
         { start: 0, end: 1 },
         { start: 2, end: null },
+    ]);
+});
+
+it('shows the duration each job runs, not the edited task duration (DEC-44)', () => {
+    // Two tasks on one CPU: T1#0 runs, T2#0 waits ready; both copied duration 4.
+    const sim = createSimulator({
+        ...DEFAULT_CONFIG,
+        algorithm: 'EDF',
+        cpuCount: 1,
+        tasks: [
+            task('1', 10, 4, 10),
+            { ...task('2', 20, 4, 20), color: '102030' },
+        ],
+    });
+    sim.tick();
+    sim.edit([
+        { kind: 'taskDuration', taskId: '1', duration: 7 },
+        { kind: 'taskDuration', taskId: '2', duration: 7 },
+    ]);
+    const snapshot = sim.getCurrentSnapshot();
+    expect(snapshot.tasks.map((tcb) => tcb.definition.duration)).toEqual([
+        7, 7,
+    ]);
+
+    const result = projectSystem(snapshot);
+    expect(result.cpus[0]?.job?.ref).toEqual({ taskId: '1', index: 0 });
+    expect(result.cpus[0]?.job?.duration).toBe(4);
+    expect(result.ready.map((job) => [job.ref.taskId, job.duration])).toEqual([
+        ['2', 4],
     ]);
 });
 

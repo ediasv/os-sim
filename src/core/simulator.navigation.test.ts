@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
     type SimulationSnapshot,
@@ -12,7 +13,7 @@ import { Simulator } from './simulator';
 
 // Residual ties recur, so the draw state and tie-break events change along
 // the run: reusing a step must keep them exactly as recorded (DEC-06).
-const tied = (id: number, color: string): TaskDefinition => ({
+const tied = (id: string, color: string): TaskDefinition => ({
     id,
     color,
     arrival: 0,
@@ -24,7 +25,7 @@ const tied = (id: number, color: string): TaskDefinition => ({
 const config: SystemConfig = {
     ...DEFAULT_CONFIG,
     cpuCount: 1,
-    tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC'), tied(3, '112233')],
+    tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC'), tied('3', '112233')],
 };
 const STEPS = 12;
 
@@ -168,5 +169,31 @@ describe('Simulator navigation', () => {
             'O passo 12 já foi calculado; use forward() em vez de tick().',
         );
         expect(sim.getCursor()).toBe(STEPS - 1);
+    });
+
+    it('going back to step 0 and forward again keeps every step and its edits (REQ-04)', () => {
+        const sim = new Simulator(config, rmPolicy);
+        recordRun(sim, 2);
+        sim.edit([{ kind: 'quantum', quantum: 1 }]);
+        for (let i = 2; i < STEPS; i++) sim.tick();
+
+        const recorded = [];
+        for (let k = 0; k <= STEPS; k++) {
+            sim.restore(k);
+            recorded.push(sim.getCurrentSnapshot());
+        }
+        const edits = recorded.map((_, k) => sim.getEdits(k));
+        expect(edits[2]).toEqual([[{ kind: 'quantum', quantum: 1 }]]);
+        recorded.forEach((step) =>
+            expect(findInconsistencies(step)).toEqual([]),
+        );
+
+        for (let i = 0; i < STEPS; i++) sim.backward();
+        expect(sim.getCurrentSnapshot()).toBe(recorded[0]);
+        for (let k = 1; k <= STEPS; k++) {
+            sim.forward();
+            expect(sim.getCurrentSnapshot()).toBe(recorded[k]);
+        }
+        expect(recorded.map((_, k) => sim.getEdits(k))).toEqual(edits);
     });
 });

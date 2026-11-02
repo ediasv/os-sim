@@ -12,7 +12,7 @@ import { EditRefusal, SimulationRefusal } from './refusal';
 import { Simulator } from './simulator';
 
 function task(
-    id: number,
+    id: string,
     color: string,
     fields: Pick<
         TaskDefinition,
@@ -51,7 +51,7 @@ const quantumConfig = (quantum: number): SystemConfig => ({
     cpuCount: 1,
     quantum,
     tasks: [
-        task(1, 'F0E0D0', {
+        task('1', 'F0E0D0', {
             arrival: 0,
             duration: 6,
             period: 20,
@@ -66,12 +66,22 @@ const algorithmConfig: SystemConfig = {
     cpuCount: 1,
     quantum: 5,
     tasks: [
-        task(1, 'F0E0D0', { arrival: 0, duration: 3, period: 10, deadline: 3 }),
-        task(2, 'AABBCC', { arrival: 0, duration: 3, period: 5, deadline: 5 }),
+        task('1', 'F0E0D0', {
+            arrival: 0,
+            duration: 3,
+            period: 10,
+            deadline: 3,
+        }),
+        task('2', 'AABBCC', {
+            arrival: 0,
+            duration: 3,
+            period: 5,
+            deadline: 5,
+        }),
     ],
 };
 const registry = { policies: DEFAULT_POLICIES };
-const job = (taskId: number) => ({ taskId, index: 0 });
+const job = (taskId: string) => ({ taskId, index: 0 });
 
 describe('Simulator.edit: quantum', () => {
     it('expires the running slice at t when the new quantum is already used up', () => {
@@ -85,16 +95,16 @@ describe('Simulator.edit: quantum', () => {
             kind: 'quantum-expired',
             time: 2,
             cpuId: 1,
-            job: job(1),
+            job: job('1'),
         });
         expect(at2.cpus[0].sliceElapsed).toBe(0);
-        expect(at2.cpus[0].running).toEqual(job(1));
+        expect(at2.cpus[0].running).toEqual(job('1'));
         run(sim, 4);
         expect(quantumExpiries(sim)).toEqual([2, 4]);
         expect(sim.getCurrentSnapshot().events).toContainEqual({
             kind: 'completion',
             time: 6,
-            job: job(1),
+            job: job('1'),
         });
     });
 
@@ -132,13 +142,13 @@ describe('Simulator.edit: algorithm', () => {
         edit(sim, [alg('EDF')]);
         const at1 = sim.getCurrentSnapshot();
         expect(at1.config.algorithm).toBe('EDF');
-        expect(at1.cpus[0].running).toEqual(job(1));
+        expect(at1.cpus[0].running).toEqual(job('1'));
         expect(at1.events).toContainEqual({
             kind: 'preemption',
             time: 1,
             cpuId: 1,
-            preempted: job(2),
-            by: job(1),
+            preempted: job('2'),
+            by: job('1'),
         });
         sim.backward();
         expect(sim.getCurrentSnapshot().config.algorithm).toBe('RM');
@@ -161,7 +171,7 @@ describe('Simulator.edit: algorithm', () => {
         const sim = new Simulator(algorithmConfig, rmPolicy);
         edit(sim, [alg('EDF')]);
         expect(sim.getCurrentSnapshot().config.algorithm).toBe('EDF');
-        expect(sim.getCurrentSnapshot().cpus[0].running).toEqual(job(2));
+        expect(sim.getCurrentSnapshot().cpus[0].running).toEqual(job('2'));
     });
 });
 
@@ -272,17 +282,17 @@ describe('Simulator.edit: refusals and recorded edits', () => {
 
 // Residual ties at 0, 4 and 8, so the draw state changes along the run
 // (same scenario as simulator.history.test.ts).
-const tied = (id: number, color: string): TaskDefinition =>
+const tied = (id: string, color: string): TaskDefinition =>
     task(id, color, { arrival: 0, duration: 1, period: 4, deadline: 4 });
 const tiedConfig: SystemConfig = {
     ...DEFAULT_CONFIG,
     cpuCount: 1,
-    tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC'), tied(3, '112233')],
+    tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC'), tied('3', '112233')],
 };
 
 /** Partial progress: slices, preemption, quantum expiry and deadline misses. */
 const progress = (
-    id: number,
+    id: string,
     color: string,
     arrival: number,
     duration: number,
@@ -294,10 +304,10 @@ const partialConfig: SystemConfig = {
     quantum: 2,
     cpuCount: 2,
     tasks: [
-        progress(1, 'F0E0D0', 0, 3, 5),
-        progress(2, 'AABBCC', 0, 4, 6),
-        progress(3, '112233', 1, 2, 4),
-        progress(4, '445566', 0, 5, 6),
+        progress('1', 'F0E0D0', 0, 3, 5),
+        progress('2', 'AABBCC', 0, 4, 6),
+        progress('3', '112233', 1, 2, 4),
+        progress('4', '445566', 0, 5, 6),
     ],
 };
 
@@ -485,4 +495,76 @@ describe('Simulator.edit: editing the past', () => {
         expect(sim.canForward()).toBe(false);
         expect(sim.getCurrentSnapshot()).toEqual(copy);
     });
+});
+
+/** One refused edit per kind of the DEC-37 matrix, including exclusion (DEC-47). */
+const refusedEdits: [string, EditItem[]][] = [
+    ['an unknown algorithm', [alg('XYZ')]],
+    ['a quantum below 1', [q(0)]],
+    ['zero CPUs', [{ kind: 'cpuCount', cpuCount: 0 }]],
+    [
+        'an unknown task state',
+        [{ kind: 'taskState', taskId: '1', state: 'bogus' as never }],
+    ],
+    ['an invalid color', [{ kind: 'taskColor', taskId: '1', color: 'ZZZZZZ' }]],
+    ['a zero duration', [{ kind: 'taskDuration', taskId: '1', duration: 0 }]],
+    ['a zero period', [{ kind: 'taskPeriod', taskId: '1', period: 0 }]],
+    ['an unknown task', [{ kind: 'taskColor', taskId: '99', color: 'FFFFFF' }]],
+    [
+        'an arrival before the clock',
+        [{ kind: 'taskArrival', taskId: '3', arrival: 2 }],
+    ],
+    [
+        'the color of another task',
+        [
+            {
+                kind: 'addTask',
+                task: {
+                    arrival: 3,
+                    duration: 1,
+                    period: 5,
+                    deadline: 5,
+                    color: '112233',
+                },
+            },
+        ],
+    ],
+    ['an activated task', [{ kind: 'removeTask', taskId: '1' }]],
+    ['an unknown task to remove', [{ kind: 'removeTask', taskId: '99' }]],
+    [
+        'a valid item followed by an invalid one',
+        [q(3), { kind: 'taskPeriod', taskId: '1', period: 0 }],
+    ],
+];
+
+describe('Simulator.edit: every refused kind leaves the simulation as it was (REQ-05)', () => {
+    it.each(refusedEdits)(
+        'refuses %s without changing state, cursor, history or edits',
+        (_name, items) => {
+            const sim = new Simulator(partialConfig, rmPolicy);
+            run(sim, 6);
+            edit(sim, [q(3)]);
+            sim.restore(3);
+            const before = captureAll(sim);
+            expect(() => sim.edit(items)).toThrow(EditRefusal);
+            expectUnchanged(sim, before);
+        },
+    );
+
+    it.each(refusedEdits)(
+        'after refusing %s at the latest step, the next tick equals an uninterrupted run',
+        (_name, items) => {
+            const sim = new Simulator(partialConfig, rmPolicy);
+            const twin = new Simulator(partialConfig, rmPolicy);
+            run(sim, 6);
+            run(twin, 6);
+            edit(sim, [q(3)]);
+            edit(twin, [q(3)]);
+
+            expect(() => sim.edit(items)).toThrow(EditRefusal);
+            sim.tick();
+            twin.tick();
+            expect(sim.getCurrentSnapshot()).toEqual(twin.getCurrentSnapshot());
+        },
+    );
 });
