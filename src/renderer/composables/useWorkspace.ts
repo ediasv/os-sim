@@ -61,7 +61,19 @@ export type WorkspaceDialog =
           readonly editing: TaskId | null;
           readonly initial: TaskValues;
       }
-    | { readonly kind: 'remove'; readonly taskId: TaskId };
+    | { readonly kind: 'remove'; readonly taskId: TaskId }
+    /**
+     * A valid file waits for confirmation before it replaces what the user
+     * would lose (FE-04): the running session or the prepared configuration.
+     */
+    | {
+          readonly kind: 'replace';
+          readonly discards: 'session' | 'draft';
+          readonly config: SystemConfig;
+          readonly fileName: string | undefined;
+          /** Shown once the file is accepted, not while it is in question. */
+          readonly warnings: readonly Notice[];
+      };
 /** The edit form being shown, ready for `EditDialog` (#37, DEC-37). */
 export interface EditorView {
     readonly kind: 'task' | 'system' | 'add';
@@ -162,8 +174,10 @@ export function useWorkspace() {
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
         const idle = !loading.value && dialog.value === null;
-        // Replacing a running session needs the confirmation of FE-04.
-        if (!started.value && idle) actions.add('load-config');
+        // A valid file asks before replacing a session or a draft (FE-04).
+        if (idle && editorState.value === null && pending.value === null) {
+            actions.add('load-config');
+        }
         // The configuration is edited only before the start; changing it
         // during the simulation belongs to #37.
         if (idle && !started.value) {
@@ -233,9 +247,6 @@ export function useWorkspace() {
         } finally {
             loading.value = false;
         }
-        // The user may have started while the dialog was open: replacing the
-        // draft now would change what Reiniciar reloads (FE-05).
-        if (started.value) return;
         if (result.status === 'canceled') return;
         if (result.status === 'failed') {
             notices.value = [
@@ -268,12 +279,51 @@ export function useWorkspace() {
                     .join('\n'),
             });
         }
-        if (loaded.ok) {
-            draft.value = loaded.config;
-            fileName.value = result.path.split(/[/\\]/).pop();
-            selectedTaskId.value = loaded.config.tasks[0]?.id ?? null;
+        if (!loaded.ok) {
+            notices.value = next;
+            return;
         }
-        notices.value = next;
+        const accepted = {
+            config: loaded.config,
+            fileName: result.path.split(/[/\\]/).pop(),
+            warnings: next,
+        };
+        // The user may have started or edited while the file dialog was
+        // open, so what would be lost is decided only now. Until confirmed,
+        // Reiniciar still reloads the session configuration (FE-05).
+        const discards = started.value
+            ? 'session'
+            : draft.value !== DEFAULT_CONFIG
+              ? 'draft'
+              : null;
+        if (discards === null) {
+            replace(accepted);
+            return;
+        }
+        dialog.value = { kind: 'replace', discards, ...accepted };
+    }
+
+    /**
+     * Puts an accepted file in place of the session or draft and returns to
+     * preparation without starting the engine (FE-04, FE-DEC-14).
+     */
+    function replace(accepted: {
+        readonly config: SystemConfig;
+        readonly fileName: string | undefined;
+        readonly warnings: readonly Notice[];
+    }): void {
+        closeEditor();
+        started.value = false;
+        draft.value = accepted.config;
+        fileName.value = accepted.fileName;
+        selectedTaskId.value = accepted.config.tasks[0]?.id ?? null;
+        notices.value = accepted.warnings;
+        dialog.value = null;
+    }
+
+    function confirmReplace(): void {
+        const current = dialog.value;
+        if (current?.kind === 'replace') replace(current);
     }
 
     function cancelDialog(): void {
@@ -672,6 +722,7 @@ export function useWorkspace() {
         saveTask,
         requestRemove,
         confirmRemove,
+        confirmReplace,
         cancelDialog,
         openTaskEdit,
         closeEditor,
