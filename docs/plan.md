@@ -334,6 +334,16 @@ Requisitos: REQ-04, REQ-05.
   implementado em 2026-11-01 (`runAll()`, `getProgress()` e recusa de `tick()`
   com tudo terminado), aguardando revisao e integracao; interface na #36.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
+  Concluida no PR aberto em 2026-11-01, aguardando revisao. Testes novos nos arquivos
+  dos temas, sem arquivo de cenarios: restauracao com edicao gravada e
+  `findInconsistencies` em cada passo em `simulator.navigation.test.ts`;
+  matriz de recusas por tipo da matriz (inclui exclusao, DEC-47) com estado,
+  cursor, historico e edicoes inalterados, e proximo tick igual a execucao sem
+  recusa, em `simulator.edit.test.ts`. Ramificacao, falta de progresso e
+  execucao completa x passo a passo ja tinham testes (ver PR). Verificacao:
+  `npm test` 1250/1250 em 62 arquivos; `npm run lint` e `npm run typecheck`
+  sem erros. Mutacao temporaria removendo o rollback de `Simulator.edit`
+  derruba 28 testes; codigo restaurado. Proximo passo: revisao do PR.
 
 ### E4: Configuracao e arquivos
 

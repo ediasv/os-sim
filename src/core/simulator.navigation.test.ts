@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { findInconsistencies } from './consistency';
 import {
     DEFAULT_CONFIG,
     type SimulationSnapshot,
@@ -168,5 +169,31 @@ describe('Simulator navigation', () => {
             'O passo 12 já foi calculado; use forward() em vez de tick().',
         );
         expect(sim.getCursor()).toBe(STEPS - 1);
+    });
+
+    it('going back to step 0 and forward again keeps every step and its edits (REQ-04)', () => {
+        const sim = new Simulator(config, rmPolicy);
+        recordRun(sim, 2);
+        sim.edit([{ kind: 'quantum', quantum: 1 }]);
+        for (let i = 2; i < STEPS; i++) sim.tick();
+
+        const recorded = [];
+        for (let k = 0; k <= STEPS; k++) {
+            sim.restore(k);
+            recorded.push(sim.getCurrentSnapshot());
+        }
+        const edits = recorded.map((_, k) => sim.getEdits(k));
+        expect(edits[2]).toEqual([[{ kind: 'quantum', quantum: 1 }]]);
+        recorded.forEach((step) =>
+            expect(findInconsistencies(step)).toEqual([]),
+        );
+
+        for (let i = 0; i < STEPS; i++) sim.backward();
+        expect(sim.getCurrentSnapshot()).toBe(recorded[0]);
+        for (let k = 1; k <= STEPS; k++) {
+            sim.forward();
+            expect(sim.getCurrentSnapshot()).toBe(recorded[k]);
+        }
+        expect(recorded.map((_, k) => sim.getEdits(k))).toEqual(edits);
     });
 });

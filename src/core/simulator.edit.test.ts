@@ -496,3 +496,75 @@ describe('Simulator.edit: editing the past', () => {
         expect(sim.getCurrentSnapshot()).toEqual(copy);
     });
 });
+
+/** One refused edit per kind of the DEC-37 matrix, including exclusion (DEC-47). */
+const refusedEdits: [string, EditItem[]][] = [
+    ['an unknown algorithm', [alg('XYZ')]],
+    ['a quantum below 1', [q(0)]],
+    ['zero CPUs', [{ kind: 'cpuCount', cpuCount: 0 }]],
+    [
+        'an unknown task state',
+        [{ kind: 'taskState', taskId: '1', state: 'bogus' as never }],
+    ],
+    ['an invalid color', [{ kind: 'taskColor', taskId: '1', color: 'ZZZZZZ' }]],
+    ['a zero duration', [{ kind: 'taskDuration', taskId: '1', duration: 0 }]],
+    ['a zero period', [{ kind: 'taskPeriod', taskId: '1', period: 0 }]],
+    ['an unknown task', [{ kind: 'taskColor', taskId: '99', color: 'FFFFFF' }]],
+    [
+        'an arrival before the clock',
+        [{ kind: 'taskArrival', taskId: '3', arrival: 2 }],
+    ],
+    [
+        'the color of another task',
+        [
+            {
+                kind: 'addTask',
+                task: {
+                    arrival: 3,
+                    duration: 1,
+                    period: 5,
+                    deadline: 5,
+                    color: '112233',
+                },
+            },
+        ],
+    ],
+    ['an activated task', [{ kind: 'removeTask', taskId: '1' }]],
+    ['an unknown task to remove', [{ kind: 'removeTask', taskId: '99' }]],
+    [
+        'a valid item followed by an invalid one',
+        [q(3), { kind: 'taskPeriod', taskId: '1', period: 0 }],
+    ],
+];
+
+describe('Simulator.edit: every refused kind leaves the simulation as it was (REQ-05)', () => {
+    it.each(refusedEdits)(
+        'refuses %s without changing state, cursor, history or edits',
+        (_name, items) => {
+            const sim = new Simulator(partialConfig, rmPolicy);
+            run(sim, 6);
+            edit(sim, [q(3)]);
+            sim.restore(3);
+            const before = captureAll(sim);
+            expect(() => sim.edit(items)).toThrow(EditRefusal);
+            expectUnchanged(sim, before);
+        },
+    );
+
+    it.each(refusedEdits)(
+        'after refusing %s at the latest step, the next tick equals an uninterrupted run',
+        (_name, items) => {
+            const sim = new Simulator(partialConfig, rmPolicy);
+            const twin = new Simulator(partialConfig, rmPolicy);
+            run(sim, 6);
+            run(twin, 6);
+            edit(sim, [q(3)]);
+            edit(twin, [q(3)]);
+
+            expect(() => sim.edit(items)).toThrow(EditRefusal);
+            sim.tick();
+            twin.tick();
+            expect(sim.getCurrentSnapshot()).toEqual(twin.getCurrentSnapshot());
+        },
+    );
+});
