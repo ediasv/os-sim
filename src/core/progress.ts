@@ -10,7 +10,9 @@ import { findEligibleJobs } from './eligibility';
 /**
  * - `finished`: every task is finished (also true with no tasks).
  * - `blocked`: work is pending, no job may run and no activation is coming;
- *   `jobs` are the unfinished jobs that cannot proceed.
+ *   `jobs` are the unfinished jobs that cannot proceed. In a consistent state
+ *   it is never empty: a task below its job limit always has a next
+ *   activation (see consistency.ts), so it would not be blocked.
  * - `running`: otherwise; a job can run or an activation is still due.
  */
 export type ExecutionProgress =

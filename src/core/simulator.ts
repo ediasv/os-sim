@@ -171,7 +171,11 @@ export class Simulator {
         this.recordSnapshot();
     }
 
-    /** Whether the step at the cursor is finished, blocked or can still advance (DEC-49). */
+    /**
+     * Progress of the live state (DEC-49). It equals the step at the cursor
+     * only when the cursor is at the end of history, which is where `runAll`
+     * calls it.
+     */
     public getProgress(): ExecutionProgress {
         return classifyProgress(this.state);
     }
@@ -203,11 +207,12 @@ export class Simulator {
                 const jobs = progress.jobs.map(
                     (ref) => `tarefa ${ref.taskId}, job ${ref.index}`,
                 );
+                const detail = jobs.length > 0 ? ` (${jobs.join('; ')})` : '';
                 return {
                     kind: 'blocked',
                     snapshot: this.getLatestSnapshot(),
                     tick,
-                    reason: `Sem progresso no tick ${tick}: há trabalho pendente, nenhum job pode executar e não há ativações futuras (${jobs.join('; ')}).`,
+                    reason: `Sem progresso no tick ${tick}: há trabalho pendente, nenhum job pode executar e não há ativações futuras${detail}.`,
                     jobs: progress.jobs,
                 };
             }
