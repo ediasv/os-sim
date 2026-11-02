@@ -2007,7 +2007,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 - Estado: proposta em 2026-11-01 no #119 (#26, 6 de 6), para revisao.
   Requisitos: REQ-05, REQ-07. Detalha o item Incluir de DEC-37; a exclusao
-  tem decisao propria (DEC-47), no PR seguinte. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
+  tem decisao propria (DEC-47), entregue no PR 7/7. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
 - Item: `EditItem` ganha `addTask` com `NewTask` (`arrival`, `duration`,
   `deadline`, `color` e `period` opcionais); o ID e gerado (revisto por DEC-48:
   o chamador pode informar o ID, e `usedTaskIds` substitui `maxTaskId`).
