@@ -72,6 +72,14 @@ export type ExtraLegendItem =
     | 'cpu-absent'
     | 'task-terminated';
 
+/** Legend text of those entries; shared so tela and SVG word them alike. */
+export const EXTRA_LEGEND_TEXT: Readonly<Record<ExtraLegendItem, string>> = {
+    suspended: 'Suspensa (hachura escura)',
+    forced: 'Forçada',
+    'cpu-absent': 'CPU removida',
+    'task-terminated': MARKER_TEXT['task-terminated'].legend,
+};
+
 /** Legend order of the Figma frame. */
 export const LEGEND_MARKERS: readonly MarkerKind[] = [
     'activation',
@@ -143,7 +151,8 @@ export interface GanttModel {
     readonly extraLegend: readonly ExtraLegendItem[];
 }
 
-const jobLabel = (job: JobRef): string => `#${job.index + 1}`;
+/** "#n" label of a job, as shown on segments and markers. */
+export const jobLabel = (job: JobRef): string => `#${job.index + 1}`;
 
 /** Task whose lane carries the marker of this event; null for CPU events. */
 function eventTask(event: DeepReadonly<SimulationEvent>): TaskId | null {
