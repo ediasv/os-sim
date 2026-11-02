@@ -218,6 +218,28 @@ describe('edit fold', () => {
 });
 
 describe('edit net change', () => {
+    it('throws when a task with jobs is dropped from the target (DEC-47 invariant)', () => {
+        const state = createInitialState(config);
+        state.tasks[0].jobs.push({
+            taskId: '1',
+            index: 0,
+            activation: 0,
+            absoluteDeadline: 5,
+            duration: 2,
+            executed: 0,
+            state: 'ready' as const,
+            completedAt: null,
+            deadlineMissed: false,
+        });
+        const before = readTarget(state);
+        const definitions = Object.fromEntries(
+            Object.entries(before.definitions).filter(([id]) => id !== '1'),
+        );
+        expect(() =>
+            applyNetChange(state, before, { ...before, definitions }),
+        ).toThrow('has jobs and cannot be excluded at the edit stage');
+    });
+
     it('applies only the net change', () => {
         const state = createInitialState(config);
         const before = readTarget(state);

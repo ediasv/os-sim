@@ -325,6 +325,9 @@ Requisitos: REQ-04, REQ-05.
   Implementa DEC-37: etapa de edicao no passo, recalculo do tick a partir de
   `t-1` com a lista de edicoes do tick, estado por tarefa e os eventos de
   suspensao, retomada, forcamento e CPUs (issue atualizada em 2026-11-01).
+  Inclusao e exclusao de tarefas (DEC-46 e DEC-47) no nucleo; interface e
+  comando `edit` do adaptador ficam na #37. Entregue em 7 PRs da serie;
+  conferencia dos criterios em "Trabalho atual" (item 7).
 - #27 Implementar execucao completa e detectar falta de progresso.
   DEC-49 aceita em 2026-11-01: guardar todo o historico, interromper por
   falta de progresso conforme Q-06 e nao oferecer cancelamento; nucleo
@@ -776,7 +779,7 @@ Issues `[Docs]`, sem fase no Project.
   Falta: revisao final e ver a interface rodando.
 
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
-  E3: #23, #24 e #25 concluidas; #26 em andamento; #27 e #28 nao iniciadas. E4: #29, #30,
+  E3: #23, #24 e #25 concluidas; #26 em revisao (PR 7/7); #27 e #28 nao iniciadas. E4: #29, #30,
   #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73
   concluidas; #36 parcial; #37 a #40 nao iniciados.
   E6: #80 concluida; demais abertas.
@@ -795,7 +798,7 @@ Issues `[Docs]`, sem fase no Project.
   DEC-36; evidencia em E3.
 - #25 concluida no PR #101 (squash merge `110e4ec`, 2026-11-01), evidencia
   em E3 e decisao em DEC-37.
-- #26 em andamento (iniciada 2026-11-01):
+- #26 em revisao (iniciada 2026-11-01; o PR 7/7 traz a exclusao e a conferencia):
   aplicar as edicoes de DEC-37 no nucleo (etapa de edicao no passo, recalculo
   do tick a partir de `t-1`, edicoes por tick no historico, estado por tarefa,
   eventos novos). Destrava #37 e o Gantt (#38). Entregue em uma serie de
@@ -907,6 +910,54 @@ Issues `[Docs]`, sem fase no Project.
        `1be7da1` (#135): 1099 passam e 1 ignorado em 56 arquivos;
        `npm run lint` e `npm run typecheck` sem erros.
        Interface e pacote nao verificados.
+    8. PR 7/7 (exclusao de tarefas, `removeTask`, DEC-47, aceita em 2026-11-01; antes aguardava
+       aceite do usuario) e conferencia final dos criterios da #26. Branch
+       `feat/26-7-exclusao` a partir da `main` (`4e43467`). Item `removeTask`
+       em `src/core/edit.ts`: so tarefa nunca ativada (recusa com motivo que
+       aponta encerrar); tarefa incluida no mesmo tick sai so do alvo; ID nunca
+       reusado; `applyNetChange` tira o TCB e os eventos da tarefa excluida
+       do snapshot do tick, mantendo os dos snapshots anteriores. Cor
+       distinta ignora tarefa excluida (`liveDefinitions`). Testes em
+       `simulator.removeTask.test.ts` (15). Vermelho conferido: com o
+       `edit.ts` da `main`, os 15 falham. Mutacoes (cada uma reverte e
+       derruba testes): nao limpar eventos (2 falhas), aceitar tarefa com job
+       (3), `maxTaskId` recalculado pela lista (4), `definitions` nao filtrada
+       (11), cor sem filtro de tarefa excluida (1).
+       Conferencia dos criterios da #26 (issue `ediasv/os-sim` #26, 2026-11-01),
+       por leitura dos testes existentes na branch e nos PRs 2 a 6:
+        - tabelas de estado, caracteristicas, inclusao, exclusao e parametros
+          do sistema: `simulator.taskState.test.ts`, `simulator.taskEdits.test.ts`,
+          `simulator.addTask.test.ts`, `simulator.removeTask.test.ts`,
+          `simulator.cpuEdits.test.ts` e `edit.test.ts` (edicao valida e recusa
+          com motivo);
+        - recusa atomica, estado e historico iguais: `simulator.taskEdits.test.ts`
+          ("refuses the whole edit ... (atomicity)"), `simulator.edit.test.ts`
+          ("a refused edit changes neither state, cursor nor history") e
+          `simulator.taskState.test.ts` ("refuses an entire edit without
+          changing state, future, cursor or recorded edits");
+        - mesmo tick e edicoes que se anulam (sorteio incluso): `simulator.edit.test.ts`
+          ("repeating or undoing edits in a tick equals the net change") e
+          `simulator.taskState.test.ts` (suspensao cancelada no tick, sem evento);
+        - editar no passado descarta futuro e edicoes; voltar mostra o historico:
+          `simulator.edit.test.ts` ("an edit before the latest step discards
+          later steps", "going back after a past edit shows the history");
+        - suspender/forcar com jobs pendentes respeita o mais antigo, encerrar
+          interrompe e lista em `task-finished`: `simulator.taskState.test.ts`
+          e `taskEdits.test.ts` (DEC-02);
+        - eventos na ordem da DEC-37/DEC-22 e CPUs removidas/reincluidas com
+          `findInconsistencies` vazio: `simulator.cpuEdits.test.ts`,
+          `consistency.test.ts` e o helper `edit` dos testes, que confere
+          `findInconsistencies` depois de cada edicao.
+          Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
+          (nao por mutacao de cada criterio). Verificacao executada apos o
+          merge de `origin/main` (`6716212`): `npm test` 1222 passou e 1 ignorado
+          em 62 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
+          na maquina); baseline da `main` sem os 15 novos nao reexecutado.
+          NAO verificado aqui: interface e o comando
+          `edit` do adaptador (#37), a tela (#38) e o pacote (#26 nao o cobre).
+          Mudanca de DEC-47 se o usuario recusar as decisoes de eventos ou de
+          exclusao; a conferencia depende dos testes atuais.
 - #131 em andamento (iniciada 2026-11-01, PR #135 em rascunho): o inspetor
   do sistema mostra a duracao de cada job a partir de `Job.duration`
   (DEC-44); detalhes da tarefa seguem com a duracao vigente. Teste em
