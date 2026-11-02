@@ -32,7 +32,7 @@ describe('parseConfig', () => {
         ['with tabs and spaces', '\t1 ;\tFFFFFF ; 0;2 ;5; 7\t'],
     ])('accepts a task line %s as having no events', (_name, task) => {
         expect(parsedConfig(`RM;5;1\n${task}`).tasks[0]).toEqual({
-            id: 1,
+            id: '1',
             color: 'FFFFFF',
             arrival: 0,
             duration: 2,
@@ -101,7 +101,7 @@ describe('parseConfig', () => {
             cpuCount: 2,
             tasks: [
                 {
-                    id: 1,
+                    id: '1',
                     color: 'abcdef',
                     arrival: 0,
                     duration: 2,
@@ -212,7 +212,6 @@ describe('parseConfig', () => {
         expect(
             result.issues.map(({ line, field }) => ({ line, field })),
         ).toEqual([
-            { line: 2, field: 'id' },
             { line: 2, field: 'ingresso' },
             { line: 2, field: 'prazo' },
         ]);
@@ -231,8 +230,8 @@ describe('parseConfig', () => {
     it.each(['0x10', '1e1', '0b11', '.5', 'Infinity', '1_000'])(
         'rejects the non-decimal number %s',
         (value) => {
-            expect(issuesOf(`RM;5;1\n${value};FFFFFF;0;1;0;1`)).toEqual([
-                { line: 2, field: 'id', value },
+            expect(issuesOf(`RM;5;1\n1;FFFFFF;${value};1;0;1`)).toEqual([
+                { line: 2, field: 'ingresso', value },
             ]);
         },
     );
@@ -242,11 +241,61 @@ describe('parseConfig', () => {
             parsedConfig('RM;5;1\n-3;FFFFFF;1.5;99999999999999999999;+2;007')
                 .tasks[0],
         ).toMatchObject({
-            id: -3,
+            id: '-3',
             arrival: 1.5,
             duration: 1e20,
             period: 2,
             deadline: 7,
+        });
+    });
+
+    describe('free-text ids (DEC-48)', () => {
+        it.each([
+            'A',
+            'tarefa-1',
+            'tarefa 1',
+            '01',
+            '-3',
+            '2.5',
+            '0x10',
+            'ação',
+        ])('keeps the id %j as written', (id) => {
+            expect(
+                parsedConfig(`RM;5;1\n${id};FFFFFF;0;1;0;1`).tasks[0].id,
+            ).toBe(id);
+        });
+
+        it('trims spaces around the id', () => {
+            expect(
+                parsedConfig('RM;5;1\n  tarefa 1  ;FFFFFF;0;1;0;1').tasks[0].id,
+            ).toBe('tarefa 1');
+        });
+
+        it('reports an empty id as a missing field', () => {
+            expect(issuesOf('RM;5;1\n;FFFFFF;0;1;0;1')).toEqual([
+                { line: 2, field: 'id', value: null },
+            ]);
+        });
+
+        it.each([
+            ['a numeric id', '1;FFFFFF;0;1;0;1;'],
+            ['a text id', 'A;FFFFFF;0;1;0;1;'],
+            ['a text id with a hyphen', 'tarefa-1;00FF00;0;2;5;5'],
+        ])('detects a missing header before %s', (_name, task) => {
+            const result = parseConfig(task);
+            expect(result.ok).toBe(false);
+            if (result.ok) return;
+            expect(result.issues[0]).toMatchObject({
+                line: 1,
+                field: 'cabecalho',
+            });
+            expect(result.issues[0].message).toContain('cabeçalho ausente');
+        });
+
+        it('still reads a header whose quantum has six digits', () => {
+            expect(parsedConfig('RM;123456;1\n1;FFFFFF;0;1;0;1').quantum).toBe(
+                123456,
+            );
         });
     });
 

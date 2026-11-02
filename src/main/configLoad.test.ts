@@ -20,7 +20,7 @@ const EXPECTED: SystemConfig = {
     cpuCount: 2,
     tasks: [
         {
-            id: 1,
+            id: '1',
             color: 'ABCDEF',
             arrival: 0,
             duration: 2,
@@ -29,7 +29,7 @@ const EXPECTED: SystemConfig = {
             rawEvents: '',
         },
         {
-            id: 2,
+            id: '2',
             color: '00FF00',
             arrival: 1,
             duration: 1,
@@ -127,7 +127,7 @@ describe('valid files from disk', () => {
             field: 'periodo',
             value: null,
             origin: 'default-period',
-            taskId: 1,
+            taskId: '1',
             message:
                 'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
         });

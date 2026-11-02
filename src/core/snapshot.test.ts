@@ -12,7 +12,7 @@ import { Simulator } from './simulator';
 import { createInitialState, restoreState, takeSnapshot } from './snapshot';
 
 const periodic: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 2,
@@ -22,7 +22,7 @@ const periodic: TaskDefinition = {
 };
 const aperiodic: TaskDefinition = {
     ...periodic,
-    id: 2,
+    id: '2',
     color: '000000',
     period: 0,
 };
@@ -77,7 +77,7 @@ describe('takeSnapshot', () => {
     function stateWithJob() {
         const state = createInitialState(twoCpus);
         state.tasks[0].jobs.push({
-            taskId: 1,
+            taskId: '1',
             index: 0,
             activation: 0,
             absoluteDeadline: 5,
@@ -87,11 +87,11 @@ describe('takeSnapshot', () => {
             completedAt: null,
             deadlineMissed: false,
         });
-        state.cpus[0].running = { taskId: 1, index: 0 };
+        state.cpus[0].running = { taskId: '1', index: 0 };
         state.events.push({
             kind: 'activation',
             time: 0,
-            job: { taskId: 1, index: 0 },
+            job: { taskId: '1', index: 0 },
         });
         return state;
     }
@@ -112,7 +112,7 @@ describe('takeSnapshot', () => {
 
         expect(snapshot.clock).toBe(0);
         expect(snapshot.tasks[0].jobs[0].executed).toBe(0);
-        expect(snapshot.cpus[0].running).toEqual({ taskId: 1, index: 0 });
+        expect(snapshot.cpus[0].running).toEqual({ taskId: '1', index: 0 });
         expect(snapshot.events).toHaveLength(1);
     });
 
@@ -144,7 +144,7 @@ describe('takeSnapshot', () => {
 });
 
 describe('restoreState', () => {
-    const tied = (id: number, color: string): TaskDefinition => ({
+    const tied = (id: string, color: string): TaskDefinition => ({
         ...periodic,
         id,
         color,
@@ -157,7 +157,7 @@ describe('restoreState', () => {
             {
                 ...DEFAULT_CONFIG,
                 cpuCount: 1,
-                tasks: [tied(1, 'F0E0D0'), tied(2, 'AABBCC')],
+                tasks: [tied('1', 'F0E0D0'), tied('2', 'AABBCC')],
             },
             rmPolicy,
         );
