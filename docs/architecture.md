@@ -1483,8 +1483,10 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 #### Inclusao e exclusao de tarefas
 
-1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
-   `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
+1. Incluir: pela caixa de dialogo, com ingresso escolhido pelo usuario e
+   `>= t` (igual a `t` ativa em `t`); o usuario nao precisa avancar o
+   relogio ate o ingresso, e `tick()` nao e usado para isso. Os limites de
+   DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
    e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
    um ID ja usado (revisto por DEC-48). A
    tarefa comeca pronta.
@@ -1615,7 +1617,7 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   matriz, a etapa de edicao e os eventos; #23/#24 guardam as edicoes por
   tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
   desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
-  suspensas indefinidamente seguem para a Q-06 (#27).
+  suspensas indefinidamente sao tratadas na DEC-49 (#27).
 
 ### DEC-38: Uma ativacao por vez (retirada)
 
@@ -2202,3 +2204,38 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   iguais aos de antes), `simulator.addTask.test.ts` e `edit.test.ts` (ID
   sugerido ou digitado, recusa de ID usado, inclusive o de tarefa excluida,
   e IDs invalidos) e `consistency.test.ts` (IDs usados).
+
+### DEC-49: Execucao completa e falta de progresso
+
+- Estado: aceita em 2026-11-01 pelo usuario; implementada na #27 (`Simulator.runAll()`,
+  `getProgress()` e `src/core/progress.ts`).
+  Requisitos: REQ-04, REQ-10. Resolve Q-06; complementa DEC-05, DEC-06,
+  DEC-12 e DEC-30.
+- Decisao: a execucao completa parte do cursor, guarda todos os passos e
+  reutiliza o futuro valido ja registrado. Ela mostra apenas o resultado
+  final, sem exibicao da progressao tick a tick e sem cancelamento pelo usuario.
+- Interromper por falta de progresso quando restar trabalho pendente, nenhum
+  job puder executar e nao houver ativacoes futuras; informar tick, motivo e
+  jobs envolvidos, preservando o ultimo estado completo e o historico.
+  CPUs desligadas isoladamente nao caracterizam bloqueio: uma ativacao futura
+  ainda pode trazer trabalho. Bloqueio nao e termino normal.
+- Justificativa: permitir inspecao posterior de todos os passos e evitar uma
+  execucao interminavel quando edicoes deixarem trabalho suspenso. O custo
+  de memoria e a ausencia de teto arbitrario permanecem conforme DEC-30.
+- Contrato implementado: `runAll()` avanca com `forward()` sobre o futuro
+  registrado (sem chamar a politica) e com `tick()` para passos novos, e
+  devolve `completed` ou `blocked` (tick, motivo, jobs) com o ultimo snapshot.
+  Erros continuam erros, com o ultimo passo confirmado intacto (DEC-14).
+  Tarefa terminada: encerrada, ou com todos os jobs criados e concluidos ou
+  interrompidos. Ativacao futura: `nextActivation` de tarefa nao encerrada;
+  a encerrada mantem `nextActivation` e nao conta. Tarefa suspensa continua
+  ativando ate o limite, entao o bloqueio dela so e informado depois da
+  ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
+  jobs.
+- `tick()` com todas as tarefas terminadas e recusado (`SimulationRefusal`),
+  depois da recusa de "ja calculado". A recusa e deliberada: o usuario nao
+  avanca o relogio no vazio para incluir tarefa; a inclusao usa o ingresso
+  informado no dialogo (revisao do PR #139). Sem tarefas nada terminou: `tick()`
+  segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
+  imediato.
+- Apresentacao e controles ficam na #36.

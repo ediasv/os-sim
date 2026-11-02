@@ -328,7 +328,11 @@ Requisitos: REQ-04, REQ-05.
   Inclusao e exclusao de tarefas (DEC-46 e DEC-47) no nucleo; interface e
   comando `edit` do adaptador ficam na #37. Entregue em 7 PRs da serie;
   conferencia dos criterios em "Trabalho atual" (item 7).
-- #27 Implementar execucao completa cancelavel e tratar Q-06.
+- #27 Implementar execucao completa e detectar falta de progresso.
+  DEC-49 aceita em 2026-11-01: guardar todo o historico, interromper por
+  falta de progresso conforme Q-06 e nao oferecer cancelamento; nucleo
+  implementado em 2026-11-01 (`runAll()`, `getProgress()` e recusa de `tick()`
+  com tudo terminado), aguardando revisao e integracao; interface na #36.
 - #28 Testar restauracao, ramificacao, rejeicao de edicoes e falta de progresso.
 
 ### E4: Configuracao e arquivos
@@ -946,8 +950,8 @@ Issues `[Docs]`, sem fase no Project.
           `findInconsistencies` depois de cada edicao.
           Sem lacuna de cobertura do nucleo identificada pela leitura dos testes
           (nao por mutacao de cada criterio). Verificacao executada apos o
-          merge de `origin/main` (`6716212`): `npm test` 1209 passou e 1 ignorado
-          em 61 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
+          merge de `origin/main` (`6716212`): `npm test` 1222 passou e 1 ignorado
+          em 62 arquivos (os 15 novos incluidos); `npm run lint` e `npm run typecheck`
           sem erros. Node 25.8.0 local, nao o 24.22.1 do AGENTS.md (sem Node 24
           na maquina); baseline da `main` sem os 15 novos nao reexecutado.
           NAO verificado aqui: interface e o comando
@@ -971,7 +975,10 @@ Issues `[Docs]`, sem fase no Project.
   pelo usuario. Baseline: 794/794 testes. #124 ja integrado na branch.
 - Proximo passo: o usuario revisa o #118 e decide sobre DEC-44 e DEC-45; depois seguir para #119 (inclusao; a exclusao
   fecha a #26 num PR seguinte). DEC-34 segue pendente de aceite.
-- Pendencias: Q-06 conforme fase (Q-02 resolvida por DEC-37); Q-08
+- #27 implementada na branch `feat/27-execucao-completa` (depende do PR #138,
+  DEC-49): 1205/1205 testes, lint e typecheck sem falhas; 17 testes antigos que
+  avancavam alem do termino foram ajustados. Proximo passo: revisao e PR.
+- Pendencias: Q-06 resolvida por DEC-49, implementada na #27 (Q-02 resolvida por DEC-37); Q-08
   resolvida por DEC-29 (sem confirmacao do professor sobre A.4.4). Q-05 resolvida e DEC-08 aceita na
   #35.
 - Bloqueios: a integracao de selecao futura com historico/cursor real depende
