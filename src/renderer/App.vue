@@ -12,6 +12,7 @@ import { useWorkspace } from './composables/useWorkspace';
 import ConfirmDialog from './features/configuration/ConfirmDialog.vue';
 import SystemDialog from './features/configuration/SystemDialog.vue';
 import TaskDialog from './features/configuration/TaskDialog.vue';
+import GanttChart from './features/gantt/GanttChart.vue';
 import InspectionPanel from './features/inspection/InspectionPanel.vue';
 import { projectInspection } from './features/inspection/inspection';
 import SystemInspector from './features/system/SystemInspector.vue';
@@ -23,6 +24,9 @@ import { projectSystem } from './features/system/system';
 // snapshot and never hold simulator objects.
 const {
     snapshot,
+    history,
+    zoomPercent,
+    zoomScale,
     config,
     clock,
     taskCount,
@@ -101,13 +105,29 @@ const system = computed(() =>
                 @dismiss="dismissNotice(index)"
             />
         </div>
-        <GanttPanel :available="available" @action="handle">
+        <GanttPanel
+            :available="available"
+            :zoom-label="`${zoomPercent}%`"
+            @action="handle"
+        >
             <div
-                v-if="inspection !== null && system !== null"
-                class="app__details"
+                v-if="
+                    inspection !== null &&
+                    system !== null &&
+                    history !== null &&
+                    snapshot !== null
+                "
+                class="app__started"
             >
-                <SystemInspector :data="system" />
-                <InspectionPanel :data="inspection" />
+                <GanttChart
+                    :snapshot="history"
+                    :cursor="snapshot.clock"
+                    :scale="zoomScale"
+                />
+                <div class="app__details">
+                    <SystemInspector :data="system" />
+                    <InspectionPanel :data="inspection" />
+                </div>
             </div>
             <PreparedWorkspace
                 v-else-if="taskCount > 0"
@@ -170,14 +190,27 @@ const system = computed(() =>
     white-space: pre-line;
 }
 
+.app__started {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    min-width: 0;
+    overflow: auto;
+}
+
+/* The chart keeps its natural height; the details follow below it. */
+.app__started > :first-child {
+    flex: none;
+}
+
 .app__details {
     display: grid;
-    flex: 1;
+    flex: none;
     grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
     align-content: start;
     align-items: start;
     gap: var(--spacing-lg);
     min-width: 0;
-    overflow: auto;
 }
 </style>

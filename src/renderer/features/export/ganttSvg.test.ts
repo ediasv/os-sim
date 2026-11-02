@@ -290,7 +290,7 @@ describe('buildGanttSvg', () => {
         );
     });
 
-    it('has no current-instant line and no suspended entry (left for #26)', () => {
+    it('has no current-instant line, and no suspended entry without a suspension', () => {
         const svg = buildGanttSvg(run(SMALL, 12));
 
         expect(svg).not.toContain('data-current');
