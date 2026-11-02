@@ -757,6 +757,23 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
+- #133 em andamento (iniciada 2026-11-01): ID de tarefa como texto livre.
+  Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
+  Feito no PR #134 (rascunho): DEC-48 (formato, unicidade sem caixa, ordem
+  natural, inclusao com ID sugerido ou digitado, rotulos), criterios na
+  [specification.md](specification.md#req-06-arquivo-texto), `TaskId` como
+  texto no nucleo (parser, validacao, ordem natural, edicao) e no SVG (escape
+  e rotulo longo). Verificacao: `npm test` 1143/1143 antes da inclusao (baseline 1067),
+  `npm run lint` e `npm run typecheck` sem erros; trace e SVG de IDs
+  numericos iguais aos de antes (testes de caracterizacao).
+  Inclusao com ID sugerido ou digitado entregue depois do merge do PR #119
+  (`usedTaskIds` no lugar de `maxTaskId`); `npm test` 1189/1189.
+  Revisao do PR #134: corrigidos o limite da sugestao numerica e caracteres
+  invalidos em XML no SVG; testes focados cobrem ambos. `npm test` 1192/1192,
+  `npm run typecheck` e `npm run lint` aprovados.
+  DEC-48 e escolhas da revisao aceitas pelo usuario em 2026-11-01.
+  Falta: revisao final e ver a interface rodando.
+
 - Estado (2026-11-01): E0, E1 e E2 concluidas, com evidencias nas entregas.
   E3: #23, #24 e #25 concluidas; #26 em revisao (PR 7/7); #27 e #28 nao iniciadas. E4: #29, #30,
   #31, #32, #33, #34, #87, #89, #92, #93 e #94 concluidas. E5: #35, #67, #68, #69, #70, #71, #72 e #73

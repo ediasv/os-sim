@@ -1,3 +1,5 @@
+import { taskIdKey } from './taskId';
+
 /**
  * Cross-checks facts that the domain records twice (DEC-12): a running job is
  * marked both in `Job.state` and in `CpuState.running`, a missed deadline both
@@ -39,12 +41,13 @@ export function findInconsistencies(
             'Current CPU IDs must be 1..cpuCount and match the configured count.',
         );
     }
+    const usedKeys = new Set(state.usedTaskIds.map(taskIdKey));
     if (
-        !Number.isSafeInteger(state.maxTaskId) ||
-        state.tasks.some((tcb) => tcb.definition.id > state.maxTaskId)
+        usedKeys.size !== state.usedTaskIds.length ||
+        state.tasks.some((tcb) => !usedKeys.has(taskIdKey(tcb.definition.id)))
     ) {
         issues.push(
-            `The highest used task ID (${state.maxTaskId}) must be an integer not below any task ID.`,
+            'The used task IDs must be unique ignoring case and include every task ID.',
         );
     }
     const statuses: readonly string[] = [

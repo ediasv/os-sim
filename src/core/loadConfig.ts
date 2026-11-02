@@ -10,7 +10,7 @@ import {
     type ConfigInput,
     type ConfigIssue,
 } from './config';
-import { DEFAULT_TASK_PERIOD, type SystemConfig } from './domain';
+import { DEFAULT_TASK_PERIOD, type SystemConfig, type TaskId } from './domain';
 import {
     analyzeConfig,
     type ConfigDiagnosticValueKind,
@@ -20,7 +20,7 @@ import {
 } from './parser';
 
 /** A task the loader changed; it never blocks loading (DEC-29). */
-export type ConfigLoadWarning = ConfigParseIssue & { readonly taskId: number };
+export type ConfigLoadWarning = ConfigParseIssue & { readonly taskId: TaskId };
 
 export type ConfigLoadResult =
     | {

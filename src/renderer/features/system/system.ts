@@ -5,6 +5,7 @@ import type {
     JobRef,
     JobState,
     SimulationSnapshot,
+    TaskId,
 } from '../../../core/domain';
 import { key } from '../../../core/helpers/key';
 
@@ -74,7 +75,7 @@ export interface SystemData {
 function projectJob(
     definition: DeepReadonly<{ color: string }>,
     job: DeepReadonly<{
-        taskId: number;
+        taskId: TaskId;
         index: number;
         activation: number;
         absoluteDeadline: number;

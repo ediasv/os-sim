@@ -4,7 +4,7 @@ import { DEFAULT_CONFIG, type TaskDefinition } from './domain';
 import { createInitialState } from './snapshot';
 
 const definition: TaskDefinition = {
-    id: 1,
+    id: '1',
     color: 'F0E0D0',
     arrival: 0,
     duration: 3,

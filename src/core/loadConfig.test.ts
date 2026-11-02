@@ -51,10 +51,22 @@ describe('loadConfig', () => {
             'O campo qtde_cpus deve ser um número inteiro maior ou igual a 1; valor recebido: 1.5.',
         ],
         [
-            'an id below 1',
-            'RM;5;1\n0;FFFFFF;0;1;0;1',
-            { line: 2, field: 'id', value: '0' },
-            'O campo id deve ser um número inteiro maior ou igual a 1; valor recebido: 0.',
+            'an id longer than 32 characters',
+            `RM;5;1\n${'x'.repeat(33)};FFFFFF;0;1;0;1`,
+            { line: 2, field: 'id', value: 'x'.repeat(33) },
+            `O campo id é inválido (valor recebido: "${'x'.repeat(33)}"): o id pode ter no máximo 32 caracteres; recebidos 33.`,
+        ],
+        [
+            'the reserved id __proto__',
+            'RM;5;1\n__proto__;FFFFFF;0;1;0;1',
+            { line: 2, field: 'id', value: '__proto__' },
+            'O campo id é inválido (valor recebido: "__proto__"): o id "__proto__" é reservado.',
+        ],
+        [
+            'an id repeated with another case',
+            'RM;5;1\n1A;FFFFFF;0;1;0;1\n1a;000000;0;1;0;1',
+            { line: 3, field: 'id', value: '1a' },
+            'O id 1a já foi usado pela 1ª tarefa (id 1A; maiúsculas e minúsculas não diferenciam ids); cada tarefa precisa de um id único.',
         ],
         [
             'a repeated id',
@@ -374,7 +386,6 @@ describe('loadConfig: integer rule in every numeric field (DEC-10)', () => {
     const at = {
         quantum: (v: string) => `RM;${v};1\n1;FFFFFF;0;1;0;1`,
         qtde_cpus: (v: string) => `RM;5;${v}\n1;FFFFFF;0;1;0;1`,
-        id: (v: string) => `RM;5;1\n${v};FFFFFF;0;1;0;1`,
         ingresso: (v: string) => `RM;5;1\n1;FFFFFF;${v};1;0;1`,
         duracao: (v: string) => `RM;5;1\n1;FFFFFF;0;${v};0;1`,
         periodo: (v: string) => `RM;5;1\n1;FFFFFF;0;1;${v};1`,
@@ -383,7 +394,6 @@ describe('loadConfig: integer rule in every numeric field (DEC-10)', () => {
     const minimum = {
         quantum: 1,
         qtde_cpus: 1,
-        id: 1,
         ingresso: 0,
         duracao: 1,
         periodo: 0,
@@ -486,7 +496,7 @@ describe('default period (DEC-29)', () => {
                 value: null,
                 valueKind: 'missing',
                 origin: 'default-period',
-                taskId: 1,
+                taskId: '1',
                 message:
                     'Linha 2, campo periodo: toda tarefa precisa de período maior que zero; a tarefa 1 usará o período padrão de 15 ticks.',
             },
@@ -496,7 +506,7 @@ describe('default period (DEC-29)', () => {
                 value: '0',
                 valueKind: 'received',
                 origin: 'default-period',
-                taskId: 2,
+                taskId: '2',
                 message:
                     'Linha 4, campo periodo (valor 0): toda tarefa precisa de período maior que zero; a tarefa 2 usará o período padrão de 15 ticks.',
             },
@@ -549,7 +559,7 @@ describe('default period (DEC-29)', () => {
             cpuCount: 1,
             tasks: [
                 {
-                    id: 1,
+                    id: '1',
                     color: 'F0E0D0',
                     arrival,
                     duration: 1,

@@ -224,7 +224,8 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
 ### DEC-08: Gantt por tarefa e exportacao vetorial
 
 - Estado: aceita em 2026-10-24 (#35). Requisito: REQ-09. Resolve Q-05.
-- Decisao: linhas por tarefa em ID decrescente (menor ID junto ao eixo X) e, em
+- Decisao: linhas por tarefa em ID decrescente na ordem natural de DEC-48
+  (menor ID junto ao eixo X) e, em
   secao propria, uma faixa por CPU para os intervalos desligados (DEC-21); o
   intervalo ainda aberto no instante atual termina nele. Cada trecho executado
   identifica a CPU e o job (por exemplo, "CPU 1 · #2"). Um job posterior ja
@@ -286,7 +287,7 @@ curto com o motivo, e seu ID nao e reutilizado. Data inicial dos registros:
   Resolve a parte de Q-03 que afeta o modelo.
 - Padrao sem arquivo: algoritmo RM, quantum 5, 1 CPU, nenhuma tarefa.
 - Valores inteiros validos: CPUs >= 1, quantum >= 1, duracao >= 1, todos sem
-  maximo (mantem DEC-05); ID >= 1 e unico; ingresso >= 0; periodo >= 0; prazo
+  maximo (mantem DEC-05); ID unico (texto livre, DEC-48; antes inteiro >= 1); ingresso >= 0; periodo >= 0; prazo
   relativo >= 1. Prazo menor que duracao ou periodo e valido: sobrecarga gera
   perda de prazo registrada, nao erro de configuracao.
 - Campos ausentes: somente periodo pode faltar (campo vazio na sua posicao,
@@ -1484,7 +1485,8 @@ nao muda (DEC-09). Estados que o usuario escolhe:
 
 1. Incluir: a qualquer tick, com ingresso `>= t` (igual a `t` ativa em
    `t`), limites de DEC-10 e padroes de DEC-29 (periodo 15, zero recusado)
-   e cor distinta. O ID e gerado: maior ID ja usado na simulacao + 1. A
+   e cor distinta. O ID e sugerido pela tela ou digitado, nunca reutiliza
+   um ID ja usado (revisto por DEC-48). A
    tarefa comeca pronta.
 2. Excluir: somente tarefa nunca ativada. Ela sai do estado sem evento e
    sem rastro no Gantt; seu ID nao volta a ser usado. Tarefa ja ativada nao
@@ -1547,7 +1549,8 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
 - Duracao de cada job e instante da proxima ativacao, que deixa de seguir
   `ingresso + k * periodo` depois de uma edicao de periodo. Forma na DEC-44 (`Job.duration`,
   `TaskControlBlock.nextActivation`).
-- Maior ID de tarefa ja usado, inclusive de tarefa excluida, no estado de
+- Revisto por DEC-48: IDs de tarefa ja usados, inclusive de tarefa excluida,
+  no estado de
   cada snapshot: descartar o futuro descarta tambem os IDs gerados nele
   (escolha do autor).
 - No historico (#23/#24, DEC-35), a lista de edicoes aceitas de cada tick.
@@ -1872,7 +1875,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   conferidos; CPUs nao podem executar tarefas suspensas/concluidas nem
   jobs interrompidos; job interrompido so existe em tarefa concluida, tarefa
   concluida nao guarda job aberto e o `status` pertence ao conjunto
-  conhecido. Identificador de tarefa que nao e inteiro e recusado na edicao.
+  conhecido. Identificador de tarefa vazio ou invalido (DEC-48) e recusado na edicao.
   A inspecao rotula tarefa concluida como concluida. A inspecao exclui interrompidos das filas pendentes
   e os rotula como Interrompido; o restante da apresentacao fica na
   #37/#38.
@@ -2004,7 +2007,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   Requisitos: REQ-05, REQ-07. Detalha o item Incluir de DEC-37; a exclusao
   tem decisao propria (DEC-47), no PR seguinte. Complementa DEC-10, DEC-12, DEC-22, DEC-29, DEC-39 e DEC-44.
 - Item: `EditItem` ganha `addTask` com `NewTask` (`arrival`, `duration`,
-  `deadline`, `color` e `period` opcionais); o ID nunca vem do chamador.
+  `deadline`, `color` e `period` opcionais); o ID e gerado (revisto por DEC-48:
+  o chamador pode informar o ID, e `usedTaskIds` substitui `maxTaskId`).
   `rawEvents` fica vazio (eventos de arquivo so no Projeto B).
 - Validacao, em ordem sobre o estado da etapa de edicao: ingresso `>= t`
   (mensagem propria); periodo ausente vira 15 (DEC-29) e zero e recusado; as
@@ -2019,7 +2023,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   #119). Parece aleatoria, mas e funcao do ID: cada edicao recalcula o tick
   a partir de `t-1`, e `Math.random` mudaria a cor a cada nova edicao do
   mesmo tick, quebrando DEC-37 item 2. Cor informada continua validada.
-- ID: maior ID ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
+- ID (revisto por DEC-48: `usedTaskIds`, ID sugerido ou digitado): maior ID
+  ja usado + 1. `SimulationState.maxTaskId` guarda o maior ID
   usado em cada snapshot e `EditTarget.maxTaskId` o acompanha dentro do
   tick; assim descartar o futuro descarta os IDs gerados nele (o recalculo
   parte do snapshot `t-1` ou da configuracao inicial). Varias inclusoes numa
@@ -2116,3 +2121,78 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
     5. considerar a tarefa excluida na cor distinta (1 falha).
 - Nao verificado nesta decisao: o comando `edit` do adaptador e a tela de
   edicao (#37); o pacote (#26 nao o cobre).
+
+### DEC-48: ID de tarefa como texto livre
+
+- Estado: aceita pelo usuario em 2026-11-01 (#133, revisao do PR #134),
+  incluindo as escolhas do autor e os ajustes da revisao. Requisitos: REQ-03,
+  REQ-05, REQ-06, REQ-09. Revisa DEC-08
+  (ordem das linhas), DEC-10 (ID inteiro >= 1), DEC-22 e DEC-27 (ordens por
+  ID) e DEC-37 e DEC-46 (ID gerado na inclusao). Nao muda FE-19: o ID segue
+  fixo na edicao.
+- Contexto: o professor quer que o ID deixe de ser so numero. O enunciado
+  chama `id` de "identificador unico da tarefa" (A.3.3) sem dizer que e
+  numerico; so A.2.5 liga ordem a ID (menor ID junto ao eixo X). O
+  desempate de A.4.3 nao usa o ID.
+- Formato (decisao do usuario): o ID e um texto. Valido: nao vazio depois de
+  remover espacos nas pontas, sem `;` nem quebra de linha, no maximo 32
+  caracteres (limite para caber nos rotulos do Gantt e da
+  lista de eventos). Espacos internos sao mantidos. O ID e guardado e
+  exibido como digitado.
+- Unicidade (decisao do usuario): sem distincao de maiusculas e minusculas
+  (A.3.3.2): `A` e `a` sao o mesmo ID e o segundo e recusado. A mensagem
+  segue DEC-19 (linha e campo `id`) e cita o ID ja existente.
+- Ordem (decisao do usuario): "natural" em todo lugar onde DEC-08, DEC-22 e
+  DEC-27 usam o ID da tarefa. IDs formados so por digitos decimais comparam
+  por valor numerico; os demais comparam em ordem alfabetica sem distincao
+  de caixa; numeros vem antes de texto. Empate (`1` e `01`, que valem o
+  mesmo numero) desempata pelo texto exato, para a ordem ser total.
+  A mesma funcao serve ao nucleo e ao renderer. Para
+  configuracoes so com IDs numericos a ordem e a de antes; ID negativo ou
+  decimal (`-3`, `2.5`) e texto.
+- Inclusao (decisao do usuario): a tela sugere o proximo numero livre, isto
+  e, maior numero ja usado + 1, contando IDs de tarefas excluidas, e aceita
+  um ID digitado. Se o incremento ultrapassar 32 caracteres, sugere o menor
+  inteiro positivo cujo texto ainda nao foi usado. Um ID usado, inclusive o
+  de tarefa excluida, e recusado
+  (a comparacao ignora caixa). Forma: `NewTask.id` opcional; sem ele, o
+  nucleo usa `suggestTaskId`; a interface pode chamar a mesma funcao com
+  `snapshot.usedTaskIds` para preencher a sugestao. `SimulationState.usedTaskIds`
+  (e `EditTarget.usedTaskIds`) substitui o `maxTaskId` da DEC-46: lista, em
+  ordem de uso, de todo ID ja usado; descartar o futuro descarta os IDs
+  criados nele. A cor padrao de um ID textual usa um hash do texto como
+  semente; IDs numericos mantem as cores de antes. `findInconsistencies`
+  confere que os IDs usados sao unicos sem distincao de caixa e incluem o
+  ID de toda tarefa.
+- Rotulos: Gantt, snapshots e SVG mostram o ID como
+  digitado ("Tarefa A"). O `#` de "CPU 1 · #2" e o numero do job dentro da
+  tarefa, nao o ID, e nao muda. No SVG o ID e escapado para XML em todo
+  lugar onde aparece; caracteres proibidos em XML 1.0 sao substituidos por
+  U+FFFD apenas no SVG, pois nao podem ser representados no documento. No
+  rotulo da raia, um ID que nao cabe (mais de 3
+  caracteres depois de "Tarefa ") perde o prefixo e e cortado com
+  reticencias, e o ID inteiro fica na dica da raia.
+- Edicao: o identificador de um item de edicao e procurado pelo texto exato
+  (diferente da unicidade, que ignora caixa), e so aceita texto; outro tipo
+  e recusado ("deve ser um texto"). Quem edita escolhe a tarefa na lista.
+- Cabecalho ausente: o arquivo sem cabecalho nao pode mais ser reconhecido
+  pelo primeiro campo numerico quando o ID e texto; a primeira linha e uma
+  linha de tarefa se o primeiro campo for numerico ou se tiver mais campos
+  que o cabecalho e o segundo campo for uma cor de 6 digitos hexadecimais.
+- Mudanca conhecida para IDs numericos: `01` passa a ser exibido como `01` e
+  nao mais como `1` (o ID e mostrado como digitado); `1` e `01` sao IDs
+  diferentes.
+- Alternativas descartadas: ordem de insercao no arquivo (quebraria A.2.5
+  para quem lista tarefas fora de ordem); ID gerado a partir de texto
+  (sufixo numerico), por criar regra sem pedido; unicidade sensivel a caixa,
+  por gerar linhas quase identicas.
+- Evidencia: `taskId.test.ts` (formato, chave, ordem natural, sugestao),
+  `config.test.ts` e `loadConfig.test.ts` (validacao e duplicidade com
+  linha e campo), `parser.test.ts` (ID como escrito, cabecalho ausente),
+  `textIds.test.ts` (arquivo com IDs textuais carregado e simulado, ordem
+  natural no sorteio, nomes como `constructor`), `ganttSvg.test.ts`
+  (ordem, escape, rotulo longo), `numericIds.golden.test.ts` e
+  `renderer/.../numericIds.golden.test.ts` (trace e SVG de IDs numericos
+  iguais aos de antes), `simulator.addTask.test.ts` e `edit.test.ts` (ID
+  sugerido ou digitado, recusa de ID usado, inclusive o de tarefa excluida,
+  e IDs invalidos) e `consistency.test.ts` (IDs usados).
