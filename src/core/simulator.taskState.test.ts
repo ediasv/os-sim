@@ -22,6 +22,9 @@ const task = (
     rawEvents: '',
     ...changes,
 });
+/** A later task of its own, so ticks stay possible after task 1 is concluded (DEC-49). */
+const keepAlive = () =>
+    task('2', { duration: 50, period: 0, deadline: 100, arrival: 5 });
 const make = (tasks = [task()], changes: Partial<SystemConfig> = {}) =>
     createSimulator({ ...DEFAULT_CONFIG, tasks, ...changes });
 function edit(sim: Simulator, state: TaskStatus, taskId = '1') {
@@ -237,7 +240,7 @@ describe('forced task dispatch', () => {
 
 describe('task conclusion', () => {
     it('interrupts current and pending jobs, retaining deadline misses but producing no completion or future activation', () => {
-        const sim = make();
+        const sim = make([task(), keepAlive()]);
         advance(sim, 3);
         edit(sim, 'concluded');
         const state = sim.getCurrentSnapshot();
@@ -284,7 +287,10 @@ describe('task conclusion', () => {
     ])(
         'concludes with no incomplete jobs at tick $tick',
         ({ tick, ...changes }) => {
-            const sim = make([task('1', { ...changes, duration: 1 })]);
+            const sim = make([
+                task('1', { ...changes, duration: 1 }),
+                keepAlive(),
+            ]);
             advance(sim, tick);
             edit(sim, 'concluded');
             expect(at(sim)).toContainEqual({
@@ -299,7 +305,7 @@ describe('task conclusion', () => {
         },
     );
     it('accepts conclusion of a naturally finished task without duplicating task-finished', () => {
-        const sim = make([task('1', { period: 0, duration: 1 })]);
+        const sim = make([task('1', { period: 0, duration: 1 }), keepAlive()]);
         advance(sim, 1);
         edit(sim, 'concluded');
         expect(sim.getCurrentSnapshot().tasks[0].status).toBe('concluded');
@@ -464,7 +470,7 @@ describe('review follow-ups: identity edits and event order', () => {
     );
 
     it('editing a concluded task to concluded again records nothing', () => {
-        const sim = make();
+        const sim = make([task(), keepAlive()]);
         edit(sim, 'concluded');
         advance(sim, 1);
         const before = sim.getCurrentSnapshot();
@@ -526,7 +532,7 @@ describe('review follow-ups: identity edits and event order', () => {
 
 describe('review follow-ups: refusals through the simulator', () => {
     it('refuses leaving the concluded state and keeps the step and its edits', () => {
-        const sim = make();
+        const sim = make([task(), keepAlive()]);
         edit(sim, 'concluded');
         advance(sim, 1);
         const current = sim.getCurrentSnapshot();

@@ -15,7 +15,9 @@ function task(
 
 function run(config: SystemConfig, ticks: number): SimulationSnapshot {
     const sim = createSimulator(config);
-    for (let i = 0; i < ticks; i++) sim.tick();
+    for (let i = 0; i < ticks && sim.getProgress().kind !== 'finished'; i++) {
+        sim.tick();
+    }
     return sim.getLatestSnapshot();
 }
 

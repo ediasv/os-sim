@@ -2138,7 +2138,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 
 ### DEC-49: Execucao completa e falta de progresso
 
-- Estado: aceita em 2026-11-01 pelo usuario; implementacao pendente na #27.
+- Estado: aceita em 2026-11-01 pelo usuario; implementada na #27 (`Simulator.runAll()`,
+  `getProgress()` e `src/core/progress.ts`).
   Requisitos: REQ-04, REQ-10. Resolve Q-06; complementa DEC-05, DEC-06,
   DEC-12 e DEC-30.
 - Decisao: a execucao completa parte do cursor, guarda todos os passos e
@@ -2152,5 +2153,18 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Justificativa: permitir inspecao posterior de todos os passos e evitar uma
   execucao interminavel quando edicoes deixarem trabalho suspenso. O custo
   de memoria e a ausencia de teto arbitrario permanecem conforme DEC-30.
-- A forma tecnica do comando e do resultado fica para a #27; apresentacao e
-  controles ficam na #36. A decisao nao afirma que a funcionalidade ja existe.
+- Contrato implementado: `runAll()` avanca com `forward()` sobre o futuro
+  registrado (sem chamar a politica) e com `tick()` para passos novos, e
+  devolve `completed` ou `blocked` (tick, motivo, jobs) com o ultimo snapshot.
+  Erros continuam erros, com o ultimo passo confirmado intacto (DEC-14).
+  Tarefa terminada: encerrada, ou com todos os jobs criados e concluidos ou
+  interrompidos. Ativacao futura: `nextActivation` de tarefa nao encerrada;
+  a encerrada mantem `nextActivation` e nao conta. Tarefa suspensa continua
+  ativando ate o limite, entao o bloqueio dela so e informado depois da
+  ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
+  jobs.
+- `tick()` com todas as tarefas terminadas e recusado (`SimulationRefusal`),
+  depois da recusa de "ja calculado". Sem tarefas nada terminou: `tick()`
+  segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
+  imediato.
+- Apresentacao e controles ficam na #36.
