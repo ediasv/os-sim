@@ -35,6 +35,7 @@ import {
 import { buildGanttSvg } from '../features/export/ganttSvg';
 import { projectInspection } from '../features/inspection/inspection';
 import { reportError, type AppError, type CommandResult } from '../errors';
+import type { RunResult } from '../../core/simulator';
 import { useSimulation } from './useSimulation';
 
 /**
@@ -43,6 +44,12 @@ import { useSimulation } from './useSimulation';
  */
 export const ZOOM_STEPS = [50, 75, 100, 150, 200] as const;
 const DEFAULT_ZOOM_INDEX = ZOOM_STEPS.indexOf(100);
+
+/**
+ * Steps computed per chunk of "Executar tudo" (DEC-51). Between chunks the
+ * window gets a turn to paint and answer input, so a long run stays responsive.
+ */
+export const RUN_CHUNK_STEPS = 200;
 
 /** Message the workspace shows to the user, in the order it should appear. */
 export interface Notice {
@@ -140,6 +147,8 @@ export function useWorkspace() {
     const pending = shallowRef<PendingEdit | null>(null);
     /** Index in `ZOOM_STEPS`; a view setting, so a restart keeps it. */
     const zoomIndex = ref(DEFAULT_ZOOM_INDEX);
+    /** A full run is in progress; step and configuration controls wait for it (DEC-51). */
+    const running = ref(false);
 
     /** Snapshot at the history cursor; null while preparing. */
     const snapshot = computed(() =>
@@ -173,7 +182,7 @@ export function useWorkspace() {
 
     const available = computed(() => {
         const actions = new Set<WorkspaceAction>();
-        const idle = !loading.value && dialog.value === null;
+        const idle = !loading.value && dialog.value === null && !running.value;
         // A valid file asks before replacing a session or a draft (FE-04).
         if (idle && editorState.value === null && pending.value === null) {
             actions.add('load-config');
@@ -185,16 +194,21 @@ export function useWorkspace() {
             actions.add('add-task');
             if (selectedTaskId.value !== null) actions.add('edit-task');
         }
-        // Starting needs at least one task (FE-02).
-        if (started.value || draft.value.tasks.length > 0) {
-            actions.add('step-forward');
-        }
-        if (snapshot.value !== null && snapshot.value.clock > 0) {
+        // Starting needs at least one task (FE-02). A full run starts the same
+        // way, so it is offered on the same condition (DEC-51).
+        const canStart = started.value || draft.value.tasks.length > 0;
+        if (canStart && idle) actions.add('run-all');
+        if (canStart && !running.value) actions.add('step-forward');
+        if (
+            snapshot.value !== null &&
+            snapshot.value.clock > 0 &&
+            !running.value
+        ) {
             actions.add('step-back');
         }
-        if (started.value) actions.add('restart');
+        if (started.value && !running.value) actions.add('restart');
         // Editing runs on the simulator, so it exists only once started (#37).
-        if (started.value) {
+        if (started.value && !running.value) {
             actions.add('configure-system');
             actions.add('add-task');
         }
@@ -234,6 +248,57 @@ export function useWorkspace() {
     function start(): void {
         simulation.value ??= useSimulation();
         if (settle(simulation.value.load(draft.value))) started.value = true;
+    }
+
+    /** Lets the browser paint and handle input before the next chunk. */
+    const yieldToUi = (): Promise<void> =>
+        new Promise((resolve) => setTimeout(resolve, 0));
+
+    /** The notice that reports how a full run ended, with its tick (DEC-49). */
+    function outcomeNotice(
+        result: Exclude<RunResult, { kind: 'paused' }>,
+    ): Notice {
+        if (result.kind === 'completed') {
+            return {
+                tone: 'success',
+                title: 'Simulação concluída',
+                message: `Todas as tarefas terminaram no tick ${result.snapshot.clock}.`,
+            };
+        }
+        return {
+            tone: 'warning',
+            title: 'Simulação bloqueada',
+            message: result.reason,
+        };
+    }
+
+    /**
+     * "Executar tudo" (REQ-04, DEC-49, DEC-51): starts when needed, then runs
+     * in chunks until the run ends. Each chunk publishes its cursor, so the
+     * step history stays available for "Voltar tick" once the run is over.
+     */
+    async function runToEnd(): Promise<void> {
+        if (!started.value) {
+            start();
+            if (!started.value) return;
+        }
+        running.value = true;
+        try {
+            for (;;) {
+                const outcome = simulation.value!.runAll(RUN_CHUNK_STEPS);
+                if (!outcome.ok) {
+                    settle(outcome);
+                    return;
+                }
+                if (outcome.result.kind !== 'paused') {
+                    notices.value = [outcomeNotice(outcome.result)];
+                    return;
+                }
+                await yieldToUi();
+            }
+        } finally {
+            running.value = false;
+        }
     }
 
     async function openConfigFile(): Promise<void> {
@@ -675,6 +740,9 @@ export function useWorkspace() {
             case 'edit-task':
                 openTaskDialog(selectedTaskId.value);
                 break;
+            case 'run-all':
+                void runToEnd();
+                break;
             case 'step-forward':
                 if (!started.value) start();
                 else settle(simulation.value!.next());
@@ -709,6 +777,7 @@ export function useWorkspace() {
         clock,
         taskCount,
         available,
+        running,
         notices,
         dialog,
         draftTasks,

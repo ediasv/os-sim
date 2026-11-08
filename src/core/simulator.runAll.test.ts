@@ -183,6 +183,57 @@ describe('runAll', () => {
         expect(findInconsistencies(result.snapshot)).toEqual([]);
     });
 
+    it('pauses with the cursor at the last computed step when the budget runs out', () => {
+        const sim = make(tiedTasks);
+        const result = sim.runAll({ maxSteps: 3 });
+        if (result.kind !== 'paused') throw new Error('expected a pause');
+        expect(result.snapshot.clock).toBe(3);
+        expect(sim.getCursor()).toBe(3);
+        expect(sim.getLatestSnapshot()).toBe(result.snapshot);
+        expect(sim.getProgress()).toEqual({ kind: 'running' });
+    });
+
+    it('resumed in chunks, reaches the same history as one uninterrupted run', () => {
+        const whole = make(tiedTasks);
+        whole.runAll();
+        const chunked = make(tiedTasks);
+        let result = chunked.runAll({ maxSteps: 2 });
+        while (result.kind === 'paused')
+            result = chunked.runAll({ maxSteps: 2 });
+        expect(result.kind).toBe('completed');
+        expect(chunked.getLatestSnapshot()).toEqual(whole.getLatestSnapshot());
+        expect(chunked.getCursor()).toBe(whole.getCursor());
+        for (let k = 0; k <= whole.getCursor(); k++) {
+            chunked.restore(k);
+            whole.restore(k);
+            expect(chunked.getCurrentSnapshot()).toEqual(
+                whole.getCurrentSnapshot(),
+            );
+        }
+    });
+
+    it('completes without spending the budget when the run is already finished', () => {
+        const sim = make();
+        sim.runAll();
+        const result = sim.runAll({ maxSteps: 1 });
+        expect(result.kind).toBe('completed');
+    });
+
+    it('reports a block within the budget instead of pausing', () => {
+        const sim = suspendedAtTwo();
+        const result = sim.runAll({ maxSteps: 1000 });
+        expect(result.kind).toBe('blocked');
+    });
+
+    it('rejects a budget that is not a positive integer without changing the run', () => {
+        const sim = make(tiedTasks);
+        for (const maxSteps of [0, -1, 1.5, Number.NaN]) {
+            expect(() => sim.runAll({ maxSteps })).toThrow(RangeError);
+        }
+        expect(sim.getCursor()).toBe(0);
+        expect(sim.getLatestSnapshot().clock).toBe(0);
+    });
+
     it('leaves the last confirmed step when the policy fails mid-run', () => {
         let calls = 0;
         const policy = {
