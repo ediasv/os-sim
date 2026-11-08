@@ -120,7 +120,7 @@ function offDetail(cpu: SystemCpu): string {
         </section>
 
         <section class="system-inspector__section">
-            <h3>PENDENTES (DEC-02)</h3>
+            <h3>PENDENTES</h3>
             <ul
                 class="system-inspector__list system-inspector__scroll"
                 data-testid="pending-list"

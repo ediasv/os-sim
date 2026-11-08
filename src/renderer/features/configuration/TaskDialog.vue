@@ -130,7 +130,7 @@ function apply(): void {
                     unit="ticks"
                     numeric
                     :error="reasons('period')"
-                    hint="Inteiro ≥ 1; tarefa nova parte de 15 (DEC-29). Periódica: até 10 jobs."
+                    hint="Inteiro ≥ 1; tarefa nova parte de 15. Periódica: até 10 jobs."
                 />
                 <UiField
                     v-model="deadline"

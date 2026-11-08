@@ -1246,14 +1246,13 @@ describe('task period edit', () => {
         expect(Object.isFrozen(result.target.definitions[1])).toBe(true);
         expect(base.definitions[1].period).toBe(5);
     });
-    it('refuses zero naming the Projeto A rule and DEC-29', () => {
+    it('refuses zero with the validateConfig-style reason', () => {
         const context = fixture();
         const reason = reasonOf(
             foldEdit(readTarget(context.state), [period('1', 0)], context),
         );
         expect(reason).toMatch(/maior ou igual a 1/);
-        expect(reason).toMatch(/Projeto B/);
-        expect(reason).toMatch(/DEC-29/);
+        expect(reason).not.toMatch(/Projeto B|DEC-/);
     });
     it.each([-3, 2.5, Number.NaN, '3', null, undefined])(
         'refuses the invalid value %j with the validateConfig wording',

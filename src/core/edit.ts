@@ -712,7 +712,7 @@ const HANDLERS: Handlers = {
         if (checked.definition.period < 1) {
             return {
                 ok: false,
-                reason: `O campo periodo deve ser um número inteiro maior ou igual a 1; valor recebido: ${checked.definition.period}. Tarefas aperiódicas (período 0) pertencem ao Projeto B (DEC-29).`,
+                reason: `O campo periodo deve ser um número inteiro maior ou igual a 1; valor recebido: ${checked.definition.period}.`,
             };
         }
         const next = withDefinition(target, item.taskId, checked.definition);

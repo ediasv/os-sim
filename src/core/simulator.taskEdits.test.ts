@@ -331,7 +331,7 @@ describe('task period edit in the engine', () => {
         const sim = periodic();
         expect(() =>
             sim.edit([{ kind: 'taskPeriod', taskId: '1', period: 0 }]),
-        ).toThrow(/Projeto B/);
+        ).toThrow(/maior ou igual a 1/);
         expect(() =>
             sim.edit([{ kind: 'taskPeriod', taskId: '1', period: 2.5 }]),
         ).toThrow(/número inteiro/);
