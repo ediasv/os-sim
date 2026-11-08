@@ -143,7 +143,7 @@ describe('SystemInspector', () => {
         });
 
         expect(wrapper.text()).toContain('FILA GLOBAL DE PRONTOS');
-        expect(wrapper.text()).toContain('PENDENTES (DEC-02)');
+        expect(wrapper.text()).toContain('PENDENTES');
         expect(wrapper.find('[data-testid="ready-list"]').text()).toContain(
             'Vazia — nenhum job elegível esperando CPU.',
         );

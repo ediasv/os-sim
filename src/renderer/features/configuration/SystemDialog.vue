@@ -63,7 +63,7 @@ function apply(): void {
             <button type="submit" hidden />
             <p class="system-dialog__intro">
                 Valores padrão: {{ defaults }}. O arquivo carregado e esta tela
-                sobrescrevem os padrões (A.3.2).
+                sobrescrevem os padrões.
             </p>
             <div class="system-dialog__field">
                 <label class="system-dialog__label" for="system-algorithm">
@@ -86,9 +86,7 @@ function apply(): void {
                 <p v-if="algorithmError" class="system-dialog__error">
                     {{ algorithmError }}
                 </p>
-                <p class="system-dialog__hint">
-                    Escolhido antes de iniciar (A.4.1).
-                </p>
+                <p class="system-dialog__hint">Escolhido antes de iniciar.</p>
             </div>
             <div class="system-dialog__row">
                 <UiField
@@ -105,7 +103,7 @@ function apply(): void {
                     unit="CPUs"
                     numeric
                     :error="reasons('cpuCount')"
-                    hint="Inteiro ≥ 1, sem máximo (DEC-05)."
+                    hint="Inteiro ≥ 1, sem máximo."
                 />
             </div>
             <UiAlert

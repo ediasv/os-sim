@@ -591,7 +591,7 @@ Decisoes acordadas com o usuario em 2026-10-31, conforme o protótipo Figma
   e a projecao nao os expoe (decidido com o usuario no PR #110, ao tratar a
   revisao; a descricao da #73 foi ajustada). A fila e os pendentes
   seguem em duas listas com os textos do protótipo: "FILA GLOBAL DE PRONTOS"
-  (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES (DEC-02)"
+  (vazia: "Vazia — nenhum job elegivel esperando CPU.") e "PENDENTES"
   (vazia: "Nenhum — cada tarefa tem no maximo um job incompleto."). Prontos
   traz so jobs elegiveis em estado pronto; pendentes traz jobs nao elegiveis
   (inclui suspensos), com estado e prazo perdido. Ambas na ordem da

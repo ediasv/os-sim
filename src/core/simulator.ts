@@ -7,6 +7,7 @@ import {
     type SimulationSnapshot,
     type SimulationState,
     type SystemConfig,
+    type TaskId,
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
@@ -110,7 +111,9 @@ export type ExecutionGuardResult =
 /**
  * Outcome of `runAll` (DEC-49). `completed`: every task finished. `blocked`:
  * work is pending but nothing can run or arrive; carries the tick reached,
- * why, and the unfinished jobs. Both carry the last recorded snapshot.
+ * why, and the unfinished jobs. `paused`: the step budget ran out first, so
+ * the run can be resumed by calling `runAll` again (DEC-51). Every outcome
+ * carries the last recorded snapshot.
  */
 export type RunResult =
     | { readonly kind: 'completed'; readonly snapshot: SimulationSnapshot }
@@ -120,7 +123,32 @@ export type RunResult =
           readonly tick: number;
           readonly reason: string;
           readonly jobs: readonly JobRef[];
-      };
+      }
+    | { readonly kind: 'paused'; readonly snapshot: SimulationSnapshot };
+
+/** Limits one `runAll` call; without `maxSteps` the run goes to its end. */
+export interface RunOptions {
+    /**
+     * Most steps this call may take, recorded ones included. A positive
+     * integer; a finished or blocked run ignores it.
+     */
+    readonly maxSteps?: number;
+}
+
+/**
+ * Why nothing can advance while every unfinished task is suspended (DEC-52),
+ * shared by the `tick()` refusal and the `runAll` result. It names the action
+ * that unblocks the run: setting the task back to "Pronta".
+ */
+function suspendedReason(taskIds: readonly TaskId[], tick: number): string {
+    if (taskIds.length === 1) {
+        return `Sem progresso no tick ${tick}: a última tarefa restante (tarefa ${taskIds[0]}) está suspensa. Retome-a, mudando o estado para Pronta, para que ela termine.`;
+    }
+    // IDs are free text (DEC-48): each one gets its own "tarefa" prefix and
+    // they are split by ";", as in the job list of the generic block.
+    const names = taskIds.map((id) => `tarefa ${id}`).join('; ');
+    return `Sem progresso no tick ${tick}: as tarefas restantes (${names}) estão suspensas. Retome-as, mudando o estado para Pronta, para que terminem.`;
+}
 
 /**
  * Owns the live simulation state and publishes immutable snapshots of it.
@@ -188,10 +216,24 @@ export class Simulator {
      * no intermediate result. It ends because each task creates at most ten
      * jobs and every job that can run completes. A failing step propagates
      * with the last confirmed step intact (DEC-14).
+     *
+     * With `maxSteps` the call stops after that many steps while work remains,
+     * returning `paused` (DEC-51). The next call continues from the cursor, so
+     * a caller can yield between chunks and get the same result as one run.
      */
-    public runAll(): RunResult {
+    public runAll(options: RunOptions = {}): RunResult {
+        const limit = options.maxSteps ?? Number.POSITIVE_INFINITY;
+        if (
+            limit !== Number.POSITIVE_INFINITY &&
+            (!Number.isInteger(limit) || limit < 1)
+        ) {
+            throw new RangeError('maxSteps deve ser um inteiro positivo.');
+        }
+        let remaining = limit;
         for (;;) {
             if (this.canForward()) {
+                if (remaining === 0) return this.pausedResult();
+                remaining--;
                 this.forward();
                 continue;
             }
@@ -200,6 +242,15 @@ export class Simulator {
                 return {
                     kind: 'completed',
                     snapshot: this.getLatestSnapshot(),
+                };
+            }
+            if (progress.kind === 'suspended') {
+                return {
+                    kind: 'blocked',
+                    snapshot: this.getLatestSnapshot(),
+                    tick: this.state.clock,
+                    reason: suspendedReason(progress.taskIds, this.state.clock),
+                    jobs: progress.jobs,
                 };
             }
             if (progress.kind === 'blocked') {
@@ -216,8 +267,14 @@ export class Simulator {
                     jobs: progress.jobs,
                 };
             }
+            if (remaining === 0) return this.pausedResult();
+            remaining--;
             this.tick();
         }
+    }
+
+    private pausedResult(): RunResult {
+        return { kind: 'paused', snapshot: this.getLatestSnapshot() };
     }
 
     /**
@@ -748,13 +805,18 @@ export class Simulator {
         }
         // A system with no tasks has nothing finished: it can still advance, so
         // tasks can be added later; `runAll` alone treats it as complete.
-        if (
-            this.state.tasks.length > 0 &&
-            classifyProgress(this.state).kind === 'finished'
-        ) {
+        const progress = classifyProgress(this.state);
+        if (this.state.tasks.length > 0 && progress.kind === 'finished') {
             return {
                 ready: false,
                 reason: 'Todas as tarefas terminaram; não há passo a calcular.',
+            };
+        }
+        // DEC-52: stepping would only move the clock while nothing can run.
+        if (progress.kind === 'suspended') {
+            return {
+                ready: false,
+                reason: suspendedReason(progress.taskIds, this.state.clock),
             };
         }
         return { ready: true };

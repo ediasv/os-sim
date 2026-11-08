@@ -566,7 +566,12 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   [arquitetura do renderer](../src/renderer/docs/architecture.md#preparacao-da-configuracao-36-parte-2).
   Parte 2c (confirmacao de FE-04, FE-DEC-22): carregar arquivo durante a
   simulacao ou sobre um rascunho pede confirmacao e volta a preparacao.
-  Falta Executar tudo (nucleo pronto na #27, PR #139; falta a interface).
+  Executar tudo (DEC-51, sob DEC-49): em implementacao no branch
+  `claude/run-all-b`, a partir da `main`. Nucleo com `maxSteps` (`paused`);
+  interface cede a cada passo, controles bloqueados durante a execucao e aviso final com
+  o tick. Verificacao local: `npm test` 1454 passaram e 1 ignorado em 77
+  arquivos; `npm run lint` e `npm run typecheck` sem erros. Nao verificado: janela Electron real com execucao longa. Ainda sem aceite
+  de DEC-51.
 - #37 Exibir TCBs, jobs e CPUs e permitir edicao com erros claros.
   Oferece as edicoes de DEC-37 com recusas e avisos (FE-10 a FE-16, FE-19);
   issue atualizada em 2026-11-01.
@@ -791,6 +796,15 @@ Issues `[Docs]`, sem fase no Project.
   aplicaveis (sem mudanca de codigo).
 
 ## Trabalho atual
+
+- #147 implementada, aguardando revisao (2026-11-08): parar a simulacao quando
+  so restarem tarefas suspensas (DEC-52). Objetivo: evitar que "Avancar tick"
+  avance o relogio sem fim. Escopo: progresso `suspended` no nucleo, recusa de
+  `tick()` e resultado `blocked` de `runAll()` no tick da suspensao, com o
+  motivo de retomar a tarefa (Pronta); a interface ja exibe a recusa e o
+  bloqueio como aviso. Verificacao: `npm test` 1458/1458, `npm run lint` e
+  `npm run typecheck` sem erros. Nao verificado: janela Electron real.
+  Proximo passo: revisao do usuario, commit e fechamento da issue.
 
 - #133 concluida (issue fechada; PR #134 mergeado, `d6b2bed`): ID de tarefa como texto livre.
   Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.

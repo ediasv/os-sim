@@ -22,7 +22,7 @@ const task = (
     rawEvents: '',
     ...changes,
 });
-/** A later task of its own, so ticks stay possible after task 1 is concluded (DEC-49). */
+/** A later task of its own, so ticks stay possible after task 1 is concluded or suspended (DEC-49, DEC-52). */
 const keepAlive = () =>
     task('2', { duration: 50, period: 0, deadline: 100, arrival: 5 });
 const make = (tasks = [task()], changes: Partial<SystemConfig> = {}) =>
@@ -42,7 +42,7 @@ const at = (sim: Simulator, time = sim.getCursor()) =>
 
 describe('task suspension', () => {
     it('releases the CPU without preemption, blocks pending jobs, and restarts the slice on resumption', () => {
-        const sim = make();
+        const sim = make([task(), keepAlive()]);
         advance(sim, 2);
         edit(sim, 'suspended');
         expect(sim.getCurrentSnapshot().cpus[0]).toMatchObject({
@@ -90,7 +90,10 @@ describe('task suspension', () => {
     ])(
         'suspends before an activation at $due without stopping its deadline',
         ({ tick, due, ...changes }) => {
-            const sim = make([task('1', { ...changes, deadline: 1 })]);
+            const sim = make([
+                task('1', { ...changes, deadline: 1 }),
+                keepAlive(),
+            ]);
             advance(sim, tick);
             edit(sim, 'suspended');
             expect(at(sim)).toContainEqual({
@@ -209,7 +212,7 @@ describe('forced task dispatch', () => {
         },
     );
     it('orders unforced before suspension and resumption before forced', () => {
-        const sim = make();
+        const sim = make([task(), keepAlive()]);
         edit(sim, 'forced');
         advance(sim, 1);
         edit(sim, 'suspended');
@@ -359,7 +362,7 @@ describe('task state history and boundaries', () => {
     it.each([0, 2])(
         'edits tick %s without changing the past and discards future edits',
         (tick) => {
-            const sim = make();
+            const sim = make([task(), keepAlive()]);
             advance(sim, 4);
             edit(sim, 'forced');
             sim.restore(0);
@@ -401,7 +404,10 @@ describe('task state history and boundaries', () => {
     it.each(['forced', 'suspended'] as const)(
         'applies %s to the next pending job when the previous job completes at the edited boundary',
         (status) => {
-            const sim = make([task('1', { duration: 2, period: 1 })]);
+            const sim = make([
+                task('1', { duration: 2, period: 1 }),
+                keepAlive(),
+            ]);
             advance(sim, 2);
             edit(sim, status);
             const state = sim.getCurrentSnapshot();
@@ -459,7 +465,10 @@ describe('review follow-ups: identity edits and event order', () => {
     it.each(['ready', 'forced', 'suspended'] as const)(
         'editing a %s task to the same state later records no event and changes nothing',
         (status) => {
-            const sim = make([task('1', { duration: 10, period: 20 })]);
+            const sim = make([
+                task('1', { duration: 10, period: 20 }),
+                keepAlive(),
+            ]);
             if (status !== 'ready') edit(sim, status);
             advance(sim, 1);
             const before = sim.getCurrentSnapshot();

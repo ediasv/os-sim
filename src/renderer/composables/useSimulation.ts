@@ -3,8 +3,13 @@ import type { SimulationSnapshot, SystemConfig } from '../../core/domain';
 import { createSimulator } from '../../core/createSimulator';
 import type { EditItem } from '../../core/edit';
 import { DEFAULT_POLICIES, type PolicyRegistry } from '../../core/policies';
-import { Simulator } from '../../core/simulator';
-import { commandFailure, type CommandResult } from '../errors';
+import { Simulator, type RunResult } from '../../core/simulator';
+import { commandFailure, type AppError, type CommandResult } from '../errors';
+
+/** Outcome of one `runAll` chunk: the core's result, or the failure (DEC-24). */
+export type RunCommandResult =
+    | { readonly ok: true; readonly result: RunResult }
+    | { readonly ok: false; readonly error: AppError };
 
 /**
  * Bridges the plain core Simulator into Vue (DEC-23). The instance stays
@@ -23,6 +28,8 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     latest: () => SimulationSnapshot;
     load: (config: SystemConfig) => CommandResult;
     tick: () => CommandResult;
+    /** Runs at most `maxSteps` steps; a `paused` result means call again. */
+    runAll: (maxSteps: number) => RunCommandResult;
     forward: () => CommandResult;
     backward: () => CommandResult;
     next: () => CommandResult;
@@ -63,6 +70,25 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
     /** Computes a new step; on failure `view` keeps the last valid snapshot (DEC-14). */
     const tick = (): CommandResult => run(() => sim.tick());
 
+    /**
+     * One chunk of the full run (DEC-49, DEC-51). On success or failure `view`
+     * shows the cursor, which after a chunk is the newest computed step, or the
+     * last confirmed one after a failure (DEC-14).
+     */
+    function runAll(maxSteps: number): RunCommandResult {
+        let result: RunResult;
+        try {
+            result = sim.runAll({ maxSteps });
+        } catch (error) {
+            view.value = sim.getCurrentSnapshot();
+            const failure = commandFailure(error);
+            if ('error' in failure) return failure;
+            throw error;
+        }
+        view.value = sim.getCurrentSnapshot();
+        return { ok: true, result };
+    }
+
     /** Shows the next recorded step without recomputing it. */
     const forward = (): CommandResult => run(() => sim.forward());
 
@@ -102,6 +128,7 @@ export function useSimulation(policies: PolicyRegistry = DEFAULT_POLICIES): {
         latest,
         load,
         tick,
+        runAll,
         forward,
         backward,
         next,
