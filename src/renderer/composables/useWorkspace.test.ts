@@ -12,6 +12,10 @@ const refuse = vi.hoisted(() => ({
     // Makes the snapshot hold one task more than its configuration lists, as
     // after an inclusion (the edit command itself only arrives with #37).
     extraTask: false,
+    // Makes a full run end as the core reports it, which short configurations
+    // cannot reach: a refusal, or a block with no unfinished jobs listed.
+    runRefused: false,
+    runBlocked: false,
 }));
 vi.mock('./useSimulation', async (importOriginal) => {
     const actual = await importOriginal<typeof import('./useSimulation')>();
@@ -32,6 +36,31 @@ vi.mock('./useSimulation', async (importOriginal) => {
                             : snapshot;
                     },
                 } as typeof sim.view,
+                runAll: (maxSteps: number) => {
+                    if (refuse.runRefused) {
+                        return {
+                            ok: false as const,
+                            error: {
+                                kind: 'refused' as const,
+                                message: 'Recusado pelo núcleo.',
+                            },
+                        };
+                    }
+                    if (refuse.runBlocked) {
+                        const snapshot = sim.view.value;
+                        return {
+                            ok: true as const,
+                            result: {
+                                kind: 'blocked' as const,
+                                snapshot,
+                                tick: snapshot.clock,
+                                reason: `Sem progresso no tick ${snapshot.clock}.`,
+                                jobs: [],
+                            },
+                        };
+                    }
+                    return sim.runAll(maxSteps);
+                },
                 next: () =>
                     refuse.next
                         ? {
@@ -77,6 +106,8 @@ afterEach(() => {
     refuse.next = false;
     refuse.kind = 'refused';
     refuse.extraTask = false;
+    refuse.runRefused = false;
+    refuse.runBlocked = false;
     vi.unstubAllGlobals();
     dismissError();
 });
@@ -317,6 +348,121 @@ describe('useWorkspace', () => {
         workspace.handle('load-config');
 
         expect(openConfigFile).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('useWorkspace run to end (#36, DEC-49, DEC-51)', () => {
+    // One task of period 100 keeps the run to about a thousand steps, so the run
+    // yields to the UI once per step.
+    const LONG_RUN = 'RM;5;1\n\n1;F0E0D0;0;1;100;100\n';
+
+    it('is offered once there are tasks, runs to the end and reports the tick', async () => {
+        const workspace = await prepared();
+        expect(workspace.available.value.has('run-all')).toBe(true);
+
+        workspace.handle('run-all');
+        await vi.waitFor(() =>
+            expect(workspace.notices.value[0]?.title).toBe(
+                'Simulação concluída',
+            ),
+        );
+
+        expect(workspace.running.value).toBe(false);
+        expect(workspace.notices.value[0]).toEqual({
+            tone: 'success',
+            title: 'Simulação concluída',
+            message: `Todas as tarefas terminaram no tick ${workspace.clock.value}.`,
+        });
+        expect(workspace.clock.value).toBeGreaterThan(0);
+    });
+
+    it('stays responsive between chunks and locks step and configuration while running', async () => {
+        const workspace = await prepared(LONG_RUN);
+
+        workspace.handle('run-all');
+        expect(workspace.running.value).toBe(true);
+        for (const action of [
+            'run-all',
+            'step-forward',
+            'step-back',
+            'restart',
+            'configure-system',
+            'add-task',
+            'load-config',
+        ] as const) {
+            expect(workspace.available.value.has(action)).toBe(false);
+        }
+        // Zoom only changes the view, so it stays usable during the run.
+        expect(workspace.available.value.has('zoom-in')).toBe(true);
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(workspace.running.value).toBe(true);
+        expect(workspace.clock.value).toBeGreaterThan(0);
+        expect(workspace.notices.value).toEqual([]);
+
+        await vi.waitFor(
+            () =>
+                expect(workspace.notices.value[0]?.title).toBe(
+                    'Simulação concluída',
+                ),
+            { timeout: 15000 },
+        );
+        expect(workspace.running.value).toBe(false);
+        expect(workspace.available.value.has('step-forward')).toBe(true);
+    }, 20000);
+
+    it('keeps the recorded steps so Voltar tick works after the run', async () => {
+        const workspace = await prepared();
+        workspace.handle('run-all');
+        await vi.waitFor(() =>
+            expect(workspace.notices.value[0]?.title).toBe(
+                'Simulação concluída',
+            ),
+        );
+        const end = workspace.clock.value!;
+
+        expect(workspace.available.value.has('step-back')).toBe(true);
+        workspace.handle('step-back');
+        expect(workspace.clock.value).toBe(end - 1);
+        expect(workspace.history.value?.clock).toBe(end);
+    });
+
+    it('reports a block with its tick and reason as a warning', async () => {
+        const workspace = await prepared();
+        refuse.runBlocked = true;
+
+        workspace.handle('run-all');
+
+        expect(workspace.notices.value).toEqual([
+            {
+                tone: 'warning',
+                title: 'Simulação bloqueada',
+                message: `Sem progresso no tick ${workspace.clock.value}.`,
+            },
+        ]);
+        expect(workspace.running.value).toBe(false);
+    });
+
+    it('shows a refused run as a message and keeps the cursor', async () => {
+        const workspace = await prepared();
+        refuse.runRefused = true;
+
+        workspace.handle('run-all');
+
+        expect(workspace.notices.value).toEqual([
+            {
+                tone: 'warning',
+                title: undefined,
+                message: 'Recusado pelo núcleo.',
+            },
+        ]);
+        expect(workspace.running.value).toBe(false);
+        expect(workspace.clock.value).toBe(0);
+    });
+
+    it('is not offered while preparing an empty configuration', () => {
+        const workspace = useWorkspace();
+        expect(workspace.available.value.has('run-all')).toBe(false);
     });
 });
 

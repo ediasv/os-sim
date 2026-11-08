@@ -166,6 +166,7 @@ describe('useSimulation', () => {
             'latest',
             'load',
             'next',
+            'runAll',
             'tick',
             'view',
         ]);
@@ -396,5 +397,52 @@ describe('useSimulation edits (#37, DEC-37)', () => {
         if (!result.ok) {
             expect(result.error.kind).toBe('refused');
         }
+    });
+});
+
+describe('useSimulation run to end (#36, DEC-49, DEC-51)', () => {
+    it('runs a chunk, publishes the cursor and reports a pause', () => {
+        const { view, load, runAll } = useSimulation(only(firstAvailable));
+        load(oneTask);
+        const result = runAll(2);
+        expect(result).toEqual({
+            ok: true,
+            result: { kind: 'paused', snapshot: expect.anything() },
+        });
+        expect(view.value.clock).toBe(2);
+    });
+
+    it('chunks until the run completes, then the view is the final step', () => {
+        const { view, load, runAll } = useSimulation(only(firstAvailable));
+        load(oneTask);
+        let outcome = runAll(2);
+        while (outcome.ok && outcome.result.kind === 'paused') {
+            outcome = runAll(2);
+        }
+        expect(outcome.ok && outcome.result.kind).toBe('completed');
+        if (!outcome.ok || outcome.result.kind !== 'completed') {
+            throw new Error('expected completion');
+        }
+        expect(view.value).toBe(outcome.result.snapshot);
+    });
+
+    it('reports a failure, keeps the last confirmed step and the history', () => {
+        let calls = 0;
+        const policy: SchedulingPolicy = {
+            select: (view) => {
+                if (++calls === 3) throw new Error('policy failed');
+                return firstAvailable.select(view);
+            },
+        };
+        const { view, load, runAll, backward } = useSimulation(only(policy));
+        load(oneTask);
+        const outcome = runAll(10);
+        expect(outcome).toEqual({
+            ok: false,
+            error: { kind: 'unexpected', message: 'policy failed' },
+        });
+        expect(view.value.clock).toBe(1);
+        expect(backward()).toEqual({ ok: true });
+        expect(view.value.clock).toBe(0);
     });
 });
