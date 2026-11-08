@@ -46,7 +46,7 @@ const countingPolicy = () => {
     };
 };
 
-/** Suspends task 1 at tick 2: it keeps activating up to ten jobs but never runs them. */
+/** Suspends task 1 at tick 2: the last unfinished task can no longer run (DEC-52). */
 function suspendedAtTwo() {
     const sim = make([task('1', { duration: 5, period: 2, deadline: 3 })]);
     sim.tick();
@@ -69,11 +69,36 @@ describe('getProgress', () => {
         expect(sim.getProgress()).toEqual({ kind: 'finished' });
     });
 
-    it('keeps waiting for the activations of a suspended task, then reports the block', () => {
+    it('reports suspension as soon as every unfinished task is suspended, activations left or not', () => {
         const sim = suspendedAtTwo();
-        for (let i = 0; i < 8; i++) sim.tick();
-        expect(sim.getCurrentSnapshot().clock).toBe(10);
+        expect(sim.getCurrentSnapshot().tasks[0].nextActivation).not.toBeNull();
+        expect(sim.getProgress()).toEqual({
+            kind: 'suspended',
+            taskIds: ['1'],
+            jobs: [
+                { taskId: '1', index: 0 },
+                { taskId: '1', index: 1 },
+            ],
+        });
+    });
+
+    it('keeps running while an unsuspended task still has work', () => {
+        const sim = make([
+            task('1', { duration: 5, period: 2, deadline: 3 }),
+            task('2', { duration: 3, period: 0, deadline: 10, arrival: 6 }),
+        ]);
+        sim.tick();
+        sim.edit([{ kind: 'taskState', taskId: '1', state: 'suspended' }]);
         expect(sim.getProgress()).toEqual({ kind: 'running' });
+        sim.tick();
+        expect(sim.getCursor()).toBe(2);
+        // Task 2 runs [6, 9); only then is task 1 the last one left.
+        const result = sim.runAll();
+        if (result.kind !== 'blocked') throw new Error('expected a block');
+        expect(result.tick).toBe(9);
+        expect(result.snapshot.tasks[1].jobs[0].state).toBe('completed');
+        expect(result.reason).toContain('última tarefa restante (tarefa 1)');
+        expect(() => sim.tick()).toThrow(SimulationRefusal);
     });
 
     it('does not count the pending activation of a concluded task', () => {
@@ -139,18 +164,38 @@ describe('runAll', () => {
         expect(result.snapshot.tasks[0].jobs).toHaveLength(10);
     });
 
-    it('reports a block with tick, reason and jobs once nothing can run or arrive', () => {
+    it('stops at once when the last unfinished task is suspended, telling to resume it', () => {
         const sim = suspendedAtTwo();
         const result = sim.runAll();
         if (result.kind !== 'blocked') throw new Error('expected a block');
-        expect(result.tick).toBe(18);
+        expect(result.tick).toBe(2);
         expect(result.snapshot).toBe(sim.getLatestSnapshot());
-        expect(result.snapshot.clock).toBe(18);
-        expect(result.reason).toContain('18');
-        expect(result.jobs).toHaveLength(10);
-        expect(result.jobs[0]).toEqual({ taskId: '1', index: 0 });
-        expect(sim.getCursor()).toBe(18);
+        expect(result.snapshot.clock).toBe(2);
+        expect(result.reason).toContain('tick 2');
+        expect(result.reason).toContain('última tarefa restante (tarefa 1)');
+        expect(result.reason).toContain('suspensa');
+        expect(result.reason).toContain('Pronta');
+        expect(result.jobs).toEqual([
+            { taskId: '1', index: 0 },
+            { taskId: '1', index: 1 },
+        ]);
+        expect(sim.getCursor()).toBe(2);
         expect(findInconsistencies(result.snapshot)).toEqual([]);
+    });
+
+    it('names every remaining task when all of them are suspended', () => {
+        const sim = make([task('1'), task('2')]);
+        sim.tick();
+        sim.edit([
+            { kind: 'taskState', taskId: '1', state: 'suspended' },
+            { kind: 'taskState', taskId: '2', state: 'suspended' },
+        ]);
+        const result = sim.runAll();
+        if (result.kind !== 'blocked') throw new Error('expected a block');
+        expect(result.reason).toContain(
+            'tarefas restantes (tarefa 1; tarefa 2)',
+        );
+        expect(result.reason).toContain('suspensas');
     });
 
     it('resumes after the user edits the block away', () => {
@@ -251,6 +296,20 @@ describe('runAll', () => {
         expect(sim.getCursor()).toBe(2);
         expect(sim.getCurrentSnapshot()).toBe(confirmed);
         expect(findInconsistencies(confirmed)).toEqual([]);
+    });
+});
+
+describe('tick once every unfinished task is suspended', () => {
+    it('is refused with the resume hint, and allowed again after resuming', () => {
+        const sim = suspendedAtTwo();
+        const last = sim.getLatestSnapshot();
+        expect(() => sim.tick()).toThrow(SimulationRefusal);
+        expect(() => sim.tick()).toThrow(/última tarefa restante \(tarefa 1\)/);
+        expect(sim.getLatestSnapshot()).toBe(last);
+        expect(sim.getCursor()).toBe(2);
+        sim.edit([{ kind: 'taskState', taskId: '1', state: 'ready' }]);
+        sim.tick();
+        expect(sim.getCursor()).toBe(3);
     });
 });
 

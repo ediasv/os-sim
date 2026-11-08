@@ -1618,7 +1618,8 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   matriz, a etapa de edicao e os eventos; #23/#24 guardam as edicoes por
   tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
   desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
-  suspensas indefinidamente sao tratadas na DEC-49 (#27).
+  suspensas indefinidamente sao tratadas na DEC-49 (#27) e, quando so elas
+  restam, na DEC-52 (#147): o passo e recusado ate a retomada.
 
 ### DEC-38: Uma ativacao por vez (retirada)
 
@@ -2230,15 +2231,17 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   Tarefa terminada: encerrada, ou com todos os jobs criados e concluidos ou
   interrompidos. Ativacao futura: `nextActivation` de tarefa nao encerrada;
   a encerrada mantem `nextActivation` e nao conta. Tarefa suspensa continua
-  ativando ate o limite, entao o bloqueio dela so e informado depois da
-  ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
+  ativando ate o limite, mas, desde a DEC-52, quando todas as tarefas nao
+  terminadas estao suspensas o bloqueio e informado de imediato, sem esperar
+  a ultima ativacao. A execucao termina porque cada tarefa cria no maximo dez
   jobs.
 - `tick()` com todas as tarefas terminadas e recusado (`SimulationRefusal`),
   depois da recusa de "ja calculado". A recusa e deliberada: o usuario nao
   avanca o relogio no vazio para incluir tarefa; a inclusao usa o ingresso
   informado no dialogo (revisao do PR #139). Sem tarefas nada terminou: `tick()`
   segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
-  imediato.
+  imediato. Desde a DEC-52, `tick()` tambem e recusado, depois dessas duas
+  recusas, quando todas as tarefas nao terminadas estao suspensas.
 - Apresentacao e controles ficam na #36.
 
 ### DEC-50: Modelo comum do Gantt, zoom em passos fixos e estados editados
@@ -2302,3 +2305,31 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   a cada tick, ao custo de mais lentidao em execucoes com muitos passos.
 - Ao fim, a interface mostra aviso com o resultado: concluida (tick final) ou
   bloqueada (tick, motivo e jobs informados pelo nucleo).
+
+### DEC-52: Ultimas tarefas restantes suspensas
+
+- Estado: aceita em 2026-11-08 pelo usuario (escolhas: recusar o passo e
+  detectar logo na suspensao); implementada na #147. Requisitos: REQ-04, REQ-05. Complementa
+  DEC-49 e DEC-43.
+- Problema: com so tarefas suspensas restando, `tick()` era sempre aceito e
+  "Avancar tick" levava o relogio adiante sem fim, sem nada poder executar.
+  `runAll()` parava, mas so apos a ultima ativacao e com motivo generico.
+- Decisao: `classifyProgress` devolve `suspended` (tarefas e jobs nao
+  terminados) quando todas as tarefas nao terminadas estao suspensas, antes de
+  considerar ativacoes futuras: os jobs novos de uma tarefa suspensa nunca
+  executariam. Nesse estado `tick()` e recusado (`SimulationRefusal`, depois
+  da recusa de "ja calculado" e da de termino), e `runAll()` devolve
+  `blocked` no tick atual. Recusa e resultado usam o mesmo motivo: a ultima
+  tarefa restante (ou as restantes) esta suspensa e deve voltar a Pronta para
+  terminar. A interface ja mostra esse motivo como aviso unico, substituido
+  a cada tentativa.
+- Justificativa: avancar o relogio nesse estado so acumula ativacoes e prazos
+  perdidos sem trabalho possivel; recusar e explicar a saida (retomar a
+  tarefa por edicao) evita a execucao interminavel. A edicao de estado segue
+  aceita no tick do cursor, entao retomar volta a permitir passos.
+- Alternativa descartada: aceitar passos e avisar uma vez, que manteria o
+  relogio avancando sem limite.
+- Verificacao: `simulator.runAll.test.ts` (progresso `suspended`, motivo no
+  singular e no plural, recusa de `tick()` e retomada, e passagem de
+  `running` a `suspended` quando a outra tarefa termina); testes que avancavam
+  com so uma tarefa suspensa ganharam uma tarefa que chega depois.

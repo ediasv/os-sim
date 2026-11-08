@@ -61,7 +61,12 @@ describe('buildGanttModel with edited states (DEC-37, DEC-43)', () => {
     it('runs a suspension to the end of the history when never resumed', () => {
         const sim = createSimulator({
             ...TWO_TASKS,
-            tasks: [task('1', 'FF0000', 6, 20)],
+            // T2 arrives later, so ticks stay possible while T1 is the
+            // only suspended task (DEC-52).
+            tasks: [
+                task('1', 'FF0000', 6, 20),
+                { ...task('2', '0000FF', 6, 20), arrival: 10 },
+            ],
         });
         sim.tick();
         sim.tick();
@@ -70,7 +75,9 @@ describe('buildGanttModel with edited states (DEC-37, DEC-43)', () => {
         sim.tick();
         const model = buildGanttModel(sim.getLatestSnapshot());
 
-        expect(model.taskLanes[0].suspended).toEqual([{ start: 2, end: 4 }]);
+        const t1 = model.taskLanes.find((l) => l.id === '1')!;
+
+        expect(t1.suspended).toEqual([{ start: 2, end: 4 }]);
     });
 
     it('forces from the forced event to the end of the history while it lasts', () => {
