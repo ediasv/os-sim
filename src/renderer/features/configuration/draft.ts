@@ -119,7 +119,7 @@ export function saveTask(
             field: 'period',
             taskIndex: index,
             message:
-                'Toda tarefa precisa de período maior que zero (DEC-29); valor recebido: 0.',
+                'Toda tarefa precisa de período maior que zero; valor recebido: 0.',
         };
         return {
             ok: false,
