@@ -7,6 +7,7 @@ import {
     type SimulationSnapshot,
     type SimulationState,
     type SystemConfig,
+    type TaskId,
 } from './domain';
 import { findInconsistencies } from './consistency';
 import { findEligibleJobs } from './eligibility';
@@ -135,6 +136,18 @@ export interface RunOptions {
 }
 
 /**
+ * Why nothing can advance while every unfinished task is suspended (DEC-52),
+ * shared by the `tick()` refusal and the `runAll` result. It names the action
+ * that unblocks the run: setting the task back to "Pronta".
+ */
+function suspendedReason(taskIds: readonly TaskId[], tick: number): string {
+    if (taskIds.length === 1) {
+        return `Sem progresso no tick ${tick}: a última tarefa restante (tarefa ${taskIds[0]}) está suspensa. Retome-a, mudando o estado para Pronta, para que ela termine.`;
+    }
+    return `Sem progresso no tick ${tick}: as tarefas restantes (${taskIds.join(', ')}) estão suspensas. Retome-as, mudando o estado para Pronta, para que terminem.`;
+}
+
+/**
  * Owns the live simulation state and publishes immutable snapshots of it.
  * Activations are processed at each boundary, eligible jobs are selected
  * globally by the policy of the current algorithm (DEC-39), and slices that
@@ -226,6 +239,15 @@ export class Simulator {
                 return {
                     kind: 'completed',
                     snapshot: this.getLatestSnapshot(),
+                };
+            }
+            if (progress.kind === 'suspended') {
+                return {
+                    kind: 'blocked',
+                    snapshot: this.getLatestSnapshot(),
+                    tick: this.state.clock,
+                    reason: suspendedReason(progress.taskIds, this.state.clock),
+                    jobs: progress.jobs,
                 };
             }
             if (progress.kind === 'blocked') {
@@ -780,13 +802,18 @@ export class Simulator {
         }
         // A system with no tasks has nothing finished: it can still advance, so
         // tasks can be added later; `runAll` alone treats it as complete.
-        if (
-            this.state.tasks.length > 0 &&
-            classifyProgress(this.state).kind === 'finished'
-        ) {
+        const progress = classifyProgress(this.state);
+        if (this.state.tasks.length > 0 && progress.kind === 'finished') {
             return {
                 ready: false,
                 reason: 'Todas as tarefas terminaram; não há passo a calcular.',
+            };
+        }
+        // DEC-52: stepping would only move the clock while nothing can run.
+        if (progress.kind === 'suspended') {
+            return {
+                ready: false,
+                reason: suspendedReason(progress.taskIds, this.state.clock),
             };
         }
         return { ready: true };

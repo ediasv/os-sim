@@ -797,6 +797,15 @@ Issues `[Docs]`, sem fase no Project.
 
 ## Trabalho atual
 
+- #147 implementada, aguardando revisao (2026-11-08): parar a simulacao quando
+  so restarem tarefas suspensas (DEC-52). Objetivo: evitar que "Avancar tick"
+  avance o relogio sem fim. Escopo: progresso `suspended` no nucleo, recusa de
+  `tick()` e resultado `blocked` de `runAll()` no tick da suspensao, com o
+  motivo de retomar a tarefa (Pronta); a interface ja exibe a recusa e o
+  bloqueio como aviso. Verificacao: `npm test` 1458/1458, `npm run lint` e
+  `npm run typecheck` sem erros. Nao verificado: janela Electron real.
+  Proximo passo: revisao do usuario, commit e fechamento da issue.
+
 - #133 concluida (issue fechada; PR #134 mergeado, `d6b2bed`): ID de tarefa como texto livre.
   Objetivo: aceitar qualquer texto como ID, sem mudar configuracoes numericas.
   Feito no PR #134 (rascunho): DEC-48 (formato, unicidade sem caixa, ordem
