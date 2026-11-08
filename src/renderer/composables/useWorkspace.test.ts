@@ -352,8 +352,8 @@ describe('useWorkspace', () => {
 });
 
 describe('useWorkspace run to end (#36, DEC-49, DEC-51)', () => {
-    // One task of period 100 keeps the run to about a thousand steps: more than
-    // a chunk, so the run yields to the UI at least once.
+    // One task of period 100 keeps the run to about a thousand steps, so the run
+    // yields to the UI once per step.
     const LONG_RUN = 'RM;5;1\n\n1;F0E0D0;0;1;100;100\n';
 
     it('is offered once there are tasks, runs to the end and reports the tick', async () => {
@@ -400,14 +400,16 @@ describe('useWorkspace run to end (#36, DEC-49, DEC-51)', () => {
         expect(workspace.clock.value).toBeGreaterThan(0);
         expect(workspace.notices.value).toEqual([]);
 
-        await vi.waitFor(() =>
-            expect(workspace.notices.value[0]?.title).toBe(
-                'Simulação concluída',
-            ),
+        await vi.waitFor(
+            () =>
+                expect(workspace.notices.value[0]?.title).toBe(
+                    'Simulação concluída',
+                ),
+            { timeout: 15000 },
         );
         expect(workspace.running.value).toBe(false);
         expect(workspace.available.value.has('step-forward')).toBe(true);
-    });
+    }, 20000);
 
     it('keeps the recorded steps so Voltar tick works after the run', async () => {
         const workspace = await prepared();

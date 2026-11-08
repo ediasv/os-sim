@@ -46,10 +46,11 @@ export const ZOOM_STEPS = [50, 75, 100, 150, 200] as const;
 const DEFAULT_ZOOM_INDEX = ZOOM_STEPS.indexOf(100);
 
 /**
- * Steps computed per chunk of "Executar tudo" (DEC-51). Between chunks the
- * window gets a turn to paint and answer input, so a long run stays responsive.
+ * Steps computed before "Executar tudo" yields to the window (DEC-51). One step
+ * per turn keeps the window answering at every tick; longer chunks would be
+ * faster, but only with a larger step count per turn.
  */
-export const RUN_CHUNK_STEPS = 200;
+export const RUN_CHUNK_STEPS = 1;
 
 /** Message the workspace shows to the user, in the order it should appear. */
 export interface Notice {

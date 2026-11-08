@@ -2282,7 +2282,7 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Fora desta decisao: selecao por clique (FE-10, #37), teclado, colisoes em
   zoom reduzido e muitos jobs ou CPUs (PEND-04).
 
-### DEC-51: Executar tudo em blocos com limite de passos
+### DEC-51: Executar tudo com limite de passos
 
 - Estado: proposta de implementacao na #36, sob a DEC-49 ja aceita; aguarda
   aceite do usuario. Requisitos: REQ-04, REQ-10. Detalha DEC-49 e FE-07; nao
@@ -2291,11 +2291,14 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   com trabalho pendente, devolve `paused` com o ultimo snapshot; a chamada
   seguinte continua do cursor. Passos reutilizados (`forward()`) contam no
   limite. Termino e bloqueio mantem o resultado da DEC-49, inclusive quando o
-  limite coincide com o ultimo passo. A interface executa em blocos e cede o
-  controle entre eles; enquanto roda, passo, configuracao e reinicio ficam
-  indisponiveis, e o historico registrado segue para "Voltar tick".
-- Justificativa: uma execucao longa sem limite bloqueia a janela do Electron.
-  Blocos mantem a mesma sequencia de passos e o mesmo historico que uma execucao
-  unica, sem exibir progressao tick a tick (FE-07).
+  limite coincide com o ultimo passo. A interface chama `runAll` com limite de
+  um passo e cede o controle ao navegador entre cada passo; enquanto roda,
+  passo, configuracao e reinicio ficam indisponiveis, e o historico registrado
+  segue para "Voltar tick".
+- Justificativa: uma execucao longa sem pausas bloqueia a janela do Electron.
+  Ceder a cada passo mantem a mesma sequencia de passos e o mesmo historico que
+  uma execucao unica, sem exibir progressao tick a tick (FE-07). Limites
+  maiores (blocos) foram descartados pela escolha do usuario: a janela responde
+  a cada tick, ao custo de mais lentidao em execucoes com muitos passos.
 - Ao fim, a interface mostra aviso com o resultado: concluida (tick final) ou
   bloqueada (tick, motivo e jobs informados pelo nucleo).

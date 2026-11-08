@@ -568,7 +568,7 @@ Requisitos: REQ-04, REQ-05, REQ-09, REQ-10.
   simulacao ou sobre um rascunho pede confirmacao e volta a preparacao.
   Executar tudo (DEC-51, sob DEC-49): em implementacao no branch
   `claude/run-all-b`, a partir da `main`. Nucleo com `maxSteps` (`paused`);
-  interface em blocos, controles bloqueados durante a execucao e aviso final com
+  interface cede a cada passo, controles bloqueados durante a execucao e aviso final com
   o tick. Verificacao local: `npm test` 1454 passaram e 1 ignorado em 77
   arquivos; `npm run lint` e `npm run typecheck` sem erros. Nao verificado: janela Electron real com execucao longa. Ainda sem aceite
   de DEC-51.
