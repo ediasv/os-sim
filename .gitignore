@@ -154,3 +154,6 @@ skills-lock.json
 .vscode
 .superpowers
 .claude
+
+# Versao enxuta para entrega (gerada por npm run submission)
+submission/

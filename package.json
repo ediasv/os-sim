@@ -27,6 +27,8 @@
         "lint": "oxlint && oxfmt --check",
         "lint:fix": "oxlint --fix && oxfmt --write",
         "typecheck": "vue-tsc --noEmit && tsc --noEmit -p src/core/tsconfig.json",
+        "submission": "node scripts/build-submission.mjs",
+        "verify:submission": "vitest run --config scripts/verify-submission.config.mts",
         "publish": "electron-forge publish",
         "test": "vitest run",
         "prepare": "git config core.hooksPath .githooks || exit 0"
