@@ -90,6 +90,15 @@ describe('getProgress', () => {
         sim.tick();
         sim.edit([{ kind: 'taskState', taskId: '1', state: 'suspended' }]);
         expect(sim.getProgress()).toEqual({ kind: 'running' });
+        sim.tick();
+        expect(sim.getCursor()).toBe(2);
+        // Task 2 runs [6, 9); only then is task 1 the last one left.
+        const result = sim.runAll();
+        if (result.kind !== 'blocked') throw new Error('expected a block');
+        expect(result.tick).toBe(9);
+        expect(result.snapshot.tasks[1].jobs[0].state).toBe('completed');
+        expect(result.reason).toContain('última tarefa restante (tarefa 1)');
+        expect(() => sim.tick()).toThrow(SimulationRefusal);
     });
 
     it('does not count the pending activation of a concluded task', () => {
@@ -183,7 +192,9 @@ describe('runAll', () => {
         ]);
         const result = sim.runAll();
         if (result.kind !== 'blocked') throw new Error('expected a block');
-        expect(result.reason).toContain('tarefas restantes (1, 2)');
+        expect(result.reason).toContain(
+            'tarefas restantes (tarefa 1; tarefa 2)',
+        );
         expect(result.reason).toContain('suspensas');
     });
 

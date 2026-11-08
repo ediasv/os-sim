@@ -144,7 +144,10 @@ function suspendedReason(taskIds: readonly TaskId[], tick: number): string {
     if (taskIds.length === 1) {
         return `Sem progresso no tick ${tick}: a última tarefa restante (tarefa ${taskIds[0]}) está suspensa. Retome-a, mudando o estado para Pronta, para que ela termine.`;
     }
-    return `Sem progresso no tick ${tick}: as tarefas restantes (${taskIds.join(', ')}) estão suspensas. Retome-as, mudando o estado para Pronta, para que terminem.`;
+    // IDs are free text (DEC-48): each one gets its own "tarefa" prefix and
+    // they are split by ";", as in the job list of the generic block.
+    const names = taskIds.map((id) => `tarefa ${id}`).join('; ');
+    return `Sem progresso no tick ${tick}: as tarefas restantes (${names}) estão suspensas. Retome-as, mudando o estado para Pronta, para que terminem.`;
 }
 
 /**

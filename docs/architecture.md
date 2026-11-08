@@ -1618,7 +1618,8 @@ edicao do quantum fica na etapa de fatias vencidas, depois dela (DEC-22).
   matriz, a etapa de edicao e os eventos; #23/#24 guardam as edicoes por
   tick; #37 oferece todas as edicoes, com as recusas e os avisos acima; #38
   desenha os trechos suspensos e forcados e as lacunas de CPU. Tarefas
-  suspensas indefinidamente sao tratadas na DEC-49 (#27).
+  suspensas indefinidamente sao tratadas na DEC-49 (#27) e, quando so elas
+  restam, na DEC-52 (#147): o passo e recusado ate a retomada.
 
 ### DEC-38: Uma ativacao por vez (retirada)
 
@@ -2239,7 +2240,8 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
   avanca o relogio no vazio para incluir tarefa; a inclusao usa o ingresso
   informado no dialogo (revisao do PR #139). Sem tarefas nada terminou: `tick()`
   segue permitido para poder incluir tarefas depois, e `runAll()` conclui de
-  imediato.
+  imediato. Desde a DEC-52, `tick()` tambem e recusado, depois dessas duas
+  recusas, quando todas as tarefas nao terminadas estao suspensas.
 - Apresentacao e controles ficam na #36.
 
 ### DEC-50: Modelo comum do Gantt, zoom em passos fixos e estados editados
@@ -2328,5 +2330,6 @@ recalcula este passo a partir do snapshot `t-1` com a lista de edicoes de
 - Alternativa descartada: aceitar passos e avisar uma vez, que manteria o
   relogio avancando sem limite.
 - Verificacao: `simulator.runAll.test.ts` (progresso `suspended`, motivo no
-  singular e no plural, recusa de `tick()` e retomada); testes que avancavam
+  singular e no plural, recusa de `tick()` e retomada, e passagem de
+  `running` a `suspended` quando a outra tarefa termina); testes que avancavam
   com so uma tarefa suspensa ganharam uma tarefa que chega depois.
